@@ -18,6 +18,7 @@ interface SidebarProps {
   onEditChat: (id: string, newTitle: string) => void;
   onDeleteChat: (id: string) => void;
   onClearAll: () => void;
+  onOpenSearch: () => void;
 }
 
 export default function Sidebar({
@@ -30,6 +31,7 @@ export default function Sidebar({
   onEditChat,
   onDeleteChat,
   onClearAll,
+  onOpenSearch,
 }: SidebarProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -66,6 +68,15 @@ export default function Sidebar({
                 aria-label="Start a new chat"
               >
                 + New Chat
+              </button>
+              {/* Search Icon Button */}
+              <button
+                className="mx-4 mb-4 flex items-center justify-center w-10 h-10 rounded-full bg-black text-white hover:bg-neutral-800 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/30"
+                onClick={onOpenSearch}
+                aria-label="Search chats"
+                tabIndex={0}
+              >
+                <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
               </button>
               {/* Chat List */}
               <div className="flex-1 overflow-y-auto px-2 pb-2">

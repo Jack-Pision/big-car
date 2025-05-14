@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import Sidebar from '../components/Sidebar';
 import HamburgerMenu from '../components/HamburgerMenu';
 import { v4 as uuidv4 } from 'uuid';
+import SearchPopup from '../components/SearchPopup';
 
 const OPENROUTER_API_KEY = "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";
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
@@ -33,6 +34,7 @@ export default function Home() {
     messages: Message[];
   }[]>([]);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
+  const [searchPopupOpen, setSearchPopupOpen] = useState(false);
 
   // Scroll to bottom on new message
   useEffect(() => {
@@ -214,6 +216,7 @@ export default function Home() {
         onEditChat={handleEditChat}
         onDeleteChat={handleDeleteChat}
         onClearAll={handleClearAll}
+        onOpenSearch={() => setSearchPopupOpen(true)}
       />
       {/* Welcoming message with fade-out animation */}
       <div className={`w-full flex justify-center items-center relative h-24 md:h-28 transition-opacity duration-500 ${hasUserMessage ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
@@ -307,6 +310,23 @@ export default function Home() {
           </button>
         </div>
       </form>
+      {/* Render SearchPopup here when searchPopupOpen is true */}
+      <SearchPopup
+        open={searchPopupOpen}
+        chats={chats.map(({ id, title, timestamp, messages }) => ({
+          id,
+          title,
+          timestamp,
+          snippet: messages.length > 0 ? messages[messages.length - 1].content.slice(0, 40) : '',
+        }))}
+        onClose={() => setSearchPopupOpen(false)}
+        onRename={handleEditChat}
+        onDelete={handleDeleteChat}
+        onSelectChat={id => {
+          handleSelectChat(id);
+          setSearchPopupOpen(false);
+        }}
+      />
     </div>
   );
 } 
