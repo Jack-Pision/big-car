@@ -151,19 +151,17 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-white">
-      <div className="flex-1 flex flex-col w-full items-center justify-center relative">
-        {/* Welcoming message with fade-out animation */}
-        <div
-          className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transition-opacity duration-500 pointer-events-none select-none ${hasUserMessage ? 'opacity-0' : 'opacity-100'}`}
-          style={{ zIndex: 1 }}
-        >
-          <span className="text-2xl md:text-3xl font-semibold text-neutral-700 text-center block">
-            Seek and You&apos;ll find
-          </span>
-        </div>
-        {/* Chat area */}
-        <div ref={chatRef} className="w-full max-w-[850px] flex-1 overflow-y-auto pb-4 space-y-4" style={{ minHeight: 200, maxHeight: 400 }}>
+    <div className="min-h-screen flex flex-col bg-white">
+      {/* Welcoming message with fade-out animation */}
+      <div className={`w-full flex justify-center items-center relative h-24 md:h-28 transition-opacity duration-500 ${hasUserMessage ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+        style={{ minHeight: '4rem' }}>
+        <span className="text-2xl md:text-3xl font-semibold text-neutral-700 text-center block select-none">
+          Seek and You&apos;ll find
+        </span>
+      </div>
+      {/* Chat area fills all available space, scrollbar at window edge */}
+      <div className="flex-1 w-full overflow-y-auto" ref={chatRef}>
+        <div className="max-w-[850px] mx-auto px-2 pb-4 space-y-4">
           {messages.map((msg, i) => {
             // If this is the last message and it's an empty AI message, show the animated streaming message instead
             if (
@@ -200,6 +198,7 @@ export default function Home() {
           )}
         </div>
       </div>
+      {/* Input bar fixed at bottom */}
       <form
         className="w-full flex justify-center fixed bottom-0 left-0 right-0 pb-[env(safe-area-inset-bottom)] z-10"
         autoComplete="off"
