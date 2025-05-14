@@ -85,6 +85,31 @@ export default function BoardPage() {
                 </div>
               ))}
             </div>
+            {/* Input Area at Bottom of Chat Panel */}
+            <form
+              className="w-full flex items-center gap-2 px-3 py-3 border-t bg-white"
+              style={{ borderColor: BORDER_COLOR }}
+              onSubmit={handleSend}
+            >
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Type a message…"
+                className="flex-1 min-w-0 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black/10 bg-white"
+                maxLength={200}
+                aria-label="Chat input"
+              />
+              <span className="text-xs text-gray-400 whitespace-nowrap">{input.length}/200</span>
+              <button
+                type="submit"
+                className="w-9 h-9 flex items-center justify-center rounded-full bg-black text-white hover:bg-neutral-800 transition-colors focus:outline-none focus:ring-2 focus:ring-black/30"
+                aria-label="Send"
+                disabled={!input.trim()}
+              >
+                <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+              </button>
+            </form>
           </div>
           {/* Right: Board Canvas */}
           <div className="flex-1 h-full w-full bg-[#F9F9F9] overflow-auto">
@@ -139,31 +164,6 @@ export default function BoardPage() {
           </div>
         </Split>
       </div>
-      {/* Chat Input Area at Bottom of Page */}
-      <form
-        className="w-full flex items-center gap-2 px-3 py-3 border-t bg-white"
-        style={{ borderColor: BORDER_COLOR }}
-        onSubmit={handleSend}
-      >
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Type a message…"
-          className="flex-1 min-w-0 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black/10 bg-white"
-          maxLength={200}
-          aria-label="Chat input"
-        />
-        <span className="text-xs text-gray-400 whitespace-nowrap">{input.length}/200</span>
-        <button
-          type="submit"
-          className="w-9 h-9 flex items-center justify-center rounded-full bg-black text-white hover:bg-neutral-800 transition-colors focus:outline-none focus:ring-2 focus:ring-black/30"
-          aria-label="Send"
-          disabled={!input.trim()}
-        >
-          <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
-        </button>
-      </form>
     </motion.div>
   );
 } 
