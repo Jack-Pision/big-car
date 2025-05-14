@@ -111,9 +111,9 @@ export default function BoardPage() {
           </form>
         </div>
         {/* Right: Board Canvas */}
-        <div className="flex-1 flex justify-center items-start bg-[#F9F9F9] min-h-screen py-8 px-2 md:px-8 overflow-auto">
+        <div className="flex-1 h-full w-full bg-[#F9F9F9] overflow-auto">
           <div
-            className="w-full max-w-3xl bg-white rounded-2xl shadow-xl p-0 flex flex-col relative"
+            className="h-full w-full bg-white rounded-2xl shadow-xl flex flex-col relative"
             style={{ boxShadow: SHADOW }}
           >
             {/* Title */}
@@ -151,10 +151,10 @@ export default function BoardPage() {
             </div>
             {/* Board Content */}
             <div
-              className="flex-1 px-6 py-6 outline-none min-h-[400px] text-base focus:outline-none"
+              className="flex-1 px-6 py-6 outline-none min-h-0 text-base focus:outline-none w-full h-full"
               contentEditable
               suppressContentEditableWarning
-              style={{ background: BOARD_BG, color: TEXT_COLOR, minHeight: 400 }}
+              style={{ background: BOARD_BG, color: TEXT_COLOR, minHeight: 0, height: '100%' }}
               onInput={e => setBoardContent((e.target as HTMLDivElement).innerHTML)}
               dangerouslySetInnerHTML={{ __html: boardContent }}
               aria-label="Board content editor"
