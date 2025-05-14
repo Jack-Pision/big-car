@@ -152,12 +152,16 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-white">
-      <div className="flex-1 flex flex-col w-full items-center justify-center">
-        {!hasUserMessage && (
-          <h1 className="text-2xl md:text-3xl font-semibold text-neutral-900 text-center mb-2 mt-2 md:mb-4 md:mt-4 select-none max-w-[850px] w-full">
-            What can I help with?
-          </h1>
-        )}
+      <div className="flex-1 flex flex-col w-full items-center justify-center relative">
+        {/* Welcoming message with fade-out animation */}
+        <div
+          className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transition-opacity duration-500 pointer-events-none select-none ${hasUserMessage ? 'opacity-0' : 'opacity-100'}`}
+          style={{ zIndex: 1 }}
+        >
+          <span className="text-2xl md:text-3xl font-semibold text-neutral-700 text-center block">
+            Seek and You&apos;ll find
+          </span>
+        </div>
         {/* Chat area */}
         <div ref={chatRef} className="w-full max-w-[850px] flex-1 overflow-y-auto pb-4 space-y-4" style={{ minHeight: 200, maxHeight: 400 }}>
           {messages.map((msg, i) => {
