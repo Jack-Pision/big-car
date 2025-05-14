@@ -72,7 +72,7 @@ export default function BoardPage() {
       >
         {/* Left: Compact Chat */}
         <div className="flex flex-col h-full min-w-[220px] max-w-[500px] bg-white border-r" style={{ borderColor: BORDER_COLOR }}>
-          <div className="flex-1 overflow-y-auto px-3 pt-6 pb-24" ref={chatRef}>
+          <div className="flex-1 overflow-y-auto px-3 pt-6 pb-2" ref={chatRef}>
             {messages.map((msg) => (
               <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} mb-2`}>
                 <div
@@ -86,7 +86,7 @@ export default function BoardPage() {
           </div>
           {/* Input */}
           <form
-            className="w-full flex items-center gap-2 px-3 py-3 border-t bg-white fixed md:static bottom-0 left-0 right-0 z-10"
+            className="w-full flex items-center gap-2 px-3 py-3 border-t bg-white"
             style={{ borderColor: BORDER_COLOR }}
             onSubmit={handleSend}
           >
@@ -95,11 +95,11 @@ export default function BoardPage() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Type a message…"
-              className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black/10 bg-white"
+              className="flex-1 min-w-0 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black/10 bg-white"
               maxLength={200}
               aria-label="Chat input"
             />
-            <span className="text-xs text-gray-400">{input.length}/200</span>
+            <span className="text-xs text-gray-400 whitespace-nowrap">{input.length}/200</span>
             <button
               type="submit"
               className="w-9 h-9 flex items-center justify-center rounded-full bg-black text-white hover:bg-neutral-800 transition-colors focus:outline-none focus:ring-2 focus:ring-black/30"
