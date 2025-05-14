@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 
-const OPENROUTER_API_KEY = "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";
+const OPENROUTER_API_KEY = "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";
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
 interface Message {
@@ -18,6 +18,7 @@ export default function Home() {
   const [aiTyping, setAiTyping] = useState(false);
   const [streamedContent, setStreamedContent] = useState("");
   const [error, setError] = useState("");
+  const [debug, setDebug] = useState("");
   const chatRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -54,6 +55,7 @@ export default function Home() {
     if (e) e.preventDefault();
     if (!input.trim() || isLoading || aiTyping) return;
     setError("");
+    setDebug("");
     const userMsg: Message = {
       id: Date.now() + "-user",
       role: 'user',
@@ -85,8 +87,6 @@ export default function Home() {
         headers: {
           "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
           "Content-Type": "application/json",
-          "HTTP-Referer": "https://big-car.vercel.app/",
-          "X-Title": "big-car"
         },
         body: JSON.stringify(payload),
       });
@@ -97,6 +97,7 @@ export default function Home() {
       timeoutId = setTimeout(() => {
         if (!didRespond) {
           setError("AI did not respond. Please try again.");
+          setDebug("Timeout: No response from AI after 20s");
           setIsLoading(false);
           setAiTyping(false);
           setStreamedContent("");
@@ -112,30 +113,52 @@ export default function Home() {
           if (!line.trim()) continue;
           try {
             const data = JSON.parse(line);
+            setDebug((d) => d + "\n" + JSON.stringify(data));
             const delta = data.choices?.[0]?.delta?.content;
             if (delta) {
               didRespond = true;
               fullText += delta;
               setStreamedContent(fullText);
             }
-          } catch {}
+            if (data.error) {
+              setError(data.error.message || "AI error");
+              setDebug((d) => d + "\n[API error] " + JSON.stringify(data.error));
+            }
+          } catch (err) {
+            setDebug((d) => d + "\n[Parse error] " + String(err));
+          }
         }
       }
       if (!didRespond) {
         setError("AI did not respond. Please try again.");
+        setDebug((d) => d + "\nNo delta content received");
         setIsLoading(false);
         setAiTyping(false);
         setStreamedContent("");
         setDisplayed("");
         setMessages((prev) => prev.slice(0, -1));
       }
-    } catch (err) {
-      setError("Failed to connect to AI. Please try again.");
+    } catch (err: any) {
+      setError("Failed to connect to AI. " + (err?.message || ""));
+      setDebug((d) => d + "\n[Exception] " + String(err));
       setIsLoading(false);
       setAiTyping(false);
       setStreamedContent("");
       setDisplayed("");
       setMessages((prev) => prev.slice(0, -1));
+      // Try to read the full response as text for debugging
+      try {
+        const res = await fetch(OPENROUTER_API_URL, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
+        const text = await res.text();
+        setDebug((d) => d + "\n[Full response] " + text);
+      } catch {}
     } finally {
       if (timeoutId) clearTimeout(timeoutId);
     }
@@ -172,6 +195,9 @@ export default function Home() {
           )}
           {error && (
             <div className="text-red-500 text-sm text-center mt-2">{error}</div>
+          )}
+          {debug && (
+            <pre className="text-xs text-gray-400 bg-gray-50 rounded p-2 mt-2 overflow-x-auto max-w-full whitespace-pre-wrap">{debug}</pre>
           )}
         </div>
       </div>
