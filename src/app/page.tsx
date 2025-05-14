@@ -17,6 +17,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [aiTyping, setAiTyping] = useState(false);
   const [streamedContent, setStreamedContent] = useState("");
+  const [error, setError] = useState("");
   const chatRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -52,6 +53,7 @@ export default function Home() {
   async function handleSend(e?: React.FormEvent) {
     if (e) e.preventDefault();
     if (!input.trim() || isLoading || aiTyping) return;
+    setError("");
     const userMsg: Message = {
       id: Date.now() + "-user",
       role: 'user',
@@ -69,39 +71,71 @@ export default function Home() {
     setAiTyping(true);
     setStreamedContent("");
     setDisplayed("");
+    let didRespond = false;
+    let fullText = "";
+    let timeoutId: NodeJS.Timeout | null = null;
     const payload = {
       model: "openai/gpt-3.5-turbo",
       messages: msgs.map(({ role, content }) => ({ role, content })),
       stream: true,
     };
-    const res = await fetch(OPENROUTER_API_URL, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
-    if (!res.body) return;
-    const reader = res.body.getReader();
-    let fullText = "";
-    let done = false;
-    while (!done) {
-      const { value, done: doneReading } = await reader.read();
-      done = doneReading;
-      const chunk = value ? new TextDecoder().decode(value) : "";
-      // OpenRouter streams as lines of JSON
-      for (const line of chunk.split("\n")) {
-        if (!line.trim()) continue;
-        try {
-          const data = JSON.parse(line);
-          const delta = data.choices?.[0]?.delta?.content;
-          if (delta) {
-            fullText += delta;
-            setStreamedContent(fullText);
-          }
-        } catch {}
+    try {
+      const res = await fetch(OPENROUTER_API_URL, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!res.body) throw new Error("No response body from AI");
+      const reader = res.body.getReader();
+      let done = false;
+      // Timeout fallback: 20s
+      timeoutId = setTimeout(() => {
+        if (!didRespond) {
+          setError("AI did not respond. Please try again.");
+          setIsLoading(false);
+          setAiTyping(false);
+          setStreamedContent("");
+          setDisplayed("");
+          setMessages((prev) => prev.slice(0, -1)); // Remove empty AI message
+        }
+      }, 20000);
+      while (!done) {
+        const { value, done: doneReading } = await reader.read();
+        done = doneReading;
+        const chunk = value ? new TextDecoder().decode(value) : "";
+        for (const line of chunk.split("\n")) {
+          if (!line.trim()) continue;
+          try {
+            const data = JSON.parse(line);
+            const delta = data.choices?.[0]?.delta?.content;
+            if (delta) {
+              didRespond = true;
+              fullText += delta;
+              setStreamedContent(fullText);
+            }
+          } catch {}
+        }
       }
+      if (!didRespond) {
+        setError("AI did not respond. Please try again.");
+        setIsLoading(false);
+        setAiTyping(false);
+        setStreamedContent("");
+        setDisplayed("");
+        setMessages((prev) => prev.slice(0, -1));
+      }
+    } catch (err) {
+      setError("Failed to connect to AI. Please try again.");
+      setIsLoading(false);
+      setAiTyping(false);
+      setStreamedContent("");
+      setDisplayed("");
+      setMessages((prev) => prev.slice(0, -1));
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
     }
   }
 
@@ -133,6 +167,9 @@ export default function Home() {
             <div className="flex justify-start">
               <div className="text-neutral-900 text-base whitespace-pre-line">{displayed}</div>
             </div>
+          )}
+          {error && (
+            <div className="text-red-500 text-sm text-center mt-2">{error}</div>
           )}
         </div>
       </div>
