@@ -150,11 +150,11 @@ export default function Home() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-white">
       <div className="flex-1 flex flex-col w-full items-center justify-center">
-        <h1 className="text-3xl md:text-4xl font-medium text-neutral-900 text-center mb-8 mt-12 md:mt-24 select-none max-w-[850px] w-full px-4">
+        <h1 className="text-3xl md:text-4xl font-medium text-neutral-900 text-center mb-4 mt-6 md:mb-6 md:mt-10 select-none max-w-[850px] w-full">
           What can I help with?
         </h1>
         {/* Chat area */}
-        <div ref={chatRef} className="w-full max-w-[850px] flex-1 overflow-y-auto px-4 pb-4 space-y-4" style={{ minHeight: 200, maxHeight: 400 }}>
+        <div ref={chatRef} className="w-full max-w-[850px] flex-1 overflow-y-auto pb-4 space-y-4" style={{ minHeight: 200, maxHeight: 400 }}>
           {messages.map((msg, i) => {
             // If this is the last message and it's an empty AI message, show the animated streaming message instead
             if (
