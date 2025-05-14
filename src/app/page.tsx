@@ -155,27 +155,37 @@ export default function Home() {
         </h1>
         {/* Chat area */}
         <div ref={chatRef} className="w-full max-w-[600px] flex-1 overflow-y-auto px-2 pb-4 space-y-4" style={{ minHeight: 200, maxHeight: 400 }}>
-          {messages.map((msg, i) =>
-            msg.role === 'user' ? (
-              <div key={msg.id} className="flex justify-end">
-                <div className="bg-blue-100 text-neutral-900 rounded-xl px-4 py-2 max-w-[80%] shadow-md text-base">
-                  {msg.content}
+          {messages.map((msg, i) => {
+            // If this is the last message and it's an empty AI message, show the animated streaming message instead
+            if (
+              i === messages.length - 1 &&
+              msg.role === 'assistant' &&
+              aiTyping &&
+              !msg.content
+            ) {
+              return (
+                <div key={msg.id} className="flex justify-start">
+                  <div className="text-neutral-900 text-base whitespace-pre-line">{displayed}</div>
                 </div>
-              </div>
-            ) : (
-              <div key={msg.id} className="flex justify-start">
-                <div className="text-neutral-900 text-base whitespace-pre-line">
-                  {i === messages.length - 1 && aiTyping ? displayed : msg.content}
+              );
+            }
+            // Otherwise, render as usual
+            if (msg.role === 'user') {
+              return (
+                <div key={msg.id} className="flex justify-end">
+                  <div className="bg-blue-100 text-neutral-900 rounded-xl px-4 py-2 max-w-[80%] shadow-md text-base">
+                    {msg.content}
+                  </div>
                 </div>
-              </div>
-            )
-          )}
-          {/* Streaming AI message (if not yet in messages) */}
-          {aiTyping && !messages[messages.length - 1]?.content && (
-            <div className="flex justify-start">
-              <div className="text-neutral-900 text-base whitespace-pre-line">{displayed}</div>
-            </div>
-          )}
+              );
+            } else {
+              return (
+                <div key={msg.id} className="flex justify-start">
+                  <div className="text-neutral-900 text-base whitespace-pre-line">{msg.content}</div>
+                </div>
+              );
+            }
+          })}
           {error && (
             <div className="text-red-500 text-sm text-center mt-2">{error}</div>
           )}
