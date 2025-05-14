@@ -120,10 +120,10 @@ export default function Home() {
               setStreamedContent(fullText);
             }
             if (data.error) {
-              setError(data.error.message || "AI error");
+              setError("Failed to connect to AI. " + (typeof data.error === "object" && data.error && "message" in data.error ? (data.error as any).message : String(data.error)));
             }
-          } catch (err) {
-            setError("Failed to connect to AI. " + (err?.message || ""));
+          } catch (err: any) {
+            setError("Failed to connect to AI. " + (typeof err === "object" && err && "message" in err ? (err as any).message : String(err)));
           }
         }
       }
@@ -136,7 +136,7 @@ export default function Home() {
         setMessages((prev) => prev.slice(0, -1));
       }
     } catch (err: any) {
-      setError("Failed to connect to AI. " + (err?.message || ""));
+      setError("Failed to connect to AI. " + (typeof err === "object" && err && "message" in err ? (err as any).message : String(err)));
       setIsLoading(false);
       setAiTyping(false);
       setStreamedContent("");
