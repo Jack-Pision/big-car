@@ -1,142 +1,62 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import ReactMarkdown from 'react-markdown'
-import { format } from 'date-fns'
-import { cn } from '@/lib/utils'
-
-interface Message {
-  id: string
-  content: string
-  role: 'user' | 'bot'
-  timestamp: Date
-}
+import { useState, useRef } from "react";
 
 export default function Home() {
-  const [messages, setMessages] = useState<Message[]>([])
-  const [input, setInput] = useState('')
-  const [isTyping, setIsTyping] = useState(false)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLTextAreaElement>(null)
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
-
-  useEffect(() => {
-    scrollToBottom()
-  }, [messages])
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!input.trim()) return
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      content: input.trim(),
-      role: 'user',
-      timestamp: new Date(),
-    }
-
-    setMessages((prev) => [...prev, userMessage])
-    setInput('')
-    setIsTyping(true)
-
-    // Simulate bot response (replace with actual API call)
-    setTimeout(() => {
-      const botMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: 'This is a simulated response. Replace this with actual API integration.',
-        role: 'bot',
-        timestamp: new Date(),
-      }
-      setMessages((prev) => [...prev, botMessage])
-      setIsTyping(false)
-    }, 1000)
-  }
+  const [input, setInput] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
 
   return (
-    <div className="chat-container">
-      <header className="chat-header">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-xl font-semibold">AI Study Chat</h1>
-          <button className="text-gray-500 hover:text-gray-700">
-            Settings
+    <div className="min-h-screen flex flex-col items-center justify-center bg-white">
+      <div className="flex-1 flex flex-col w-full items-center justify-center">
+        <h1 className="text-3xl md:text-4xl font-medium text-neutral-900 text-center mb-8 mt-12 md:mt-24 select-none">
+          What can I help with?
+        </h1>
+      </div>
+      <form
+        className="w-full flex justify-center fixed bottom-0 left-0 right-0 pb-[env(safe-area-inset-bottom)] z-10"
+        autoComplete="off"
+        onSubmit={e => { e.preventDefault(); }}
+        aria-label="Chat input form"
+      >
+        <div className="bg-white rounded-2xl shadow-lg w-full max-w-[600px] mx-auto flex items-center px-4 py-2 gap-2 sm:gap-3 mb-6 transition-all duration-200 focus-within:ring-2 focus-within:ring-black/10">
+          {/* Action buttons */}
+          <button type="button" aria-label="Search" className="w-9 h-9 flex items-center justify-center rounded-full border border-gray-200 bg-white hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/20">
+            {/* Dummy search icon */}
+            <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           </button>
-        </div>
-      </header>
-
-      <main className="chat-messages">
-        <AnimatePresence>
-          {messages.map((message) => (
-            <motion.div
-              key={message.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className={cn(
-                message.role === 'user' ? 'user-message' : 'bot-message'
-              )}
-            >
-              <ReactMarkdown className="prose prose-sm max-w-none">
-                {message.content}
-              </ReactMarkdown>
-              <div className="text-xs text-gray-500 mt-1">
-                {format(message.timestamp, 'HH:mm')}
-              </div>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-
-        {isTyping && (
-          <div className="typing-indicator">
-            <span>Bot is typing</span>
-            <div className="flex space-x-1 ml-2">
-              <div className="typing-dot" style={{ animationDelay: '0ms' }} />
-              <div className="typing-dot" style={{ animationDelay: '150ms' }} />
-              <div className="typing-dot" style={{ animationDelay: '300ms' }} />
-            </div>
-          </div>
-        )}
-
-        <div ref={messagesEndRef} />
-      </main>
-
-      <form onSubmit={handleSubmit} className="chat-input-container">
-        <div className="container mx-auto relative">
-          <textarea
+          <button type="button" aria-label="Reason" className="w-9 h-9 flex items-center justify-center rounded-full border border-gray-200 bg-white hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/20">
+            {/* Dummy reason icon */}
+            <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8M12 8v8"/></svg>
+          </button>
+          <button type="button" aria-label="Deep research" className="w-9 h-9 flex items-center justify-center rounded-full border border-gray-200 bg-white hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/20">
+            {/* Dummy deep research icon */}
+            <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          </button>
+          <button type="button" aria-label="Create image" className="w-9 h-9 flex items-center justify-center rounded-full border border-gray-200 bg-white hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/20">
+            {/* Dummy create image icon */}
+            <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+          </button>
+          {/* Input */}
+          <input
             ref={inputRef}
+            type="text"
             value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault()
-                handleSubmit(e)
-              }
-            }}
-            placeholder="Type your message..."
-            className="chat-input resize-none"
-            rows={1}
+            onChange={e => setInput(e.target.value)}
+            placeholder="Ask anything"
+            className="flex-1 bg-transparent outline-none border-none text-base text-neutral-900 placeholder-gray-400 px-2 py-2 focus:ring-0"
+            aria-label="Ask anything"
           />
-          <button type="submit" className="send-button">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={1.5}
-              stroke="currentColor"
-              className="w-5 h-5"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"
-              />
-            </svg>
+          {/* Send button */}
+          <button
+            type="submit"
+            aria-label="Send"
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-black text-white hover:bg-neutral-800 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/30"
+          >
+            <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </button>
         </div>
       </form>
     </div>
-  )
+  );
 } 

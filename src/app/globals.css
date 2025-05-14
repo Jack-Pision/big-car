@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+body {
+  @apply bg-white text-neutral-900;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -57,5 +61,19 @@
 
   .typing-dot {
     @apply w-2 h-2 bg-gray-400 rounded-full animate-typing;
+  }
+
+  /* Floating input card enhancements */
+  .floating-input-card {
+    @apply bg-white rounded-2xl shadow-lg w-full max-w-[600px] mx-auto flex items-center px-4 py-2 gap-2 sm:gap-3 mb-6 transition-all duration-200 focus-within:ring-2 focus-within:ring-black/10;
+  }
+  .input-action-btn {
+    @apply w-9 h-9 flex items-center justify-center rounded-full border border-gray-200 bg-white hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/20;
+  }
+  .send-btn {
+    @apply w-10 h-10 flex items-center justify-center rounded-full bg-black text-white hover:bg-neutral-800 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/30;
+  }
+  .main-heading {
+    @apply text-3xl md:text-4xl font-medium text-neutral-900 text-center mb-8 mt-12 md:mt-24 select-none;
   }
 } 
