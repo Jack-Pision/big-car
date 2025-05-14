@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import Split from 'react-split';
 import Sidebar from '../../components/Sidebar';
 import { useRouter } from 'next/navigation';
+import HamburgerMenu from '../../components/HamburgerMenu';
 
 const BOARD_BG = "#FFFFFF";
 const TEXT_COLOR = "#1A1A1A";
@@ -62,7 +63,10 @@ export default function BoardPage() {
       className="min-h-screen flex flex-row bg-white text-[#1A1A1A] h-screen"
       style={{ background: BOARD_BG, color: TEXT_COLOR }}
     >
-      {/* Sidebar on the far left */}
+      {/* Hamburger menu and sidebar */}
+      <div className="fixed top-4 left-4 z-50 md:static md:z-10">
+        <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
+      </div>
       <Sidebar
         open={sidebarOpen}
         chats={[]}
