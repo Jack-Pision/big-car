@@ -85,6 +85,8 @@ export default function Home() {
         headers: {
           "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
           "Content-Type": "application/json",
+          "HTTP-Referer": "https://big-car.vercel.app/",
+          "X-Title": "big-car"
         },
         body: JSON.stringify(payload),
       });
