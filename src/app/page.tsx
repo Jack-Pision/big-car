@@ -110,9 +110,12 @@ export default function Home() {
         done = doneReading;
         const chunk = value ? new TextDecoder().decode(value) : "";
         for (const line of chunk.split("\n")) {
-          if (!line.trim()) continue;
+          const trimmed = line.trim();
+          if (!trimmed.startsWith("data: ")) continue;
+          const dataStr = trimmed.replace(/^data: /, "");
+          if (dataStr === "[DONE]") continue;
           try {
-            const data = JSON.parse(line);
+            const data = JSON.parse(dataStr);
             setDebug((d) => d + "\n" + JSON.stringify(data));
             const delta = data.choices?.[0]?.delta?.content;
             if (delta) {
