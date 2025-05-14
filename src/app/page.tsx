@@ -18,7 +18,6 @@ export default function Home() {
   const [aiTyping, setAiTyping] = useState(false);
   const [streamedContent, setStreamedContent] = useState("");
   const [error, setError] = useState("");
-  const [debug, setDebug] = useState("");
   const chatRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -55,7 +54,6 @@ export default function Home() {
     if (e) e.preventDefault();
     if (!input.trim() || isLoading || aiTyping) return;
     setError("");
-    setDebug("");
     const userMsg: Message = {
       id: Date.now() + "-user",
       role: 'user',
@@ -97,7 +95,6 @@ export default function Home() {
       timeoutId = setTimeout(() => {
         if (!didRespond) {
           setError("AI did not respond. Please try again.");
-          setDebug("Timeout: No response from AI after 20s");
           setIsLoading(false);
           setAiTyping(false);
           setStreamedContent("");
@@ -116,7 +113,6 @@ export default function Home() {
           if (dataStr === "[DONE]") continue;
           try {
             const data = JSON.parse(dataStr);
-            setDebug((d) => d + "\n" + JSON.stringify(data));
             const delta = data.choices?.[0]?.delta?.content;
             if (delta) {
               didRespond = true;
@@ -125,16 +121,14 @@ export default function Home() {
             }
             if (data.error) {
               setError(data.error.message || "AI error");
-              setDebug((d) => d + "\n[API error] " + JSON.stringify(data.error));
             }
           } catch (err) {
-            setDebug((d) => d + "\n[Parse error] " + String(err));
+            setError("Failed to connect to AI. " + (err?.message || ""));
           }
         }
       }
       if (!didRespond) {
         setError("AI did not respond. Please try again.");
-        setDebug((d) => d + "\nNo delta content received");
         setIsLoading(false);
         setAiTyping(false);
         setStreamedContent("");
@@ -143,25 +137,11 @@ export default function Home() {
       }
     } catch (err: any) {
       setError("Failed to connect to AI. " + (err?.message || ""));
-      setDebug((d) => d + "\n[Exception] " + String(err));
       setIsLoading(false);
       setAiTyping(false);
       setStreamedContent("");
       setDisplayed("");
       setMessages((prev) => prev.slice(0, -1));
-      // Try to read the full response as text for debugging
-      try {
-        const res = await fetch(OPENROUTER_API_URL, {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
-        });
-        const text = await res.text();
-        setDebug((d) => d + "\n[Full response] " + text);
-      } catch {}
     } finally {
       if (timeoutId) clearTimeout(timeoutId);
     }
@@ -198,9 +178,6 @@ export default function Home() {
           )}
           {error && (
             <div className="text-red-500 text-sm text-center mt-2">{error}</div>
-          )}
-          {debug && (
-            <pre className="text-xs text-gray-400 bg-gray-50 rounded p-2 mt-2 overflow-x-auto max-w-full whitespace-pre-wrap">{debug}</pre>
           )}
         </div>
       </div>
