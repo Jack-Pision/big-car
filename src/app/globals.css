@@ -76,4 +76,15 @@ body {
   .main-heading {
     @apply text-3xl md:text-4xl font-medium text-neutral-900 text-center mb-8 mt-12 md:mt-24 select-none;
   }
+
+  /* Custom Split Gutter Styling */
+  .custom-split-gutter .gutter {
+    background: #E5E5E5;
+    border-radius: 9999px;
+    transition: background 0.2s;
+    cursor: col-resize;
+  }
+  .custom-split-gutter .gutter:hover {
+    background: #F5F5F5;
+  }
 } 
