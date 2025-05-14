@@ -2,6 +2,8 @@
 import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import Split from 'react-split';
+import Sidebar from '../components/Sidebar';
+import { useRouter } from 'next/navigation';
 
 const BOARD_BG = "#FFFFFF";
 const TEXT_COLOR = "#1A1A1A";
@@ -22,6 +24,8 @@ export default function BoardPage() {
   const [boardContent, setBoardContent] = useState("");
   const [showToolbar, setShowToolbar] = useState(true);
   const chatRef = useRef<HTMLDivElement>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
     chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior: "smooth" });
@@ -55,9 +59,24 @@ export default function BoardPage() {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 24 }}
       transition={{ duration: 0.4 }}
-      className="min-h-screen flex flex-col bg-white text-[#1A1A1A] h-screen"
+      className="min-h-screen flex flex-row bg-white text-[#1A1A1A] h-screen"
       style={{ background: BOARD_BG, color: TEXT_COLOR }}
     >
+      {/* Sidebar on the far left */}
+      <Sidebar
+        open={sidebarOpen}
+        chats={[]}
+        activeChatId={null}
+        onClose={() => setSidebarOpen(false)}
+        onNewChat={() => {}}
+        onSelectChat={() => {}}
+        onEditChat={() => {}}
+        onDeleteChat={() => {}}
+        onClearAll={() => {}}
+        onOpenSearch={() => {}}
+        onNavigateBoard={() => router.push('/board')}
+      />
+      {/* Main content: Split pane (chat + editor) */}
       <div className="flex flex-1 h-0">
         <Split
           className="flex flex-1 h-full custom-split-gutter"
