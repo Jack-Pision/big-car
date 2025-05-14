@@ -81,9 +81,9 @@ export default function BoardPage() {
         onNavigateBoard={() => router.push('/board')}
       />
       {/* Main content: Split pane (chat + editor) */}
-      <div className="flex flex-1 h-0">
+      <div className="flex-1 h-screen flex flex-col">
         <Split
-          className="flex flex-1 h-full custom-split-gutter"
+          className="flex-1 h-full custom-split-gutter"
           sizes={[30, 70]}
           minSize={[220, 320]}
           expandToMin={false}
