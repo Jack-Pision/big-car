@@ -150,11 +150,11 @@ export default function Home() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-white">
       <div className="flex-1 flex flex-col w-full items-center justify-center">
-        <h1 className="text-3xl md:text-4xl font-medium text-neutral-900 text-center mb-8 mt-12 md:mt-24 select-none">
+        <h1 className="text-3xl md:text-4xl font-medium text-neutral-900 text-center mb-8 mt-12 md:mt-24 select-none max-w-[850px] w-full px-4">
           What can I help with?
         </h1>
         {/* Chat area */}
-        <div ref={chatRef} className="w-full max-w-[600px] flex-1 overflow-y-auto px-2 pb-4 space-y-4" style={{ minHeight: 200, maxHeight: 400 }}>
+        <div ref={chatRef} className="w-full max-w-[850px] flex-1 overflow-y-auto px-4 pb-4 space-y-4" style={{ minHeight: 200, maxHeight: 400 }}>
           {messages.map((msg, i) => {
             // If this is the last message and it's an empty AI message, show the animated streaming message instead
             if (
@@ -197,7 +197,7 @@ export default function Home() {
         onSubmit={handleSend}
         aria-label="Chat input form"
       >
-        <div className="bg-white rounded-2xl shadow-lg w-full max-w-[600px] mx-auto flex items-center px-4 py-2 gap-2 sm:gap-3 mb-6 transition-all duration-200 focus-within:ring-2 focus-within:ring-black/10">
+        <div className="bg-white rounded-2xl shadow-lg w-full max-w-[850px] mx-auto flex items-center px-4 py-2 gap-2 sm:gap-3 mb-6 transition-all duration-200 focus-within:ring-2 focus-within:ring-black/10">
           {/* Action buttons */}
           <button type="button" aria-label="Search" className="w-9 h-9 flex items-center justify-center rounded-full border border-gray-200 bg-white hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/20">
             <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
