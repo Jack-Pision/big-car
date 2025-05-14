@@ -19,6 +19,7 @@ interface SidebarProps {
   onDeleteChat: (id: string) => void;
   onClearAll: () => void;
   onOpenSearch: () => void;
+  onNavigateBoard: () => void;
 }
 
 export default function Sidebar({
@@ -32,6 +33,7 @@ export default function Sidebar({
   onDeleteChat,
   onClearAll,
   onOpenSearch,
+  onNavigateBoard,
 }: SidebarProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -77,6 +79,16 @@ export default function Sidebar({
                 tabIndex={0}
               >
                 <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              </button>
+              {/* Board Navigation Button */}
+              <button
+                className="mx-4 mb-2 flex items-center gap-2 px-3 py-2 rounded-lg text-[#6B7280] hover:bg-[#F5F5F5] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/10"
+                onClick={onNavigateBoard}
+                aria-label="Go to Board"
+                tabIndex={0}
+              >
+                <svg width="20" height="20" fill="none" stroke="#6B7280" strokeWidth="2" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/></svg>
+                <span className="font-medium">Board</span>
               </button>
               {/* Chat List */}
               <div className="flex-1 overflow-y-auto px-2 pb-2">
