@@ -1,6 +1,9 @@
 'use client'
 
 import { useState, useRef, useEffect } from "react";
+import Sidebar from '../components/Sidebar';
+import HamburgerMenu from '../components/HamburgerMenu';
+import { v4 as uuidv4 } from 'uuid';
 
 const OPENROUTER_API_KEY = "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";
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
@@ -20,6 +23,16 @@ export default function Home() {
   const [error, setError] = useState("");
   const chatRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  // Sidebar state and chat history state
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [chats, setChats] = useState<{
+    id: string;
+    title: string;
+    timestamp: number;
+    snippet: string;
+    messages: Message[];
+  }[]>([]);
+  const [activeChatId, setActiveChatId] = useState<string | null>(null);
 
   // Scroll to bottom on new message
   useEffect(() => {
@@ -49,6 +62,36 @@ export default function Home() {
     }, 12);
     return () => clearInterval(interval);
   }, [streamedContent, aiTyping]);
+
+  // Chat management functions
+  function handleNewChat() {
+    const newId = uuidv4();
+    const newChat = {
+      id: newId,
+      title: 'New Chat',
+      timestamp: Date.now(),
+      snippet: '',
+      messages: [],
+    };
+    setChats([newChat, ...chats]);
+    setActiveChatId(newId);
+    setSidebarOpen(false);
+  }
+  function handleSelectChat(id: string) {
+    setActiveChatId(id);
+    setSidebarOpen(false);
+  }
+  function handleEditChat(id: string, newTitle: string) {
+    setChats(chats => chats.map(chat => chat.id === id ? { ...chat, title: newTitle } : chat));
+  }
+  function handleDeleteChat(id: string) {
+    setChats(chats => chats.filter(chat => chat.id !== id));
+    if (activeChatId === id) setActiveChatId(chats.length > 1 ? chats[0].id : null);
+  }
+  function handleClearAll() {
+    setChats([]);
+    setActiveChatId(null);
+  }
 
   // Determine if user has started a conversation
   const hasUserMessage = messages.some((msg) => msg.role === 'user');
@@ -152,6 +195,26 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
+      {/* Hamburger menu and sidebar */}
+      <div className="fixed top-4 left-4 z-50 md:static md:z-10">
+        <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
+      </div>
+      <Sidebar
+        open={sidebarOpen}
+        chats={chats.map(({ id, title, timestamp, messages }) => ({
+          id,
+          title,
+          timestamp,
+          snippet: messages.length > 0 ? messages[messages.length - 1].content.slice(0, 40) : '',
+        }))}
+        activeChatId={activeChatId}
+        onClose={() => setSidebarOpen(false)}
+        onNewChat={handleNewChat}
+        onSelectChat={handleSelectChat}
+        onEditChat={handleEditChat}
+        onDeleteChat={handleDeleteChat}
+        onClearAll={handleClearAll}
+      />
       {/* Welcoming message with fade-out animation */}
       <div className={`w-full flex justify-center items-center relative h-24 md:h-28 transition-opacity duration-500 ${hasUserMessage ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
         style={{ minHeight: '4rem' }}>
