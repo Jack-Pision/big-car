@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import Split from 'react-split';
-import Sidebar from '../components/Sidebar';
+import Sidebar from '../../components/Sidebar';
 import { useRouter } from 'next/navigation';
 
 const BOARD_BG = "#FFFFFF";
