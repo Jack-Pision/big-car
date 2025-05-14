@@ -8,13 +8,14 @@ const TEXT_COLOR = "#1A1A1A";
 const BORDER_COLOR = "#E5E5E5";
 const SHADOW = "0 4px 24px 0 rgba(0,0,0,0.08)";
 
-const initialMessages = [
-  { id: 1, role: "assistant", content: "Welcome to your board!" },
-  { id: 2, role: "user", content: "Thanks!" },
-];
+interface ChatMessage {
+  id: number;
+  role: string;
+  content: string;
+}
 
 export default function BoardPage() {
-  const [messages, setMessages] = useState(initialMessages);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [boardTitle, setBoardTitle] = useState("Untitled Document");
   const [editingTitle, setEditingTitle] = useState(false);
