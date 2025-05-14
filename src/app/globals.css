@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 10%;
+  }
+
+  .dark {
+    --background: 0 0% 10%;
+    --foreground: 0 0% 100%;
+  }
+}
+
+@layer components {
+  .chat-container {
+    @apply flex flex-col h-screen bg-background text-text;
+  }
+
+  .chat-header {
+    @apply fixed top-0 left-0 right-0 z-10 bg-background border-b border-input-border shadow-sm;
+  }
+
+  .chat-messages {
+    @apply flex-1 overflow-y-auto px-4 py-6 space-y-4 mt-16 mb-24;
+  }
+
+  .message-bubble {
+    @apply max-w-[80%] rounded-lg p-4 shadow-sm animate-slide-up;
+  }
+
+  .user-message {
+    @apply message-bubble bg-user-bubble ml-auto;
+  }
+
+  .bot-message {
+    @apply message-bubble bg-bot-bubble mr-auto;
+  }
+
+  .chat-input-container {
+    @apply fixed bottom-0 left-0 right-0 bg-background border-t border-input-border p-4;
+  }
+
+  .chat-input {
+    @apply w-full rounded-lg border border-input-border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent;
+  }
+
+  .send-button {
+    @apply absolute right-6 bottom-6 p-2 rounded-full bg-blue-500 text-white hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors;
+  }
+
+  .typing-indicator {
+    @apply flex space-x-1 items-center text-gray-500 text-sm;
+  }
+
+  .typing-dot {
+    @apply w-2 h-2 bg-gray-400 rounded-full animate-typing;
+  }
+} 
