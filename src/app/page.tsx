@@ -154,7 +154,7 @@ export default function Home() {
     <div className="min-h-screen flex flex-col items-center justify-center bg-white">
       <div className="flex-1 flex flex-col w-full items-center justify-center">
         {!hasUserMessage && (
-          <h1 className="text-3xl md:text-4xl font-medium text-neutral-900 text-center mb-4 mt-6 md:mb-6 md:mt-10 select-none max-w-[850px] w-full">
+          <h1 className="text-2xl md:text-3xl font-semibold text-neutral-900 text-center mb-2 mt-2 md:mb-4 md:mt-4 select-none max-w-[850px] w-full">
             What can I help with?
           </h1>
         )}
