@@ -22,6 +22,7 @@ const PARAGRAPH_PROMPT = `You are a writing assistant for an academic board tool
   - A single <h1> title
   - One <p> paragraph (10–18 sentences, one clear idea, plain formatting)
 - Do not use lists, extra headings, or bold/italic. Use only <h1> and <p>.
+- Do NOT use italics, <i>, or <em> tags in your response unless the user specifically requests italic formatting.
 - Maintain academic and professional tone.`;
 
 const ARTICLE_PROMPT = `You are a writing assistant for an academic board tool. Respond ONLY in HTML. Do not include explanations or markdown. Strictly follow these rules:
@@ -31,7 +32,7 @@ const ARTICLE_PROMPT = `You are a writing assistant for an academic board tool. 
    - Use <h2> for section headings
    - Use <ul><li> for bullet points where appropriate
    - Use <b> for emphasis on key points
-   - Use <i> for secondary emphasis
+   - Do NOT use italics, <i>, or <em> tags in your response unless the user specifically requests italic formatting.
 
 2. Required Sections:
    - Always include an introduction section
@@ -48,13 +49,14 @@ const ARTICLE_PROMPT = `You are a writing assistant for an academic board tool. 
    - After a list, do NOT add an empty <li> for spacing. Instead, use <br> or start a new paragraph (<p>) for visual separation after </ul> or </ol>.
    - Never use empty <li> for spacing. If you need space after a list, use <br> or <p> only.
    - Always start a new section with a heading or paragraph, not with a list.
+   - Do NOT use italics, <i>, or <em> tags in your response unless the user specifically requests italic formatting.
 
 4. Response Format Example:
    <h1>[Title]</h1>
    <h2>Introduction</h2>
    [Introduction content]
    <h2>[Main Section 1]</h2>
-   [Content with <b>key points</b> and <i>important terms</i>]
+   [Content with <b>key points</b>]
    <h2>[Main Section 2]</h2>
    <ul><li>Key point 1</li><li>Key point 2</li></ul>
    <br>
@@ -136,17 +138,21 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
 }
 
 // Enhanced post-processing utility (ChatGPT-style)
-function cleanAIHtml(html: string): string {
+function cleanAIHtml(html: string, userInput?: string): string {
   let cleaned = html;
   // Remove empty <li>, <li> with only whitespace or <br>
   cleaned = cleaned.replace(/<li>(\s|<br\s*\/?>)*<\/li>/gi, '');
-  // Remove empty <ul></ul> and <ol></ol>
+  // Remove empty <ul></ul> and <ol></ol> (with or without whitespace or <br> inside)
   cleaned = cleaned.replace(/<ul>(\s|<br\s*\/?>)*<\/ul>/gi, '');
   cleaned = cleaned.replace(/<ol>(\s|<br\s*\/?>)*<\/ol>/gi, '');
-  // Remove empty <p><br></p> and <p> </p>
-  cleaned = cleaned.replace(/<p>(\s|<br\s*\/?>)*<\/p>/gi, '');
-  // Add <br> after </ul> or </ol> if not followed by a block element
-  cleaned = cleaned.replace(/(<\/ul>|<\/ol>)(?!\s*<(h[1-6]|p|ul|ol|blockquote|div|section|table|br))/gi, '$1<br>');
+  // Remove <ul> or <ol> that only contain empty <li>
+  cleaned = cleaned.replace(/<ul>(\s*<li>(\s|<br\s*\/?>)*<\/li>\s*)+<\/ul>/gi, '');
+  cleaned = cleaned.replace(/<ol>(\s*<li>(\s|<br\s*\/?>)*<\/li>\s*)+<\/ol>/gi, '');
+  // Remove italics unless user requested it
+  if (!userInput || !/\bitalics?\b/i.test(userInput)) {
+    cleaned = cleaned.replace(/<i>(.*?)<\/i>/gi, '$1');
+    cleaned = cleaned.replace(/<em>(.*?)<\/em>/gi, '$1');
+  }
   // Normalize multiple consecutive <br> or <p> tags
   cleaned = cleaned.replace(/(<br>\s*){2,}/gi, '<br>');
   cleaned = cleaned.replace(/(<p>\s*<\/p>\s*){2,}/gi, '<p></p>');
@@ -213,7 +219,7 @@ export default function BoardPage() {
       const data = await res.json();
       let aiContent = data.choices?.[0]?.message?.content || "";
       // Clean up AI HTML output
-      aiContent = cleanAIHtml(aiContent);
+      aiContent = cleanAIHtml(aiContent, userMsg);
       // Collapse all whitespace between tags to prevent Quill from creating empty list items
       aiContent = aiContent.replace(/>\s+</g, '><');
       if (typeof window !== 'undefined') {
