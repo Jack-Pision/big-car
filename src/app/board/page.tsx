@@ -137,6 +137,8 @@ function cleanAIHtml(html: string): string {
   // Remove empty <ul></ul> and <ol></ol>
   cleaned = cleaned.replace(/<ul>(\s|<br\s*\/?>)*<\/ul>/gi, '');
   cleaned = cleaned.replace(/<ol>(\s|<br\s*\/?>)*<\/ol>/gi, '');
+  // Remove empty <p><br></p> and <p> </p>
+  cleaned = cleaned.replace(/<p>(\s|<br\s*\/?>)*<\/p>/gi, '');
   // Add <br> after </ul> or </ol> if not followed by a block element
   cleaned = cleaned.replace(/(<\/ul>|<\/ol>)(?!\s*<(h[1-6]|p|ul|ol|blockquote|div|section|table|br))/gi, '$1<br>');
   // Normalize multiple consecutive <br> or <p> tags
@@ -205,6 +207,10 @@ export default function BoardPage() {
       let aiContent = data.choices?.[0]?.message?.content || "";
       // Clean up AI HTML output
       aiContent = cleanAIHtml(aiContent);
+      // Debug: log cleaned HTML
+      if (typeof window !== 'undefined') {
+        console.log('Cleaned AI HTML:', aiContent);
+      }
       
       // Add AI response to chat
       const aiMessage: ChatMessage = {
@@ -372,6 +378,11 @@ export default function BoardPage() {
                 </div>
                 {/* Board Content */}
                 <div className="flex-1 px-6 py-6 min-h-0 w-full h-full flex flex-col">
+                  <style jsx global>{`
+                    .ql-editor li:empty::before {
+                      content: none !important;
+                    }
+                  `}</style>
                   <ReactQuill
                     theme="snow"
                     value={typeof sections[activeSection] === 'string' ? sections[activeSection] : ''}
