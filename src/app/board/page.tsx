@@ -13,7 +13,7 @@ const SHADOW = "0 4px 24px 0 rgba(0,0,0,0.08)";
 const BOARD_OPENROUTER_API_KEY = "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";
 const BOARD_OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
-const BOARD_SYSTEM_PROMPT = `You are a writing assistant for an academic board tool. Always format your output as follows:
+const BOARD_SYSTEM_PROMPT = `You are a writing assistant for an academic board tool. Respond ONLY in HTML. Do not include explanations or markdown. Always format your output as follows:
 - Use <b>bold</b> for all titles and subtitles.
 - Use <h1> (big text) for main titles, <h2> (medium text) for subtitles/headings.
 - Use <ul><li> for bullet points and <ol><li> for numbered/step-by-step instructions.
@@ -236,6 +236,7 @@ export default function BoardPage() {
                 style={{ background: BOARD_BG, color: TEXT_COLOR, minHeight: 0, height: '100%' }}
                 onInput={e => setBoardContent((e.target as HTMLDivElement).innerHTML)}
                 aria-label="Board content editor"
+                dangerouslySetInnerHTML={{ __html: boardContent }}
               />
             </div>
           </div>
