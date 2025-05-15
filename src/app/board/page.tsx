@@ -84,8 +84,7 @@ const quillModules = {
     delay: 2000,
     maxStack: 500,
     userOnly: true
-  },
-  syntax: true
+  }
 };
 
 const quillFormats = [
