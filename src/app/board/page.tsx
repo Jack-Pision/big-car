@@ -34,7 +34,26 @@ interface ChatMessage {
   content: string;
 }
 
-const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
+const ReactQuill = dynamic(() => import('react-quill'), {
+  ssr: false,
+  loading: () => <div className="h-full w-full bg-gray-50 animate-pulse" />
+});
+
+// Add Quill modules configuration
+const quillModules = {
+  toolbar: [
+    [{ 'header': [1, 2, false] }],
+    ['bold', 'italic', 'underline'],
+    [{'list': 'ordered'}, {'list': 'bullet'}],
+    ['clean']
+  ]
+};
+
+const quillFormats = [
+  'header',
+  'bold', 'italic', 'underline',
+  'list', 'bullet'
+];
 
 export default function BoardPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -223,12 +242,15 @@ export default function BoardPage() {
                 <button className="px-2 py-1 rounded hover:bg-[#F5F5F5]" title="Redo" onClick={() => format('redo')}>↻</button>
               </div>
               {/* Board Content */}
-              <div className="flex-1 px-6 py-6 min-h-0 w-full h-full">
+              <div className="flex-1 px-6 py-6 min-h-0 w-full h-full flex flex-col">
                 <ReactQuill
                   theme="snow"
                   value={sections[activeSection]}
                   onChange={val => setSections(prev => prev.map((sec, i) => i === activeSection ? val : sec))}
-                  className="h-full"
+                  modules={quillModules}
+                  formats={quillFormats}
+                  className="flex-1 flex flex-col"
+                  placeholder="Start writing or type / for commands..."
                 />
               </div>
             </div>
