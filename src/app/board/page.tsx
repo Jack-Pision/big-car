@@ -45,6 +45,7 @@ const ARTICLE_PROMPT = `You are a writing assistant for an academic board tool. 
    - Ensure logical flow between sections
    - Use bullet points for listing key ideas or examples
    - Do NOT include empty or extra bullet points at the end of lists. Only output meaningful list items. Never output <li></li> or <li> </li>.
+   - After a list, do NOT add an empty <li> for spacing. Instead, use <br> or start a new paragraph (<p>) for visual separation after </ul> or </ol>.
 
 4. Response Format Example:
    <h1>[Title]</h1>
@@ -54,6 +55,7 @@ const ARTICLE_PROMPT = `You are a writing assistant for an academic board tool. 
    [Content with <b>key points</b> and <i>important terms</i>]
    <h2>[Main Section 2]</h2>
    <ul><li>Key point 1</li><li>Key point 2</li></ul>
+   <br>
    <h2>Conclusion</h2>
    [Concluding thoughts]
 
@@ -127,7 +129,11 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
 
 // Utility to remove empty <li> elements from HTML
 function removeEmptyListItems(html: string): string {
-  return html.replace(/<li>\s*<\/li>/g, '');
+  // Remove empty <li> elements
+  let cleaned = html.replace(/<li>\s*<\/li>/g, '');
+  // Add <br> after </ul> or </ol> if not followed by a block element
+  cleaned = cleaned.replace(/(<\/ul>|<\/ol>)(?!\s*<(h[1-6]|p|ul|ol|blockquote|div|section|table|br))/gi, '$1<br>');
+  return cleaned;
 }
 
 export default function BoardPage() {
