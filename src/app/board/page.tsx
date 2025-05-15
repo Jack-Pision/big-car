@@ -214,8 +214,10 @@ export default function BoardPage() {
       let aiContent = data.choices?.[0]?.message?.content || "";
       // Clean up AI HTML output
       aiContent = cleanAIHtml(aiContent);
+      // Collapse all whitespace between tags to prevent Quill from creating empty list items
+      aiContent = aiContent.replace(/>\s+</g, '><');
       if (typeof window !== 'undefined') {
-        console.log('Cleaned AI HTML:', aiContent);
+        console.log('Cleaned & collapsed AI HTML:', aiContent);
       }
       // Use Quill clipboard API to convert HTML to Delta and filter out empty list items
       setTimeout(() => {
