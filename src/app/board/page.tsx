@@ -15,18 +15,44 @@ const SHADOW = "0 4px 24px 0 rgba(0,0,0,0.08)";
 const BOARD_OPENROUTER_API_KEY = "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";
 const BOARD_OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
-const BOARD_SYSTEM_PROMPT = `You are a writing assistant for an academic board tool. Respond ONLY in HTML. Do not include explanations or markdown. Strictly follow these rules:
-- Use <h1> for the main title (big text, bold).
-- Use <h2> for all subtitles/headings (medium text, bold).
-- Use <ul><li> for bullet points and <ol><li> for numbered/step-by-step instructions.
-- Use <b> for emphasis only within paragraphs.
-- Never use plain text for headings or lists—always use the correct HTML tags.
-- Maintain clean spacing between sections and paragraphs (use <br> or newlines).
-- Break up long content into sections with proper headings.
-- Avoid dense blocks of text; keep paragraphs short and readable.
-- The tone must be academic, clear, and helpful—ideal for essays, research summaries, and structured paragraphs.
-- Output should look like a polished, editable document.
-`;
+const BOARD_SYSTEM_PROMPT = `You are a writing assistant for an academic board tool. You must structure your responses in markdown format. When asked to write an article, strictly follow these rules:
+
+1. Article Structure:
+   - Use # for the main title
+   - Use ## for section headings
+   - Use bullet points (- ) for lists where appropriate
+   - Use **bold** for emphasis on key points
+   - Use *italic* for secondary emphasis
+
+2. Required Sections:
+   - Always include an introduction section
+   - Organize main points into clear sections
+   - End with a conclusion section
+
+3. Formatting Rules:
+   - Keep paragraphs concise and readable
+   - Use proper spacing between sections
+   - Maintain academic and professional tone
+   - Ensure logical flow between sections
+   - Use bullet points for listing key ideas or examples
+
+4. Response Format:
+   # [Title]
+   
+   ## Introduction
+   [Introduction content]
+   
+   ## [Main Section 1]
+   [Content with **key points** and *important terms*]
+   
+   ## [Main Section 2]
+   - Key point 1
+   - Key point 2
+   
+   ## Conclusion
+   [Concluding thoughts]
+
+Do not include any HTML tags. Use only markdown formatting.`;
 
 interface ChatMessage {
   id: number;
@@ -49,26 +75,29 @@ const ReactQuill = dynamic(() => import('react-quill'), {
 const quillModules = {
   toolbar: [
     [{ 'header': [1, 2, false] }],
-    ['bold', 'italic', 'underline'],
+    ['bold', 'italic'],
     [{'list': 'ordered'}, {'list': 'bullet'}],
-    ['link'],
-    ['clean']
+    ['link', 'clean'],
+    ['code-block']
   ],
   clipboard: {
-    matchVisual: false
+    matchVisual: false,
+    pastePlainText: true
   },
   history: {
     delay: 2000,
     maxStack: 500,
     userOnly: true
-  }
+  },
+  syntax: true
 };
 
 const quillFormats = [
   'header',
-  'bold', 'italic', 'underline',
+  'bold', 'italic',
   'list', 'bullet',
-  'link'
+  'link',
+  'code-block'
 ];
 
 export default function BoardPage() {
@@ -94,6 +123,15 @@ export default function BoardPage() {
     if (!input.trim()) return;
     const userMsg = input.trim();
     setInput("");
+    
+    // Add user message to chat
+    const userMessage: ChatMessage = {
+      id: Date.now(),
+      role: 'user',
+      content: userMsg
+    };
+    setMessages(prev => [...prev, userMessage]);
+    
     try {
       const payload = {
         model: "openai/gpt-3.5-turbo",
@@ -113,9 +151,29 @@ export default function BoardPage() {
       });
       const data = await res.json();
       const aiContent = data.choices?.[0]?.message?.content || "";
-      setSections(prev => prev.map((sec, i) => i === activeSection ? aiContent : sec));
+      
+      // Add AI response to chat
+      const aiMessage: ChatMessage = {
+        id: Date.now(),
+        role: 'assistant',
+        content: aiContent
+      };
+      setMessages(prev => [...prev, aiMessage]);
+      
+      // Update the editor content
+      setSections(prev => prev.map((sec, i) => 
+        i === activeSection ? aiContent : sec
+      ));
     } catch (err) {
-      setSections(prev => prev.map((sec, i) => i === activeSection ? "[Error: Failed to get response from AI]" : sec));
+      const errorMsg = "[Error: Failed to get response from AI]";
+      setMessages(prev => [...prev, {
+        id: Date.now(),
+        role: 'assistant',
+        content: errorMsg
+      }]);
+      setSections(prev => prev.map((sec, i) => 
+        i === activeSection ? errorMsg : sec
+      ));
     }
   }
 
