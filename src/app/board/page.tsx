@@ -16,7 +16,15 @@ const SHADOW = "0 4px 24px 0 rgba(0,0,0,0.08)";
 const BOARD_OPENROUTER_API_KEY = "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";
 const BOARD_OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
-const BOARD_SYSTEM_PROMPT = `You are a writing assistant for an academic board tool. Respond ONLY in HTML. Do not include explanations or markdown. Strictly follow these rules:
+const PARAGRAPH_PROMPT = `You are a writing assistant for an academic board tool. Respond ONLY in HTML. Do not include explanations or markdown.
+
+- By default, when the user asks for a paragraph or does not specify, output only:
+  - A single <h1> title
+  - One <p> paragraph (10–18 sentences, one clear idea, plain formatting)
+- Do not use lists, extra headings, or bold/italic. Use only <h1> and <p>.
+- Maintain academic and professional tone.`;
+
+const ARTICLE_PROMPT = `You are a writing assistant for an academic board tool. Respond ONLY in HTML. Do not include explanations or markdown. Strictly follow these rules:
 
 1. Article Structure:
    - Use <h1> for the main title
@@ -148,11 +156,15 @@ export default function BoardPage() {
     };
     setMessages(prev => [...prev, userMessage]);
     
+    // Detect if the user wants an article
+    const isArticle = /\b(article|essay|write an article|write an essay|sections|introduction|conclusion)\b/i.test(userMsg);
+    const systemPrompt = isArticle ? ARTICLE_PROMPT : PARAGRAPH_PROMPT;
+
     try {
       const payload = {
         model: "openai/gpt-3.5-turbo",
         messages: [
-          { role: "system", content: BOARD_SYSTEM_PROMPT },
+          { role: "system", content: systemPrompt },
           { role: "user", content: userMsg }
         ],
         stream: false,
