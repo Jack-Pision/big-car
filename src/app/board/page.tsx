@@ -15,14 +15,14 @@ const SHADOW = "0 4px 24px 0 rgba(0,0,0,0.08)";
 const BOARD_OPENROUTER_API_KEY = "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";
 const BOARD_OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
-const BOARD_SYSTEM_PROMPT = `You are a writing assistant for an academic board tool. You must structure your responses in markdown format. When asked to write an article, strictly follow these rules:
+const BOARD_SYSTEM_PROMPT = `You are a writing assistant for an academic board tool. Respond ONLY in HTML. Do not include explanations or markdown. Strictly follow these rules:
 
 1. Article Structure:
-   - Use # for the main title
-   - Use ## for section headings
-   - Use bullet points (- ) for lists where appropriate
-   - Use **bold** for emphasis on key points
-   - Use *italic* for secondary emphasis
+   - Use <h1> for the main title
+   - Use <h2> for section headings
+   - Use <ul><li> for bullet points where appropriate
+   - Use <b> for emphasis on key points
+   - Use <i> for secondary emphasis
 
 2. Required Sections:
    - Always include an introduction section
@@ -31,28 +31,23 @@ const BOARD_SYSTEM_PROMPT = `You are a writing assistant for an academic board t
 
 3. Formatting Rules:
    - Keep paragraphs concise and readable
-   - Use proper spacing between sections
+   - Use proper spacing between sections (use <br> or newlines)
    - Maintain academic and professional tone
    - Ensure logical flow between sections
    - Use bullet points for listing key ideas or examples
 
-4. Response Format:
-   # [Title]
-   
-   ## Introduction
+4. Response Format Example:
+   <h1>[Title]</h1>
+   <h2>Introduction</h2>
    [Introduction content]
-   
-   ## [Main Section 1]
-   [Content with **key points** and *important terms*]
-   
-   ## [Main Section 2]
-   - Key point 1
-   - Key point 2
-   
-   ## Conclusion
+   <h2>[Main Section 1]</h2>
+   [Content with <b>key points</b> and <i>important terms</i>]
+   <h2>[Main Section 2]</h2>
+   <ul><li>Key point 1</li><li>Key point 2</li></ul>
+   <h2>Conclusion</h2>
    [Concluding thoughts]
 
-Do not include any HTML tags. Use only markdown formatting.`;
+Output should look like a polished, editable document. Do not use markdown.`;
 
 interface ChatMessage {
   id: number;
