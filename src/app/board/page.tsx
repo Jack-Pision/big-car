@@ -10,6 +10,8 @@ const BOARD_BG = "#FFFFFF";
 const TEXT_COLOR = "#1A1A1A";
 const BORDER_COLOR = "#E5E5E5";
 const SHADOW = "0 4px 24px 0 rgba(0,0,0,0.08)";
+const BOARD_OPENROUTER_API_KEY = "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";
+const BOARD_OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
 interface ChatMessage {
   id: number;
@@ -40,11 +42,37 @@ export default function BoardPage() {
     }
   }, []);
 
-  function handleSend(e?: React.FormEvent) {
+  async function handleBoardSend(e?: React.FormEvent) {
     if (e) e.preventDefault();
     if (!input.trim()) return;
-    setMessages((prev) => [...prev, { id: Date.now(), role: "user", content: input.trim() }]);
+    const userMsg = input.trim();
     setInput("");
+    // Send to OpenRouter
+    try {
+      const payload = {
+        model: "openai/gpt-3.5-turbo",
+        messages: [{ role: "user", content: userMsg }],
+        stream: false,
+      };
+      const res = await fetch(BOARD_OPENROUTER_API_URL, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${BOARD_OPENROUTER_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      const aiContent = data.choices?.[0]?.message?.content || "";
+      // Insert AI response into document editor
+      setBoardContent(aiContent);
+      // Optionally, focus the editor for immediate editing
+      setTimeout(() => {
+        if (editorRef.current) editorRef.current.focus();
+      }, 100);
+    } catch (err) {
+      setBoardContent("[Error: Failed to get response from AI]");
+    }
   }
 
   // Simple rich text formatting (bold, italic, underline, lists)
@@ -121,7 +149,7 @@ export default function BoardPage() {
             <form
               className="w-full flex justify-center mt-auto mb-6 z-10"
               autoComplete="off"
-              onSubmit={handleSend}
+              onSubmit={handleBoardSend}
               aria-label="Chat input form"
             >
               <div className="bg-white rounded-2xl shadow-lg w-full max-w-[480px] mx-auto flex items-center px-4 py-2 gap-2 transition-all duration-200 focus-within:ring-2 focus-within:ring-black/10">
