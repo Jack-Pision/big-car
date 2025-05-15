@@ -366,49 +366,8 @@ export default function BoardPage() {
               </form>
             </div>
             {/* Right: Board Canvas */}
-            <div
-              className="h-full w-full bg-white flex flex-col relative"
-            >
-              {/* Title */}
-              <div className="flex items-center border-b px-6 py-4 sticky top-0 bg-white z-10" style={{ borderColor: BORDER_COLOR }}>
-                {editingTitle ? (
-                  <input
-                    className="text-2xl font-semibold flex-1 bg-white border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-black/10"
-                    value={boardTitle}
-                    onChange={e => setBoardTitle(e.target.value)}
-                    onBlur={() => setEditingTitle(false)}
-                    onKeyDown={e => { if (e.key === 'Enter') setEditingTitle(false); }}
-                    autoFocus
-                    aria-label="Board title"
-                  />
-                ) : (
-                  <h1
-                    className="text-2xl font-semibold flex-1 cursor-pointer truncate"
-                    onClick={() => setEditingTitle(true)}
-                    title="Click to edit title"
-                  >
-                    {boardTitle}
-                  </h1>
-                )}
-              </div>
-              {/* Toolbar */}
-              <div className="flex gap-2 px-6 py-2 sticky top-16 bg-white z-10 border-b" style={{ borderColor: BORDER_COLOR }}>
-                <button className="px-2 py-1 rounded hover:bg-[#F5F5F5]" title="Heading" onClick={() => format('formatBlock', 'H2')}><b>H2</b></button>
-                <button className="px-2 py-1 rounded hover:bg-[#F5F5F5]" title="Bold" onClick={() => format('bold')}><b>B</b></button>
-                <button className="px-2 py-1 rounded hover:bg-[#F5F5F5]" title="Italic" onClick={() => format('italic')}><i>I</i></button>
-                <button className="px-2 py-1 rounded hover:bg-[#F5F5F5]" title="Underline" onClick={() => format('underline')}><u>U</u></button>
-                <button className="px-2 py-1 rounded hover:bg-[#F5F5F5]" title="Bulleted List" onClick={() => format('insertUnorderedList')}>• List</button>
-                <button className="px-2 py-1 rounded hover:bg-[#F5F5F5]" title="Numbered List" onClick={() => format('insertOrderedList')}>1. List</button>
-                <button className="px-2 py-1 rounded hover:bg-[#F5F5F5]" title="Undo" onClick={() => format('undo')}>↺</button>
-                <button className="px-2 py-1 rounded hover:bg-[#F5F5F5]" title="Redo" onClick={() => format('redo')}>↻</button>
-              </div>
-              {/* Board Content */}
-              <div className="flex-1 px-6 py-6 min-h-0 w-full h-full flex flex-col">
-                <style jsx global>{`
-                  .ql-editor li:empty::before {
-                    content: none !important;
-                  }
-                `}</style>
+            <div className="h-full w-full flex flex-col relative bg-white">
+              <div className="flex-1 flex flex-col justify-center items-center px-16 py-12">
                 <ReactQuill
                   ref={quillComponentRef}
                   theme="snow"
@@ -418,10 +377,10 @@ export default function BoardPage() {
                       i === activeSection ? content : sec
                     ));
                   }}
-                  modules={quillModules}
+                  modules={{ toolbar: false }}
                   formats={quillFormats}
-                  className="flex-1 h-full"
-                  placeholder="Start writing or type / for commands..."
+                  className="flex-1 w-full min-h-[400px] max-w-3xl mx-auto bg-white border-none shadow-none outline-none text-lg"
+                  placeholder="Write something..."
                   preserveWhitespace={true}
                 />
               </div>
