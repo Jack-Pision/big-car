@@ -7,7 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import SearchPopup from '../components/SearchPopup';
 import { useRouter } from 'next/navigation';
 
-const OPENROUTER_API_KEY = "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";
+const OPENROUTER_API_KEY = "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";
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
 interface Message {
