@@ -161,4 +161,11 @@ body {
       background: #fff !important;
     }
   }
+
+  /* Remove italic styling from all text in the Quill editor */
+  .ql-editor i,
+  .ql-editor em,
+  .ql-editor .ql-italic {
+    font-style: normal !important;
+  }
 } 
