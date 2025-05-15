@@ -168,4 +168,9 @@ body {
   .ql-editor .ql-italic {
     font-style: normal !important;
   }
+
+  .no-editor-border .ql-container {
+    border: none !important;
+    box-shadow: none !important;
+  }
 } 
