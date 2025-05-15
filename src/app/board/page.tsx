@@ -390,11 +390,4 @@ export default function BoardPage() {
       </motion.div>
     </ErrorBoundary>
   );
-}
-
-<style jsx global>{`
-  .no-editor-border .ql-container {
-    border: none !important;
-    box-shadow: none !important;
-  }
-`}</style> 
+} 
