@@ -40,13 +40,14 @@ const ARTICLE_PROMPT = `You are a writing assistant for an academic board tool. 
 
 3. Formatting Rules:
    - Keep paragraphs concise and readable
-   - Use proper spacing between sections (use <br> or newlines)
+   - Use proper spacing between sections (use <p>, <h2>, <ul>, <ol>, or <br> as needed)
    - Maintain academic and professional tone
    - Ensure logical flow between sections
    - Use bullet points for listing key ideas or examples
-   - Do NOT include empty or extra bullet points at the end of lists. Never output <li></li> or <li> </li>.
+   - Do NOT include empty or extra bullet points at the end of lists. Never output <li></li>, <li> </li>, <li><br></li>, <ul></ul>, or <ol></ol>.
    - After a list, do NOT add an empty <li> for spacing. Instead, use <br> or start a new paragraph (<p>) for visual separation after </ul> or </ol>.
    - Never use empty <li> for spacing. If you need space after a list, use <br> or <p> only.
+   - Always start a new section with a heading or paragraph, not with a list.
 
 4. Response Format Example:
    <h1>[Title]</h1>
@@ -128,19 +129,22 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
   }
 }
 
-// Enhanced post-processing utility
+// Enhanced post-processing utility (ChatGPT-style)
 function cleanAIHtml(html: string): string {
   let cleaned = html;
-  // Remove empty <li> elements
-  cleaned = cleaned.replace(/<li>\s*<\/li>/g, '');
+  // Remove empty <li>, <li> with only whitespace or <br>
+  cleaned = cleaned.replace(/<li>(\s|<br\s*\/?>)*<\/li>/gi, '');
   // Remove empty <ul></ul> and <ol></ol>
-  cleaned = cleaned.replace(/<ul>\s*<\/ul>/g, '');
-  cleaned = cleaned.replace(/<ol>\s*<\/ol>/g, '');
+  cleaned = cleaned.replace(/<ul>(\s|<br\s*\/?>)*<\/ul>/gi, '');
+  cleaned = cleaned.replace(/<ol>(\s|<br\s*\/?>)*<\/ol>/gi, '');
   // Add <br> after </ul> or </ol> if not followed by a block element
   cleaned = cleaned.replace(/(<\/ul>|<\/ol>)(?!\s*<(h[1-6]|p|ul|ol|blockquote|div|section|table|br))/gi, '$1<br>');
   // Normalize multiple consecutive <br> or <p> tags
   cleaned = cleaned.replace(/(<br>\s*){2,}/gi, '<br>');
   cleaned = cleaned.replace(/(<p>\s*<\/p>\s*){2,}/gi, '<p></p>');
+  // Remove <br> at the start or end of content
+  cleaned = cleaned.replace(/^(<br>\s*)+/, '');
+  cleaned = cleaned.replace(/(<br>\s*)+$/, '');
   return cleaned;
 }
 
