@@ -36,7 +36,13 @@ interface ChatMessage {
 
 const ReactQuill = dynamic(() => import('react-quill'), {
   ssr: false,
-  loading: () => <div className="h-full w-full bg-gray-50 animate-pulse" />
+  loading: () => (
+    <div className="h-full w-full bg-gray-50 animate-pulse rounded-lg">
+      <div className="h-8 bg-gray-200 rounded w-1/3 mb-4"></div>
+      <div className="h-4 bg-gray-200 rounded w-full mb-2"></div>
+      <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+    </div>
+  )
 });
 
 // Add Quill modules configuration
@@ -45,14 +51,24 @@ const quillModules = {
     [{ 'header': [1, 2, false] }],
     ['bold', 'italic', 'underline'],
     [{'list': 'ordered'}, {'list': 'bullet'}],
+    ['link'],
     ['clean']
-  ]
+  ],
+  clipboard: {
+    matchVisual: false
+  },
+  history: {
+    delay: 2000,
+    maxStack: 500,
+    userOnly: true
+  }
 };
 
 const quillFormats = [
   'header',
   'bold', 'italic', 'underline',
-  'list', 'bullet'
+  'list', 'bullet',
+  'link'
 ];
 
 export default function BoardPage() {
@@ -246,11 +262,16 @@ export default function BoardPage() {
                 <ReactQuill
                   theme="snow"
                   value={sections[activeSection]}
-                  onChange={val => setSections(prev => prev.map((sec, i) => i === activeSection ? val : sec))}
+                  onChange={(content) => {
+                    setSections(prev => prev.map((sec, i) => 
+                      i === activeSection ? content : sec
+                    ));
+                  }}
                   modules={quillModules}
                   formats={quillFormats}
-                  className="flex-1 flex flex-col"
+                  className="flex-1 h-full"
                   placeholder="Start writing or type / for commands..."
+                  preserveWhitespace={true}
                 />
               </div>
             </div>

@@ -87,4 +87,35 @@ body {
   .custom-split-gutter .gutter:hover {
     background: #F5F5F5;
   }
+
+  /* React Quill Editor Styles */
+  .quill {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  .ql-container {
+    flex: 1;
+    overflow-y: auto;
+    font-size: 16px;
+    font-family: inherit;
+  }
+
+  .ql-editor {
+    min-height: 100%;
+    font-family: inherit;
+    line-height: 1.6;
+  }
+
+  .ql-toolbar {
+    border-top: none !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-bottom: 1px solid #E5E7EB !important;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: white;
+  }
 } 
