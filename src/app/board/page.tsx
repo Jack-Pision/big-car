@@ -25,12 +25,20 @@ export default function BoardPage() {
   const [boardContent, setBoardContent] = useState("");
   const [showToolbar, setShowToolbar] = useState(true);
   const chatRef = useRef<HTMLDivElement>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const router = useRouter();
+
+  const editorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    if (editorRef.current && boardContent) {
+      editorRef.current.innerHTML = boardContent;
+    }
+  }, []);
 
   function handleSend(e?: React.FormEvent) {
     if (e) e.preventDefault();
@@ -176,12 +184,12 @@ export default function BoardPage() {
               </div>
               {/* Board Content */}
               <div
+                ref={editorRef}
                 className="flex-1 px-6 py-6 outline-none min-h-0 text-base focus:outline-none w-full h-full"
                 contentEditable
                 suppressContentEditableWarning
                 style={{ background: BOARD_BG, color: TEXT_COLOR, minHeight: 0, height: '100%' }}
                 onInput={e => setBoardContent((e.target as HTMLDivElement).innerHTML)}
-                dangerouslySetInnerHTML={{ __html: boardContent }}
                 aria-label="Board content editor"
               />
             </div>
