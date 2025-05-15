@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import HamburgerMenu from '../../components/HamburgerMenu';
 import dynamic from 'next/dynamic';
 import 'react-quill/dist/quill.snow.css';
-import React from "react";
+import React, { forwardRef } from "react";
 
 const BOARD_BG = "#FFFFFF";
 const TEXT_COLOR = "#1A1A1A";
@@ -69,16 +69,22 @@ interface ChatMessage {
   content: string;
 }
 
-const ReactQuill = dynamic(() => import('react-quill'), {
-  ssr: false,
-  loading: () => (
-    <div className="h-full w-full bg-gray-50 animate-pulse rounded-lg">
-      <div className="h-8 bg-gray-200 rounded w-1/3 mb-4"></div>
-      <div className="h-4 bg-gray-200 rounded w-full mb-2"></div>
-      <div className="h-4 bg-gray-200 rounded w-2/3"></div>
-    </div>
-  )
-});
+const ReactQuill = dynamic(
+  async () => {
+    const { default: RQ } = await import('react-quill');
+    return forwardRef((props: any, ref: any) => <RQ {...props} ref={ref} />);
+  },
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-full w-full bg-gray-50 animate-pulse rounded-lg">
+        <div className="h-8 bg-gray-200 rounded w-1/3 mb-4"></div>
+        <div className="h-4 bg-gray-200 rounded w-full mb-2"></div>
+        <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+      </div>
+    )
+  }
+);
 
 // Add Quill modules configuration
 const quillModules = {
@@ -163,6 +169,7 @@ export default function BoardPage() {
   const router = useRouter();
 
   const editorRef = useRef<HTMLDivElement>(null);
+  const quillComponentRef = useRef<any>(null);
 
   useEffect(() => {
     chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior: "smooth" });
@@ -207,10 +214,29 @@ export default function BoardPage() {
       let aiContent = data.choices?.[0]?.message?.content || "";
       // Clean up AI HTML output
       aiContent = cleanAIHtml(aiContent);
-      // Debug: log cleaned HTML
       if (typeof window !== 'undefined') {
         console.log('Cleaned AI HTML:', aiContent);
       }
+      // Use Quill clipboard API to convert HTML to Delta and filter out empty list items
+      setTimeout(() => {
+        const quill = quillComponentRef.current?.getEditor?.();
+        if (quill && aiContent) {
+          let delta = quill.clipboard.convert(aiContent);
+          // Filter out empty list items from delta.ops
+          if (Array.isArray(delta.ops)) {
+            delta.ops = delta.ops.filter((op: any) => {
+              if (op.insert && typeof op.insert === 'string') {
+                // Remove ops that are just newlines in a list context
+                if (op.attributes && (op.attributes.list === 'bullet' || op.attributes.list === 'ordered')) {
+                  return op.insert.trim() !== '' && op.insert.trim() !== '\n';
+                }
+              }
+              return true;
+            });
+          }
+          quill.setContents(delta);
+        }
+      }, 0);
       
       // Add AI response to chat
       const aiMessage: ChatMessage = {
@@ -384,9 +410,10 @@ export default function BoardPage() {
                     }
                   `}</style>
                   <ReactQuill
+                    ref={quillComponentRef}
                     theme="snow"
                     value={typeof sections[activeSection] === 'string' ? sections[activeSection] : ''}
-                    onChange={(content) => {
+                    onChange={(content: string) => {
                       setSections(prev => prev.map((sec, i) => 
                         i === activeSection ? content : sec
                       ));
