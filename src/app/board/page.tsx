@@ -44,8 +44,9 @@ const ARTICLE_PROMPT = `You are a writing assistant for an academic board tool. 
    - Maintain academic and professional tone
    - Ensure logical flow between sections
    - Use bullet points for listing key ideas or examples
-   - Do NOT include empty or extra bullet points at the end of lists. Only output meaningful list items. Never output <li></li> or <li> </li>.
+   - Do NOT include empty or extra bullet points at the end of lists. Never output <li></li> or <li> </li>.
    - After a list, do NOT add an empty <li> for spacing. Instead, use <br> or start a new paragraph (<p>) for visual separation after </ul> or </ol>.
+   - Never use empty <li> for spacing. If you need space after a list, use <br> or <p> only.
 
 4. Response Format Example:
    <h1>[Title]</h1>
@@ -127,12 +128,19 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
   }
 }
 
-// Utility to remove empty <li> elements from HTML
-function removeEmptyListItems(html: string): string {
+// Enhanced post-processing utility
+function cleanAIHtml(html: string): string {
+  let cleaned = html;
   // Remove empty <li> elements
-  let cleaned = html.replace(/<li>\s*<\/li>/g, '');
+  cleaned = cleaned.replace(/<li>\s*<\/li>/g, '');
+  // Remove empty <ul></ul> and <ol></ol>
+  cleaned = cleaned.replace(/<ul>\s*<\/ul>/g, '');
+  cleaned = cleaned.replace(/<ol>\s*<\/ol>/g, '');
   // Add <br> after </ul> or </ol> if not followed by a block element
   cleaned = cleaned.replace(/(<\/ul>|<\/ol>)(?!\s*<(h[1-6]|p|ul|ol|blockquote|div|section|table|br))/gi, '$1<br>');
+  // Normalize multiple consecutive <br> or <p> tags
+  cleaned = cleaned.replace(/(<br>\s*){2,}/gi, '<br>');
+  cleaned = cleaned.replace(/(<p>\s*<\/p>\s*){2,}/gi, '<p></p>');
   return cleaned;
 }
 
@@ -191,8 +199,8 @@ export default function BoardPage() {
       });
       const data = await res.json();
       let aiContent = data.choices?.[0]?.message?.content || "";
-      // Remove empty <li> elements
-      aiContent = removeEmptyListItems(aiContent);
+      // Clean up AI HTML output
+      aiContent = cleanAIHtml(aiContent);
       
       // Add AI response to chat
       const aiMessage: ChatMessage = {
