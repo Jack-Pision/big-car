@@ -36,18 +36,11 @@ export default function BoardPage() {
     chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
-  useEffect(() => {
-    if (editorRef.current) {
-      editorRef.current.innerHTML = boardContent;
-    }
-  }, [boardContent]);
-
   async function handleBoardSend(e?: React.FormEvent) {
     if (e) e.preventDefault();
     if (!input.trim()) return;
     const userMsg = input.trim();
     setInput("");
-    // Send to OpenRouter
     try {
       const payload = {
         model: "openai/gpt-3.5-turbo",
@@ -66,12 +59,21 @@ export default function BoardPage() {
       const aiContent = data.choices?.[0]?.message?.content || "";
       // Insert AI response into document editor
       setBoardContent(aiContent);
-      // Optionally, focus the editor for immediate editing
+      // Set editor content directly
       setTimeout(() => {
-        if (editorRef.current) editorRef.current.focus();
+        if (editorRef.current) {
+          editorRef.current.innerHTML = aiContent;
+          editorRef.current.focus();
+        }
       }, 100);
     } catch (err) {
       setBoardContent("[Error: Failed to get response from AI]");
+      setTimeout(() => {
+        if (editorRef.current) {
+          editorRef.current.innerHTML = "[Error: Failed to get response from AI]";
+          editorRef.current.focus();
+        }
+      }, 100);
     }
   }
 
