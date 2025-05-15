@@ -119,8 +119,7 @@ export default function BoardPage() {
             </div>
             {/* Input Area at Bottom of Chat Panel */}
             <form
-              className="w-full flex items-center gap-2 px-3 py-3 border-t bg-white"
-              style={{ borderColor: BORDER_COLOR }}
+              className="w-full flex items-center gap-2 px-3 py-3 bg-white rounded-lg shadow-lg mt-2"
               onSubmit={handleSend}
             >
               <input
