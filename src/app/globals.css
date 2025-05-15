@@ -118,4 +118,48 @@ body {
     z-index: 10;
     background: white;
   }
+
+  /* Improved spacing and readability for Quill editor */
+  .ql-editor h1, .ql-editor h2, .ql-editor h3 {
+    margin-top: 2em;
+    margin-bottom: 0.5em;
+    font-weight: 700;
+  }
+  .ql-editor h1 {
+    font-size: 2.2em;
+  }
+  .ql-editor h2 {
+    font-size: 1.5em;
+  }
+  .ql-editor h3 {
+    font-size: 1.2em;
+  }
+  .ql-editor p {
+    margin-bottom: 1.1em;
+    line-height: 1.7;
+  }
+  .ql-editor ul, .ql-editor ol {
+    margin-top: 1em;
+    margin-bottom: 1.1em;
+    padding-left: 2em;
+  }
+  .ql-editor li {
+    margin-bottom: 0.5em;
+  }
+  .ql-editor p > strong:first-child {
+    display: inline-block;
+    margin-bottom: 0.2em;
+  }
+  .ql-editor {
+    font-size: 1.1em;
+    color: #181818;
+  }
+
+  /* Optional: dark mode support for readability */
+  @media (prefers-color-scheme: dark) {
+    .ql-editor {
+      color: #f3f3f3;
+      background: #232323;
+    }
+  }
 } 
