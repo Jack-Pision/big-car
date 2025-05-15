@@ -366,7 +366,7 @@ export default function BoardPage() {
               </form>
             </div>
             {/* Right: Board Canvas */}
-            <div className="h-full w-full flex flex-col relative bg-white">
+            <div className="h-full w-full flex flex-col relative bg-white" style={{ border: 'none' }}>
               <div className="flex-1 flex flex-col justify-center items-center px-16 py-12">
                 <ReactQuill
                   ref={quillComponentRef}
@@ -379,7 +379,7 @@ export default function BoardPage() {
                   }}
                   modules={{ toolbar: false }}
                   formats={quillFormats}
-                  className="flex-1 w-full min-h-[400px] max-w-3xl mx-auto bg-white border-none shadow-none outline-none text-lg"
+                  className="flex-1 w-full min-h-[400px] max-w-3xl mx-auto bg-white border-none shadow-none outline-none text-lg no-editor-border"
                   placeholder="Write something..."
                   preserveWhitespace={true}
                 />
@@ -390,4 +390,11 @@ export default function BoardPage() {
       </motion.div>
     </ErrorBoundary>
   );
-} 
+}
+
+<style jsx global>{`
+  .no-editor-border .ql-container {
+    border: none !important;
+    box-shadow: none !important;
+  }
+`}</style> 
