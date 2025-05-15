@@ -37,10 +37,10 @@ export default function BoardPage() {
   }, [messages]);
 
   useEffect(() => {
-    if (editorRef.current && boardContent) {
+    if (editorRef.current) {
       editorRef.current.innerHTML = boardContent;
     }
-  }, []);
+  }, [boardContent]);
 
   async function handleBoardSend(e?: React.FormEvent) {
     if (e) e.preventDefault();
