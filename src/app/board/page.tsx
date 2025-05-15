@@ -5,6 +5,8 @@ import Split from 'react-split';
 import Sidebar from '../../components/Sidebar';
 import { useRouter } from 'next/navigation';
 import HamburgerMenu from '../../components/HamburgerMenu';
+import dynamic from 'next/dynamic';
+import 'react-quill/dist/quill.snow.css';
 
 const BOARD_BG = "#FFFFFF";
 const TEXT_COLOR = "#1A1A1A";
@@ -32,12 +34,15 @@ interface ChatMessage {
   content: string;
 }
 
+const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
+
 export default function BoardPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [boardTitle, setBoardTitle] = useState("Untitled Document");
   const [editingTitle, setEditingTitle] = useState(false);
-  const [boardContent, setBoardContent] = useState("");
+  const [sections, setSections] = useState<string[]>([""]);
+  const [activeSection, setActiveSection] = useState(0);
   const [showToolbar, setShowToolbar] = useState(true);
   const chatRef = useRef<HTMLDivElement>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -73,21 +78,9 @@ export default function BoardPage() {
       });
       const data = await res.json();
       const aiContent = data.choices?.[0]?.message?.content || "";
-      setBoardContent(aiContent);
-      setTimeout(() => {
-        if (editorRef.current) {
-          editorRef.current.innerHTML = aiContent;
-          editorRef.current.focus();
-        }
-      }, 100);
+      setSections(prev => prev.map((sec, i) => i === activeSection ? aiContent : sec));
     } catch (err) {
-      setBoardContent("[Error: Failed to get response from AI]");
-      setTimeout(() => {
-        if (editorRef.current) {
-          editorRef.current.innerHTML = "[Error: Failed to get response from AI]";
-          editorRef.current.focus();
-        }
-      }, 100);
+      setSections(prev => prev.map((sec, i) => i === activeSection ? "[Error: Failed to get response from AI]" : sec));
     }
   }
 
@@ -98,11 +91,11 @@ export default function BoardPage() {
 
   // Auto-save board content to localStorage
   useEffect(() => {
-    localStorage.setItem("boardContent", boardContent);
+    localStorage.setItem("boardContent", sections.join("\n"));
     localStorage.setItem("boardTitle", boardTitle);
-  }, [boardContent, boardTitle]);
+  }, [sections, boardTitle]);
   useEffect(() => {
-    setBoardContent(localStorage.getItem("boardContent") || "");
+    setSections(localStorage.getItem("boardContent")?.split("\n") || [""]);
     setBoardTitle(localStorage.getItem("boardTitle") || "Untitled Document");
   }, []);
 
@@ -230,15 +223,14 @@ export default function BoardPage() {
                 <button className="px-2 py-1 rounded hover:bg-[#F5F5F5]" title="Redo" onClick={() => format('redo')}>↻</button>
               </div>
               {/* Board Content */}
-              <div
-                ref={editorRef}
-                className="flex-1 px-6 py-6 outline-none min-h-0 text-base focus:outline-none w-full h-full"
-                contentEditable
-                suppressContentEditableWarning
-                style={{ background: BOARD_BG, color: TEXT_COLOR, minHeight: 0, height: '100%' }}
-                onBlur={e => setBoardContent((e.target as HTMLDivElement).innerHTML)}
-                aria-label="Board content editor"
-              />
+              <div className="flex-1 px-6 py-6 min-h-0 w-full h-full">
+                <ReactQuill
+                  theme="snow"
+                  value={sections[activeSection]}
+                  onChange={val => setSections(prev => prev.map((sec, i) => i === activeSection ? val : sec))}
+                  className="h-full"
+                />
+              </div>
             </div>
           </div>
         </Split>
