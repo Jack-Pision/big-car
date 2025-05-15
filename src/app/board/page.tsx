@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import HamburgerMenu from '../../components/HamburgerMenu';
 import dynamic from 'next/dynamic';
 import 'react-quill/dist/quill.snow.css';
+import React from "react";
 
 const BOARD_BG = "#FFFFFF";
 const TEXT_COLOR = "#1A1A1A";
@@ -94,6 +95,27 @@ const quillFormats = [
   'link',
   'code-block'
 ];
+
+// Error Boundary Component
+class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean}> {
+  constructor(props: {children: React.ReactNode}) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: any, info: any) {
+    // You can log error here
+    console.error("ErrorBoundary caught an error:", error, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return <div style={{color: 'red', padding: 32}}>Something went wrong in the Board editor. Please refresh or contact support.</div>;
+    }
+    return this.props.children;
+  }
+}
 
 export default function BoardPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -188,149 +210,151 @@ export default function BoardPage() {
   }, []);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 24 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 24 }}
-      transition={{ duration: 0.4 }}
-      className="min-h-screen flex flex-row bg-white text-[#1A1A1A] h-screen"
-      style={{ background: BOARD_BG, color: TEXT_COLOR }}
-    >
-      {/* Hamburger menu and sidebar */}
-      <div className="fixed top-4 left-4 z-50 md:static md:z-10">
-        <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
-      </div>
-      <Sidebar
-        open={sidebarOpen}
-        chats={[]}
-        activeChatId={null}
-        onClose={() => setSidebarOpen(false)}
-        onNewChat={() => {}}
-        onSelectChat={() => {}}
-        onEditChat={() => {}}
-        onDeleteChat={() => {}}
-        onClearAll={() => {}}
-        onOpenSearch={() => {}}
-        onNavigateBoard={() => router.push('/board')}
-      />
-      {/* Main content: Split pane (chat + editor) */}
-      <div className="flex-1 h-screen flex flex-col">
-        <Split
-          className="flex-1 h-full custom-split-gutter"
-          sizes={[30, 70]}
-          minSize={[220, 320]}
-          expandToMin={false}
-          gutterSize={8}
-          gutterAlign="center"
-          snapOffset={0}
-          dragInterval={1}
-          direction="horizontal"
-          cursor="col-resize"
-          style={{ display: 'flex', flex: 1, height: '100%' }}
-        >
-          {/* Left: Compact Chat */}
-          <div className="flex flex-col h-full min-w-[220px] max-w-[500px] bg-white border-r" style={{ borderColor: BORDER_COLOR }}>
-            <div className="flex-1 overflow-y-auto px-3 pt-6 pb-2" ref={chatRef}>
-              {messages.map((msg) => (
-                <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} mb-2`}>
-                  <div
-                    className={`rounded-xl px-3 py-2 text-sm shadow ${msg.role === "user" ? "bg-blue-100 text-[#1A1A1A]" : "bg-gray-100 text-[#1A1A1A]"}`}
-                    style={{ maxWidth: "80%" }}
-                  >
-                    {msg.content}
+    <ErrorBoundary>
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 24 }}
+        transition={{ duration: 0.4 }}
+        className="min-h-screen flex flex-row bg-white text-[#1A1A1A] h-screen"
+        style={{ background: BOARD_BG, color: TEXT_COLOR }}
+      >
+        {/* Hamburger menu and sidebar */}
+        <div className="fixed top-4 left-4 z-50 md:static md:z-10">
+          <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
+        </div>
+        <Sidebar
+          open={sidebarOpen}
+          chats={[]}
+          activeChatId={null}
+          onClose={() => setSidebarOpen(false)}
+          onNewChat={() => {}}
+          onSelectChat={() => {}}
+          onEditChat={() => {}}
+          onDeleteChat={() => {}}
+          onClearAll={() => {}}
+          onOpenSearch={() => {}}
+          onNavigateBoard={() => router.push('/board')}
+        />
+        {/* Main content: Split pane (chat + editor) */}
+        <div className="flex-1 h-screen flex flex-col">
+          <Split
+            className="flex-1 h-full custom-split-gutter"
+            sizes={[30, 70]}
+            minSize={[220, 320]}
+            expandToMin={false}
+            gutterSize={8}
+            gutterAlign="center"
+            snapOffset={0}
+            dragInterval={1}
+            direction="horizontal"
+            cursor="col-resize"
+            style={{ display: 'flex', flex: 1, height: '100%' }}
+          >
+            {/* Left: Compact Chat */}
+            <div className="flex flex-col h-full min-w-[220px] max-w-[500px] bg-white border-r" style={{ borderColor: BORDER_COLOR }}>
+              <div className="flex-1 overflow-y-auto px-3 pt-6 pb-2" ref={chatRef}>
+                {messages.map((msg) => (
+                  <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} mb-2`}>
+                    <div
+                      className={`rounded-xl px-3 py-2 text-sm shadow ${msg.role === "user" ? "bg-blue-100 text-[#1A1A1A]" : "bg-gray-100 text-[#1A1A1A]"}`}
+                      style={{ maxWidth: "80%" }}
+                    >
+                      {msg.content}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-            {/* Input Area at Bottom of Chat Panel */}
-            <form
-              className="w-full flex justify-center mt-auto mb-6 z-10"
-              autoComplete="off"
-              onSubmit={handleBoardSend}
-              aria-label="Chat input form"
-            >
-              <div className="bg-white rounded-2xl shadow-lg w-full max-w-[480px] mx-auto flex items-center px-4 py-2 gap-2 transition-all duration-200 focus-within:ring-2 focus-within:ring-black/10">
-                {/* Responsive input and send button only */}
-                <input
-                  type="text"
-                  value={input}
-                  onChange={e => setInput(e.target.value)}
-                  placeholder="Type a message..."
-                  className="flex-1 bg-transparent outline-none border-none text-base text-neutral-900 placeholder-gray-400 px-2 py-2 focus:ring-0 min-w-0"
-                  aria-label="Type a message"
-                  maxLength={200}
-                />
-                <button
-                  type="submit"
-                  aria-label="Send"
-                  className="w-10 h-10 flex items-center justify-center rounded-full bg-black text-white hover:bg-neutral-800 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/30 flex-shrink-0"
-                  disabled={!input.trim()}
-                >
-                  <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                </button>
+                ))}
               </div>
-            </form>
-          </div>
-          {/* Right: Board Canvas */}
-          <div className="flex-1 h-full w-full bg-[#F9F9F9] overflow-auto">
-            <div
-              className="h-full w-full bg-white rounded-2xl shadow-xl flex flex-col relative"
-              style={{ boxShadow: SHADOW }}
-            >
-              {/* Title */}
-              <div className="flex items-center border-b px-6 py-4 sticky top-0 bg-white z-10" style={{ borderColor: BORDER_COLOR }}>
-                {editingTitle ? (
+              {/* Input Area at Bottom of Chat Panel */}
+              <form
+                className="w-full flex justify-center mt-auto mb-6 z-10"
+                autoComplete="off"
+                onSubmit={handleBoardSend}
+                aria-label="Chat input form"
+              >
+                <div className="bg-white rounded-2xl shadow-lg w-full max-w-[480px] mx-auto flex items-center px-4 py-2 gap-2 transition-all duration-200 focus-within:ring-2 focus-within:ring-black/10">
+                  {/* Responsive input and send button only */}
                   <input
-                    className="text-2xl font-semibold flex-1 bg-white border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-black/10"
-                    value={boardTitle}
-                    onChange={e => setBoardTitle(e.target.value)}
-                    onBlur={() => setEditingTitle(false)}
-                    onKeyDown={e => { if (e.key === 'Enter') setEditingTitle(false); }}
-                    autoFocus
-                    aria-label="Board title"
+                    type="text"
+                    value={input}
+                    onChange={e => setInput(e.target.value)}
+                    placeholder="Type a message..."
+                    className="flex-1 bg-transparent outline-none border-none text-base text-neutral-900 placeholder-gray-400 px-2 py-2 focus:ring-0 min-w-0"
+                    aria-label="Type a message"
+                    maxLength={200}
                   />
-                ) : (
-                  <h1
-                    className="text-2xl font-semibold flex-1 cursor-pointer truncate"
-                    onClick={() => setEditingTitle(true)}
-                    title="Click to edit title"
+                  <button
+                    type="submit"
+                    aria-label="Send"
+                    className="w-10 h-10 flex items-center justify-center rounded-full bg-black text-white hover:bg-neutral-800 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/30 flex-shrink-0"
+                    disabled={!input.trim()}
                   >
-                    {boardTitle}
-                  </h1>
-                )}
-              </div>
-              {/* Toolbar */}
-              <div className="flex gap-2 px-6 py-2 sticky top-16 bg-white z-10 border-b" style={{ borderColor: BORDER_COLOR }}>
-                <button className="px-2 py-1 rounded hover:bg-[#F5F5F5]" title="Heading" onClick={() => format('formatBlock', 'H2')}><b>H2</b></button>
-                <button className="px-2 py-1 rounded hover:bg-[#F5F5F5]" title="Bold" onClick={() => format('bold')}><b>B</b></button>
-                <button className="px-2 py-1 rounded hover:bg-[#F5F5F5]" title="Italic" onClick={() => format('italic')}><i>I</i></button>
-                <button className="px-2 py-1 rounded hover:bg-[#F5F5F5]" title="Underline" onClick={() => format('underline')}><u>U</u></button>
-                <button className="px-2 py-1 rounded hover:bg-[#F5F5F5]" title="Bulleted List" onClick={() => format('insertUnorderedList')}>• List</button>
-                <button className="px-2 py-1 rounded hover:bg-[#F5F5F5]" title="Numbered List" onClick={() => format('insertOrderedList')}>1. List</button>
-                <button className="px-2 py-1 rounded hover:bg-[#F5F5F5]" title="Undo" onClick={() => format('undo')}>↺</button>
-                <button className="px-2 py-1 rounded hover:bg-[#F5F5F5]" title="Redo" onClick={() => format('redo')}>↻</button>
-              </div>
-              {/* Board Content */}
-              <div className="flex-1 px-6 py-6 min-h-0 w-full h-full flex flex-col">
-                <ReactQuill
-                  theme="snow"
-                  value={sections[activeSection]}
-                  onChange={(content) => {
-                    setSections(prev => prev.map((sec, i) => 
-                      i === activeSection ? content : sec
-                    ));
-                  }}
-                  modules={quillModules}
-                  formats={quillFormats}
-                  className="flex-1 h-full"
-                  placeholder="Start writing or type / for commands..."
-                  preserveWhitespace={true}
-                />
+                    <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                  </button>
+                </div>
+              </form>
+            </div>
+            {/* Right: Board Canvas */}
+            <div className="flex-1 h-full w-full bg-[#F9F9F9] overflow-auto">
+              <div
+                className="h-full w-full bg-white rounded-2xl shadow-xl flex flex-col relative"
+                style={{ boxShadow: SHADOW }}
+              >
+                {/* Title */}
+                <div className="flex items-center border-b px-6 py-4 sticky top-0 bg-white z-10" style={{ borderColor: BORDER_COLOR }}>
+                  {editingTitle ? (
+                    <input
+                      className="text-2xl font-semibold flex-1 bg-white border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-black/10"
+                      value={boardTitle}
+                      onChange={e => setBoardTitle(e.target.value)}
+                      onBlur={() => setEditingTitle(false)}
+                      onKeyDown={e => { if (e.key === 'Enter') setEditingTitle(false); }}
+                      autoFocus
+                      aria-label="Board title"
+                    />
+                  ) : (
+                    <h1
+                      className="text-2xl font-semibold flex-1 cursor-pointer truncate"
+                      onClick={() => setEditingTitle(true)}
+                      title="Click to edit title"
+                    >
+                      {boardTitle}
+                    </h1>
+                  )}
+                </div>
+                {/* Toolbar */}
+                <div className="flex gap-2 px-6 py-2 sticky top-16 bg-white z-10 border-b" style={{ borderColor: BORDER_COLOR }}>
+                  <button className="px-2 py-1 rounded hover:bg-[#F5F5F5]" title="Heading" onClick={() => format('formatBlock', 'H2')}><b>H2</b></button>
+                  <button className="px-2 py-1 rounded hover:bg-[#F5F5F5]" title="Bold" onClick={() => format('bold')}><b>B</b></button>
+                  <button className="px-2 py-1 rounded hover:bg-[#F5F5F5]" title="Italic" onClick={() => format('italic')}><i>I</i></button>
+                  <button className="px-2 py-1 rounded hover:bg-[#F5F5F5]" title="Underline" onClick={() => format('underline')}><u>U</u></button>
+                  <button className="px-2 py-1 rounded hover:bg-[#F5F5F5]" title="Bulleted List" onClick={() => format('insertUnorderedList')}>• List</button>
+                  <button className="px-2 py-1 rounded hover:bg-[#F5F5F5]" title="Numbered List" onClick={() => format('insertOrderedList')}>1. List</button>
+                  <button className="px-2 py-1 rounded hover:bg-[#F5F5F5]" title="Undo" onClick={() => format('undo')}>↺</button>
+                  <button className="px-2 py-1 rounded hover:bg-[#F5F5F5]" title="Redo" onClick={() => format('redo')}>↻</button>
+                </div>
+                {/* Board Content */}
+                <div className="flex-1 px-6 py-6 min-h-0 w-full h-full flex flex-col">
+                  <ReactQuill
+                    theme="snow"
+                    value={typeof sections[activeSection] === 'string' ? sections[activeSection] : ''}
+                    onChange={(content) => {
+                      setSections(prev => prev.map((sec, i) => 
+                        i === activeSection ? content : sec
+                      ));
+                    }}
+                    modules={quillModules}
+                    formats={quillFormats}
+                    className="flex-1 h-full"
+                    placeholder="Start writing or type / for commands..."
+                    preserveWhitespace={true}
+                  />
+                </div>
               </div>
             </div>
-          </div>
-        </Split>
-      </div>
-    </motion.div>
+          </Split>
+        </div>
+      </motion.div>
+    </ErrorBoundary>
   );
 } 
