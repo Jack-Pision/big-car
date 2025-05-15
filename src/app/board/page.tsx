@@ -44,6 +44,7 @@ const ARTICLE_PROMPT = `You are a writing assistant for an academic board tool. 
    - Maintain academic and professional tone
    - Ensure logical flow between sections
    - Use bullet points for listing key ideas or examples
+   - Do NOT include empty or extra bullet points at the end of lists. Only output meaningful list items. Never output <li></li> or <li> </li>.
 
 4. Response Format Example:
    <h1>[Title]</h1>
@@ -124,6 +125,11 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
   }
 }
 
+// Utility to remove empty <li> elements from HTML
+function removeEmptyListItems(html: string): string {
+  return html.replace(/<li>\s*<\/li>/g, '');
+}
+
 export default function BoardPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -178,7 +184,9 @@ export default function BoardPage() {
         body: JSON.stringify(payload),
       });
       const data = await res.json();
-      const aiContent = data.choices?.[0]?.message?.content || "";
+      let aiContent = data.choices?.[0]?.message?.content || "";
+      // Remove empty <li> elements
+      aiContent = removeEmptyListItems(aiContent);
       
       // Add AI response to chat
       const aiMessage: ChatMessage = {
