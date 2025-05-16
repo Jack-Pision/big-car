@@ -200,7 +200,7 @@ export default function StreamingChat() {
       temperature: 0.6,
       top_p: 0.95,
       max_tokens: 4096,
-      stream: true,
+      stream: false,
     };
     try {
       const res = await fetch(NVIDIA_API_URL, {
