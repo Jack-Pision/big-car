@@ -6,6 +6,7 @@ import HamburgerMenu from '../components/HamburgerMenu';
 import { v4 as uuidv4 } from 'uuid';
 import SearchPopup from '../components/SearchPopup';
 import { useRouter } from 'next/navigation';
+import ReactMarkdown from 'react-markdown';
 
 const NVIDIA_API_URL = "/api/nvidia";
 
@@ -181,7 +182,11 @@ export default function Home() {
               setError("Failed to connect to AI. " + (typeof data.error === "object" && data.error && "message" in data.error ? (data.error as any).message : String(data.error)));
             }
           } catch (err: any) {
-            setError("Failed to connect to AI. " + (typeof err === "object" && err && "message" in err ? (err as any).message : String(err)));
+            // Skip malformed/incomplete JSON lines, but log for debugging
+            if (typeof window !== 'undefined') {
+              console.warn('Skipping malformed JSON chunk:', dataStr, err);
+            }
+            continue;
           }
         }
       }
@@ -249,7 +254,9 @@ export default function Home() {
             ) {
               return (
                 <div key={msg.id} className="flex justify-start">
-                  <div className="text-neutral-900 text-base whitespace-pre-line">{displayed}</div>
+                  <div className="text-neutral-900 text-base whitespace-pre-line markdown-body">
+                    <ReactMarkdown>{displayed}</ReactMarkdown>
+                  </div>
                 </div>
               );
             }
@@ -265,7 +272,9 @@ export default function Home() {
             } else {
               return (
                 <div key={msg.id} className="flex justify-start">
-                  <div className="text-neutral-900 text-base whitespace-pre-line">{msg.content}</div>
+                  <div className="text-neutral-900 text-base whitespace-pre-line markdown-body">
+                    <ReactMarkdown>{msg.content}</ReactMarkdown>
+                  </div>
                 </div>
               );
             }
