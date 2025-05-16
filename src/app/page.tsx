@@ -16,6 +16,23 @@ interface Message {
   content: string;
 }
 
+// Utility to clean up markdown before rendering
+function cleanMarkdown(md: string): string {
+  let cleaned = md;
+  // Fix unclosed bold/italic markers (add closing ** or *)
+  const openBold = (cleaned.match(/\*\*/g) || []).length % 2 !== 0;
+  if (openBold) cleaned += '**';
+  const openItalic = (cleaned.match(/\*/g) || []).length % 2 !== 0;
+  if (openItalic) cleaned += '*';
+  // Remove stray asterisks not part of markdown
+  cleaned = cleaned.replace(/\*\s+/g, '');
+  // Collapse multiple blank lines
+  cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
+  // Remove leading/trailing blank lines
+  cleaned = cleaned.replace(/^\s+|\s+$/g, '');
+  return cleaned;
+}
+
 export default function Home() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
@@ -255,7 +272,7 @@ export default function Home() {
               return (
                 <div key={msg.id} className="flex justify-start">
                   <div className="text-neutral-900 text-base whitespace-pre-line markdown-body">
-                    <ReactMarkdown>{displayed}</ReactMarkdown>
+                    <ReactMarkdown>{cleanMarkdown(displayed)}</ReactMarkdown>
                   </div>
                 </div>
               );
@@ -273,7 +290,7 @@ export default function Home() {
               return (
                 <div key={msg.id} className="flex justify-start">
                   <div className="text-neutral-900 text-base whitespace-pre-line markdown-body">
-                    <ReactMarkdown>{msg.content}</ReactMarkdown>
+                    <ReactMarkdown>{cleanMarkdown(msg.content)}</ReactMarkdown>
                   </div>
                 </div>
               );
