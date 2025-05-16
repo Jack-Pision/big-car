@@ -7,6 +7,11 @@ import { v4 as uuidv4 } from 'uuid';
 import SearchPopup from '../components/SearchPopup';
 import { useRouter } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
+import { unified } from 'unified';
+import remarkParse from 'remark-parse';
+import remarkStringify from 'remark-stringify';
+import remarkGfm from 'remark-gfm';
+import { useState as useAsyncState } from 'react';
 
 const NVIDIA_API_URL = "/api/nvidia";
 
@@ -16,43 +21,37 @@ interface Message {
   content: string;
 }
 
-// Utility to clean up markdown before rendering
-function cleanMarkdown(md: string): string {
-  let cleaned = md;
-  // Fix common AI mistakes: **word* or *word** → **word**
-  cleaned = cleaned.replace(/\*\*([^\*\n]+)\*/g, '**$1**');
-  cleaned = cleaned.replace(/\*([^\*\n]+)\*\*/g, '**$1**');
-  // Remove stray asterisks not part of markdown (e.g., at line start/end)
-  cleaned = cleaned.replace(/(^|\s)\*+(\s|$)/g, ' ');
-  // Fix missing spaces after list numbers (e.g., 2.**Ask → 2. **Ask)
-  cleaned = cleaned.replace(/(\d+)\.([A-Za-z])/g, '$1. $2');
-  // Remove multiple consecutive asterisks (e.g., ****word**** → **word**)
-  cleaned = cleaned.replace(/\*{3,}/g, '**');
-  // Remove malformed headers (e.g., ### at end of line)
-  cleaned = cleaned.replace(/#+\s*$/gm, '');
-  // Collapse multiple blank lines
-  cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
-  // Remove leading/trailing blank lines
-  cleaned = cleaned.replace(/^\s+|\s+$/g, '');
-  // Remove any remaining unmatched asterisks at line start/end
-  cleaned = cleaned.replace(/(^|\n)\*+(?=\s|$)/g, '');
-  cleaned = cleaned.replace(/\*+(?=\n|$)/g, '');
-
-  // Aggressive post-processing:
-  // 1. Remove lines that are just stray asterisks or malformed markdown
-  cleaned = cleaned.split('\n').filter(line => !/^\s*\*+\s*$/.test(line)).join('\n');
-  // 2. If a line starts with ** and has no closing **, remove or close it
-  cleaned = cleaned.replace(/(^|\n)\*\*([^\n*]+)(?=\n|$)/g, (m, p1, p2) => {
-    return p1 + (p2.trim().endsWith('**') ? p2 : p2 + '**');
-  });
-  // 3. Remove unpaired bold/italic markers at end of lines
-  cleaned = cleaned.replace(/\*+(?=\s|$)/g, '');
-  // 4. Normalize spaces around formatting markers
-  cleaned = cleaned.replace(/\s*\*\*\s*/g, '**');
-  cleaned = cleaned.replace(/\s*\*\s*/g, '*');
-  // 5. Remove any remaining unmatched asterisks
-  cleaned = cleaned.replace(/(^|\s)\*+(?=\s|$)/g, '');
-  return cleaned;
+async function cleanMarkdown(md: string): Promise<string> {
+  try {
+    const file = await unified()
+      .use(remarkParse)
+      .use(remarkGfm)
+      .use(remarkStringify, { bullet: '-', fences: true, listItemIndent: 'one' })
+      .process(md);
+    return String(file).trim();
+  } catch (e) {
+    // fallback to previous cleaning logic if remark fails
+    let cleaned = md;
+    cleaned = cleaned.replace(/\*\*([^\*\n]+)\*/g, '**$1**');
+    cleaned = cleaned.replace(/\*([^\*\n]+)\*\*/g, '**$1**');
+    cleaned = cleaned.replace(/(^|\s)\*+(\s|$)/g, ' ');
+    cleaned = cleaned.replace(/(\d+)\.([A-Za-z])/g, '$1. $2');
+    cleaned = cleaned.replace(/\*{3,}/g, '**');
+    cleaned = cleaned.replace(/#+\s*$/gm, '');
+    cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
+    cleaned = cleaned.replace(/^\s+|\s+$/g, '');
+    cleaned = cleaned.replace(/(^|\n)\*+(?=\s|$)/g, '');
+    cleaned = cleaned.replace(/\*+(?=\n|$)/g, '');
+    cleaned = cleaned.split('\n').filter(line => !/^\s*\*+\s*$/.test(line)).join('\n');
+    cleaned = cleaned.replace(/(^|\n)\*\*([^\n*]+)(?=\n|$)/g, (m, p1, p2) => {
+      return p1 + (p2.trim().endsWith('**') ? p2 : p2 + '**');
+    });
+    cleaned = cleaned.replace(/\*+(?=\s|$)/g, '');
+    cleaned = cleaned.replace(/\s*\*\*\s*/g, '**');
+    cleaned = cleaned.replace(/\s*\*\s*/g, '*');
+    cleaned = cleaned.replace(/(^|\s)\*+(?=\s|$)/g, '');
+    return cleaned;
+  }
 }
 
 export default function Home() {
@@ -168,7 +167,7 @@ export default function Home() {
     const payload = {
       model: "nvidia/llama-3.1-nemotron-ultra-253b-v1",
       messages: [
-        { role: "system", content: "You are a helpful study tutor, you will provide user with the best response in studies, researches etc." },
+        { role: "system", content: "You are a helpful study tutor. Always use valid markdown syntax: close all bold/italic markers, use proper headings, lists, and avoid stray asterisks or symbols. Keep formatting clean and readable." },
         ...msgs.map(({ role, content }) => ({ role, content }))
       ],
       temperature: 0.6,
@@ -291,10 +290,14 @@ export default function Home() {
               aiTyping &&
               !msg.content
             ) {
+              const [streamedMarkdown, setStreamedMarkdown] = useAsyncState('');
+              useEffect(() => {
+                cleanMarkdown(displayed).then(setStreamedMarkdown);
+              }, [displayed]);
               return (
                 <div key={msg.id} className="flex justify-start">
                   <div className="text-neutral-900 text-base whitespace-pre-line markdown-body">
-                    <ReactMarkdown>{cleanMarkdown(displayed)}</ReactMarkdown>
+                    <ReactMarkdown>{streamedMarkdown}</ReactMarkdown>
                   </div>
                 </div>
               );
@@ -309,10 +312,14 @@ export default function Home() {
                 </div>
               );
             } else {
+              const [aiMarkdown, setAiMarkdown] = useAsyncState('');
+              useEffect(() => {
+                cleanMarkdown(msg.content).then(setAiMarkdown);
+              }, [msg.content]);
               return (
                 <div key={msg.id} className="flex justify-start">
                   <div className="text-neutral-900 text-base whitespace-pre-line markdown-body">
-                    <ReactMarkdown>{cleanMarkdown(msg.content)}</ReactMarkdown>
+                    <ReactMarkdown>{aiMarkdown}</ReactMarkdown>
                   </div>
                 </div>
               );
