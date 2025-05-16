@@ -172,6 +172,7 @@ export default function BoardPage() {
   const [showToolbar, setShowToolbar] = useState(true);
   const chatRef = useRef<HTMLDivElement>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [selfRefine, setSelfRefine] = useState(true);
   const router = useRouter();
 
   const editorRef = useRef<HTMLDivElement>(null);
@@ -312,6 +313,8 @@ export default function BoardPage() {
           onClearAll={() => {}}
           onOpenSearch={() => {}}
           onNavigateBoard={() => router.push('/board')}
+          selfRefine={selfRefine}
+          onToggleSelfRefine={() => setSelfRefine(prev => !prev)}
         />
         {/* Main content: Split pane (chat + editor) */}
         <div className="flex-1 h-screen flex flex-col">
