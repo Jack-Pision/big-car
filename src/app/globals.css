@@ -275,4 +275,29 @@ body {
 }
 .markdown-body > :last-child {
   margin-bottom: 0 !important;
+}
+
+.markdown-body-heading {
+  font-weight: 700;
+  margin-top: 1.2em;
+  margin-bottom: 0.4em;
+  line-height: 1.2;
+}
+.markdown-body-h1 {
+  font-size: 2.1rem;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 0.2em;
+}
+.markdown-body-h2 {
+  font-size: 1.5rem;
+  border-bottom: 1px solid #f3f4f6;
+  padding-bottom: 0.15em;
+}
+.markdown-body-h3 {
+  font-size: 1.2rem;
+}
+.markdown-body-hr {
+  margin: 2em 0;
+  border: none;
+  border-top: 2px solid #e5e7eb;
 } 

@@ -18,6 +18,11 @@ interface Message {
 
 function cleanMarkdown(md: string): string {
   let cleaned = md;
+  // Convert lines of dashes to '---' for <hr>
+  cleaned = cleaned.replace(/^-{3,}$/gm, '---');
+  cleaned = cleaned.replace(/_{3,}/gm, '---');
+  // Ensure headings have a space after # (e.g., '###Heading' -> '### Heading')
+  cleaned = cleaned.replace(/^(#{1,6})([^ #])/gm, '$1 $2');
   // Fix common AI mistakes: **word* or *word** → **word**
   cleaned = cleaned.replace(/\*\*([^\*\n]+)\*/g, '**$1**');
   cleaned = cleaned.replace(/\*([^\*\n]+)\*\*/g, '**$1**');
@@ -52,6 +57,13 @@ function cleanMarkdown(md: string): string {
   cleaned = cleaned.replace(/(^|\s)\*+(?=\s|$)/g, '');
   return cleaned;
 }
+
+const markdownComponents = {
+  h1: (props: React.ComponentProps<'h1'>) => <h1 className="markdown-body-heading markdown-body-h1" {...props} />,
+  h2: (props: React.ComponentProps<'h2'>) => <h2 className="markdown-body-heading markdown-body-h2" {...props} />,
+  h3: (props: React.ComponentProps<'h3'>) => <h3 className="markdown-body-heading markdown-body-h3" {...props} />,
+  hr: (props: React.ComponentProps<'hr'>) => <hr className="markdown-body-hr my-4 border-t-2 border-gray-200" {...props} />,
+};
 
 export default function Home() {
   const [input, setInput] = useState("");
@@ -292,7 +304,7 @@ export default function Home() {
               return (
                 <div key={msg.id} className="flex justify-start">
                   <div className="text-neutral-900 text-base whitespace-pre-line markdown-body">
-                    <ReactMarkdown>{cleanMarkdown(displayed)}</ReactMarkdown>
+                    <ReactMarkdown components={markdownComponents}>{cleanMarkdown(displayed)}</ReactMarkdown>
                   </div>
                 </div>
               );
@@ -310,7 +322,7 @@ export default function Home() {
               return (
                 <div key={msg.id} className="flex justify-start">
                   <div className="text-neutral-900 text-base whitespace-pre-line markdown-body">
-                    <ReactMarkdown>{cleanMarkdown(msg.content)}</ReactMarkdown>
+                    <ReactMarkdown components={markdownComponents}>{cleanMarkdown(msg.content)}</ReactMarkdown>
                   </div>
                 </div>
               );
