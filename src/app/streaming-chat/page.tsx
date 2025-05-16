@@ -319,8 +319,8 @@ export default function StreamingChat() {
             ) {
               return (
                 <div key={msg.id} className="flex justify-start">
-                  <div className="text-neutral-900 text-base whitespace-pre-line markdown-body">
-                    <ReactMarkdown components={markdownComponents}>{cleanMarkdown(displayed)}</ReactMarkdown>
+                  <div className="text-neutral-900 text-base whitespace-pre-line">
+                    {displayed}
                   </div>
                 </div>
               );
@@ -337,8 +337,8 @@ export default function StreamingChat() {
             } else {
               return (
                 <div key={msg.id} className="flex justify-start">
-                  <div className="text-neutral-900 text-base whitespace-pre-line markdown-body">
-                    <ReactMarkdown components={markdownComponents}>{cleanMarkdown(msg.content)}</ReactMarkdown>
+                  <div className="text-neutral-900 text-base whitespace-pre-line">
+                    {msg.content}
                   </div>
                 </div>
               );
