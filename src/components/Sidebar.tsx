@@ -102,6 +102,16 @@ export default function Sidebar({
                 <svg width="20" height="20" fill="none" stroke="#6B7280" strokeWidth="2" viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M8 8h8v8H8z"/></svg>
                 <span className="font-medium">Streaming Chat</span>
               </button>
+              {/* Test Navigation Button */}
+              <button
+                className="mx-4 mb-2 flex items-center gap-2 px-3 py-2 rounded-lg text-[#6B7280] hover:bg-[#F5F5F5] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/10"
+                onClick={() => router.push('/test')}
+                aria-label="Go to Test Page"
+                tabIndex={0}
+              >
+                <svg width="20" height="20" fill="none" stroke="#6B7280" strokeWidth="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                <span className="font-medium">Test</span>
+              </button>
               {/* Chat List */}
               <div className="flex-1 overflow-y-auto px-4 pb-4">
                 {chats.length === 0 && (
