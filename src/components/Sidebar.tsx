@@ -20,6 +20,8 @@ interface SidebarProps {
   onClearAll: () => void;
   onOpenSearch: () => void;
   onNavigateBoard: () => void;
+  selfRefine: boolean;
+  onToggleSelfRefine: () => void;
 }
 
 export default function Sidebar({
@@ -34,6 +36,8 @@ export default function Sidebar({
   onClearAll,
   onOpenSearch,
   onNavigateBoard,
+  selfRefine,
+  onToggleSelfRefine,
 }: SidebarProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -90,6 +94,30 @@ export default function Sidebar({
                 <svg width="20" height="20" fill="none" stroke="#6B7280" strokeWidth="2" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/></svg>
                 <span className="font-medium">Board</span>
               </button>
+              {/* Self-Refinement Toggle */}
+              <div className="mx-4 mb-4 flex items-center justify-between px-3 py-2 rounded-lg bg-gray-50">
+                <div className="flex items-center gap-2">
+                  <svg width="20" height="20" fill="none" stroke="#6B7280" strokeWidth="2" viewBox="0 0 24 24">
+                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                  <span className="text-sm font-medium text-gray-700">AI Self-Refinement</span>
+                </div>
+                <button
+                  onClick={onToggleSelfRefine}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-black/20 ${
+                    selfRefine ? 'bg-blue-600' : 'bg-gray-200'
+                  }`}
+                  role="switch"
+                  aria-checked={selfRefine}
+                  aria-label="Toggle AI self-refinement"
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      selfRefine ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
               {/* Chat List */}
               <div className="flex-1 overflow-y-auto px-2 pb-2">
                 {chats.length === 0 && (
