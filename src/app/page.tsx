@@ -25,8 +25,10 @@ function cleanMarkdown(md: string): string {
   cleaned = cleaned.replace(/^(#{1,6})([^ #])/gm, '$1 $2');
   // Fix numbered lists: 1.**Ask, 2.Thing, 3.*Bold* etc. → 1. **Ask, 2. Thing, 3. *Bold*
   cleaned = cleaned.replace(/(\d+)\.([A-Za-z*\[])/g, '$1. $2');
-  // Fix bullet lists: -Thing, *Thing, +Thing → - Thing, * Thing, + Thing
-  cleaned = cleaned.replace(/^(\s*)([-*+])([^ \-\*\+])/gm, '$1$2 $3');
+  // Normalize all list markers (+, *, -) to '-'
+  cleaned = cleaned.replace(/^(\s*)[+*\-]([^ \-\*\+])/gm, '$1- $2');
+  // Ensure a space after every list marker
+  cleaned = cleaned.replace(/^(\s*)-([^ ])/gm, '$1- $2');
   // Fix common AI mistakes: **word* or *word** → **word**
   cleaned = cleaned.replace(/\*\*([^\*\n]+)\*/g, '**$1**');
   cleaned = cleaned.replace(/\*([^\*\n]+)\*\*/g, '**$1**');
@@ -38,10 +40,13 @@ function cleanMarkdown(md: string): string {
   cleaned = cleaned.replace(/#+\s*$/gm, '');
   // Insert blank lines after headings
   cleaned = cleaned.replace(/(#{1,6} .+)(?!\n\n)/g, '$1\n');
-  // Insert blank lines after bolded section titles (e.g., '**Title:**')
-  cleaned = cleaned.replace(/(\*\*[^\n]+?:\*\*)(?!\n\n)/g, '$1\n');
+  // Insert blank lines after bolded section titles (e.g., '**Title:**', '**Title.**')
+  cleaned = cleaned.replace(/(\*\*[^\n]+?[:\.]+\*\*)(?!\n\n)/g, '$1\n');
   // Insert blank lines between consecutive bolded phrases (e.g., '**A**B' -> '**A**\n\nB')
   cleaned = cleaned.replace(/(\*\*[^\n]+?\*\*)([A-Za-z])/g, '$1\n\n$2');
+  // Insert blank lines between list items and following content if missing
+  cleaned = cleaned.replace(/(\n- [^\n]+)(?!\n\n|\n- )/g, '$1\n');
+  cleaned = cleaned.replace(/(\n\d+\. [^\n]+)(?!\n\n|\n\d+\. )/g, '$1\n');
   // Collapse multiple blank lines
   cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
   // Remove leading/trailing blank lines
@@ -189,7 +194,7 @@ export default function Home() {
     const payload = {
       model: "nvidia/llama-3.1-nemotron-ultra-253b-v1",
       messages: [
-        { role: "system", content: "You are a helpful study tutor. Always use valid markdown syntax: close all bold/italic markers, use proper headings, lists, and avoid stray asterisks or symbols. Keep formatting clean and readable." },
+        { role: "system", content: `You are a helpful study tutor. Always use standard markdown. Add blank lines after headings, bolded section titles, and between sections. Use standard list markers ('-', '*', or '1.') with a space after the marker. Always close bold/italic markers before punctuation or line breaks. Do not merge bold/italic markers with text. Structure your output for maximum readability.` },
         ...msgs.map(({ role, content }) => ({ role, content }))
       ],
       temperature: 0.6,
