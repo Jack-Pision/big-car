@@ -28,8 +28,6 @@ function cleanMarkdown(md: string): string {
   cleaned = cleaned.replace(/(\d+)\.([A-Za-z])/g, '$1. $2');
   // Remove multiple consecutive asterisks (e.g., ****word**** → **word**)
   cleaned = cleaned.replace(/\*{3,}/g, '**');
-  // Remove unpaired single asterisks (not part of a word)
-  cleaned = cleaned.replace(/(^|\s)\*([^\*\s]+)\*(?=\s|$)/g, '$1*$2*');
   // Remove malformed headers (e.g., ### at end of line)
   cleaned = cleaned.replace(/#+\s*$/gm, '');
   // Collapse multiple blank lines
@@ -39,6 +37,21 @@ function cleanMarkdown(md: string): string {
   // Remove any remaining unmatched asterisks at line start/end
   cleaned = cleaned.replace(/(^|\n)\*+(?=\s|$)/g, '');
   cleaned = cleaned.replace(/\*+(?=\n|$)/g, '');
+
+  // Aggressive post-processing:
+  // 1. Remove lines that are just stray asterisks or malformed markdown
+  cleaned = cleaned.split('\n').filter(line => !/^\s*\*+\s*$/.test(line)).join('\n');
+  // 2. If a line starts with ** and has no closing **, remove or close it
+  cleaned = cleaned.replace(/(^|\n)\*\*([^\n*]+)(?=\n|$)/g, (m, p1, p2) => {
+    return p1 + (p2.trim().endsWith('**') ? p2 : p2 + '**');
+  });
+  // 3. Remove unpaired bold/italic markers at end of lines
+  cleaned = cleaned.replace(/\*+(?=\s|$)/g, '');
+  // 4. Normalize spaces around formatting markers
+  cleaned = cleaned.replace(/\s*\*\*\s*/g, '**');
+  cleaned = cleaned.replace(/\s*\*\s*/g, '*');
+  // 5. Remove any remaining unmatched asterisks
+  cleaned = cleaned.replace(/(^|\s)\*+(?=\s|$)/g, '');
   return cleaned;
 }
 
