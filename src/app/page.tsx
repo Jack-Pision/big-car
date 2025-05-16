@@ -51,7 +51,9 @@ export default function Home() {
     setDisplayed("");
     setIsLoading(false);
     const interval = setInterval(() => {
-      setDisplayed(streamedContent.slice(0, i + 1));
+      // Remove <think>...</think> tags from the displayed content
+      const filteredDisplayed = streamedContent.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+      setDisplayed(filteredDisplayed.slice(0, i + 1));
       i++;
       if (i >= streamedContent.length) {
         clearInterval(interval);
@@ -126,7 +128,7 @@ export default function Home() {
     const payload = {
       model: "nvidia/llama-3.1-nemotron-ultra-253b-v1",
       messages: [
-        { role: "system", content: "detailed thinking on" },
+        { role: "system", content: "You are a helpful study tutor, you will provide user with the best response in studies, researches etc." },
         ...msgs.map(({ role, content }) => ({ role, content }))
       ],
       temperature: 0.6,
@@ -171,7 +173,9 @@ export default function Home() {
             if (delta) {
               didRespond = true;
               fullText += delta;
-              setStreamedContent(fullText);
+              // Remove <think>...</think> tags from the streamed content
+              const filteredText = fullText.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+              setStreamedContent(filteredText);
             }
             if (data.error) {
               setError("Failed to connect to AI. " + (typeof data.error === "object" && data.error && "message" in data.error ? (data.error as any).message : String(data.error)));
