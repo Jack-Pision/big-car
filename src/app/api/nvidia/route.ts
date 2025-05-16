@@ -2,26 +2,23 @@ import { NextRequest } from 'next/server';
 
 export const runtime = 'edge';
 
-export async function POST(req: NextRequest) {
+async function fetchNvidiaAI(messages: any[], stream = false) {
   const apiKey = process.env.NVIDIA_API_KEY;
   if (!apiKey) {
     return new Response(JSON.stringify({ error: 'NVIDIA API key not set in environment.' }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json' }
     });
   }
-
-  let payload;
-  try {
-    payload = await req.json();
-  } catch (err) {
-    return new Response(JSON.stringify({ error: 'Invalid JSON payload.' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-
-  const nvidiaRes = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+  const payload = {
+    model: 'nvidia/llama-3.1-nemotron-ultra-253b-v1',
+    messages,
+    temperature: 0.6,
+    top_p: 0.95,
+    max_tokens: 4096,
+    stream,
+  };
+  const res = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
@@ -29,19 +26,33 @@ export async function POST(req: NextRequest) {
     },
     body: JSON.stringify(payload),
   });
+  return res;
+}
 
-  // Stream response if possible
-  if (nvidiaRes.body) {
-    return new Response(nvidiaRes.body, {
-      status: nvidiaRes.status,
-      headers: {
-        'Content-Type': nvidiaRes.headers.get('Content-Type') || 'application/json',
-      },
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { messages, ...rest } = body;
+    // 1. Get initial AI response
+    const initialRes = await fetchNvidiaAI(messages, false);
+    const initialData = await initialRes.json();
+    let aiContent = initialData.choices?.[0]?.message?.content || '';
+    // 2. Self-refinement: Ask AI to check and fix markdown
+    const refinementPrompt = {
+      role: 'system',
+      content: `You are a markdown formatter. Here is some markdown output. Check for formatting, structure, and readability. Fix any markdown mistakes, add blank lines where needed, and ensure lists, headings, and bold/italic are correct. Return only the improved markdown.`
+    };
+    const refinementMessages = [refinementPrompt, { role: 'user', content: aiContent }];
+    const refineRes = await fetchNvidiaAI(refinementMessages, false);
+    const refineData = await refineRes.json();
+    const improvedContent = refineData.choices?.[0]?.message?.content || aiContent;
+    return new Response(JSON.stringify({ ...initialData, choices: [{ ...initialData.choices[0], message: { ...initialData.choices[0].message, content: improvedContent } }] }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
     });
-  } else {
-    const text = await nvidiaRes.text();
-    return new Response(text, {
-      status: nvidiaRes.status,
+  } catch (err) {
+    return new Response(JSON.stringify({ error: 'Failed to process request', details: String(err) }), {
+      status: 500,
       headers: { 'Content-Type': 'application/json' },
     });
   }
