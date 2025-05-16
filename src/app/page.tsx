@@ -7,8 +7,8 @@ import { v4 as uuidv4 } from 'uuid';
 import SearchPopup from '../components/SearchPopup';
 import { useRouter } from 'next/navigation';
 
-const NVIDIA_API_KEY = "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";
-const NVIDIA_API_URL = "https://integrate.api.nvidia.com/v1";
+const NVIDIA_API_KEY = "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";
+const NVIDIA_API_URL = "https://integrate.api.nvidia.com/v1/chat/completions";
 
 interface Message {
   id: string;
