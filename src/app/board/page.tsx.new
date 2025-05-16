@@ -1,0 +1,52 @@
+export default function BoardPage() {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState("");
+  const [boardTitle, setBoardTitle] = useState("Untitled Document");
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [sections, setSections] = useState<string[]>([""]);
+  const [activeSection, setActiveSection] = useState(0);
+  const [showToolbar, setShowToolbar] = useState(true);
+  const chatRef = useRef<HTMLDivElement>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [selfRefine, setSelfRefine] = useState(true);
+  const router = useRouter();
+
+  const editorRef = useRef<HTMLDivElement>(null);
+  const quillComponentRef = useRef<any>(null);
+
+  // ... rest of the component code ...
+
+  return (
+    <ErrorBoundary>
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 24 }}
+        transition={{ duration: 0.4 }}
+        className="min-h-screen flex flex-row bg-white text-[#1A1A1A] h-screen"
+        style={{ background: BOARD_BG, color: TEXT_COLOR }}
+      >
+        {/* Hamburger menu and sidebar */}
+        <div className="fixed top-4 left-4 z-50 md:static md:z-10">
+          <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
+        </div>
+        <Sidebar
+          open={sidebarOpen}
+          chats={[]}
+          activeChatId={null}
+          onClose={() => setSidebarOpen(false)}
+          onNewChat={() => {}}
+          onSelectChat={() => {}}
+          onEditChat={() => {}}
+          onDeleteChat={() => {}}
+          onClearAll={() => {}}
+          onOpenSearch={() => {}}
+          onNavigateBoard={() => router.push('/board')}
+          selfRefine={selfRefine}
+          onToggleSelfRefine={() => setSelfRefine(prev => !prev)}
+        />
+        {/* Rest of the component JSX */}
+      </motion.div>
+    </ErrorBoundary>
+  );
+} 
