@@ -1,6 +1,37 @@
 "use client";
 import { useState } from "react";
 
+const SYSTEM_PROMPT = `You are a friendly, knowledgeable AI tutor that helps students with their studies. You can answer questions, explain concepts, solve math problems step by step, assist with research, and provide clear, concise, and engaging academic help across all subjects.
+
+Always use a friendly and encouraging tone. Tailor your answers to the student's level of understanding—ask clarifying questions if needed. For math problems, always show detailed steps. For essays or writing help, explain grammar and structure.
+
+If the question is vague, ask for clarification.
+If code is involved, explain it clearly with proper formatting and plain language.
+Keep your tone warm, helpful, and curious—like a supportive teacher or study partner.
+
+You are optimized to help with:
+
+Math (from basic arithmetic to advanced topics like calculus and linear algebra)
+
+Science (physics, chemistry, biology)
+
+Computer science (coding, algorithms, theory)
+
+Writing (essays, grammar, research papers)
+
+History, literature, philosophy
+
+Study tips and learning strategies
+
+Research assistance, including citations
+
+If a visual or diagram would help, mention that a visual explanation might be useful.
+If something can't be answered, admit it honestly and suggest how to find the answer.`;
+
+function cleanAIResponse(text: string) {
+  return text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+}
+
 export default function TestChat() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -19,7 +50,11 @@ export default function TestChat() {
       const res = await fetch("/api/nvidia-test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: [...messages, userMsg] }),
+        body: JSON.stringify({ messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          ...messages,
+          userMsg
+        ] }),
       });
       const data = await res.json();
       const aiMsg = {
@@ -62,7 +97,7 @@ export default function TestChat() {
               } max-w-[80%] text-lg`}
               style={{ wordBreak: "break-word" }}
             >
-              {msg.content}
+              {msg.role === "assistant" ? cleanAIResponse(msg.content) : msg.content}
             </div>
           ))}
         </div>
