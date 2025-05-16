@@ -39,6 +39,7 @@ async function fetchNvidiaAI(messages: any[], stream = false) {
 }
 
 export async function POST(req: NextRequest) {
+  console.log('Received request at /api/nvidia');
   try {
     const body = await req.json();
     const { messages, ...rest } = body;
@@ -50,6 +51,7 @@ export async function POST(req: NextRequest) {
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (err) {
+    console.error('POST /api/nvidia error:', err);
     return new Response(JSON.stringify({ error: 'Failed to process request', details: String(err) }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
