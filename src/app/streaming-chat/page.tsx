@@ -41,11 +41,9 @@ function cleanMarkdown(md: string): string {
   // Insert blank lines after headings
   cleaned = cleaned.replace(/(#{1,6} .+)(?!\n\n)/g, '$1\n');
   // Insert blank lines after bolded section titles (e.g., '**Title:**', '**Title.**')
-  cleaned = cleaned.replace(/(\*\*[^
-]+?[:\.]+\*\*)(?!\n\n)/g, '$1\n');
+  cleaned = cleaned.replace(/(\*\*[^\n]+?[:\.]+\*\*)(?!\n\n)/g, '$1\n');
   // Insert blank lines between consecutive bolded phrases (e.g., '**A**B' -> '**A**\n\nB')
-  cleaned = cleaned.replace(/(\*\*[^
-]+?\*\*)([A-Za-z])/g, '$1\n\n$2');
+  cleaned = cleaned.replace(/(\*\*[^\n]+?\*\*)([A-Za-z])/g, '$1\n\n$2');
   // Insert blank lines between list items and following content if missing
   cleaned = cleaned.replace(/(\n- [^\n]+)(?!\n\n|\n- )/g, '$1\n');
   cleaned = cleaned.replace(/(\n\d+\. [^\n]+)(?!\n\n|\n\d+\. )/g, '$1\n');
