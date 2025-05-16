@@ -7,8 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import SearchPopup from '../components/SearchPopup';
 import { useRouter } from 'next/navigation';
 
-const NVIDIA_API_KEY = "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";
-const NVIDIA_API_URL = "https://integrate.api.nvidia.com/v1/chat/completions";
+const NVIDIA_API_URL = "/api/nvidia";
 
 interface Message {
   id: string;
@@ -139,7 +138,6 @@ export default function Home() {
       const res = await fetch(NVIDIA_API_URL, {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${NVIDIA_API_KEY}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
