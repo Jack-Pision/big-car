@@ -43,10 +43,25 @@ export async function POST(req: NextRequest) {
       content: `You are a markdown formatter. Here is some markdown output. Check for formatting, structure, and readability. Fix any markdown mistakes, add blank lines where needed, and ensure lists, headings, and bold/italic are correct. Return only the improved markdown.`
     };
     const refinementMessages = [refinementPrompt, { role: 'user', content: aiContent }];
-    const refineRes = await fetchNvidiaAI(refinementMessages, false);
-    const refineData = await refineRes.json();
-    const improvedContent = refineData.choices?.[0]?.message?.content || aiContent;
-    return new Response(JSON.stringify({ ...initialData, choices: [{ ...initialData.choices[0], message: { ...initialData.choices[0].message, content: improvedContent } }] }), {
+    let improvedContent = aiContent;
+    let refinementError = null;
+    try {
+      const refineRes = await fetchNvidiaAI(refinementMessages, false);
+      const refineData = await refineRes.json();
+      if (refineData.choices?.[0]?.message?.content) {
+        improvedContent = refineData.choices[0].message.content;
+      } else {
+        refinementError = refineData.error || 'No content from refinement.';
+      }
+    } catch (err) {
+      refinementError = String(err);
+    }
+    // Always return a response, fallback to initial output if refinement fails
+    return new Response(JSON.stringify({
+      ...initialData,
+      choices: [{ ...initialData.choices[0], message: { ...initialData.choices[0].message, content: improvedContent } }],
+      refinementError,
+    }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
