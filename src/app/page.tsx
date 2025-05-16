@@ -23,13 +23,17 @@ function cleanMarkdown(md: string): string {
   cleaned = cleaned.replace(/_{3,}/gm, '---');
   // Ensure headings have a space after # (e.g., '###Heading' -> '### Heading')
   cleaned = cleaned.replace(/^(#{1,6})([^ #])/gm, '$1 $2');
+  // Fix numbered lists: 1.**Ask, 2.Thing, 3.*Bold* etc. → 1. **Ask, 2. Thing, 3. *Bold*
+  cleaned = cleaned.replace(/(\d+)\.([A-Za-z*\[])/g, '$1. $2');
+  // Fix bullet lists: -Thing, *Thing, +Thing → - Thing, * Thing, + Thing
+  cleaned = cleaned.replace(/^(\s*)([-*+])([^ \-\*\+])/gm, '$1$2 $3');
+  // Normalize all list markers to dash (optional, can keep as is)
+  // cleaned = cleaned.replace(/^(\s*)[\*\+]/gm, '$1-');
   // Fix common AI mistakes: **word* or *word** → **word**
   cleaned = cleaned.replace(/\*\*([^\*\n]+)\*/g, '**$1**');
   cleaned = cleaned.replace(/\*([^\*\n]+)\*\*/g, '**$1**');
   // Remove stray asterisks not part of markdown (e.g., at line start/end)
   cleaned = cleaned.replace(/(^|\s)\*+(\s|$)/g, ' ');
-  // Fix missing spaces after list numbers (e.g., 2.**Ask → 2. **Ask)
-  cleaned = cleaned.replace(/(\d+)\.([A-Za-z])/g, '$1. $2');
   // Remove multiple consecutive asterisks (e.g., ****word**** → **word**)
   cleaned = cleaned.replace(/\*{3,}/g, '**');
   // Remove malformed headers (e.g., ### at end of line)
@@ -63,6 +67,9 @@ const markdownComponents = {
   h2: (props: React.ComponentProps<'h2'>) => <h2 className="markdown-body-heading markdown-body-h2" {...props} />,
   h3: (props: React.ComponentProps<'h3'>) => <h3 className="markdown-body-heading markdown-body-h3" {...props} />,
   hr: (props: React.ComponentProps<'hr'>) => <hr className="markdown-body-hr my-4 border-t-2 border-gray-200" {...props} />,
+  ul: (props: React.ComponentProps<'ul'>) => <ul className="markdown-body-ul ml-6 mb-2 list-disc" {...props} />,
+  ol: (props: React.ComponentProps<'ol'>) => <ol className="markdown-body-ol ml-6 mb-2 list-decimal" {...props} />,
+  li: (props: React.ComponentProps<'li'>) => <li className="markdown-body-li mb-1" {...props} />,
 };
 
 export default function Home() {

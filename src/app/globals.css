@@ -300,4 +300,14 @@ body {
   margin: 2em 0;
   border: none;
   border-top: 2px solid #e5e7eb;
+}
+
+.markdown-body-ul, .markdown-body-ol {
+  margin-left: 1.5em;
+  margin-bottom: 1em;
+  padding-left: 1.2em;
+}
+.markdown-body-li {
+  margin-bottom: 0.4em;
+  line-height: 1.6;
 } 
