@@ -27,8 +27,6 @@ function cleanMarkdown(md: string): string {
   cleaned = cleaned.replace(/(\d+)\.([A-Za-z*\[])/g, '$1. $2');
   // Fix bullet lists: -Thing, *Thing, +Thing → - Thing, * Thing, + Thing
   cleaned = cleaned.replace(/^(\s*)([-*+])([^ \-\*\+])/gm, '$1$2 $3');
-  // Normalize all list markers to dash (optional, can keep as is)
-  // cleaned = cleaned.replace(/^(\s*)[\*\+]/gm, '$1-');
   // Fix common AI mistakes: **word* or *word** → **word**
   cleaned = cleaned.replace(/\*\*([^\*\n]+)\*/g, '**$1**');
   cleaned = cleaned.replace(/\*([^\*\n]+)\*\*/g, '**$1**');
@@ -38,6 +36,12 @@ function cleanMarkdown(md: string): string {
   cleaned = cleaned.replace(/\*{3,}/g, '**');
   // Remove malformed headers (e.g., ### at end of line)
   cleaned = cleaned.replace(/#+\s*$/gm, '');
+  // Insert blank lines after headings
+  cleaned = cleaned.replace(/(#{1,6} .+)(?!\n\n)/g, '$1\n');
+  // Insert blank lines after bolded section titles (e.g., '**Title:**')
+  cleaned = cleaned.replace(/(\*\*[^\n]+?:\*\*)(?!\n\n)/g, '$1\n');
+  // Insert blank lines between consecutive bolded phrases (e.g., '**A**B' -> '**A**\n\nB')
+  cleaned = cleaned.replace(/(\*\*[^\n]+?\*\*)([A-Za-z])/g, '$1\n\n$2');
   // Collapse multiple blank lines
   cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
   // Remove leading/trailing blank lines
