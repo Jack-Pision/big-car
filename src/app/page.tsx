@@ -7,8 +7,8 @@ import { v4 as uuidv4 } from 'uuid';
 import SearchPopup from '../components/SearchPopup';
 import { useRouter } from 'next/navigation';
 
-const OPENROUTER_API_KEY = "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";
-const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
+const NVIDIA_API_KEY = "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";
+const NVIDIA_API_URL = "https://integrate.api.nvidia.com/v1";
 
 interface Message {
   id: string;
@@ -125,15 +125,21 @@ export default function Home() {
     let fullText = "";
     let timeoutId: NodeJS.Timeout | null = null;
     const payload = {
-      model: "openai/gpt-3.5-turbo",
-      messages: msgs.map(({ role, content }) => ({ role, content })),
+      model: "nvidia/llama-3.1-nemotron-ultra-253b-v1",
+      messages: [
+        { role: "system", content: "detailed thinking on" },
+        ...msgs.map(({ role, content }) => ({ role, content }))
+      ],
+      temperature: 0.6,
+      top_p: 0.95,
+      max_tokens: 4096,
       stream: true,
     };
     try {
-      const res = await fetch(OPENROUTER_API_URL, {
+      const res = await fetch(NVIDIA_API_URL, {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+          "Authorization": `Bearer ${NVIDIA_API_KEY}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
