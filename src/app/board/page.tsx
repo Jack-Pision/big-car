@@ -13,8 +13,6 @@ const BOARD_BG = "#FFFFFF";
 const TEXT_COLOR = "#1A1A1A";
 const BORDER_COLOR = "#E5E5E5";
 const SHADOW = "0 4px 24px 0 rgba(0,0,0,0.08)";
-const BOARD_OPENROUTER_API_KEY = "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";
-const BOARD_OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
 const PARAGRAPH_PROMPT = `You are a writing assistant for an academic board tool. Respond ONLY in HTML. Do not include explanations or markdown.
 
@@ -172,7 +170,6 @@ export default function BoardPage() {
   const [showToolbar, setShowToolbar] = useState(true);
   const chatRef = useRef<HTMLDivElement>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [selfRefine, setSelfRefine] = useState(true);
   const router = useRouter();
 
   const editorRef = useRef<HTMLDivElement>(null);
@@ -202,17 +199,15 @@ export default function BoardPage() {
 
     try {
       const payload = {
-        model: "openai/gpt-3.5-turbo",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userMsg }
         ],
         stream: false,
       };
-      const res = await fetch(BOARD_OPENROUTER_API_URL, {
+      const res = await fetch("/api/nvidia", {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${BOARD_OPENROUTER_API_KEY}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
@@ -313,8 +308,6 @@ export default function BoardPage() {
           onClearAll={() => {}}
           onOpenSearch={() => {}}
           onNavigateBoard={() => router.push('/board')}
-          selfRefine={selfRefine}
-          onToggleSelfRefine={() => setSelfRefine(prev => !prev)}
         />
         {/* Main content: Split pane (chat + editor) */}
         <div className="flex-1 h-screen flex flex-col">

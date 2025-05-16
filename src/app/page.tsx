@@ -92,7 +92,6 @@ export default function Home() {
   const inputRef = useRef<HTMLInputElement>(null);
   // Sidebar state and chat history state
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [selfRefine, setSelfRefine] = useState(true);
   const [chats, setChats] = useState<{
     id: string;
     title: string;
@@ -202,7 +201,6 @@ export default function Home() {
       top_p: 0.95,
       max_tokens: 4096,
       stream: true,
-      selfRefine,
     };
     try {
       const res = await fetch(NVIDIA_API_URL, {
@@ -300,8 +298,6 @@ export default function Home() {
         onClearAll={handleClearAll}
         onOpenSearch={() => setSearchPopupOpen(true)}
         onNavigateBoard={() => router.push('/board')}
-        selfRefine={selfRefine}
-        onToggleSelfRefine={() => setSelfRefine(prev => !prev)}
       />
       {/* Welcoming message with fade-out animation */}
       <div className={`w-full flex justify-center items-center relative h-24 md:h-28 transition-opacity duration-500 ${hasUserMessage ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
