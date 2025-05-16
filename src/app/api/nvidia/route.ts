@@ -18,15 +18,24 @@ async function fetchNvidiaAI(messages: any[], stream = false) {
     max_tokens: 4096,
     stream,
   };
-  const res = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
-  });
-  return res;
+  try {
+    const res = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error('NVIDIA API error:', res.status, errorText);
+    }
+    return res;
+  } catch (err) {
+    console.error('NVIDIA API fetch failed:', err);
+    throw err;
+  }
 }
 
 export async function POST(req: NextRequest) {
