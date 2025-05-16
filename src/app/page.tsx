@@ -19,17 +19,26 @@ interface Message {
 // Utility to clean up markdown before rendering
 function cleanMarkdown(md: string): string {
   let cleaned = md;
-  // Fix unclosed bold/italic markers (add closing ** or *)
-  const openBold = (cleaned.match(/\*\*/g) || []).length % 2 !== 0;
-  if (openBold) cleaned += '**';
-  const openItalic = (cleaned.match(/\*/g) || []).length % 2 !== 0;
-  if (openItalic) cleaned += '*';
-  // Remove stray asterisks not part of markdown
-  cleaned = cleaned.replace(/\*\s+/g, '');
+  // Fix common AI mistakes: **word* or *word** → **word**
+  cleaned = cleaned.replace(/\*\*([^\*\n]+)\*/g, '**$1**');
+  cleaned = cleaned.replace(/\*([^\*\n]+)\*\*/g, '**$1**');
+  // Remove stray asterisks not part of markdown (e.g., at line start/end)
+  cleaned = cleaned.replace(/(^|\s)\*+(\s|$)/g, ' ');
+  // Fix missing spaces after list numbers (e.g., 2.**Ask → 2. **Ask)
+  cleaned = cleaned.replace(/(\d+)\.([A-Za-z])/g, '$1. $2');
+  // Remove multiple consecutive asterisks (e.g., ****word**** → **word**)
+  cleaned = cleaned.replace(/\*{3,}/g, '**');
+  // Remove unpaired single asterisks (not part of a word)
+  cleaned = cleaned.replace(/(^|\s)\*([^\*\s]+)\*(?=\s|$)/g, '$1*$2*');
+  // Remove malformed headers (e.g., ### at end of line)
+  cleaned = cleaned.replace(/#+\s*$/gm, '');
   // Collapse multiple blank lines
   cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
   // Remove leading/trailing blank lines
   cleaned = cleaned.replace(/^\s+|\s+$/g, '');
+  // Remove any remaining unmatched asterisks at line start/end
+  cleaned = cleaned.replace(/(^|\n)\*+(?=\s|$)/g, '');
+  cleaned = cleaned.replace(/\*+(?=\n|$)/g, '');
   return cleaned;
 }
 
