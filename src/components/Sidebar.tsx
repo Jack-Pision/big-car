@@ -127,6 +127,20 @@ export default function Sidebar({
                 </svg>
                 <span className="font-medium">Mind Flow</span>
               </button>
+              {/* Visual Learning Navigation Button */}
+              <button
+                className="mx-4 mb-2 flex items-center gap-2 px-3 py-2 rounded-lg text-[#6B7280] hover:bg-[#F5F5F5] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/10"
+                onClick={() => router.push('/visual-learning')}
+                aria-label="Go to Visual Learning"
+                tabIndex={0}
+              >
+                {/* Modern eye icon */}
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+                <span className="font-medium">Visual learning</span>
+              </button>
               {/* Chat List */}
               <div className="flex-1 overflow-y-auto px-4 pb-4">
                 {chats.length === 0 && (
