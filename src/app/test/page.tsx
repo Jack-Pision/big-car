@@ -38,7 +38,7 @@ If something can't be answered, admit it honestly and suggest how to find the an
 
 When writing math, always use \$...\$ for inline math and \$\$...\$\$ for block equations so that math renders beautifully.
 
-For every important equation, formula, or step result, use block math with \$\$...\$\$ so it appears large and centered. Use inline math only for short expressions within sentences.`;
+For every equation, formula, or calculation step, always use block math with \$\$...\$\$ so it appears large and centered. Do not use inline math for equations or steps—only use inline math for very short expressions within sentences.`;
 
 function cleanAIResponse(text: string) {
   return text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
