@@ -112,6 +112,21 @@ export default function Sidebar({
                 <svg width="20" height="20" fill="none" stroke="#6B7280" strokeWidth="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 <span className="font-medium">Test</span>
               </button>
+              {/* Mind Flow Navigation Button */}
+              <button
+                className="mx-4 mb-2 flex items-center gap-2 px-3 py-2 rounded-lg text-[#6B7280] hover:bg-[#F5F5F5] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/10"
+                onClick={() => router.push('/mind-flow')}
+                aria-label="Go to Mind Flow"
+                tabIndex={0}
+              >
+                {/* Minimalist brain icon */}
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M8 8C8 5.8 9.8 4 12 4s4 1.8 4 4c0 1.1-.9 2-2 2h-4c-1.1 0-2-.9-2-2z"/>
+                  <path d="M12 4v16"/>
+                  <path d="M8 16c0 2.2 1.8 4 4 4s4-1.8 4-4c0-1.1-.9-2-2-2h-4c-1.1 0-2 .9-2 2z"/>
+                </svg>
+                <span className="font-medium">Mind Flow</span>
+              </button>
               {/* Chat List */}
               <div className="flex-1 overflow-y-auto px-4 pb-4">
                 {chats.length === 0 && (
