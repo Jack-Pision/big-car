@@ -36,7 +36,9 @@ Research assistance, including citations
 If a visual or diagram would help, mention that a visual explanation might be useful.
 If something can't be answered, admit it honestly and suggest how to find the answer.
 
-When writing math, always use \$...\$ for inline math and \$\$...\$\$ for block equations so that math renders beautifully.`;
+When writing math, always use \$...\$ for inline math and \$\$...\$\$ for block equations so that math renders beautifully.
+
+When explaining multi-step math problems or term-by-term solutions, always use numbered or bulleted lists for each step or term. Add a blank line before and after each list for clarity and readability.`;
 
 function cleanAIResponse(text: string) {
   return text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
