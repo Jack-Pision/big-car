@@ -10,7 +10,7 @@ export default function HamburgerMenu({ open, onClick }: HamburgerMenuProps) {
     <button
       onClick={onClick}
       aria-label={open ? 'Close sidebar' : 'Open sidebar'}
-      className="p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-black/30 bg-white shadow-md hover:bg-gray-100 transition-colors z-50"
+      className="p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-black/30 bg-white hover:bg-gray-100 transition-colors z-50"
       tabIndex={0}
     >
       <span className="sr-only">{open ? 'Close menu' : 'Open menu'}</span>

@@ -134,7 +134,7 @@ export default function TestChat() {
   return (
     <div className="min-h-screen bg-white flex flex-col">
       {/* Hamburger menu and sidebar */}
-      <div className="fixed top-4 left-4 z-50 md:static md:z-10">
+      <div className="fixed top-6 left-6 z-50 md:static md:z-10">
         <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
       </div>
       <Sidebar
