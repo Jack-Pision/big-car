@@ -1,6 +1,5 @@
 "use client";
 import { useState, useRef, useLayoutEffect, useEffect } from "react";
-import ReactMarkdown from 'react-markdown';
 
 const SYSTEM_PROMPT = `You are a friendly, knowledgeable AI tutor that helps students with their studies. You can answer questions, explain concepts, solve math problems step by step, assist with research, and provide clear, concise, and engaging academic help across all subjects.
 
@@ -121,20 +120,20 @@ export default function TestChat() {
           </h1>
         </div>
         {/* Conversation */}
-        <div className="w-full max-w-xl mx-auto flex flex-col gap-4 items-center justify-center z-10 pt-12 pb-4">
+        <div className="w-full max-w-2xl mx-auto flex flex-col gap-4 items-center justify-center z-10 pt-12 pb-4">
           {messages.map((msg, i) => (
             msg.role === "assistant" ? (
               <div
                 key={i}
-                className="w-full bg-white border border-gray-200 shadow-md rounded-xl px-6 py-5 self-start text-gray-900 text-base md:text-lg leading-relaxed markdown-block"
+                className="w-full text-left text-base md:text-lg text-gray-900 whitespace-pre-line"
                 style={{ wordBreak: "break-word" }}
               >
-                <ReactMarkdown>{cleanAIResponse(msg.content)}</ReactMarkdown>
+                {cleanAIResponse(msg.content)}
               </div>
             ) : (
               <div
                 key={i}
-                className="px-5 py-3 rounded-2xl shadow bg-black text-white self-end max-w-[80%] text-lg"
+                className="px-5 py-3 rounded-2xl shadow bg-black text-white self-end max-w-full text-lg"
                 style={{ wordBreak: "break-word" }}
               >
                 {msg.content}
