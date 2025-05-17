@@ -14,39 +14,15 @@ export default function HamburgerMenu({ open, onClick }: HamburgerMenuProps) {
       tabIndex={0}
     >
       <span className="sr-only">{open ? 'Close menu' : 'Open menu'}</span>
-      <motion.div
-        className="relative w-6 h-6 flex flex-col justify-center items-center"
-        initial={false}
-        animate={open ? 'open' : 'closed'}
-      >
-        {/* Top bar */}
-        <motion.span
-          className="absolute h-0.5 w-6 bg-black rounded"
-          variants={{
-            closed: { rotate: 0, y: -7 },
-            open: { rotate: 45, y: 0 },
-          }}
-          transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-        />
-        {/* Middle bar */}
-        <motion.span
-          className="absolute h-0.5 w-6 bg-black rounded"
-          variants={{
-            closed: { opacity: 1, scale: 1 },
-            open: { opacity: 0, scale: 0.5 },
-          }}
-          transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-        />
-        {/* Bottom bar */}
-        <motion.span
-          className="absolute h-0.5 w-6 bg-black rounded"
-          variants={{
-            closed: { rotate: 0, y: 7 },
-            open: { rotate: -45, y: 0 },
-          }}
-          transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-        />
-      </motion.div>
+      <span className="flex items-center justify-center w-6 h-6">
+        {/* New static SVG icon */}
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#000000" strokeLinecap="round" strokeLinejoin="round" height="24" width="24">
+          <desc>
+            Columns 2 Streamline Icon: https://streamlinehq.com
+          </desc>
+          <path d="M3 4a1 1 0 0 1 1 -1h16a1 1 0 0 1 1 1v16a1 1 0 0 1 -1 1H4a1 1 0 0 1 -1 -1zm9 -1v18" strokeWidth="2"></path>
+        </svg>
+      </span>
     </button>
   );
 } 
