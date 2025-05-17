@@ -1,6 +1,7 @@
 "use client";
 
 import Sidebar from "../../components/Sidebar";
+import HamburgerMenu from "../../components/HamburgerMenu";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -10,7 +11,10 @@ export default function VisualLearningPage() {
 
   return (
     <div className="flex flex-row min-h-screen bg-white">
-      {/* Sidebar (visible for navigation) */}
+      {/* Hamburger menu and sidebar */}
+      <div className="fixed top-4 left-4 z-50 md:static md:z-10">
+        <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
+      </div>
       <Sidebar
         open={sidebarOpen}
         chats={[]}
