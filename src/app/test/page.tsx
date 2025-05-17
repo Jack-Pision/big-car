@@ -166,7 +166,7 @@ export default function TestChat() {
           </h1>
         </div>
         {/* Conversation */}
-        <div className="w-full max-w-3xl mx-auto flex flex-col gap-4 items-center justify-center z-10 pt-12 pb-4">
+        <div className="w-full max-w-5xl mx-auto flex flex-col gap-4 items-center justify-center z-10 pt-12 pb-4">
           {messages.map((msg, i) => (
             msg.role === "assistant" ? (
               <div
@@ -191,7 +191,7 @@ export default function TestChat() {
       {/* Fixed Input Bar at Bottom */}
       <div ref={inputBarRef} className="fixed left-0 right-0 bottom-0 w-full flex justify-center z-50" style={{ pointerEvents: 'auto' }}>
         <form
-          className="w-full max-w-3xl flex flex-col gap-2 bg-white rounded-2xl shadow-lg px-6 py-4 mx-4 mb-4 border border-gray-300"
+          className="w-full max-w-5xl flex flex-col gap-2 bg-white rounded-2xl shadow-lg px-6 py-4 mx-4 mb-4 border border-gray-300"
           style={{ boxShadow: "0 4px 32px 0 rgba(0,0,0,0.08)" }}
           onSubmit={handleSend}
         >
