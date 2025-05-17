@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef, useLayoutEffect } from "react";
 
 const SYSTEM_PROMPT = `You are a friendly, knowledgeable AI tutor that helps students with their studies. You can answer questions, explain concepts, solve math problems step by step, assist with research, and provide clear, concise, and engaging academic help across all subjects.
 
@@ -37,6 +37,18 @@ export default function TestChat() {
   const [loading, setLoading] = useState(false);
   const [messages, setMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
   const [showHeading, setShowHeading] = useState(true);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const BASE_HEIGHT = 48; // px (h-12)
+  const MAX_HEIGHT = BASE_HEIGHT * 3; // 3x
+
+  // Auto-resize textarea
+  useLayoutEffect(() => {
+    const ta = textareaRef.current;
+    if (ta) {
+      ta.style.height = 'auto';
+      ta.style.height = Math.min(ta.scrollHeight, MAX_HEIGHT) + 'px';
+    }
+  }, [input]);
 
   async function handleSend(e?: React.FormEvent) {
     if (e) e.preventDefault();
@@ -105,49 +117,51 @@ export default function TestChat() {
       {/* Floating Input Card */}
       <div className="w-full flex justify-center pb-8">
         <form
-          className="w-full max-w-2xl flex items-center gap-2 bg-white rounded-2xl shadow-lg px-6 py-4 mx-4"
+          className="w-full max-w-2xl flex items-start gap-2 bg-white rounded-2xl shadow-lg px-6 py-4 mx-4"
           style={{ boxShadow: "0 4px 32px 0 rgba(0,0,0,0.08)" }}
           onSubmit={handleSend}
         >
           {/* Icons */}
-          <button type="button" className="p-2 rounded-full hover:bg-gray-100">
+          <button type="button" className="p-2 rounded-full hover:bg-gray-100 mt-1">
             <svg width="22" height="22" fill="none" stroke="#222" strokeWidth="2" viewBox="0 0 24 24">
               <circle cx="11" cy="11" r="7" />
               <line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
           </button>
-          <button type="button" className="p-2 rounded-full hover:bg-gray-100">
+          <button type="button" className="p-2 rounded-full hover:bg-gray-100 mt-1">
             <svg width="22" height="22" fill="none" stroke="#222" strokeWidth="2" viewBox="0 0 24 24">
               <line x1="12" y1="5" x2="12" y2="19" />
               <line x1="5" y1="12" x2="19" y2="12" />
             </svg>
           </button>
-          <button type="button" className="p-2 rounded-full hover:bg-gray-100">
+          <button type="button" className="p-2 rounded-full hover:bg-gray-100 mt-1">
             <svg width="22" height="22" fill="none" stroke="#222" strokeWidth="2" viewBox="0 0 24 24">
               <circle cx="12" cy="12" r="10" />
               <path d="M12 6v6l4 2" />
             </svg>
           </button>
-          <button type="button" className="p-2 rounded-full hover:bg-gray-100">
+          <button type="button" className="p-2 rounded-full hover:bg-gray-100 mt-1">
             <svg width="22" height="22" fill="none" stroke="#222" strokeWidth="2" viewBox="0 0 24 24">
               <rect x="3" y="5" width="18" height="14" rx="2" />
               <circle cx="8.5" cy="12.5" r="1.5" />
               <path d="M21 15l-5-5L5 19" />
             </svg>
           </button>
-          {/* Input */}
+          {/* Textarea */}
           <textarea
+            ref={textareaRef}
             value={input}
             onChange={e => setInput(e.target.value)}
-            className="flex-[3] min-w-0 border-none outline-none bg-transparent px-4 text-gray-700 text-lg placeholder-gray-400 resize-none h-12 max-h-36 overflow-auto"
+            className="flex-[3] min-w-0 border-none outline-none bg-transparent px-4 text-gray-700 text-lg placeholder-gray-400 resize-none overflow-auto"
             placeholder="Ask anything"
             disabled={loading}
             rows={1}
+            style={{height: '48px', maxHeight: '144px'}}
           />
           {/* Send Button */}
           <button
             type="submit"
-            className="w-10 h-10 flex items-center justify-center rounded-full bg-black text-white hover:bg-gray-900 transition"
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-black text-white hover:bg-gray-900 transition mt-1"
             disabled={loading || !input.trim()}
           >
             <svg width="22" height="22" fill="none" stroke="#fff" strokeWidth="2" viewBox="0 0 24 24">
