@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useLayoutEffect } from "react";
+import { useState, useRef, useLayoutEffect, useEffect } from "react";
 
 const SYSTEM_PROMPT = `You are a friendly, knowledgeable AI tutor that helps students with their studies. You can answer questions, explain concepts, solve math problems step by step, assist with research, and provide clear, concise, and engaging academic help across all subjects.
 
@@ -38,9 +38,12 @@ export default function TestChat() {
   const [messages, setMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
   const [showHeading, setShowHeading] = useState(true);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const inputBarRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [inputBarHeight, setInputBarHeight] = useState(96); // px, default
   const BASE_HEIGHT = 48; // px (h-12)
   const MAX_HEIGHT = BASE_HEIGHT * 3; // 3x
-  const INPUT_BAR_HEIGHT = 72; // px (py-4 + px-6 + icons row)
+  const EXTRA_GAP = 32; // px
 
   // Auto-resize textarea
   useLayoutEffect(() => {
@@ -50,6 +53,20 @@ export default function TestChat() {
       ta.style.height = Math.min(ta.scrollHeight, MAX_HEIGHT) + 'px';
     }
   }, [input]);
+
+  // Measure input bar height dynamically
+  useLayoutEffect(() => {
+    if (inputBarRef.current) {
+      setInputBarHeight(inputBarRef.current.offsetHeight);
+    }
+  }, [input]);
+
+  // Auto-scroll to bottom on new message
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
 
   async function handleSend(e?: React.FormEvent) {
     if (e) e.preventDefault();
@@ -88,7 +105,11 @@ export default function TestChat() {
   return (
     <div className="min-h-screen bg-white flex flex-col">
       {/* Conversation area (scrollable) */}
-      <div className="flex-1 overflow-y-auto w-full flex flex-col items-center justify-center relative" style={{ paddingBottom: `${INPUT_BAR_HEIGHT + 24}px` }}>
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto w-full flex flex-col items-center justify-center relative"
+        style={{ paddingBottom: `${inputBarHeight + EXTRA_GAP}px` }}
+      >
         <div
           className={`absolute left-0 right-0 flex flex-col items-center transition-opacity duration-700 ${
             showHeading && messages.length === 0 ? "opacity-100" : "opacity-0 pointer-events-none"
@@ -116,7 +137,7 @@ export default function TestChat() {
         </div>
       </div>
       {/* Fixed Input Bar at Bottom */}
-      <div className="fixed left-0 right-0 bottom-0 w-full flex justify-center z-50" style={{ pointerEvents: 'auto' }}>
+      <div ref={inputBarRef} className="fixed left-0 right-0 bottom-0 w-full flex justify-center z-50" style={{ pointerEvents: 'auto' }}>
         <form
           className="w-full max-w-2xl flex flex-col gap-2 bg-white rounded-2xl shadow-lg px-6 py-4 mx-4 mb-4"
           style={{ boxShadow: "0 4px 32px 0 rgba(0,0,0,0.08)" }}
