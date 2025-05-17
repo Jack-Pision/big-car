@@ -1,6 +1,10 @@
 "use client";
 import { useState, useRef, useLayoutEffect, useEffect } from "react";
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 import Sidebar from '../../components/Sidebar';
 import HamburgerMenu from '../../components/HamburgerMenu';
 import { useRouter } from 'next/navigation';
@@ -174,7 +178,13 @@ export default function TestChat() {
                 className="w-full markdown-body text-left"
                 style={{ wordBreak: "break-word" }}
               >
-                <ReactMarkdown components={markdownComponents}>{msg.content}</ReactMarkdown>
+                <ReactMarkdown
+                  components={markdownComponents}
+                  remarkPlugins={[remarkGfm, remarkMath]}
+                  rehypePlugins={[rehypeKatex]}
+                >
+                  {msg.content}
+                </ReactMarkdown>
               </div>
             ) : (
               <div
