@@ -33,6 +33,27 @@ function cleanAIResponse(text: string) {
   return text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
 }
 
+const markdownComponents = {
+  h1: (props: React.ComponentProps<'h1'>) => (
+    <h1
+      className="ai-title text-[2.5rem] font-medium leading-tight mb-2 mt-4"
+      {...props}
+    />
+  ),
+  h2: (props: React.ComponentProps<'h2'>) => (
+    <h2
+      className="ai-section-title text-[1.7rem] font-medium leading-snug mb-1 mt-3"
+      {...props}
+    />
+  ),
+  p: (props: React.ComponentProps<'p'>) => (
+    <p
+      className="ai-body-text text-[1.08rem] font-normal leading-relaxed mb-2"
+      {...props}
+    />
+  ),
+};
+
 export default function TestChat() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -129,7 +150,7 @@ export default function TestChat() {
                 className="w-full markdown-body text-left"
                 style={{ wordBreak: "break-word" }}
               >
-                <ReactMarkdown>{msg.content}</ReactMarkdown>
+                <ReactMarkdown components={markdownComponents}>{msg.content}</ReactMarkdown>
               </div>
             ) : (
               <div
