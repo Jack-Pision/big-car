@@ -126,10 +126,10 @@ export default function TestChat() {
             msg.role === "assistant" ? (
               <div
                 key={i}
-                className="w-full text-left text-base md:text-lg text-gray-900 whitespace-pre-line markdown-body"
+                className="w-full markdown-body text-left"
                 style={{ wordBreak: "break-word" }}
               >
-                <ReactMarkdown>{cleanAIResponse(msg.content)}</ReactMarkdown>
+                <ReactMarkdown>{msg.content}</ReactMarkdown>
               </div>
             ) : (
               <div
