@@ -1,6 +1,9 @@
 "use client";
 import { useState, useRef, useLayoutEffect, useEffect } from "react";
 import ReactMarkdown from 'react-markdown';
+import Sidebar from '../../components/Sidebar';
+import HamburgerMenu from '../../components/HamburgerMenu';
+import { useRouter } from 'next/navigation';
 
 const SYSTEM_PROMPT = `You are a friendly, knowledgeable AI tutor that helps students with their studies. You can answer questions, explain concepts, solve math problems step by step, assist with research, and provide clear, concise, and engaging academic help across all subjects.
 
@@ -66,6 +69,10 @@ export default function TestChat() {
   const BASE_HEIGHT = 48; // px (h-12)
   const MAX_HEIGHT = BASE_HEIGHT * 3; // 3x
   const EXTRA_GAP = 32; // px
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [chats, setChats] = useState([]); // You can implement chat history if needed
+  const [activeChatId, setActiveChatId] = useState(null);
+  const router = useRouter();
 
   // Auto-resize textarea
   useLayoutEffect(() => {
@@ -126,6 +133,23 @@ export default function TestChat() {
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
+      {/* Hamburger menu and sidebar */}
+      <div className="fixed top-4 left-4 z-50 md:static md:z-10">
+        <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
+      </div>
+      <Sidebar
+        open={sidebarOpen}
+        chats={chats}
+        activeChatId={activeChatId}
+        onClose={() => setSidebarOpen(false)}
+        onNewChat={() => {}}
+        onSelectChat={() => {}}
+        onEditChat={() => {}}
+        onDeleteChat={() => {}}
+        onClearAll={() => {}}
+        onOpenSearch={() => {}}
+        onNavigateBoard={() => router.push('/board')}
+      />
       {/* Conversation area (scrollable) */}
       <div
         ref={scrollRef}
