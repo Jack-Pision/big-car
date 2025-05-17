@@ -221,19 +221,6 @@ export default function TestChat() {
                   <line x1="5" y1="12" x2="19" y2="12" />
                 </svg>
               </button>
-              <button type="button" className="p-2 rounded-full hover:bg-gray-100">
-                <svg width="22" height="22" fill="none" stroke="#222" strokeWidth="2" viewBox="0 0 24 24">
-                  <circle cx="12" cy="12" r="10" />
-                  <path d="M12 6v6l4 2" />
-                </svg>
-              </button>
-              <button type="button" className="p-2 rounded-full hover:bg-gray-100">
-                <svg width="22" height="22" fill="none" stroke="#222" strokeWidth="2" viewBox="0 0 24 24">
-                  <rect x="3" y="5" width="18" height="14" rx="2" />
-                  <circle cx="8.5" cy="12.5" r="1.5" />
-                  <path d="M21 15l-5-5L5 19" />
-                </svg>
-              </button>
             </div>
             <button
               type="submit"
