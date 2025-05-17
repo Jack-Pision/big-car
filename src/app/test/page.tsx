@@ -136,13 +136,13 @@ export default function TestChat() {
             </svg>
           </button>
           {/* Input */}
-          <input
-            type="text"
+          <textarea
             value={input}
-            onChange={(e) => setInput(e.target.value)}
-            className="flex-[2] min-w-0 border-none outline-none bg-transparent px-4 text-gray-700 text-lg placeholder-gray-400"
+            onChange={e => setInput(e.target.value)}
+            className="flex-[3] min-w-0 border-none outline-none bg-transparent px-4 text-gray-700 text-lg placeholder-gray-400 resize-none h-12 max-h-36 overflow-auto"
             placeholder="Ask anything"
             disabled={loading}
+            rows={1}
           />
           {/* Send Button */}
           <button
