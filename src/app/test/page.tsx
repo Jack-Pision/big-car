@@ -40,6 +40,7 @@ export default function TestChat() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const BASE_HEIGHT = 48; // px (h-12)
   const MAX_HEIGHT = BASE_HEIGHT * 3; // 3x
+  const INPUT_BAR_HEIGHT = 72; // px (py-4 + px-6 + icons row)
 
   // Auto-resize textarea
   useLayoutEffect(() => {
@@ -86,8 +87,8 @@ export default function TestChat() {
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
-      {/* Centered Heading with fade-out */}
-      <div className="flex-1 flex flex-col items-center justify-center relative">
+      {/* Conversation area (scrollable) */}
+      <div className="flex-1 overflow-y-auto w-full flex flex-col items-center justify-center relative" style={{ paddingBottom: `${INPUT_BAR_HEIGHT + 24}px` }}>
         <div
           className={`absolute left-0 right-0 flex flex-col items-center transition-opacity duration-700 ${
             showHeading && messages.length === 0 ? "opacity-100" : "opacity-0 pointer-events-none"
@@ -98,7 +99,7 @@ export default function TestChat() {
           </h1>
         </div>
         {/* Conversation */}
-        <div className="w-full max-w-xl mx-auto flex flex-col gap-4 items-center justify-center z-10">
+        <div className="w-full max-w-xl mx-auto flex flex-col gap-4 items-center justify-center z-10 pt-12 pb-4">
           {messages.map((msg, i) => (
             <div
               key={i}
@@ -114,10 +115,10 @@ export default function TestChat() {
           ))}
         </div>
       </div>
-      {/* Floating Input Card */}
-      <div className="w-full flex justify-center pb-8">
+      {/* Fixed Input Bar at Bottom */}
+      <div className="fixed left-0 right-0 bottom-0 w-full flex justify-center z-50" style={{ pointerEvents: 'auto' }}>
         <form
-          className="w-full max-w-2xl flex flex-col gap-2 bg-white rounded-2xl shadow-lg px-6 py-4 mx-4"
+          className="w-full max-w-2xl flex flex-col gap-2 bg-white rounded-2xl shadow-lg px-6 py-4 mx-4 mb-4"
           style={{ boxShadow: "0 4px 32px 0 rgba(0,0,0,0.08)" }}
           onSubmit={handleSend}
         >
