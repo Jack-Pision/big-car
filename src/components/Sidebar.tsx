@@ -60,7 +60,7 @@ export default function Sidebar({
             initial={{ x: '-100%' }}
             animate={{ x: 0 }}
             exit={{ x: '-100%' }}
-            transition={{ duration: 0.2, ease: 'easeInOut' }}
+            transition={{ duration: 0.12, ease: [0.4, 0, 0.2, 1] }}
             className="fixed inset-y-0 left-0 z-40 w-72 max-w-full bg-white shadow-xl flex flex-col border-r border-gray-200 h-full transition-all"
             aria-label="Sidebar navigation"
           >
