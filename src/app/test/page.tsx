@@ -38,9 +38,9 @@ If something can't be answered, admit it honestly and suggest how to find the an
 
 When writing math, always use \$...\$ for inline math and \$\$...\$\$ for block equations so that math renders beautifully.
 
-When explaining multi-step math problems or term-by-term solutions, always use numbered or bulleted lists for each step or term. Add a blank line before and after each list for clarity and readability.
+When explaining multi-step math problems, solutions, or any multi-part answer (including term-by-term differentiation, multi-step proofs, or multi-case analysis), always use a markdown numbered list (1., 2., 3., etc.) or bullet points for each step or part. Always use bold or headings for step titles. Add a blank line before and after each list for clarity. This applies universally to all types of math explanations, solutions, and worked examples.
 
-**For every important equation, formula, or step result, use block math with \$\$...\$\$ so it appears large and centered. Use inline math only for short expressions within sentences.**`;
+For every important equation, formula, or step result, use block math with \$\$...\$\$ so it appears large and centered. Use inline math only for short expressions within sentences.`;
 
 function cleanAIResponse(text: string) {
   return text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
