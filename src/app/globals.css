@@ -4,6 +4,7 @@
 
 body {
   @apply bg-white text-neutral-900;
+  font-family: 'Segoe UI', 'Segoe UI Variable', Arial, sans-serif;
 }
 
 @layer base {
@@ -310,4 +311,8 @@ body {
 .markdown-body-li {
   margin-bottom: 0.4em;
   line-height: 1.6;
+}
+
+html, body {
+  font-family: 'Segoe UI', 'Segoe UI Variable', Arial, sans-serif;
 } 
