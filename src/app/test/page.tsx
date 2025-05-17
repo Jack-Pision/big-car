@@ -140,7 +140,7 @@ export default function TestChat() {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            className="flex-1 border-none outline-none bg-transparent px-4 text-gray-700 text-lg placeholder-gray-400"
+            className="flex-[2] min-w-0 border-none outline-none bg-transparent px-4 text-gray-700 text-lg placeholder-gray-400"
             placeholder="Ask anything"
             disabled={loading}
           />
