@@ -123,7 +123,7 @@ export default function TestChat() {
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
     try {
-      const res = await fetch("/api/nvidia-test", {
+      const res = await fetch("/api/nvidia", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: [
@@ -173,7 +173,7 @@ export default function TestChat() {
               role: "user" as const,
               content: `What is in this image? <img src=\"${base64}\" />`,
             };
-            const res = await fetch("/api/nvidia-test", {
+            const res = await fetch("/api/nvidia", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ messages: [userMsg] }),
@@ -208,7 +208,7 @@ export default function TestChat() {
               content: `What is in this image?`,
               assets: [assetData.assetId],
             };
-            const res = await fetch("/api/nvidia-test", {
+            const res = await fetch("/api/nvidia", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ messages: [userMsg] }),
