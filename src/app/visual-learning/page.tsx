@@ -39,6 +39,8 @@ export default function VisualLearningPage() {
   const [manimLoading, setManimLoading] = useState(false);
   const [renderError, setRenderError] = useState<string | null>(null);
   const [lastManimCode, setLastManimCode] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
 
   // Auto-scroll to bottom on new message
   useEffect(() => {
@@ -134,6 +136,39 @@ export default function VisualLearningPage() {
     setLoading(false);
   }
 
+  function handleRetry() {
+    if (lastManimCode) {
+      setManimLoading(true);
+      setVideoUrl(null);
+      setRenderError(null);
+      (async () => {
+        try {
+          const formData = new FormData();
+          formData.append("code", lastManimCode);
+          const manimRes = await fetch("https://big-car-1.onrender.com/render", {
+            method: "POST",
+            body: formData,
+          });
+          if (manimRes.ok) {
+            const blob = await manimRes.blob();
+            const url = URL.createObjectURL(blob);
+            setVideoUrl(url);
+            setRenderError(null);
+            setRetryKey(prev => prev + 1);
+          } else {
+            const errorData = await manimRes.json();
+            setRenderError(errorData.error || "Unknown rendering error");
+            setVideoUrl(null);
+          }
+        } catch (err) {
+          setRenderError("Failed to communicate with backend: " + (err instanceof Error ? err.message : String(err)));
+          setVideoUrl(null);
+        }
+        setManimLoading(false);
+      })();
+    }
+  }
+
   return (
     <div className="min-h-screen flex flex-row bg-white">
       {/* Hamburger menu and sidebar */}
@@ -222,9 +257,30 @@ export default function VisualLearningPage() {
                 {lastManimCode}
               </pre>
             )}
-            <div style={{ width: '100%', maxWidth: 700, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 280, background: '#fafbfc', borderRadius: 8, boxShadow: '0 1px 4px #0001', marginTop: 8 }}>
+            <div style={{ width: '100%', maxWidth: 700, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: 320, background: '#fafbfc', borderRadius: 12, boxShadow: '0 1px 8px #0002', marginTop: 8, padding: 24 }}>
               {videoUrl ? (
-                <video src={videoUrl} controls autoPlay style={{ width: "100%", maxHeight: "260px", borderRadius: "8px" }} />
+                <>
+                  <video
+                    key={retryKey}
+                    ref={videoRef}
+                    src={videoUrl}
+                    style={{ width: '100%', maxHeight: 260, borderRadius: 8, background: '#222' }}
+                  />
+                  <div style={{ display: 'flex', gap: 16, marginTop: 16, justifyContent: 'center' }}>
+                    <button
+                      onClick={() => videoRef.current?.play()}
+                      style={{ padding: '8px 20px', borderRadius: 6, background: '#1a73e8', color: '#fff', border: 'none', fontWeight: 600, fontSize: 16, cursor: 'pointer' }}
+                    >Play</button>
+                    <button
+                      onClick={() => videoRef.current?.pause()}
+                      style={{ padding: '8px 20px', borderRadius: 6, background: '#e8711a', color: '#fff', border: 'none', fontWeight: 600, fontSize: 16, cursor: 'pointer' }}
+                    >Pause</button>
+                    <button
+                      onClick={handleRetry}
+                      style={{ padding: '8px 20px', borderRadius: 6, background: '#222', color: '#fff', border: 'none', fontWeight: 600, fontSize: 16, cursor: 'pointer' }}
+                    >Retry</button>
+                  </div>
+                </>
               ) : (
                 <div style={{ color: "#888", textAlign: 'center', width: '100%' }}>AI-generated animations will appear here.</div>
               )}
