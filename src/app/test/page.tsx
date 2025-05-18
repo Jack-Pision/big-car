@@ -124,16 +124,7 @@ export default function TestChat() {
           userMsg
         ] }),
       });
-      const text = await res.text();
-      let data;
-      try {
-        data = text ? JSON.parse(text) : null;
-      } catch (e) {
-        throw new Error("Invalid JSON from server");
-      }
-      if (!data) {
-        throw new Error("Empty response from server");
-      }
+      const data = await res.json();
       const aiMsg = {
         role: "assistant" as const,
         content: data.choices?.[0]?.message?.content || "No response",
@@ -173,16 +164,7 @@ export default function TestChat() {
           method: "POST",
           body: formData,
         });
-        const text = await res.text();
-        let data;
-        try {
-          data = text ? JSON.parse(text) : null;
-        } catch (e) {
-          throw new Error("Invalid JSON from server");
-        }
-        if (!data) {
-          throw new Error("Empty response from server");
-        }
+        const data = await res.json();
         const aiMsg = {
           role: "assistant" as const,
           content: data.choices?.[0]?.message?.content || "No response",
