@@ -216,17 +216,19 @@ export default function VisualLearningPage() {
             </form>
           </div>
           {/* Right Pane: Video player or placeholder */}
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", height: '100%' }}>
             {lastManimCode && (
-              <pre style={{ background: "#f5f5f5", color: "#222", padding: 12, borderRadius: 8, width: "100%", maxWidth: 700, marginBottom: 16, overflowX: "auto", fontSize: 14 }}>
+              <pre style={{ background: "#f5f5f5", color: "#222", padding: 12, borderRadius: 8, width: "100%", maxWidth: 700, marginBottom: 12, overflowX: "auto", overflowY: "auto", fontSize: 14, maxHeight: 220 }}>
                 {lastManimCode}
               </pre>
             )}
-            {videoUrl ? (
-              <video src={videoUrl} controls autoPlay style={{ width: "100%", maxHeight: "500px", borderRadius: "8px" }} />
-            ) : (
-              <div style={{ color: "#888" }}>AI-generated animations will appear here.</div>
-            )}
+            <div style={{ width: '100%', maxWidth: 700, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 280, background: '#fafbfc', borderRadius: 8, boxShadow: '0 1px 4px #0001', marginTop: 8 }}>
+              {videoUrl ? (
+                <video src={videoUrl} controls autoPlay style={{ width: "100%", maxHeight: "260px", borderRadius: "8px" }} />
+              ) : (
+                <div style={{ color: "#888", textAlign: 'center', width: '100%' }}>AI-generated animations will appear here.</div>
+              )}
+            </div>
           </div>
         </Split>
       </div>
