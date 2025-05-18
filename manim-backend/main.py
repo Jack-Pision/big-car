@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 import uuid
 import subprocess
+import sys
 
 app = FastAPI()
 
@@ -24,6 +25,7 @@ async def render_manim(code: str = Form(...)):
     """
     Accepts Manim code as a string, writes it to a temp file, renders it, and returns the video file.
     """
+    print("Received code:\n", code, file=sys.stderr)
     scene_id = str(uuid.uuid4())
     py_file = os.path.join(RENDER_DIR, f"scene_{scene_id}.py")
     video_file = os.path.join(RENDER_DIR, f"scene_{scene_id}.mp4")
