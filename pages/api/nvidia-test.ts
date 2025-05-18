@@ -79,7 +79,7 @@ handler.post(async (req: NextApiRequest & { file?: Express.Multer.File }, res: N
   }
 });
 
-handler.all((req, res) => {
+handler.all((req: NextApiRequest, res: NextApiResponse) => {
   res.status(405).json({ error: "Method not allowed" });
 });
 
