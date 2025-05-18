@@ -38,6 +38,7 @@ export default function VisualLearningPage() {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [manimLoading, setManimLoading] = useState(false);
   const [renderError, setRenderError] = useState<string | null>(null);
+  const [lastManimCode, setLastManimCode] = useState<string | null>(null);
 
   // Auto-scroll to bottom on new message
   useEffect(() => {
@@ -74,6 +75,7 @@ export default function VisualLearningPage() {
       setMessages(prev => [...prev, { role: "assistant", content: aiContent }]);
       // Detect Manim code (simple heuristic)
       let manimCode = cleanManimCode(aiContent);
+      setLastManimCode(manimCode);
       console.log("Sending Manim code:", manimCode);
       if (/from manim import/.test(aiContent) && /class [A-Za-z0-9_]+\(Scene\)/.test(aiContent)) {
         setManimLoading(true);
@@ -214,7 +216,12 @@ export default function VisualLearningPage() {
             </form>
           </div>
           {/* Right Pane: Video player or placeholder */}
-          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+            {lastManimCode && (
+              <pre style={{ background: "#f5f5f5", color: "#222", padding: 12, borderRadius: 8, width: "100%", maxWidth: 700, marginBottom: 16, overflowX: "auto", fontSize: 14 }}>
+                {lastManimCode}
+              </pre>
+            )}
             {videoUrl ? (
               <video src={videoUrl} controls autoPlay style={{ width: "100%", maxHeight: "500px", borderRadius: "8px" }} />
             ) : (
