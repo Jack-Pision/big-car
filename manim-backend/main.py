@@ -39,6 +39,7 @@ async def render_manim(code: str = Form(...)):
         result = subprocess.run([
             "manim", py_file, "-qm", "--format=mp4", "-o", video_file
         ], capture_output=True, text=True, timeout=60)
+        print("Manim stderr:\n", result.stderr, file=sys.stderr)
         if result.returncode != 0:
             return JSONResponse(status_code=400, content={"error": result.stderr})
         # Find the output video file

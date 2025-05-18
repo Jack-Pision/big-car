@@ -67,11 +67,13 @@ export default function VisualLearningPage() {
       const aiContent = data.choices?.[0]?.message?.content || "[No response]";
       setMessages(prev => [...prev, { role: "assistant", content: aiContent }]);
       // Detect Manim code (simple heuristic)
+      let manimCode = cleanManimCode(aiContent);
+      console.log("Sending Manim code:", manimCode);
       if (/from manim import/.test(aiContent) && /class [A-Za-z0-9_]+\(Scene\)/.test(aiContent)) {
         setManimLoading(true);
         try {
           const formData = new FormData();
-          formData.append("code", cleanManimCode(aiContent));
+          formData.append("code", manimCode);
           const manimRes = await fetch("https://big-car-1.onrender.com/render", {
             method: "POST",
             body: formData,
@@ -91,12 +93,32 @@ export default function VisualLearningPage() {
           setVideoUrl(null);
         }
         setManimLoading(false);
-      } else if (/from manim import/.test(aiContent) || /class [A-Za-z0-9_]+\(Scene\)/.test(aiContent)) {
-        setRenderError("The code is incomplete. Please ensure it includes both the import and a Scene class definition.");
-        setVideoUrl(null);
       } else {
-        setRenderError("The AI did not return valid Manim code. Please try rephrasing your prompt.");
-        setVideoUrl(null);
+        // Fallback: use a hardcoded valid Manim scene
+        const fallbackCode = `from manim import *\n\nclass FallbackScene(Scene):\n    def construct(self):\n        text = Text(\"This is a fallback animation.\").scale(1.5)\n        self.play(Write(text))\n        self.wait(2)\n`;
+        setManimLoading(true);
+        try {
+          const formData = new FormData();
+          formData.append("code", fallbackCode);
+          const manimRes = await fetch("https://big-car-1.onrender.com/render", {
+            method: "POST",
+            body: formData,
+          });
+          if (manimRes.ok) {
+            const blob = await manimRes.blob();
+            const url = URL.createObjectURL(blob);
+            setVideoUrl(url);
+            setRenderError(null);
+          } else {
+            const errorData = await manimRes.json();
+            setRenderError(errorData.error || "Unknown rendering error");
+            setVideoUrl(null);
+          }
+        } catch (err) {
+          setRenderError("Failed to communicate with backend: " + (err instanceof Error ? err.message : String(err)));
+          setVideoUrl(null);
+        }
+        setManimLoading(false);
       }
     } catch (err) {
       setMessages(prev => [...prev, { role: "assistant", content: "[Error: Failed to get response from AI]" }]);
