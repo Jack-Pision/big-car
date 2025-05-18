@@ -10,8 +10,12 @@ const SYSTEM_PROMPT = `You are a Manim animation generator. For every user reque
 
 // Utility to clean code fences from AI response
 function cleanManimCode(aiContent: string): string {
-  // Remove triple backticks and language hints
-  return aiContent.replace(/```[a-zA-Z]*\n?|```/g, '').trim();
+  let code = aiContent.replace(/```[a-zA-Z]*\n?|```/g, '').trim();
+  // Auto-insert math import if sqrt is used but not imported
+  if (code.includes('sqrt(') && !code.includes('from math import sqrt')) {
+    code = 'from math import sqrt\n' + code;
+  }
+  return code;
 }
 
 export default function VisualLearningPage() {
