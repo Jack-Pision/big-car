@@ -15,6 +15,8 @@ export default function VisualLearningPage() {
   const [loading, setLoading] = useState(false);
   const chatRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [manimLoading, setManimLoading] = useState(false);
 
   // Auto-scroll to bottom on new message
   useEffect(() => {
@@ -30,6 +32,7 @@ export default function VisualLearningPage() {
     setMessages(prev => [...prev, { role: "user", content: userMsg }]);
     setInput("");
     setLoading(true);
+    setVideoUrl(null); // Reset video on new input
     // Send to AI (placeholder logic, can be replaced with your own endpoint)
     try {
       const res = await fetch("/api/nvidia", {
@@ -47,6 +50,29 @@ export default function VisualLearningPage() {
       const data = await res.json();
       const aiContent = data.choices?.[0]?.message?.content || "[No response]";
       setMessages(prev => [...prev, { role: "assistant", content: aiContent }]);
+      // Detect Manim code (simple heuristic)
+      if (/from manim import|class [A-Za-z0-9_]+\(Scene\)/.test(aiContent)) {
+        setManimLoading(true);
+        try {
+          const formData = new FormData();
+          formData.append("code", aiContent);
+          const manimRes = await fetch("http://localhost:8000/render", {
+            method: "POST",
+            body: formData,
+          });
+          if (manimRes.ok) {
+            // Create a blob URL for the video
+            const blob = await manimRes.blob();
+            const url = URL.createObjectURL(blob);
+            setVideoUrl(url);
+          } else {
+            setVideoUrl(null);
+          }
+        } catch (err) {
+          setVideoUrl(null);
+        }
+        setManimLoading(false);
+      }
     } catch (err) {
       setMessages(prev => [...prev, { role: "assistant", content: "[Error: Failed to get response from AI]" }]);
     }
@@ -134,9 +160,15 @@ export default function VisualLearningPage() {
               </button>
             </form>
           </div>
-          {/* Right Pane: Empty for now */}
+          {/* Right Pane: Video player or placeholder */}
           <div className="flex-1 flex flex-col justify-center items-center bg-white">
-            {/* Ready for future visualizations */}
+            {manimLoading ? (
+              <div className="text-gray-500 text-lg">Rendering animation...</div>
+            ) : videoUrl ? (
+              <video controls className="w-full max-w-2xl rounded-lg shadow-lg" src={videoUrl} autoPlay loop />
+            ) : (
+              <div className="text-gray-400 text-lg">AI-generated animations will appear here.</div>
+            )}
           </div>
         </Split>
       </div>
