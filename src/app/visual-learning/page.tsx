@@ -44,16 +44,7 @@ export default function VisualLearningPage() {
           stream: false,
         }),
       });
-      const text = await res.text();
-      let data;
-      try {
-        data = text ? JSON.parse(text) : null;
-      } catch (e) {
-        throw new Error("Invalid JSON from server");
-      }
-      if (!data) {
-        throw new Error("Empty response from server");
-      }
+      const data = await res.json();
       const aiContent = data.choices?.[0]?.message?.content || "[No response]";
       setMessages(prev => [...prev, { role: "assistant", content: aiContent }]);
     } catch (err) {
