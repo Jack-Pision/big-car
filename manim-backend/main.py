@@ -7,10 +7,10 @@ import subprocess
 
 app = FastAPI()
 
-# Allow CORS for local dev
+# Allow CORS for Vercel frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["https://big-car.vercel.app"],  # Only allow your frontend
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
