@@ -182,15 +182,11 @@ export default function VisualLearningPage() {
             </form>
           </div>
           {/* Right Pane: Video player or placeholder */}
-          <div className="flex-1 flex flex-col justify-center items-center bg-white">
-            {manimLoading ? (
-              <div className="text-gray-500 text-lg">Rendering animation...</div>
-            ) : renderError ? (
-              <div className="text-red-500 text-lg whitespace-pre-wrap">{renderError}</div>
-            ) : videoUrl ? (
-              <video controls className="w-full max-w-2xl rounded-lg shadow-lg" src={videoUrl} autoPlay loop />
+          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            {videoUrl ? (
+              <video src={videoUrl} controls autoPlay style={{ width: "100%", maxHeight: "500px", borderRadius: "8px" }} />
             ) : (
-              <div className="text-gray-400 text-lg">AI-generated animations will appear here.</div>
+              <div style={{ color: "#888" }}>AI-generated animations will appear here.</div>
             )}
           </div>
         </Split>
