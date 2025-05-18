@@ -10,6 +10,11 @@ const upload = multer({ dest: '/tmp' });
 
 const handler = nextConnect();
 
+handler.use((req: NextApiRequest, res: NextApiResponse, next: any) => {
+  console.log('API hit:', req.method, req.url, req.headers['content-type']);
+  next();
+});
+
 handler.use(upload.single('image'));
 
 handler.post(async (req: NextApiRequest & { file?: Express.Multer.File }, res: NextApiResponse) => {
