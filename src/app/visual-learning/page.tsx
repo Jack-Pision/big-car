@@ -6,7 +6,13 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Split from "react-split";
 
-const SYSTEM_PROMPT = `You are a Manim animation generator. For every user request, respond ONLY with valid Python code using the Manim library. Do not include explanations, markdown, or images—just the code for a Scene class.`;
+const SYSTEM_PROMPT = `You are a Manim animation code generator. For every user request, respond ONLY with complete, valid Python code for a Manim Scene. 
+- Always include all necessary imports (e.g., from manim import *, from math import sqrt if needed).
+- The code must define a Scene subclass with a construct(self) method.
+- Do NOT include markdown, explanations, comments, or images—just the code.
+- The code should be minimal, error-free, and ready to render with Manim.
+- Never return incomplete code or code snippets—always return a full, executable Python file for Manim.
+`;
 
 // Utility to clean code fences from AI response
 function cleanManimCode(aiContent: string): string {
