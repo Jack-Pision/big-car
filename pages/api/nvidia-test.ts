@@ -14,6 +14,29 @@ handler.use(upload.single('image'));
 
 handler.post(async (req: NextApiRequest & { file?: Express.Multer.File }, res: NextApiResponse) => {
   try {
+    // Handle JSON (text chat) requests
+    if (req.headers['content-type']?.includes('application/json')) {
+      const { messages } = req.body;
+      const apiKey = process.env.NVIDIA_IMAGE_API_KEY || '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';
+      const apiEndpoint = 'https://integrate.api.nvidia.com/v1/chat/completions';
+      const payload = {
+        model: 'nvidia/llama-3.1-nemotron-ultra-253b-v1',
+        messages,
+        temperature: 0.6,
+        top_p: 0.95,
+        max_tokens: 4096,
+        stream: false,
+      };
+      const response = await axios.post(apiEndpoint, payload, {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      return res.status(200).json(response.data);
+    }
+
+    // Handle multipart/form-data (image upload) requests
     const { model = 'google/gemma-3-27b-it', messages, max_tokens = 512, temperature = 0.2, top_p = 0.8, stream = false } = req.body;
     const apiKey = process.env.NVIDIA_IMAGE_API_KEY || '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';
     const apiEndpoint = 'https://integrate.api.nvidia.com/v1/chat/completions';
@@ -44,6 +67,7 @@ handler.post(async (req: NextApiRequest & { file?: Express.Multer.File }, res: N
     console.error('NVIDIA API error:', details);
     res.status(500).json({ error: (error as any).message, details });
   } finally {
+    // Clean up the uploaded file
     if (req.file?.path) {
       fs.unlink(req.file.path, () => {});
     }
