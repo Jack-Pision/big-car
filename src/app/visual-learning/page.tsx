@@ -23,6 +23,7 @@ export default function VisualLearningPage() {
   const router = useRouter();
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [manimLoading, setManimLoading] = useState(false);
+  const [renderError, setRenderError] = useState<string | null>(null);
 
   // Auto-scroll to bottom on new message
   useEffect(() => {
@@ -39,6 +40,7 @@ export default function VisualLearningPage() {
     setInput("");
     setLoading(true);
     setVideoUrl(null); // Reset video on new input
+    setRenderError(null); // Reset error on new input
     // Send to AI (placeholder logic, can be replaced with your own endpoint)
     try {
       const res = await fetch("/api/nvidia", {
@@ -57,7 +59,7 @@ export default function VisualLearningPage() {
       const aiContent = data.choices?.[0]?.message?.content || "[No response]";
       setMessages(prev => [...prev, { role: "assistant", content: aiContent }]);
       // Detect Manim code (simple heuristic)
-      if (/from manim import|class [A-Za-z0-9_]+\(Scene\)/.test(aiContent)) {
+      if (/from manim import/.test(aiContent) && /class [A-Za-z0-9_]+\(Scene\)/.test(aiContent)) {
         setManimLoading(true);
         try {
           const formData = new FormData();
@@ -67,17 +69,26 @@ export default function VisualLearningPage() {
             body: formData,
           });
           if (manimRes.ok) {
-            // Create a blob URL for the video
             const blob = await manimRes.blob();
             const url = URL.createObjectURL(blob);
             setVideoUrl(url);
+            setRenderError(null);
           } else {
+            const errorData = await manimRes.json();
+            setRenderError(errorData.error || "Unknown rendering error");
             setVideoUrl(null);
           }
         } catch (err) {
+          setRenderError("Failed to communicate with backend: " + (err?.message || err));
           setVideoUrl(null);
         }
         setManimLoading(false);
+      } else if (/from manim import/.test(aiContent) || /class [A-Za-z0-9_]+\(Scene\)/.test(aiContent)) {
+        setRenderError("The code is incomplete. Please ensure it includes both the import and a Scene class definition.");
+        setVideoUrl(null);
+      } else {
+        setRenderError("The AI did not return valid Manim code. Please try rephrasing your prompt.");
+        setVideoUrl(null);
       }
     } catch (err) {
       setMessages(prev => [...prev, { role: "assistant", content: "[Error: Failed to get response from AI]" }]);
@@ -170,6 +181,8 @@ export default function VisualLearningPage() {
           <div className="flex-1 flex flex-col justify-center items-center bg-white">
             {manimLoading ? (
               <div className="text-gray-500 text-lg">Rendering animation...</div>
+            ) : renderError ? (
+              <div className="text-red-500 text-lg whitespace-pre-wrap">{renderError}</div>
             ) : videoUrl ? (
               <video controls className="w-full max-w-2xl rounded-lg shadow-lg" src={videoUrl} autoPlay loop />
             ) : (
