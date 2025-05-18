@@ -21,7 +21,21 @@ handler.post(async (req: NextApiRequest & { file?: Express.Multer.File }, res: N
         req.on('data', (chunk) => { body += chunk; });
         req.on('end', resolve);
       });
-      const { messages } = JSON.parse(body);
+      if (!body) {
+        console.error('Empty request body');
+        return res.status(400).json({ error: 'Empty request body' });
+      }
+      let messages;
+      try {
+        ({ messages } = JSON.parse(body));
+      } catch (e) {
+        console.error('Invalid JSON:', body);
+        return res.status(400).json({ error: 'Invalid JSON' });
+      }
+      if (!messages) {
+        console.error('Missing messages in request');
+        return res.status(400).json({ error: 'Missing messages in request' });
+      }
       const apiKey = process.env.NVIDIA_IMAGE_API_KEY || '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';
       const apiEndpoint = 'https://integrate.api.nvidia.com/v1/chat/completions';
       const payload = {
