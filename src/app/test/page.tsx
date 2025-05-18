@@ -238,13 +238,28 @@ export default function TestChat() {
                 </ReactMarkdown>
               </div>
             ) : (
-              <div
-                key={i}
-                className="px-5 py-3 rounded-2xl shadow bg-black text-white self-end max-w-full text-lg"
-                style={{ wordBreak: "break-word" }}
-              >
-                {msg.content}
-              </div>
+              msg.content.includes('<img src=') ? (
+                <div
+                  key={i}
+                  className="px-5 py-3 rounded-2xl shadow bg-black text-white self-end max-w-full text-lg"
+                  style={{ wordBreak: "break-word" }}
+                >
+                  <div>{msg.content.split('<img')[0].trim()}</div>
+                  <img
+                    src={msg.content.match(/src=\\?"([^"]+)\\?"/)?.[1]}
+                    alt="uploaded"
+                    style={{ maxWidth: 200, maxHeight: 200, marginTop: 8, borderRadius: 8 }}
+                  />
+                </div>
+              ) : (
+                <div
+                  key={i}
+                  className="px-5 py-3 rounded-2xl shadow bg-black text-white self-end max-w-full text-lg"
+                  style={{ wordBreak: "break-word" }}
+                >
+                  {msg.content}
+                </div>
+              )
             )
           ))}
         </div>
