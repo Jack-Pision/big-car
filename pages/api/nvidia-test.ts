@@ -37,9 +37,13 @@ handler.post(async (req: NextApiRequest & { file?: Express.Multer.File }, res: N
     const response = await axios.post(apiEndpoint, formData, { headers });
     res.status(200).json(response.data);
   } catch (error) {
-    res.status(500).json({ error: (error as any).message, details: (error as any).response?.data });
+    let details = (error as any).response?.data;
+    if (!details) {
+      details = (error as any).toString();
+    }
+    console.error('NVIDIA API error:', details);
+    res.status(500).json({ error: (error as any).message, details });
   } finally {
-    // Clean up the uploaded file
     if (req.file?.path) {
       fs.unlink(req.file.path, () => {});
     }
