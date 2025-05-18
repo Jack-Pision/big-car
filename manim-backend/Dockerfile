@@ -2,7 +2,7 @@ FROM python:3.11-slim
 
 # Install system dependencies for Manim and LaTeX
 RUN apt-get update && \
-    apt-get install -y build-essential texlive-latex-base texlive-fonts-recommended texlive-fonts-extra texlive-latex-extra ffmpeg libcairo2-dev libpango1.0-dev && \
+    apt-get install -y build-essential texlive-full ffmpeg libcairo2-dev libpango1.0-dev && \
     apt-get clean
 
 # Set work directory
