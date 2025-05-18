@@ -16,7 +16,12 @@ handler.post(async (req: NextApiRequest & { file?: Express.Multer.File }, res: N
   try {
     // Handle JSON (text chat) requests
     if (req.headers['content-type']?.includes('application/json')) {
-      const { messages } = req.body;
+      let body = '';
+      await new Promise((resolve) => {
+        req.on('data', (chunk) => { body += chunk; });
+        req.on('end', resolve);
+      });
+      const { messages } = JSON.parse(body);
       const apiKey = process.env.NVIDIA_IMAGE_API_KEY || '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';
       const apiEndpoint = 'https://integrate.api.nvidia.com/v1/chat/completions';
       const payload = {
