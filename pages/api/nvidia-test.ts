@@ -79,6 +79,10 @@ handler.post(async (req: NextApiRequest & { file?: Express.Multer.File }, res: N
   }
 });
 
+handler.all((req, res) => {
+  res.status(405).json({ error: "Method not allowed" });
+});
+
 export const config = {
   api: {
     bodyParser: false,
