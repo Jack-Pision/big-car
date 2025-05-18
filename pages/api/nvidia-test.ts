@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import * as NextConnect from 'next-connect';
-const nextConnect = (NextConnect as any).default || NextConnect;
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const nextConnect = require('next-connect');
 import multer from 'multer';
 import axios from 'axios';
 import FormData from 'form-data';
