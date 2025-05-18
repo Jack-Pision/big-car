@@ -6,27 +6,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Split from "react-split";
 
-const SYSTEM_PROMPT = `You are a Manim animation code generator. For every user request, respond ONLY with complete, valid Python code for a Manim Scene. 
-- Always include all necessary imports (e.g., from manim import *, from math import sqrt if needed).
-- The code must define a Scene subclass with a construct(self) method.
-- Do NOT include markdown, explanations, comments, or images—just the code.
-- The code should be minimal, error-free, and ready to render with Manim.
-- Never return incomplete code or code snippets—always return a full, executable Python file for Manim.
-`;
-
-// Utility to clean code fences from AI response
-function cleanManimCode(aiContent: string): string {
-  let code = aiContent.replace(/```[a-zA-Z]*\n?|```/g, '').trim();
-  // Auto-insert math import if sqrt is used but not imported
-  if (code.includes('sqrt(') && !code.includes('from math import sqrt')) {
-    code = 'from math import sqrt\n' + code;
-  }
-  // Auto-wrap in Scene class if missing
-  if (!/class [A-Za-z0-9_]+\(Scene\)/.test(code)) {
-    code = `from manim import *\n\nclass AutoScene(Scene):\n    def construct(self):\n        ${code.split('\n').map(line => '        ' + line).join('\n')}\n`;
-  }
-  return code;
-}
+const SYSTEM_PROMPT = `You are the Visual Learning AI. Respond in a way that helps users learn visually. (This is a placeholder prompt.)`;
 
 export default function VisualLearningPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -35,12 +15,6 @@ export default function VisualLearningPage() {
   const [loading, setLoading] = useState(false);
   const chatRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
-  const [manimLoading, setManimLoading] = useState(false);
-  const [renderError, setRenderError] = useState<string | null>(null);
-  const [lastManimCode, setLastManimCode] = useState<string | null>(null);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [retryKey, setRetryKey] = useState(0);
 
   // Auto-scroll to bottom on new message
   useEffect(() => {
@@ -56,8 +30,6 @@ export default function VisualLearningPage() {
     setMessages(prev => [...prev, { role: "user", content: userMsg }]);
     setInput("");
     setLoading(true);
-    setVideoUrl(null); // Reset video on new input
-    setRenderError(null); // Reset error on new input
     // Send to AI (placeholder logic, can be replaced with your own endpoint)
     try {
       const res = await fetch("/api/nvidia", {
@@ -75,98 +47,10 @@ export default function VisualLearningPage() {
       const data = await res.json();
       const aiContent = data.choices?.[0]?.message?.content || "[No response]";
       setMessages(prev => [...prev, { role: "assistant", content: aiContent }]);
-      // Detect Manim code (simple heuristic)
-      let manimCode = cleanManimCode(aiContent);
-      setLastManimCode(manimCode);
-      console.log("Sending Manim code:", manimCode);
-      if (/from manim import/.test(aiContent) && /class [A-Za-z0-9_]+\(Scene\)/.test(aiContent)) {
-        setManimLoading(true);
-        try {
-          const formData = new FormData();
-          formData.append("code", manimCode);
-          const manimRes = await fetch("https://big-car-1.onrender.com/render", {
-            method: "POST",
-            body: formData,
-          });
-          if (manimRes.ok) {
-            const blob = await manimRes.blob();
-            const url = URL.createObjectURL(blob);
-            setVideoUrl(url);
-            setRenderError(null);
-          } else {
-            const errorData = await manimRes.json();
-            setRenderError(errorData.error || "Unknown rendering error");
-            setVideoUrl(null);
-          }
-        } catch (err) {
-          setRenderError("Failed to communicate with backend: " + (err instanceof Error ? err.message : String(err)));
-          setVideoUrl(null);
-        }
-        setManimLoading(false);
-      } else {
-        // Fallback: use a hardcoded valid Manim scene
-        const fallbackCode = `from manim import *\n\nclass FallbackScene(Scene):\n    def construct(self):\n        text = Text(\"This is a fallback animation.\").scale(1.5)\n        self.play(Write(text))\n        self.wait(2)\n`;
-        setManimLoading(true);
-        try {
-          const formData = new FormData();
-          formData.append("code", fallbackCode);
-          const manimRes = await fetch("https://big-car-1.onrender.com/render", {
-            method: "POST",
-            body: formData,
-          });
-          if (manimRes.ok) {
-            const blob = await manimRes.blob();
-            const url = URL.createObjectURL(blob);
-            setVideoUrl(url);
-            setRenderError(null);
-          } else {
-            const errorData = await manimRes.json();
-            setRenderError(errorData.error || "Unknown rendering error");
-            setVideoUrl(null);
-          }
-        } catch (err) {
-          setRenderError("Failed to communicate with backend: " + (err instanceof Error ? err.message : String(err)));
-          setVideoUrl(null);
-        }
-        setManimLoading(false);
-      }
     } catch (err) {
       setMessages(prev => [...prev, { role: "assistant", content: "[Error: Failed to get response from AI]" }]);
     }
     setLoading(false);
-  }
-
-  function handleRetry() {
-    if (lastManimCode) {
-      setManimLoading(true);
-      setVideoUrl(null);
-      setRenderError(null);
-      (async () => {
-        try {
-          const formData = new FormData();
-          formData.append("code", lastManimCode);
-          const manimRes = await fetch("https://big-car-1.onrender.com/render", {
-            method: "POST",
-            body: formData,
-          });
-          if (manimRes.ok) {
-            const blob = await manimRes.blob();
-            const url = URL.createObjectURL(blob);
-            setVideoUrl(url);
-            setRenderError(null);
-            setRetryKey(prev => prev + 1);
-          } else {
-            const errorData = await manimRes.json();
-            setRenderError(errorData.error || "Unknown rendering error");
-            setVideoUrl(null);
-          }
-        } catch (err) {
-          setRenderError("Failed to communicate with backend: " + (err instanceof Error ? err.message : String(err)));
-          setVideoUrl(null);
-        }
-        setManimLoading(false);
-      })();
-    }
   }
 
   return (
@@ -250,41 +134,9 @@ export default function VisualLearningPage() {
               </button>
             </form>
           </div>
-          {/* Right Pane: Video player or placeholder */}
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", height: '100%' }}>
-            {lastManimCode && (
-              <pre style={{ background: "#f5f5f5", color: "#222", padding: 12, borderRadius: 8, width: "100%", maxWidth: 700, marginBottom: 12, overflowX: "auto", overflowY: "auto", fontSize: 14, maxHeight: 220 }}>
-                {lastManimCode}
-              </pre>
-            )}
-            <div style={{ width: '100%', maxWidth: 700, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: 320, background: '#fafbfc', borderRadius: 12, boxShadow: '0 1px 8px #0002', marginTop: 8, padding: 24 }}>
-              {videoUrl ? (
-                <>
-                  <video
-                    key={retryKey}
-                    ref={videoRef}
-                    src={videoUrl}
-                    style={{ width: '100%', maxHeight: 260, borderRadius: 8, background: '#222' }}
-                  />
-                  <div style={{ display: 'flex', gap: 16, marginTop: 16, justifyContent: 'center' }}>
-                    <button
-                      onClick={() => videoRef.current?.play()}
-                      style={{ padding: '8px 20px', borderRadius: 6, background: '#1a73e8', color: '#fff', border: 'none', fontWeight: 600, fontSize: 16, cursor: 'pointer' }}
-                    >Play</button>
-                    <button
-                      onClick={() => videoRef.current?.pause()}
-                      style={{ padding: '8px 20px', borderRadius: 6, background: '#e8711a', color: '#fff', border: 'none', fontWeight: 600, fontSize: 16, cursor: 'pointer' }}
-                    >Pause</button>
-                    <button
-                      onClick={handleRetry}
-                      style={{ padding: '8px 20px', borderRadius: 6, background: '#222', color: '#fff', border: 'none', fontWeight: 600, fontSize: 16, cursor: 'pointer' }}
-                    >Retry</button>
-                  </div>
-                </>
-              ) : (
-                <div style={{ color: "#888", textAlign: 'center', width: '100%' }}>AI-generated animations will appear here.</div>
-              )}
-            </div>
+          {/* Right Pane: Empty for now */}
+          <div className="flex-1 flex flex-col justify-center items-center bg-white">
+            {/* Ready for future visualizations */}
           </div>
         </Split>
       </div>
