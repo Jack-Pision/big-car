@@ -1,82 +1,55 @@
-import { NextRequest } from 'next/server';
+import * as NextConnect from 'next-connect';
+const nextConnect = (NextConnect as any).default || NextConnect;
+import { NextApiRequest, NextApiResponse } from 'next';
+import multer from 'multer';
+import axios from 'axios';
+import FormData from 'form-data';
+import fs from 'fs';
 
-export const runtime = 'nodejs';
+const upload = multer({ dest: '/tmp' });
 
-const HARDCODED_API_KEY = "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";
-const IMAGE_API_KEY = "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";
+const handler = nextConnect();
 
-async function proxyToNvidiaAPI(req: NextRequest) {
-  // Copy all headers except host and content-length
-  const headers = new Headers(req.headers);
-  headers.set('Authorization', `Bearer ${IMAGE_API_KEY}`);
-  headers.set('Accept', 'application/json');
-  headers.delete('host');
-  headers.delete('content-length');
+handler.use(upload.single('image'));
 
-  const res = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
-    method: 'POST',
-    headers,
-    body: req.body,
-  });
-  return res;
-}
-
-async function fetchNvidiaAI(messages: any[]) {
-  const payload = {
-    model: 'nvidia/llama-3.1-nemotron-ultra-253b-v1',
-    messages,
-    temperature: 0.6,
-    top_p: 0.95,
-    max_tokens: 4096,
-    stream: false,
-  };
+handler.post(async (req: NextApiRequest & { file?: Express.Multer.File }, res: NextApiResponse) => {
   try {
-    const res = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${HARDCODED_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) {
-      const errorText = await res.text();
-      console.error('NVIDIA API error:', res.status, errorText);
-      return new Response(JSON.stringify({ error: errorText }), { status: res.status });
-    }
-    return res;
-  } catch (err) {
-    console.error('NVIDIA API fetch failed:', err);
-    return new Response(JSON.stringify({ error: String(err) }), { status: 500 });
-  }
-}
+    const { model = 'google/gemma-3-27b-it', messages, max_tokens = 512, temperature = 0.2, top_p = 0.8, stream = false } = req.body;
+    const apiKey = process.env.NVIDIA_IMAGE_API_KEY || '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';
+    const apiEndpoint = 'https://integrate.api.nvidia.com/v1/chat/completions';
 
-export async function POST(req: NextRequest) {
-  try {
-    const contentType = req.headers.get('content-type') || '';
-    if (contentType.startsWith('multipart/form-data')) {
-      // Proxy the multipart request directly to NVIDIA API
-      const aiRes = await proxyToNvidiaAPI(req);
-      const aiData = await aiRes.json();
-      return new Response(JSON.stringify(aiData), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    } else {
-      // Fallback to JSON body for text-only requests
-      const body = await req.json();
-      const { messages } = body;
-      const aiRes = await fetchNvidiaAI(messages);
-      const aiData = await aiRes.json();
-      return new Response(JSON.stringify(aiData), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
+    const formData = new FormData();
+    if (req.file?.path) {
+      formData.append('file', fs.createReadStream(req.file.path), req.file.originalname);
     }
-  } catch (err) {
-    return new Response(JSON.stringify({ error: 'Failed to process request', details: String(err) }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    formData.append('model', model);
+    formData.append('messages', messages);
+    formData.append('max_tokens', max_tokens);
+    formData.append('temperature', temperature);
+    formData.append('top_p', top_p);
+    formData.append('stream', stream);
+
+    const headers = {
+      'Authorization': `Bearer ${apiKey}`,
+      ...formData.getHeaders(),
+    };
+
+    const response = await axios.post(apiEndpoint, formData, { headers });
+    res.status(200).json(response.data);
+  } catch (error) {
+    res.status(500).json({ error: (error as any).message, details: (error as any).response?.data });
+  } finally {
+    // Clean up the uploaded file
+    if (req.file?.path) {
+      fs.unlink(req.file.path, () => {});
+    }
   }
-} 
+});
+
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
+export default handler; 
