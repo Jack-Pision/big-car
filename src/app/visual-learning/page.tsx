@@ -8,6 +8,12 @@ import Split from "react-split";
 
 const SYSTEM_PROMPT = `You are a Manim animation generator. For every user request, respond ONLY with valid Python code using the Manim library. Do not include explanations, markdown, or images—just the code for a Scene class.`;
 
+// Utility to clean code fences from AI response
+function cleanManimCode(aiContent: string): string {
+  // Remove triple backticks and language hints
+  return aiContent.replace(/```[a-zA-Z]*\n?|```/g, '').trim();
+}
+
 export default function VisualLearningPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [input, setInput] = useState("");
@@ -55,7 +61,7 @@ export default function VisualLearningPage() {
         setManimLoading(true);
         try {
           const formData = new FormData();
-          formData.append("code", aiContent);
+          formData.append("code", cleanManimCode(aiContent));
           const manimRes = await fetch("http://localhost:8000/render", {
             method: "POST",
             body: formData,
