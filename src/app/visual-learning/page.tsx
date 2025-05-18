@@ -6,7 +6,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Split from "react-split";
 
-const SYSTEM_PROMPT = `You are the Visual Learning AI. Respond in a way that helps users learn visually. (This is a placeholder prompt.)`;
+const SYSTEM_PROMPT = `You are a Manim animation generator. For every user request, respond ONLY with valid Python code using the Manim library. Do not include explanations, markdown, or images—just the code for a Scene class.`;
 
 export default function VisualLearningPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
