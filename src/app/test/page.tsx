@@ -146,43 +146,38 @@ export default function TestChat() {
   }
 
   // Handler for file selection
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = async function (event) {
-        const base64 = event.target?.result;
-        if (typeof base64 === 'string') {
-          setLoading(true);
-          if (showHeading) setShowHeading(false);
-          const userMsg = {
-            role: "user" as const,
-            content: `What is in this image? <img src=\"${base64}\" />`,
-          };
-          setMessages((prev) => [...prev, userMsg]);
-          try {
-            const res = await fetch("/api/nvidia-test", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ messages: [userMsg] }),
-            });
-            const data = await res.json();
-            const aiMsg = {
-              role: "assistant" as const,
-              content: data.choices?.[0]?.message?.content || "No response",
-            };
-            setMessages((prev) => [...prev, aiMsg]);
-          } catch (err: any) {
-            setMessages((prev) => [
-              ...prev,
-              { role: "assistant" as const, content: "Error: " + (err?.message || String(err)) },
-            ]);
-          } finally {
-            setLoading(false);
-          }
-        }
+      setLoading(true);
+      if (showHeading) setShowHeading(false);
+      const userMsg = {
+        role: "user" as const,
+        content: `What is in this image?`,
       };
-      reader.readAsDataURL(file);
+      setMessages((prev) => [...prev, userMsg]);
+      try {
+        const formData = new FormData();
+        formData.append('image', file);
+        formData.append('messages', JSON.stringify([userMsg]));
+        const res = await fetch("/api/nvidia-test", {
+          method: "POST",
+          body: formData,
+        });
+        const data = await res.json();
+        const aiMsg = {
+          role: "assistant" as const,
+          content: data.choices?.[0]?.message?.content || "No response",
+        };
+        setMessages((prev) => [...prev, aiMsg]);
+      } catch (err: any) {
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant" as const, content: "Error: " + (err?.message || String(err)) },
+        ]);
+      } finally {
+        setLoading(false);
+      }
     }
   }
 
