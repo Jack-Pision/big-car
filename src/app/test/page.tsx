@@ -81,6 +81,7 @@ export default function TestChat() {
   const [chats, setChats] = useState([]); // You can implement chat history if needed
   const [activeChatId, setActiveChatId] = useState(null);
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Auto-resize textarea
   useLayoutEffect(() => {
@@ -136,6 +137,52 @@ export default function TestChat() {
       ]);
     } finally {
       setLoading(false);
+    }
+  }
+
+  // Handler for plus button click
+  function handlePlusClick() {
+    fileInputRef.current?.click();
+  }
+
+  // Handler for file selection
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = async function (event) {
+        const base64 = event.target?.result;
+        if (typeof base64 === 'string') {
+          setLoading(true);
+          if (showHeading) setShowHeading(false);
+          const userMsg = {
+            role: "user" as const,
+            content: `What is in this image? <img src=\"${base64}\" />`,
+          };
+          setMessages((prev) => [...prev, userMsg]);
+          try {
+            const res = await fetch("/api/nvidia-test", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ messages: [userMsg] }),
+            });
+            const data = await res.json();
+            const aiMsg = {
+              role: "assistant" as const,
+              content: data.choices?.[0]?.message?.content || "No response",
+            };
+            setMessages((prev) => [...prev, aiMsg]);
+          } catch (err: any) {
+            setMessages((prev) => [
+              ...prev,
+              { role: "assistant" as const, content: "Error: " + (err?.message || String(err)) },
+            ]);
+          } finally {
+            setLoading(false);
+          }
+        }
+      };
+      reader.readAsDataURL(file);
     }
   }
 
@@ -220,22 +267,28 @@ export default function TestChat() {
             rows={1}
             style={{height: '48px', maxHeight: '144px'}}
           />
+          {/* Hidden file input for image upload */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            style={{ display: 'none' }}
+            onChange={handleFileChange}
+          />
           {/* Bottom row: icons left, send button right */}
-          <div className="flex flex-row items-end justify-between w-full mt-2">
-            <div className="flex flex-row gap-2">
-              <button type="button" className="p-2 rounded-full border border-gray-300 hover:bg-gray-100">
-                <svg width="22" height="22" fill="none" stroke="#222" strokeWidth="2" viewBox="0 0 24 24">
-                  <circle cx="11" cy="11" r="7" />
-                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                </svg>
-              </button>
-              <button type="button" className="p-2 rounded-full border border-gray-300 hover:bg-gray-100">
-                <svg width="22" height="22" fill="none" stroke="#222" strokeWidth="2" viewBox="0 0 24 24">
-                  <line x1="12" y1="5" x2="12" y2="19" />
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
-              </button>
-            </div>
+          <div className="flex flex-row gap-2">
+            <button type="button" className="p-2 rounded-full border border-gray-300 hover:bg-gray-100">
+              <svg width="22" height="22" fill="none" stroke="#222" strokeWidth="2" viewBox="0 0 24 24">
+                <circle cx="11" cy="11" r="7" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+            </button>
+            <button type="button" className="p-2 rounded-full border border-gray-300 hover:bg-gray-100" onClick={handlePlusClick}>
+              <svg width="22" height="22" fill="none" stroke="#222" strokeWidth="2" viewBox="0 0 24 24">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+            </button>
             <button
               type="submit"
               className="w-10 h-10 flex items-center justify-center rounded-full bg-black text-white hover:bg-gray-900 transition"
