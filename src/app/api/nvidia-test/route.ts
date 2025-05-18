@@ -46,10 +46,6 @@ handler.post(async (req: NextApiRequest & { file?: Express.Multer.File }, res: N
   }
 });
 
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
-
+export const bodyParser = false;
+export const runtime = 'nodejs';
 export default handler; 
