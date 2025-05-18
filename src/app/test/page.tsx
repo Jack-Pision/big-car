@@ -83,6 +83,14 @@ export default function TestChat() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Helper to show the image in chat
+  const showImageMsg = (content: string, imgSrc: string) => {
+    setMessages((prev) => [
+      ...prev,
+      { role: "user" as const, content: `${content} <img src=\"${imgSrc}\" />` },
+    ]);
+  };
+
   // Auto-resize textarea
   useLayoutEffect(() => {
     const ta = textareaRef.current;
@@ -151,13 +159,6 @@ export default function TestChat() {
     if (file) {
       setLoading(true);
       if (showHeading) setShowHeading(false);
-      // Helper to show the image in chat
-      function showImageMsg(content: string, imgSrc: string) {
-        setMessages((prev) => [
-          ...prev,
-          { role: "user" as const, content: `${content} <img src=\"${imgSrc}\" />` },
-        ]);
-      }
       try {
         // Read as base64 to check size
         const reader = new FileReader();
