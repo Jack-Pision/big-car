@@ -64,7 +64,7 @@ export default function VisualLearningPage() {
         try {
           const formData = new FormData();
           formData.append("code", cleanManimCode(aiContent));
-          const manimRes = await fetch("https://big-car.onrender.com/render", {
+          const manimRes = await fetch("https://big-car-1.onrender.com/render", {
             method: "POST",
             body: formData,
           });
