@@ -79,7 +79,7 @@ export default function VisualLearningPage() {
             setVideoUrl(null);
           }
         } catch (err) {
-          setRenderError("Failed to communicate with backend: " + (err?.message || err));
+          setRenderError("Failed to communicate with backend: " + (err instanceof Error ? err.message : String(err)));
           setVideoUrl(null);
         }
         setManimLoading(false);
