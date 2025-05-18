@@ -15,6 +15,10 @@ function cleanManimCode(aiContent: string): string {
   if (code.includes('sqrt(') && !code.includes('from math import sqrt')) {
     code = 'from math import sqrt\n' + code;
   }
+  // Auto-wrap in Scene class if missing
+  if (!/class [A-Za-z0-9_]+\(Scene\)/.test(code)) {
+    code = `from manim import *\n\nclass AutoScene(Scene):\n    def construct(self):\n        ${code.split('\n').map(line => '        ' + line).join('\n')}\n`;
+  }
   return code;
 }
 
