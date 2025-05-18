@@ -1,0 +1,55 @@
+import type { NextApiRequest, NextApiResponse } from 'next';
+import * as NextConnect from 'next-connect';
+const nextConnect = (NextConnect as any).default || NextConnect;
+import multer from 'multer';
+import axios from 'axios';
+import FormData from 'form-data';
+import fs from 'fs';
+
+const upload = multer({ dest: '/tmp' });
+
+const handler = nextConnect();
+
+handler.use(upload.single('image'));
+
+handler.post(async (req: NextApiRequest & { file?: Express.Multer.File }, res: NextApiResponse) => {
+  try {
+    const { model = 'google/gemma-3-27b-it', messages, max_tokens = 512, temperature = 0.2, top_p = 0.8, stream = false } = req.body;
+    const apiKey = process.env.NVIDIA_IMAGE_API_KEY || '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';
+    const apiEndpoint = 'https://integrate.api.nvidia.com/v1/chat/completions';
+
+    const formData = new FormData();
+    if (req.file?.path) {
+      formData.append('file', fs.createReadStream(req.file.path), req.file.originalname);
+    }
+    formData.append('model', model);
+    formData.append('messages', messages);
+    formData.append('max_tokens', max_tokens);
+    formData.append('temperature', temperature);
+    formData.append('top_p', top_p);
+    formData.append('stream', stream);
+
+    const headers = {
+      'Authorization': `Bearer ${apiKey}`,
+      ...formData.getHeaders(),
+    };
+
+    const response = await axios.post(apiEndpoint, formData, { headers });
+    res.status(200).json(response.data);
+  } catch (error) {
+    res.status(500).json({ error: (error as any).message, details: (error as any).response?.data });
+  } finally {
+    // Clean up the uploaded file
+    if (req.file?.path) {
+      fs.unlink(req.file.path, () => {});
+    }
+  }
+});
+
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
+export default handler; 
