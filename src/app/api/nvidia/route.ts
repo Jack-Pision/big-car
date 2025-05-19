@@ -2,10 +2,10 @@ import { NextRequest } from 'next/server';
 
 export const runtime = 'edge';
 
-const TEXT_API_KEY = process.env.GEMMA_API_KEY || '';
+const TEXT_API_KEY = process.env.NVIDIA_API_KEY || '';
 const IMAGE_API_KEY = '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';
 
-async function fetchNvidiaAIWithImageBase64(imageBase64: string, userMsg: any) {
+async function fetchMistralVisionWithImageBase64(imageBase64: string) {
   const payload = {
     model: 'mistralai/mistral-small-3.1-24b-instruct-2503',
     messages: [
@@ -35,7 +35,7 @@ async function fetchNvidiaAIWithImageBase64(imageBase64: string, userMsg: any) {
   return res;
 }
 
-async function fetchNvidiaAI(messages: any[]) {
+async function fetchNvidiaText(messages: any[]) {
   const payload = {
     model: 'nvidia/llama-3.1-nemotron-ultra-253b-v1',
     messages,
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
     // Read image as base64
     const arrayBuffer = await imageFile.arrayBuffer();
     const base64 = Buffer.from(arrayBuffer).toString('base64');
-    const aiRes = await fetchNvidiaAIWithImageBase64(base64, {});
+    const aiRes = await fetchMistralVisionWithImageBase64(base64);
     const aiData = await aiRes.json();
     return new Response(JSON.stringify(aiData), {
       status: 200,
@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
     try {
       const body = await req.json();
       const { messages } = body;
-      const aiRes = await fetchNvidiaAI(messages);
+      const aiRes = await fetchNvidiaText(messages);
       const aiData = await aiRes.json();
       return new Response(JSON.stringify(aiData), {
         status: 200,
