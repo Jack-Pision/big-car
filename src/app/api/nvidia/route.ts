@@ -3,7 +3,15 @@ import { NextRequest } from 'next/server';
 export const runtime = 'edge';
 
 const TEXT_API_KEY = process.env.NVIDIA_API_KEY || '';
-const GOOGLE_VISION_API_KEY = process.env.GOOGLE_VISION_API_KEY || 'AIzaSyBOC2P8gxA8KFnITgi2FvlARhbmNkut0A4';
+const GOOGLE_VISION_API_KEY = process.env.GOOGLE_VISION_API_KEY;
+
+// Add validation for required API keys
+if (!TEXT_API_KEY) {
+  throw new Error('NVIDIA_API_KEY is required');
+}
+if (!GOOGLE_VISION_API_KEY) {
+  throw new Error('GOOGLE_VISION_API_KEY is required');
+}
 
 async function fetchGoogleVisionWithImageUrl(imageUrl: string) {
   const payload = { requests: [{ image: { source: { imageUri: imageUrl } }, features: [{ type: 'LABEL_DETECTION', maxResults: 5 }] }] };
