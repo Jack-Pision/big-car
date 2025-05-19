@@ -83,6 +83,7 @@ export default function TestChat() {
   const [activeChatId, setActiveChatId] = useState(null);
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef1 = useRef<HTMLInputElement>(null);
 
   // Helper to show the image in chat
   const showImageMsg = (content: string, imgSrc: string) => {
@@ -150,67 +151,51 @@ export default function TestChat() {
     }
   }
 
-  // Handler for plus button click
-  function handlePlusClick() {
-    fileInputRef.current?.click();
+  // Handler for the first plus button click
+  function handleFirstPlusClick() {
+    fileInputRef1.current?.click();
   }
 
-  // Modify handleFileChange to handle potential null supabase client
-  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  // Handler for the first plus button file upload
+  async function handleFirstFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (file) {
       setLoading(true);
       if (showHeading) setShowHeading(false);
       try {
-        // Create Supabase client on the client side
         const clientSideSupabase = createSupabaseClient();
-        
-        // Check if Supabase client is available
-        if (!clientSideSupabase) {
-          throw new Error('Supabase client not available');
-        }
-
-        // Upload image to Supabase storage
+        if (!clientSideSupabase) throw new Error('Supabase client not available');
         const fileExt = file.name.split('.').pop();
         const fileName = `${Math.random()}.${fileExt}`;
         const filePath = `${fileName}`;
-
         const { data: uploadResult, error: uploadError } = await clientSideSupabase.storage
           .from('images')
           .upload(filePath, file);
-
-        if (uploadError) {
-          throw uploadError;
-        }
-
-        // Get public URL
+        if (uploadError) throw uploadError;
         const { data: urlData } = clientSideSupabase.storage
           .from('images')
           .getPublicUrl(filePath);
-
         const publicUrl = urlData.publicUrl;
-
-        if (!publicUrl) {
-          throw new Error('Failed to get public URL');
-        }
-
-        showImageMsg('What is in this image?', publicUrl);
-        
-        // Send imageUrl to backend
-        const aiResponse = await fetch('/api/nvidia', {
+        if (!publicUrl) throw new Error('Failed to get public URL');
+        showImageMsg('What is in this image (OpenRouter)?', publicUrl);
+        // Send imageUrl to OpenRouter AI
+        const aiResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imageUrl: publicUrl }),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer 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',
+          },
+          body: JSON.stringify({
+            model: 'openai/gpt-4o',
+            messages: [
+              { role: 'user', content: `Describe this file: ${publicUrl}` }
+            ],
+          }),
         });
         const responseData = await aiResponse.json();
-        console.log('AI response:', responseData);
         const aiMsg = {
           role: 'assistant' as const,
-          content: responseData.generated_text || 
-                  responseData.choices?.[0]?.message?.content || 
-                  responseData.error || 
-                  JSON.stringify(responseData) || 
-                  'No response',
+          content: responseData.choices?.[0]?.message?.content || responseData.error || JSON.stringify(responseData) || 'No response',
         };
         setMessages((prev) => [...prev, aiMsg]);
       } catch (err: any) {
@@ -326,7 +311,7 @@ export default function TestChat() {
             type="file"
             accept="image/*"
             style={{ display: 'none' }}
-            onChange={handleFileChange}
+            onChange={handleFirstFileChange}
           />
           {/* Bottom row: icons left, send button right */}
           <div className="flex flex-row gap-2">
@@ -336,7 +321,7 @@ export default function TestChat() {
                 <line x1="5" y1="12" x2="19" y2="12" />
               </svg>
             </button>
-            <button type="button" className="p-2 rounded-full border border-gray-300 hover:bg-gray-100" onClick={handlePlusClick}>
+            <button type="button" className="p-2 rounded-full border border-gray-300 hover:bg-gray-100" onClick={handleFirstPlusClick}>
               <svg width="22" height="22" fill="none" stroke="#222" strokeWidth="2" viewBox="0 0 24 24">
                 <line x1="12" y1="5" x2="12" y2="19" />
                 <line x1="5" y1="12" x2="19" y2="12" />
