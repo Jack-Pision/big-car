@@ -67,9 +67,10 @@ const markdownComponents = {
 };
 
 // Initialize Supabase client
-const supabase = process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY 
-  ? createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
-  : null;
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!, 
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 export default function TestChat() {
   const [input, setInput] = useState("");
@@ -167,11 +168,6 @@ export default function TestChat() {
       setLoading(true);
       if (showHeading) setShowHeading(false);
       try {
-        // Check if Supabase client is initialized
-        if (!supabase) {
-          throw new Error('Supabase client not initialized');
-        }
-
         // Upload image to Supabase storage
         const fileExt = file.name.split('.').pop();
         const fileName = `${Math.random()}.${fileExt}`;
