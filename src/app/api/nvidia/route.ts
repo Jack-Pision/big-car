@@ -2,26 +2,31 @@ import { NextRequest } from 'next/server';
 
 export const runtime = 'edge';
 
-const API_KEY = process.env.GEMMA_API_KEY || '';
+const TEXT_API_KEY = process.env.GEMMA_API_KEY || '';
+const IMAGE_API_KEY = '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';
 
-async function fetchNvidiaAIWithImage(imageBuffer: Buffer, userMsg: any) {
-  // Prepare multipart/form-data for NVIDIA API
-  const formData = new FormData();
-  formData.append('file', new Blob([imageBuffer]), 'image.png');
-  formData.append('model', 'google/gemma-3-27b-it');
-  formData.append('messages', JSON.stringify([userMsg]));
-  formData.append('max_tokens', '512');
-  formData.append('temperature', '0.2');
-  formData.append('top_p', '0.8');
-  formData.append('stream', 'false');
-
+async function fetchNvidiaAIWithImageBase64(imageBase64: string, userMsg: any) {
+  const payload = {
+    model: 'mistralai/mistral-small-3.1-24b-instruct-2503',
+    messages: [
+      {
+        role: 'user',
+        content: `What is in this image? <img src=\"data:image/png;base64,${imageBase64}\" />`,
+      },
+    ],
+    max_tokens: 512,
+    temperature: 0.28,
+    top_p: 0.70,
+    stream: false,
+  };
   const res = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${API_KEY}`,
+      'Authorization': `Bearer ${IMAGE_API_KEY}`,
+      'Content-Type': 'application/json',
       'Accept': 'application/json',
     },
-    body: formData,
+    body: JSON.stringify(payload),
   });
   if (!res.ok) {
     const errorText = await res.text();
@@ -43,7 +48,7 @@ async function fetchNvidiaAI(messages: any[]) {
     const res = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${API_KEY}`,
+        'Authorization': `Bearer ${TEXT_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(payload),
@@ -64,24 +69,13 @@ export async function POST(req: NextRequest) {
     // Parse multipart form
     const formData = await req.formData();
     const imageFile = formData.get('image');
-    const messagesStr = formData.get('messages');
-    let userMsg = null;
-    if (typeof messagesStr !== 'string') {
-      return new Response(JSON.stringify({ error: 'Invalid messages format' }), { status: 400 });
-    }
-    try {
-      const messages = JSON.parse(messagesStr);
-      userMsg = messages[0];
-    } catch (e) {
-      return new Response(JSON.stringify({ error: 'Invalid messages format' }), { status: 400 });
-    }
     if (!imageFile || typeof imageFile === 'string') {
       return new Response(JSON.stringify({ error: 'No image file uploaded' }), { status: 400 });
     }
-    // Read image as ArrayBuffer
+    // Read image as base64
     const arrayBuffer = await imageFile.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    const aiRes = await fetchNvidiaAIWithImage(buffer, userMsg);
+    const base64 = Buffer.from(arrayBuffer).toString('base64');
+    const aiRes = await fetchNvidiaAIWithImageBase64(base64, {});
     const aiData = await aiRes.json();
     return new Response(JSON.stringify(aiData), {
       status: 200,
