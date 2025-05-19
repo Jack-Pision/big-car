@@ -8,6 +8,7 @@ import 'katex/dist/katex.min.css';
 import Sidebar from '../../components/Sidebar';
 import HamburgerMenu from '../../components/HamburgerMenu';
 import { useRouter } from 'next/navigation';
+import { createClient } from '@supabase/supabase-js';
 
 const SYSTEM_PROMPT = `You are a friendly, knowledgeable AI tutor that helps students with their studies. You can answer questions, explain concepts, solve math problems step by step, assist with research, and provide clear, concise, and engaging academic help across all subjects.
 
@@ -64,6 +65,11 @@ const markdownComponents = {
     />
   ),
 };
+
+// Initialize Supabase client
+const supabase = process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY 
+  ? createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+  : null;
 
 export default function TestChat() {
   const [input, setInput] = useState("");
@@ -154,45 +160,59 @@ export default function TestChat() {
     fileInputRef.current?.click();
   }
 
-  // Handler for file selection
+  // Modify handleFileChange to use Supabase storage
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (file) {
       setLoading(true);
       if (showHeading) setShowHeading(false);
       try {
-        // Upload image to Imgur
-        const formData = new FormData();
-        formData.append('image', file);
-        const imgurRes = await fetch('https://api.imgur.com/3/image', {
-          method: 'POST',
-          headers: {
-            Authorization: `Client-ID ${process.env.IMGUR_CLIENT_ID}`, // Use environment variable
-          },
-          body: formData,
-        });
-        const imgurData = await imgurRes.json();
-        if (!imgurData.data?.link) {
-          setMessages((prev) => [
-            ...prev,
-            { role: 'assistant' as const, content: 'Error: Failed to upload image to Imgur.' },
-          ]);
-          setLoading(false);
-          return;
+        // Check if Supabase client is initialized
+        if (!supabase) {
+          throw new Error('Supabase client not initialized');
         }
-        const imageUrl = imgurData.data.link;
-        showImageMsg('What is in this image?', imageUrl);
+
+        // Upload image to Supabase storage
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Math.random()}.${fileExt}`;
+        const filePath = `${fileName}`;
+
+        const { data: uploadResult, error: uploadError } = await supabase.storage
+          .from('images')
+          .upload(filePath, file);
+
+        if (uploadError) {
+          throw uploadError;
+        }
+
+        // Get public URL
+        const { data: urlData } = supabase.storage
+          .from('images')
+          .getPublicUrl(filePath);
+
+        const publicUrl = urlData.publicUrl;
+
+        if (!publicUrl) {
+          throw new Error('Failed to get public URL');
+        }
+
+        showImageMsg('What is in this image?', publicUrl);
+        
         // Send imageUrl to backend
-        const res = await fetch('/api/nvidia', {
+        const aiResponse = await fetch('/api/nvidia', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imageUrl }),
+          body: JSON.stringify({ imageUrl: publicUrl }),
         });
-        const data = await res.json();
-        console.log('AI response:', data);
+        const responseData = await aiResponse.json();
+        console.log('AI response:', responseData);
         const aiMsg = {
           role: 'assistant' as const,
-          content: data.choices?.[0]?.message?.content || data.generated_text || data.error || JSON.stringify(data) || 'No response',
+          content: responseData.generated_text || 
+                  responseData.choices?.[0]?.message?.content || 
+                  responseData.error || 
+                  JSON.stringify(responseData) || 
+                  'No response',
         };
         setMessages((prev) => [...prev, aiMsg]);
       } catch (err: any) {
