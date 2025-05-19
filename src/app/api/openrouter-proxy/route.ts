@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
       return new Response(JSON.stringify({ error: 'Missing OpenRouter API key' }), { status: 500 });
     }
     const requestBody = {
-      model: 'openai/gpt-4o',
+      model: 'moonshotai/kimi-vl-a3b-thinking:free',
       messages: [
         {
           role: 'user',
