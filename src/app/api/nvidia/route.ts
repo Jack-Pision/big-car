@@ -3,35 +3,14 @@ import { NextRequest } from 'next/server';
 export const runtime = 'edge';
 
 const TEXT_API_KEY = process.env.NVIDIA_API_KEY || '';
-const HF_API_KEY = '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';
+const GOOGLE_VISION_API_KEY = process.env.GOOGLE_VISION_API_KEY || 'AIzaSyBOC2P8gxA8KFnITgi2FvlARhbmNkut0A4';
 
-async function fetchGemmaVisionWithImageUrl(imageUrl: string) {
-  const payload = {
-    model: 'google/gemma-3-27b-it',
-    messages: [
-      {
-        role: 'user',
-        content: [
-          {
-            type: 'text',
-            text: 'Describe this image in one sentence.'
-          },
-          {
-            type: 'image_url',
-            image_url: { url: imageUrl }
-          }
-        ]
-      }
-    ]
-  };
-  const res = await fetch('https://api.endpoints.huggingface.cloud/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${HF_API_KEY}`,
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    },
-    body: JSON.stringify(payload),
+async function fetchGoogleVisionWithImageUrl(imageUrl: string) {
+  const payload = { requests: [{ image: { source: { imageUri: imageUrl } }, features: [{ type: 'LABEL_DETECTION', maxResults: 5 }] }] };
+  const res = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${GOOGLE_VISION_API_KEY}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
   });
   if (!res.ok) {
     const errorText = await res.text();
@@ -74,15 +53,31 @@ export async function POST(req: NextRequest) {
     try {
       const body = await req.json();
       if (body.imageUrl) {
-        // Image request: use Hugging Face
-        const aiRes = await fetchGemmaVisionWithImageUrl(body.imageUrl);
+        // Image request: integrate Google Cloud Vision API (for labels) with Nemotron (for text generation)
+        const visionRes = await fetchGoogleVisionWithImageUrl(body.imageUrl);
+        if (!visionRes.ok) {
+          const errorText = await visionRes.text();
+          return new Response(JSON.stringify({ error: errorText }), { status: visionRes.status });
+        }
+        const visionData = await visionRes.json();
+        // Extract labels from Vision API response
+        const labels = (visionData.responses?.[0]?.labelAnnotations || [])
+          .map((l: any) => l.description)
+          .join(", ");
+        
+        // Construct a prompt for Nemotron using the labels
+        const prompt = `The image is labeled as: ${labels}. Describe this image in one sentence.`;
+        
+        // Call Nemotron with the generated prompt
+        const aiRes = await fetchNvidiaText([{ role: "user", content: prompt }]);
         const aiData = await aiRes.json();
+        
         return new Response(JSON.stringify(aiData), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
         });
       } else {
-        // Text request: use NVIDIA
+        // Text request: use existing Nemotron text generation
         const { messages } = body;
         const aiRes = await fetchNvidiaText(messages);
         const aiData = await aiRes.json();
