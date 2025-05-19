@@ -305,9 +305,9 @@ export default function TestChat() {
             rows={1}
             style={{height: '48px', maxHeight: '144px'}}
           />
-          {/* Hidden file input for image upload */}
+          {/* Hidden file input for dark plus button */}
           <input
-            ref={fileInputRef}
+            ref={fileInputRef1}
             type="file"
             accept="image/*"
             style={{ display: 'none' }}
