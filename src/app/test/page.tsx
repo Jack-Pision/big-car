@@ -169,28 +169,20 @@ export default function TestChat() {
         const fileName = `${Math.random()}.${fileExt}`;
         const filePath = `${fileName}`;
         const { data: uploadResult, error: uploadError } = await clientSideSupabase.storage
-          .from('images')
+          .from('openrouter-uploads')
           .upload(filePath, file);
         if (uploadError) throw uploadError;
         const { data: urlData } = clientSideSupabase.storage
-          .from('images')
+          .from('openrouter-uploads')
           .getPublicUrl(filePath);
         const publicUrl = urlData.publicUrl;
         if (!publicUrl) throw new Error('Failed to get public URL');
         showImageMsg('What is in this image (OpenRouter)?', publicUrl);
-        // Send imageUrl to OpenRouter AI
-        const aiResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        // Send imageUrl to backend API route that proxies to OpenRouter
+        const aiResponse = await fetch('/api/openrouter-proxy', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer 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',
-          },
-          body: JSON.stringify({
-            model: 'openai/gpt-4o',
-            messages: [
-              { role: 'user', content: `Describe this file: ${publicUrl}` }
-            ],
-          }),
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageUrl: publicUrl }),
         });
         const responseData = await aiResponse.json();
         const aiMsg = {
