@@ -133,9 +133,10 @@ export default function TestChat() {
         ] }),
       });
       const data = await res.json();
+      console.log('AI response:', data);
       const aiMsg = {
         role: "assistant" as const,
-        content: data.choices?.[0]?.message?.content || "No response",
+        content: data.choices?.[0]?.message?.content || data.generated_text || data.error || JSON.stringify(data) || "No response",
       };
       setMessages((prev) => [...prev, aiMsg]);
     } catch (err: any) {
@@ -188,9 +189,10 @@ export default function TestChat() {
           body: JSON.stringify({ imageUrl }),
         });
         const data = await res.json();
+        console.log('AI response:', data);
         const aiMsg = {
           role: 'assistant' as const,
-          content: data.choices?.[0]?.message?.content || 'No response',
+          content: data.choices?.[0]?.message?.content || data.generated_text || data.error || JSON.stringify(data) || 'No response',
         };
         setMessages((prev) => [...prev, aiMsg]);
       } catch (err: any) {
