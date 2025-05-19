@@ -183,7 +183,7 @@ export default function TestChat() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': 'Bearer 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',
+            'Authorization': 'Bearer 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',
           },
           body: JSON.stringify({
             model: 'openai/gpt-4o',
