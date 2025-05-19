@@ -66,11 +66,18 @@ const markdownComponents = {
   ),
 };
 
-// Initialize Supabase client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!, 
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+// Create a function to initialize Supabase client
+function initSupabase() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.warn('Supabase URL or Anon Key is missing');
+    return null;
+  }
+
+  return createClient(supabaseUrl, supabaseAnonKey);
+}
 
 export default function TestChat() {
   const [input, setInput] = useState("");
@@ -89,6 +96,9 @@ export default function TestChat() {
   const [activeChatId, setActiveChatId] = useState(null);
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Initialize Supabase client on the client side
+  const supabase = typeof window !== 'undefined' ? initSupabase() : null;
 
   // Helper to show the image in chat
   const showImageMsg = (content: string, imgSrc: string) => {
@@ -161,13 +171,18 @@ export default function TestChat() {
     fileInputRef.current?.click();
   }
 
-  // Modify handleFileChange to use Supabase storage
+  // Modify handleFileChange to handle potential null supabase client
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (file) {
       setLoading(true);
       if (showHeading) setShowHeading(false);
       try {
+        // Check if Supabase client is initialized
+        if (!supabase) {
+          throw new Error('Supabase client not available');
+        }
+
         // Upload image to Supabase storage
         const fileExt = file.name.split('.').pop();
         const fileName = `${Math.random()}.${fileExt}`;
