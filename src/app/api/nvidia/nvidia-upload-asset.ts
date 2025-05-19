@@ -3,7 +3,7 @@ import { NextRequest } from 'next/server';
 export const runtime = 'edge';
 
 const NVIDIA_ASSETS_API = 'https://api.nvcf.nvidia.com/v2/nvcf/assets';
-const NVIDIA_API_KEY = process.env.NVIDIA_API_KEY || '';
+const API_KEY = process.env.GEMMA_API_KEY || '';
 
 export async function POST(req: NextRequest) {
   const contentType = req.headers.get('content-type') || '';
@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
   const createAssetRes = await fetch(NVIDIA_ASSETS_API, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${NVIDIA_API_KEY}`,
+      'Authorization': `Bearer ${API_KEY}`,
       'accept': 'application/json',
       'Content-Type': 'application/json',
     },

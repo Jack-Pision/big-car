@@ -2,8 +2,7 @@ import { NextRequest } from 'next/server';
 
 export const runtime = 'edge';
 
-const TEXT_API_KEY = process.env.NVIDIA_API_KEY || '';
-const IMAGE_API_KEY = process.env.NVIDIA_IMAGE_API_KEY || '';
+const API_KEY = process.env.GEMMA_API_KEY || '';
 
 async function fetchNvidiaAIWithImage(imageBuffer: Buffer, userMsg: any) {
   // Prepare multipart/form-data for NVIDIA API
@@ -19,7 +18,7 @@ async function fetchNvidiaAIWithImage(imageBuffer: Buffer, userMsg: any) {
   const res = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${IMAGE_API_KEY}`,
+      'Authorization': `Bearer ${API_KEY}`,
       'Accept': 'application/json',
     },
     body: formData,
@@ -44,7 +43,7 @@ async function fetchNvidiaAI(messages: any[]) {
     const res = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${TEXT_API_KEY}`,
+        'Authorization': `Bearer ${API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(payload),
