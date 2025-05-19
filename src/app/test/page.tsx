@@ -167,7 +167,7 @@ export default function TestChat() {
         const imgurRes = await fetch('https://api.imgur.com/3/image', {
           method: 'POST',
           headers: {
-            Authorization: 'Client-ID 6a6e7e7e7e7e7e7', // Replace with your Imgur Client-ID
+            Authorization: `Client-ID ${process.env.IMGUR_CLIENT_ID}`, // Use environment variable
           },
           body: formData,
         });
