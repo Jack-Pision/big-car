@@ -160,74 +160,45 @@ export default function TestChat() {
       setLoading(true);
       if (showHeading) setShowHeading(false);
       try {
-        // Read as base64 to check size
-        const reader = new FileReader();
-        reader.onload = async function (event) {
-          const base64 = event.target?.result as string;
-          // Remove prefix for length check
-          const base64Data = base64.split(',')[1] || '';
-          if (base64Data.length < 180000) {
-            // Small enough: embed as base64
-            showImageMsg('What is in this image?', base64);
-            const userMsg = {
-              role: "user" as const,
-              content: `What is in this image? <img src=\"${base64}\" />`,
-            };
-            const res = await fetch("/api/nvidia", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ messages: [userMsg] }),
-            });
-            const data = await res.json();
-            const aiMsg = {
-              role: "assistant" as const,
-              content: data.choices?.[0]?.message?.content || "No response",
-            };
-            setMessages((prev) => [...prev, aiMsg]);
-          } else {
-            // Too large: use asset upload
-            showImageMsg('What is in this image?', base64);
-            const formData = new FormData();
-            formData.append('image', file);
-            const assetRes = await fetch('/api/nvidia-upload-asset', {
-              method: 'POST',
-              body: formData,
-            });
-            const assetData = await assetRes.json();
-            if (!assetData.assetId) {
-              setMessages((prev) => [
-                ...prev,
-                { role: "assistant" as const, content: "Error: Failed to upload image asset." },
-              ]);
-              setLoading(false);
-              return;
-            }
-            // Now send the assetId in the chat request
-            const userMsg = {
-              role: "user" as const,
-              content: `What is in this image?`,
-              assets: [assetData.assetId],
-            };
-            const res = await fetch("/api/nvidia", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ messages: [userMsg] }),
-            });
-            const data = await res.json();
-            const aiMsg = {
-              role: "assistant" as const,
-              content: data.choices?.[0]?.message?.content || "No response",
-            };
-            setMessages((prev) => [...prev, aiMsg]);
-          }
+        // Upload image to Imgur
+        const formData = new FormData();
+        formData.append('image', file);
+        const imgurRes = await fetch('https://api.imgur.com/3/image', {
+          method: 'POST',
+          headers: {
+            Authorization: 'Client-ID 6a6e7e7e7e7e7e7', // Replace with your Imgur Client-ID
+          },
+          body: formData,
+        });
+        const imgurData = await imgurRes.json();
+        if (!imgurData.data?.link) {
+          setMessages((prev) => [
+            ...prev,
+            { role: 'assistant' as const, content: 'Error: Failed to upload image to Imgur.' },
+          ]);
           setLoading(false);
+          return;
+        }
+        const imageUrl = imgurData.data.link;
+        showImageMsg('What is in this image?', imageUrl);
+        // Send imageUrl to backend
+        const res = await fetch('/api/nvidia', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageUrl }),
+        });
+        const data = await res.json();
+        const aiMsg = {
+          role: 'assistant' as const,
+          content: data.choices?.[0]?.message?.content || 'No response',
         };
-        reader.readAsDataURL(file);
+        setMessages((prev) => [...prev, aiMsg]);
       } catch (err: any) {
         setMessages((prev) => [
           ...prev,
-          { role: "assistant" as const, content: "Error: " + (err?.message || String(err)) },
+          { role: 'assistant' as const, content: 'Error: ' + (err?.message || String(err)) },
         ]);
+      } finally {
         setLoading(false);
       }
     }
