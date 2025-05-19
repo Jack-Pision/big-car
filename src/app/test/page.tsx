@@ -8,7 +8,7 @@ import 'katex/dist/katex.min.css';
 import Sidebar from '../../components/Sidebar';
 import HamburgerMenu from '../../components/HamburgerMenu';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase-client';
 
 const SYSTEM_PROMPT = `You are a friendly, knowledgeable AI tutor that helps students with their studies. You can answer questions, explain concepts, solve math problems step by step, assist with research, and provide clear, concise, and engaging academic help across all subjects.
 
@@ -66,19 +66,6 @@ const markdownComponents = {
   ),
 };
 
-// Create a function to initialize Supabase client
-function initSupabase() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    console.warn('Supabase URL or Anon Key is missing');
-    return null;
-  }
-
-  return createClient(supabaseUrl, supabaseAnonKey);
-}
-
 export default function TestChat() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -96,9 +83,6 @@ export default function TestChat() {
   const [activeChatId, setActiveChatId] = useState(null);
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Initialize Supabase client on the client side
-  const supabase = typeof window !== 'undefined' ? initSupabase() : null;
 
   // Helper to show the image in chat
   const showImageMsg = (content: string, imgSrc: string) => {
@@ -171,18 +155,13 @@ export default function TestChat() {
     fileInputRef.current?.click();
   }
 
-  // Modify handleFileChange to handle potential null supabase client
+  // Modify handleFileChange to use the imported supabase client
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (file) {
       setLoading(true);
       if (showHeading) setShowHeading(false);
       try {
-        // Check if Supabase client is initialized
-        if (!supabase) {
-          throw new Error('Supabase client not available');
-        }
-
         // Upload image to Supabase storage
         const fileExt = file.name.split('.').pop();
         const fileName = `${Math.random()}.${fileExt}`;
