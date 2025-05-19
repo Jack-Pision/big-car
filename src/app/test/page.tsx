@@ -169,11 +169,11 @@ export default function TestChat() {
         const fileName = `${Math.random()}.${fileExt}`;
         const filePath = `${fileName}`;
         const { data: uploadResult, error: uploadError } = await clientSideSupabase.storage
-          .from('images')
+          .from('images2')
           .upload(filePath, file);
         if (uploadError) throw uploadError;
         const { data: urlData } = clientSideSupabase.storage
-          .from('images')
+          .from('images2')
           .getPublicUrl(filePath);
         const publicUrl = urlData.publicUrl;
         if (!publicUrl) throw new Error('Failed to get public URL');
