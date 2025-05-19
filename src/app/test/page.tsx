@@ -8,7 +8,7 @@ import 'katex/dist/katex.min.css';
 import Sidebar from '../../components/Sidebar';
 import HamburgerMenu from '../../components/HamburgerMenu';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase-client';
+import { supabase, createSupabaseClient } from '@/lib/supabase-client';
 
 const SYSTEM_PROMPT = `You are a friendly, knowledgeable AI tutor that helps students with their studies. You can answer questions, explain concepts, solve math problems step by step, assist with research, and provide clear, concise, and engaging academic help across all subjects.
 
@@ -155,19 +155,27 @@ export default function TestChat() {
     fileInputRef.current?.click();
   }
 
-  // Modify handleFileChange to use the imported supabase client
+  // Modify handleFileChange to handle potential null supabase client
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (file) {
       setLoading(true);
       if (showHeading) setShowHeading(false);
       try {
+        // Create Supabase client on the client side
+        const clientSideSupabase = createSupabaseClient();
+        
+        // Check if Supabase client is available
+        if (!clientSideSupabase) {
+          throw new Error('Supabase client not available');
+        }
+
         // Upload image to Supabase storage
         const fileExt = file.name.split('.').pop();
         const fileName = `${Math.random()}.${fileExt}`;
         const filePath = `${fileName}`;
 
-        const { data: uploadResult, error: uploadError } = await supabase.storage
+        const { data: uploadResult, error: uploadError } = await clientSideSupabase.storage
           .from('images')
           .upload(filePath, file);
 
@@ -176,7 +184,7 @@ export default function TestChat() {
         }
 
         // Get public URL
-        const { data: urlData } = supabase.storage
+        const { data: urlData } = clientSideSupabase.storage
           .from('images')
           .getPublicUrl(filePath);
 

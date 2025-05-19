@@ -1,13 +1,18 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Ensure environment variables are defined
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+// Function to create Supabase client only on the client side
+export function createSupabaseClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-// Throw an error if keys are missing
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase URL or Anon Key');
+  // Only create client if both URL and key are available
+  if (typeof window !== 'undefined' && supabaseUrl && supabaseAnonKey) {
+    return createClient(supabaseUrl, supabaseAnonKey);
+  }
+
+  // Return null or a mock client for server-side rendering
+  return null;
 }
 
-// Create and export Supabase client
-export const supabase = createClient(supabaseUrl, supabaseAnonKey); 
+// Export a function instead of a direct client
+export const supabase = createSupabaseClient(); 
