@@ -9,18 +9,33 @@ export async function POST(req: NextRequest) {
     if (!OPENROUTER_API_KEY) {
       return new Response(JSON.stringify({ error: 'Missing OpenRouter API key' }), { status: 500 });
     }
+    const requestBody = {
+      model: 'openai/gpt-4o',
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: 'Describe the contents of this image in detail.'
+            },
+            {
+              type: 'image_url',
+              image_url: {
+                url: imageUrl
+              }
+            }
+          ]
+        }
+      ],
+    };
     const aiRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
       },
-      body: JSON.stringify({
-        model: 'openai/gpt-4o',
-        messages: [
-          { role: 'user', content: `Describe this file: ${imageUrl}` }
-        ],
-      }),
+      body: JSON.stringify(requestBody),
     });
     const aiData = await aiRes.json();
     return new Response(JSON.stringify(aiData), {
