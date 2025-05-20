@@ -138,7 +138,7 @@ export default function TestChat() {
       console.log('AI response:', data);
       const aiMsg = {
         role: "assistant" as const,
-        content: data.choices?.[0]?.message?.content || data.generated_text || data.error || JSON.stringify(data) || "No response",
+        content: cleanAIResponse(data.choices?.[0]?.message?.content || data.generated_text || data.error || JSON.stringify(data) || "No response"),
       };
       setMessages((prev) => [...prev, aiMsg]);
     } catch (err: any) {
@@ -187,7 +187,7 @@ export default function TestChat() {
         const responseData = await aiResponse.json();
         const aiMsg = {
           role: 'assistant' as const,
-          content: responseData.choices?.[0]?.message?.content || responseData.error || JSON.stringify(responseData) || 'No response',
+          content: cleanAIResponse(responseData.choices?.[0]?.message?.content || responseData.error || JSON.stringify(responseData) || 'No response'),
         };
         setMessages((prev) => [...prev, aiMsg]);
       } catch (err: any) {
