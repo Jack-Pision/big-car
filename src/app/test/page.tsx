@@ -9,7 +9,7 @@ import Sidebar from '../../components/Sidebar';
 import HamburgerMenu from '../../components/HamburgerMenu';
 import { useRouter } from 'next/navigation';
 import { supabase, createSupabaseClient } from '@/lib/supabase-client';
-import AnimatedTextReveal from '../../components/AnimatedTextReveal';
+import { motion } from 'framer-motion';
 
 const SYSTEM_PROMPT = `You are a friendly, knowledgeable AI tutor that helps students with their studies. You can answer questions, explain concepts, solve math problems step by step, assist with research, and provide clear, concise, and engaging academic help across all subjects.
 
@@ -253,12 +253,21 @@ export default function TestChat() {
         <div className="w-full max-w-5xl mx-auto flex flex-col gap-4 items-center justify-center z-10 pt-12 pb-4">
           {messages.map((msg, i) => (
             msg.role === "assistant" ? (
-              <AnimatedTextReveal
+              <motion.div
                 key={i}
-                text={msg.content}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
                 className="w-full markdown-body text-left"
-                markdownComponents={markdownComponents}
-              />
+              >
+                <ReactMarkdown
+                  components={markdownComponents}
+                  remarkPlugins={[remarkGfm, remarkMath]}
+                  rehypePlugins={[rehypeKatex]}
+                >
+                  {msg.content}
+                </ReactMarkdown>
+              </motion.div>
             ) : (
               msg.content.includes('<img src=') ? (
                 <div
