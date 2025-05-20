@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
       return new Response(JSON.stringify({ error: 'Missing OpenRouter API key' }), { status: 500 });
     }
     const requestBody = {
-      model: 'moonshotai/kimi-vl-a3b-thinking:free',
+      model: 'google/gemma-3-27b-it',
       messages: [
         {
           role: 'user',
