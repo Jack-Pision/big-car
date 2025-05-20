@@ -143,13 +143,60 @@ export default function TestChat() {
           userMsg
         ] }),
       });
-      const data = await res.json();
-      console.log('AI response:', data);
-      const aiMsg = {
-        role: "assistant" as const,
-        content: cleanAIResponse(data.choices?.[0]?.message?.content || data.generated_text || data.error || JSON.stringify(data) || "No response"),
-      };
-      setMessages((prev) => [...prev, aiMsg]);
+      if (res.body && res.headers.get('content-type')?.includes('text/event-stream')) {
+        // Streaming response
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let done = false;
+        let aiMsg = { role: "assistant" as const, content: "" };
+        setMessages((prev) => [...prev, aiMsg]);
+        let msgIndex = null;
+        while (!done) {
+          const { value, done: doneReading } = await reader.read();
+          done = doneReading;
+          if (value) {
+            buffer += decoder.decode(value, { stream: true });
+            // Parse SSE: look for lines starting with 'data:'
+            let lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+            for (let line of lines) {
+              if (line.startsWith('data:')) {
+                const data = line.replace('data:', '').trim();
+                if (data === '[DONE]') continue;
+                try {
+                  const parsed = JSON.parse(data);
+                  const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.message?.content || parsed.choices?.[0]?.text || parsed.content || '';
+                  if (delta) {
+                    aiMsg.content += delta;
+                    setMessages((prev) => {
+                      // Find the last assistant message and update it
+                      const idx = prev.findIndex(m => m.role === 'assistant' && m.content === aiMsg.content.slice(0, -delta.length));
+                      if (idx !== -1) {
+                        const updated = [...prev];
+                        updated[idx] = { ...aiMsg };
+                        return updated;
+                      } else {
+                        return [...prev.slice(0, -1), { ...aiMsg }];
+                      }
+                    });
+                  }
+                } catch (err) {
+                  // Ignore JSON parse errors for non-data lines
+                }
+              }
+            }
+          }
+        }
+      } else {
+        // Fallback: non-streaming response
+        const data = await res.json();
+        const aiMsg = {
+          role: "assistant" as const,
+          content: cleanAIResponse(data.choices?.[0]?.message?.content || data.generated_text || data.error || JSON.stringify(data) || "No response"),
+        };
+        setMessages((prev) => [...prev, aiMsg]);
+      }
     } catch (err: any) {
       setMessages((prev) => [
         ...prev,
@@ -193,17 +240,59 @@ export default function TestChat() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ imageUrl: publicUrl }),
         });
-        const responseData = await aiResponse.json();
-        console.log('[DEBUG] Raw AI responseData:', responseData);
-        const rawContent = responseData.choices?.[0]?.message?.content || responseData.error || JSON.stringify(responseData) || 'No response';
-        console.log('[DEBUG] Raw content before cleaning:', rawContent);
-        const cleanedContent = cleanAIResponse(rawContent);
-        console.log('[DEBUG] Content after cleaning:', cleanedContent);
-        const aiMsg = {
-          role: 'assistant' as const,
-          content: cleanedContent,
-        };
-        setMessages((prev) => [...prev, aiMsg]);
+        if (aiResponse.body && aiResponse.headers.get('content-type')?.includes('text/event-stream')) {
+          // Streaming response
+          const reader = aiResponse.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+          let done = false;
+          let aiMsg = { role: 'assistant' as const, content: '' };
+          setMessages((prev) => [...prev, aiMsg]);
+          while (!done) {
+            const { value, done: doneReading } = await reader.read();
+            done = doneReading;
+            if (value) {
+              buffer += decoder.decode(value, { stream: true });
+              let lines = buffer.split('\n');
+              buffer = lines.pop() || '';
+              for (let line of lines) {
+                if (line.startsWith('data:')) {
+                  const data = line.replace('data:', '').trim();
+                  if (data === '[DONE]') continue;
+                  try {
+                    const parsed = JSON.parse(data);
+                    const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.message?.content || parsed.choices?.[0]?.text || parsed.content || '';
+                    if (delta) {
+                      aiMsg.content += delta;
+                      setMessages((prev) => {
+                        const idx = prev.findIndex(m => m.role === 'assistant' && m.content === aiMsg.content.slice(0, -delta.length));
+                        if (idx !== -1) {
+                          const updated = [...prev];
+                          updated[idx] = { ...aiMsg };
+                          return updated;
+                        } else {
+                          return [...prev.slice(0, -1), { ...aiMsg }];
+                        }
+                      });
+                    }
+                  } catch (err) {
+                    // Ignore JSON parse errors for non-data lines
+                  }
+                }
+              }
+            }
+          }
+        } else {
+          // Fallback: non-streaming response
+          const responseData = await aiResponse.json();
+          const rawContent = responseData.choices?.[0]?.message?.content || responseData.error || JSON.stringify(responseData) || 'No response';
+          const cleanedContent = cleanAIResponse(rawContent);
+          const aiMsg = {
+            role: 'assistant' as const,
+            content: cleanedContent,
+          };
+          setMessages((prev) => [...prev, aiMsg]);
+        }
       } catch (err: any) {
         setMessages((prev) => [
           ...prev,
