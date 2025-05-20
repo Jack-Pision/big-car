@@ -32,8 +32,12 @@ async function fetchWithTimeout(resource: string, options: any = {}, timeout = 1
 }
 
 // New function to fetch image analysis from OpenRouter (via our existing proxy)
-async function fetchOpenRouterImageAnalysis(imageUrl: string, openRouterApiKey: string) {
-  // The prompt for OpenRouter is already set in the /api/openrouter-proxy route
+async function fetchOpenRouterImageAnalysis(imageUrls: string[], openRouterApiKey: string) {
+  // If multiple images, pick the first one for now, or adapt the prompt for multiple images.
+  // TODO: Enhance this to potentially describe multiple images if the model supports it well,
+  // or create a summary if multiple images are present.
+  const targetImageUrl = imageUrls[0]; 
+
   const requestBody = {
     model: 'google/gemma-3-27b-it',
     messages: [
@@ -42,14 +46,12 @@ async function fetchOpenRouterImageAnalysis(imageUrl: string, openRouterApiKey: 
         content: [
           {
             type: 'text',
-            // The actual prompt text is defined in /api/openrouter-proxy/route.ts
-            // We just need to ensure the structure is what OpenRouter expects for an image query via proxy
-            text: "Describe this image."
+            text: imageUrls.length > 1 ? "Describe the first image in this set of images." : "Describe this image."
           },
           {
             type: 'image_url',
             image_url: {
-              url: imageUrl
+              url: targetImageUrl // Send only the first image URL to Gemma for now
             }
           }
         ]
@@ -114,23 +116,24 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    if (body.imageUrl) {
-      console.log(`[API /api/nvidia] Received image request for URL: ${body.imageUrl}`);
-      // 1. Get image description from OpenRouter (non-streamed for now)
+    if (body.imageUrls && Array.isArray(body.imageUrls) && body.imageUrls.length > 0) { // Check for imageUrls array
+      console.log(`[API /api/nvidia] Received image request for URLs: ${body.imageUrls.join(', ')}`);
+      // 1. Get image description from OpenRouter
       console.log("[API /api/nvidia] Calling OpenRouter...");
-      const openRouterRes = await fetchOpenRouterImageAnalysis(body.imageUrl, OPENROUTER_API_KEY);
+      // Send all imageUrls to fetchOpenRouterImageAnalysis
+      const openRouterRes = await fetchOpenRouterImageAnalysis(body.imageUrls, OPENROUTER_API_KEY);
       if (!openRouterRes.ok) {
         return openRouterRes; 
       }
       const openRouterData = await openRouterRes.json();
-      const imageDescription = openRouterData.choices?.[0]?.message?.content || 'Could not get a description from the image.';
+      const imageDescription = openRouterData.choices?.[0]?.message?.content || 'Could not get a description from the image(s).';
       console.log("[API /api/nvidia] OpenRouter description received:", imageDescription.substring(0, 100) + "...");
 
       // 2. Construct prompt for Nemotron
-      // Extract the last user message from the payload, which should be the user's prompt related to the image
-      const userImagePrompt = body.messages?.filter((m:any) => m.role === 'user').pop()?.content || "Tell me more about what was found in the image.";
+      const userImagePrompt = body.messages?.filter((m:any) => m.role === 'user').pop()?.content || (body.imageUrls.length > 1 ? "Tell me more about these images." : "Tell me more about what was found in the image.");
 
-      const nemotronSystemPrompt = `You are an advanced AI assistant. An image was analyzed, and the following description was generated: "${imageDescription}". The user has provided the following specific query about this image: "${userImagePrompt}". Based on both the image description and the user's query, provide a helpful and detailed response. If the user's query is a question, answer it. If it's a request, fulfill it.`;
+      const imageContext = body.imageUrls.length > 1 ? `A set of ${body.imageUrls.length} images were provided.` : "An image was provided.";
+      const nemotronSystemPrompt = `You are an advanced AI assistant. ${imageContext} Image analysis from OpenRouter (primarily of the first image if multiple were sent) yielded: "${imageDescription}". The user has provided the following specific query: "${userImagePrompt}". Based on the image description(s) and the user's query, provide a helpful and detailed response.`;
       
       const nemotronMessages = [
         { role: "system", content: nemotronSystemPrompt },

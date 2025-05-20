@@ -78,7 +78,7 @@ const markdownComponents = {
 export default function TestChat() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [messages, setMessages] = useState<{ role: "user" | "assistant"; content: string; imageUrl?: string }[]>([]);
+  const [messages, setMessages] = useState<{ role: "user" | "assistant"; content: string; imageUrls?: string[] }[]>([]);
   const [showHeading, setShowHeading] = useState(true);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const inputBarRef = useRef<HTMLDivElement>(null);
@@ -94,8 +94,8 @@ export default function TestChat() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef1 = useRef<HTMLInputElement>(null);
 
-  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
-  const [selectedFileForUpload, setSelectedFileForUpload] = useState<File | null>(null);
+  const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
+  const [selectedFilesForUpload, setSelectedFilesForUpload] = useState<File[]>([]);
 
   // Helper to show the image in chat
   const showImageMsg = (content: string, imgSrc: string) => {
@@ -131,52 +131,68 @@ export default function TestChat() {
   async function handleSend(e?: React.FormEvent) {
     if (e) e.preventDefault();
     const currentInput = input.trim();
-    const currentSelectedFile = selectedFileForUpload;
+    const currentSelectedFiles = selectedFilesForUpload;
 
-    if (!currentInput && !currentSelectedFile) return;
+    if (!currentInput && !currentSelectedFiles.length) return;
 
     setLoading(true);
     if (showHeading) setShowHeading(false);
 
     let userMessageContent = currentInput;
-    let uploadedImageUrl: string | undefined = undefined;
-    let userMessageForDisplay: { role: "user"; content: string; imageUrl?: string } = {
+    let uploadedImageUrls: string[] = [];
+    let userMessageForDisplay: { role: "user"; content: string; imageUrls?: string[] } = {
       role: "user" as const,
       content: currentInput,
     };
 
     // Temp message for image upload indication
-    if (currentSelectedFile && !currentInput) {
-      userMessageForDisplay.content = "Image selected for analysis."; // Placeholder if no text
+    if (currentSelectedFiles.length > 0 && !currentInput) {
+      userMessageForDisplay.content = "Images selected for analysis."; // Placeholder if no text
     }
 
-    // Add user message to chat (with or without image preview for user message)
-    if (currentSelectedFile) {
-      // For user message display, use the local preview URL directly
-      userMessageForDisplay.imageUrl = imagePreviewUrl || undefined; 
+    // Add user message to chat (with or without image previews for user messages)
+    if (currentSelectedFiles.length > 0) {
+      // For user message display, use the local preview URLs directly
+      userMessageForDisplay.imageUrls = imagePreviewUrls || undefined; 
     }
     setMessages((prev) => [...prev, userMessageForDisplay]);
 
     setInput("");
-    setImagePreviewUrl(null);
-    setSelectedFileForUpload(null);
+    setImagePreviewUrls([]);
+    setSelectedFilesForUpload([]);
 
     try {
-      if (currentSelectedFile) {
+      if (currentSelectedFiles.length > 0) {
         const clientSideSupabase = createSupabaseClient();
         if (!clientSideSupabase) throw new Error('Supabase client not available');
-        const fileExt = currentSelectedFile.name.split('.').pop();
-        const fileName = `${Math.random()}.${fileExt}`;
-        const filePath = `${fileName}`;
-        const { data: uploadResult, error: uploadError } = await clientSideSupabase.storage
-          .from('images2')
-          .upload(filePath, currentSelectedFile);
-        if (uploadError) throw uploadError;
-        const { data: urlData } = clientSideSupabase.storage
-          .from('images2')
-          .getPublicUrl(filePath);
-        uploadedImageUrl = urlData.publicUrl;
-        if (!uploadedImageUrl) throw new Error('Failed to get public URL after upload');
+        
+        // Upload each file individually and collect their public URLs
+        uploadedImageUrls = await Promise.all(
+          currentSelectedFiles.map(async (file) => {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Math.random()}.${fileExt}`;
+            const filePath = `${fileName}`;
+            const { error: uploadError } = await clientSideSupabase.storage
+              .from('images2')
+              .upload(filePath, file);
+            if (uploadError) {
+              console.error('Supabase upload error for file:', file.name, uploadError);
+              throw new Error(`Failed to upload ${file.name}: ${uploadError.message}`);
+            }
+            const { data: urlData } = clientSideSupabase.storage
+              .from('images2')
+              .getPublicUrl(filePath);
+            if (!urlData.publicUrl) {
+              console.error('Failed to get public URL for file:', file.name);
+              throw new Error(`Failed to get public URL for ${file.name}`);
+            }
+            return urlData.publicUrl;
+          })
+        );
+
+        if (uploadedImageUrls.length === 0 && currentSelectedFiles.length > 0) {
+          throw new Error('Failed to get public URLs for any of the uploaded images.');
+        }
       }
 
       const apiPayload: any = {
@@ -186,15 +202,15 @@ export default function TestChat() {
           ...messages.filter(m => m.role === 'user'), 
           // Add the current user message (text part)
           { role: "user", content: userMessageContent }
-        ].filter(msg => msg.content || (msg as any).imageUrl), // Ensure content or imageUrl exists
+        ].filter(msg => msg.content || (msg as any).imageUrls), // Ensure content or imageUrls exists
       };
 
-      if (uploadedImageUrl) {
-        apiPayload.imageUrl = uploadedImageUrl;
-        // If there was no text input but an image, we construct a default prompt for the API
-        // but the displayed user message might just show the image
+      if (uploadedImageUrls.length > 0) {
+        apiPayload.imageUrls = uploadedImageUrls;
+        // If there was no text input but images, we construct a default prompt for the API
+        // but the displayed user message might just show the images
         if (!userMessageContent) {
-          apiPayload.messages[apiPayload.messages.length -1].content = "Describe this image.";
+          apiPayload.messages[apiPayload.messages.length -1].content = "Describe these images.";
         }
       }
       
@@ -212,7 +228,7 @@ export default function TestChat() {
         let aiMsg = { 
           role: "assistant" as const, 
           content: "", 
-          imageUrl: uploadedImageUrl // Associate assistant response with the uploaded image
+          imageUrls: uploadedImageUrls // Associate assistant response with the uploaded images
         };
         setMessages((prev) => [...prev, aiMsg]);
 
@@ -254,14 +270,14 @@ export default function TestChat() {
         const aiMsg = {
           role: "assistant" as const,
           content: assistantResponseContent,
-          imageUrl: uploadedImageUrl // Associate assistant response with the uploaded image
+          imageUrls: uploadedImageUrls // Associate assistant response with the uploaded images
         };
         setMessages((prev) => [...prev, aiMsg]);
       }
     } catch (err: any) {
       setMessages((prev) => [
         ...prev,
-        { role: "assistant" as const, content: "Error: " + (err?.message || String(err)), imageUrl: uploadedImageUrl },
+        { role: "assistant" as const, content: "Error: " + (err?.message || String(err)), imageUrls: uploadedImageUrls },
       ]);
     } finally {
       setLoading(false);
@@ -275,16 +291,23 @@ export default function TestChat() {
 
   // Handler for the first plus button file upload
   async function handleFirstFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (file) {
-      setSelectedFileForUpload(file);
-      setImagePreviewUrl(URL.createObjectURL(file));
-      // Do not upload or send to API here yet
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const newFiles = Array.from(files);
+      setSelectedFilesForUpload((prevFiles) => [...prevFiles, ...newFiles]);
+      
+      const newPreviewUrls = newFiles.map(file => URL.createObjectURL(file));
+      setImagePreviewUrls((prevUrls) => [...prevUrls, ...newPreviewUrls]);
     }
     // Clear the file input so the same file can be selected again if removed and re-added
     if (e.target) {
       e.target.value = '\0';
     }
+  }
+
+  function removeImagePreview(indexToRemove: number) {
+    setImagePreviewUrls((prevUrls) => prevUrls.filter((_, index) => index !== indexToRemove));
+    setSelectedFilesForUpload((prevFiles) => prevFiles.filter((_, index) => index !== indexToRemove));
   }
 
   return (
@@ -350,13 +373,14 @@ export default function TestChat() {
                   className="px-5 py-3 rounded-2xl shadow bg-black text-white self-end max-w-full text-lg flex flex-col items-end"
                   style={{ wordBreak: "break-word" }}
                 >
-                  {msg.imageUrl && (
-                     <img 
-                      src={msg.imageUrl} 
-                      alt="Preview" 
+                  {msg.imageUrls && msg.imageUrls.map((url, index) => (
+                    <img 
+                      key={index}
+                      src={url} 
+                      alt={`Preview ${index + 1}`} 
                       className="max-w-xs max-h-64 rounded-md mb-2 self-end" 
                     />
-                  )}
+                  ))}
                   <div>{msg.content}</div>
                 </div>
               );
@@ -371,21 +395,22 @@ export default function TestChat() {
           style={{ boxShadow: "0 4px 32px 0 rgba(0,0,0,0.08)" }}
           onSubmit={handleSend}
         >
-          {/* Image Preview Area */}
-          {imagePreviewUrl && (
-            <div className="relative mb-2 w-24 h-24 group">
-              <img src={imagePreviewUrl} alt="Preview" className="w-full h-full object-cover rounded-md" />
-              <button
-                type="button"
-                onClick={() => {
-                  setImagePreviewUrl(null);
-                  setSelectedFileForUpload(null);
-                }}
-                className="absolute top-1 right-1 bg-black bg-opacity-50 text-white rounded-full p-1 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
-                aria-label="Remove image"
-              >
-                ✕
-              </button>
+          {/* Image Preview Area - displays multiple images */}
+          {imagePreviewUrls.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-2">
+              {imagePreviewUrls.map((url, index) => (
+                <div key={index} className="relative w-24 h-24 group">
+                  <img src={url} alt={`Preview ${index + 1}`} className="w-full h-full object-cover rounded-md" />
+                  <button
+                    type="button"
+                    onClick={() => removeImagePreview(index)}
+                    className="absolute top-1 right-1 bg-black bg-opacity-50 text-white rounded-full p-1 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                    aria-label={`Remove image ${index + 1}`}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
             </div>
           )}
           {/* Textarea */}
@@ -404,6 +429,7 @@ export default function TestChat() {
             ref={fileInputRef1}
             type="file"
             accept="image/*"
+            multiple // Allow multiple file selection
             style={{ display: 'none' }}
             onChange={handleFirstFileChange}
           />
