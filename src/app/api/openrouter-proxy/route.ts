@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
           content: [
             {
               type: 'text',
-              text: 'Describe the contents of this image in detail.'
+              text: `Please analyze the following image and provide a detailed description. Try to identify the main objects, people, text, diagrams, scenes, or any notable features.\n\nIf the image includes:\n- **Text**: Extract and summarize it.\n- **Charts or graphs**: Describe the data and trends.\n- **Math or handwriting**: Try to interpret and solve it if it's a problem.\n- **Screenshots or code**: Summarize what's shown and highlight any issues.\n- **Photos or artwork**: Describe the style, setting, or visual elements.\n- **UI designs**: Describe layout and functionality if applicable.\n\nAfter your analysis, offer to help the user with options like summarizing, answering questions, solving a problem, or providing feedback.\n\nKeep the response open-ended and helpful so the user can decide how to proceed.`
             },
             {
               type: 'image_url',
