@@ -35,7 +35,7 @@ async function fetchWithTimeout(resource: string, options: any = {}, timeout = 1
 async function fetchOpenRouterImageAnalysis(imageUrl: string, openRouterApiKey: string) {
   // The prompt for OpenRouter is already set in the /api/openrouter-proxy route
   const requestBody = {
-    model: 'moonshotai/kimi-vl-a3b-thinking:free', // This should match the model in openrouter-proxy or be made dynamic
+    model: 'google/gemma-3-27b-it',
     messages: [
       {
         role: 'user',
