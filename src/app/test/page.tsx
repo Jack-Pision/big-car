@@ -188,7 +188,7 @@ export default function TestChat() {
         if (!publicUrl) throw new Error('Failed to get public URL');
         showImageMsg('What is in this image (OpenRouter)?', publicUrl);
         // Send imageUrl to backend API route that proxies to OpenRouter
-        const aiResponse = await fetch('/api/openrouter-proxy', {
+        const aiResponse = await fetch('/api/nvidia', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ imageUrl: publicUrl }),
