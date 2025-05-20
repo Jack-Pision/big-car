@@ -65,7 +65,7 @@ async function fetchOpenRouterImageAnalysis(imageUrl: string, openRouterApiKey: 
       'Authorization': `Bearer ${openRouterApiKey}`,
     },
     body: JSON.stringify(requestBody),
-  }, 20000); // 20-second timeout for OpenRouter
+  }, 10000); // 10-second timeout for OpenRouter
 
   if (!res.ok) {
     const errorText = await res.text();
@@ -93,7 +93,7 @@ async function fetchNvidiaText(messages: any[]) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(payload),
-  }, 25000); // 25-second timeout for NVIDIA Nemotron
+  }, 12000); // 12-second timeout for NVIDIA Nemotron
 
   if (!res.ok) {
     const errorText = await res.text();
