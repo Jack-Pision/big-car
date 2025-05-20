@@ -13,6 +13,24 @@ if (!OPENROUTER_API_KEY) {
   throw new Error('OPENROUTER_API_KEY is required');
 }
 
+// Helper function for fetch with timeout
+async function fetchWithTimeout(resource: string, options: any = {}, timeout = 15000) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  try {
+    const response = await fetch(resource, { ...options, signal: controller.signal });
+    clearTimeout(id);
+    return response;
+  } catch (err: any) {
+    clearTimeout(id);
+    if (err.name === 'AbortError') {
+      // Re-throw a specific error for timeout to be caught by the main handler
+      throw new Error('Request timed out'); 
+    }
+    throw err; // Re-throw other errors
+  }
+}
+
 // New function to fetch image analysis from OpenRouter (via our existing proxy)
 async function fetchOpenRouterImageAnalysis(imageUrl: string, openRouterApiKey: string) {
   // The prompt for OpenRouter is already set in the /api/openrouter-proxy route
@@ -39,21 +57,21 @@ async function fetchOpenRouterImageAnalysis(imageUrl: string, openRouterApiKey: 
     ],
   };
 
-  // Directly call OpenRouter API here since we are in a backend route
-  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+  // Using fetchWithTimeout for the OpenRouter API call
+  const res = await fetchWithTimeout('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${openRouterApiKey}`,
     },
     body: JSON.stringify(requestBody),
-  });
+  }, 20000); // 20-second timeout for OpenRouter
 
   if (!res.ok) {
     const errorText = await res.text();
     console.error('OpenRouter API error:', errorText);
-    // Return a Response object in case of error to be consistent
-    return new Response(JSON.stringify({ error: `OpenRouter API Error: ${errorText}` }), { status: res.status });
+    // Return a Response object with status for consistent error handling upstream
+    return new Response(JSON.stringify({ error: `OpenRouter API Error: ${errorText}` }), { status: res.status, headers: { 'Content-Type': 'application/json'} });
   }
   return res; // Return the full response object to be processed by the caller
 }
@@ -67,84 +85,93 @@ async function fetchNvidiaText(messages: any[]) {
     max_tokens: 4096,
     stream: false,
   };
-  try {
-    const res = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${TEXT_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) {
-      const errorText = await res.text();
-      return new Response(JSON.stringify({ error: `Nvidia API Error: ${errorText}` }), { status: res.status });
-    }
-    return res;
-  } catch (err) {
-    return new Response(JSON.stringify({ error: String(err) }), { status: 500 });
+  // Using fetchWithTimeout for the NVIDIA API call
+  const res = await fetchWithTimeout('https://integrate.api.nvidia.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${TEXT_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  }, 25000); // 25-second timeout for NVIDIA Nemotron
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    // Return a Response object with status for consistent error handling upstream
+    return new Response(JSON.stringify({ error: `Nvidia API Error: ${errorText}` }), { status: res.status, headers: { 'Content-Type': 'application/json'} });
   }
+  return res;
 }
 
 export async function POST(req: NextRequest) {
   const contentType = req.headers.get('content-type') || '';
-  if (contentType.includes('application/json')) {
-    try {
-      const body = await req.json();
-      if (body.imageUrl) {
-        // 1. Get image description from OpenRouter
-        const openRouterRes = await fetchOpenRouterImageAnalysis(body.imageUrl, OPENROUTER_API_KEY);
-        if (!openRouterRes.ok) {
-          // openRouterRes is already a Response object if not ok, so just return it
-          return openRouterRes; 
-        }
-        const openRouterData = await openRouterRes.json();
-        const imageDescription = openRouterData.choices?.[0]?.message?.content || 'Could not get a description from the image.';
+  if (!contentType.includes('application/json')) {
+    return new Response(JSON.stringify({ error: 'Unsupported content type' }), { 
+      status: 400, 
+      headers: { 'Content-Type': 'application/json' } 
+    });
+  }
 
-        // 2. Construct a new prompt for Nemotron using the image description
-        const nemotronSystemPrompt = `You are an advanced AI assistant. An image was analyzed, and the following description was generated: "${imageDescription}". Based on this image description, provide a helpful and detailed response. If the description suggests a question or problem, try to answer or solve it. If it's a scene, you can describe it further, tell a short story about it, or provide interesting facts related to it. Be creative and informative.`;
-        
-        const nemotronMessages = [
-          { role: "system", content: nemotronSystemPrompt },
-          // Optionally, include the original user prompt if it was related to the image, e.g. body.originalPrompt
-          // For now, we'll assume the primary goal is to react to the image analysis.
-          { role: "user", content: "Tell me more about what was found in the image." }
-        ];
-        
-        // 3. Call Nemotron with the new prompt
-        const nemotronRes = await fetchNvidiaText(nemotronMessages);
-        if (!nemotronRes.ok) {
-            return nemotronRes; // nemotronRes is already a Response object
-        }
-        const nemotronData = await nemotronRes.json();
-        
-        // Return the Nemotron response
-        return new Response(JSON.stringify(nemotronData), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        });
-
-      } else {
-        // Text-only request: use existing Nemotron text generation
-        const { messages } = body;
-        const aiRes = await fetchNvidiaText(messages);
-         if (!aiRes.ok) {
-            return aiRes; // aiRes is already a Response object
-        }
-        const aiData = await aiRes.json();
-        return new Response(JSON.stringify(aiData), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        });
+  try {
+    const body = await req.json();
+    if (body.imageUrl) {
+      console.log(`[API /api/nvidia] Received image request for URL: ${body.imageUrl}`);
+      // 1. Get image description from OpenRouter
+      console.log("[API /api/nvidia] Calling OpenRouter...");
+      const openRouterRes = await fetchOpenRouterImageAnalysis(body.imageUrl, OPENROUTER_API_KEY);
+      if (!openRouterRes.ok) {
+        return openRouterRes; 
       }
-    } catch (err: any) {
-      console.error("Error in POST /api/nvidia:", err);
-      return new Response(JSON.stringify({ error: 'Failed to process request', details: err.message || String(err) }), {
-        status: 500,
+      const openRouterData = await openRouterRes.json();
+      const imageDescription = openRouterData.choices?.[0]?.message?.content || 'Could not get a description from the image.';
+      console.log("[API /api/nvidia] OpenRouter description received:", imageDescription.substring(0, 100) + "...");
+
+      // 2. Construct prompt for Nemotron
+      const nemotronSystemPrompt = `You are an advanced AI assistant. An image was analyzed, and the following description was generated: "${imageDescription}". Based on this image description, provide a helpful and detailed response. If the description suggests a question or problem, try to answer or solve it. If it's a scene, you can describe it further, tell a short story about it, or provide interesting facts related to it. Be creative and informative.`;
+      const nemotronMessages = [
+        { role: "system", content: nemotronSystemPrompt },
+        // Optionally, include the original user prompt if it was related to the image, e.g. body.originalPrompt
+        // For now, we'll assume the primary goal is to react to the image analysis.
+        { role: "user", content: "Tell me more about what was found in the image." }
+      ];
+      
+      // 3. Call Nemotron
+      console.log("[API /api/nvidia] Calling Nemotron...");
+      const nemotronRes = await fetchNvidiaText(nemotronMessages);
+      if (!nemotronRes.ok) {
+          return nemotronRes;
+      }
+      const nemotronData = await nemotronRes.json();
+      console.log("[API /api/nvidia] Nemotron response received.");
+      
+      return new Response(JSON.stringify(nemotronData), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+    } else {
+      console.log("[API /api/nvidia] Received text-only request.");
+      const { messages } = body;
+      const aiRes = await fetchNvidiaText(messages);
+       if (!aiRes.ok) {
+          return aiRes;
+      }
+      const aiData = await aiRes.json();
+      console.log("[API /api/nvidia] Text-only Nemotron response received.");
+      return new Response(JSON.stringify(aiData), {
+        status: 200,
         headers: { 'Content-Type': 'application/json' },
       });
     }
-  } else {
-    return new Response(JSON.stringify({ error: 'Unsupported content type' }), { status: 400 });
+  } catch (err: any) {
+    console.error("[API /api/nvidia] Error in POST:", err);
+    const isTimeout = err.message === 'Request timed out';
+    return new Response(JSON.stringify({
+      error: isTimeout ? 'Gateway Timeout: The AI service took too long to respond.' : 'Failed to process request',
+      details: err.message || String(err)
+    }), {
+      status: isTimeout ? 504 : 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 } 
