@@ -83,7 +83,7 @@ async function fetchNvidiaText(messages: any[]) {
     temperature: 0.6,
     top_p: 0.95,
     max_tokens: 4096,
-    stream: false,
+    stream: true, // Always stream
   };
   // Using fetchWithTimeout for the NVIDIA API call
   const res = await fetchWithTimeout('https://integrate.api.nvidia.com/v1/chat/completions', {
@@ -116,7 +116,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     if (body.imageUrl) {
       console.log(`[API /api/nvidia] Received image request for URL: ${body.imageUrl}`);
-      // 1. Get image description from OpenRouter
+      // 1. Get image description from OpenRouter (non-streamed for now)
       console.log("[API /api/nvidia] Calling OpenRouter...");
       const openRouterRes = await fetchOpenRouterImageAnalysis(body.imageUrl, OPENROUTER_API_KEY);
       if (!openRouterRes.ok) {
@@ -126,41 +126,52 @@ export async function POST(req: NextRequest) {
       const imageDescription = openRouterData.choices?.[0]?.message?.content || 'Could not get a description from the image.';
       console.log("[API /api/nvidia] OpenRouter description received:", imageDescription.substring(0, 100) + "...");
 
-      // 2. Construct prompt for Nemotron
       const nemotronSystemPrompt = `You are an advanced AI assistant. An image was analyzed, and the following description was generated: "${imageDescription}". Based on this image description, provide a helpful and detailed response. If the description suggests a question or problem, try to answer or solve it. If it's a scene, you can describe it further, tell a short story about it, or provide interesting facts related to it. Be creative and informative.`;
       const nemotronMessages = [
         { role: "system", content: nemotronSystemPrompt },
-        // Optionally, include the original user prompt if it was related to the image, e.g. body.originalPrompt
-        // For now, we'll assume the primary goal is to react to the image analysis.
         { role: "user", content: "Tell me more about what was found in the image." }
       ];
       
-      // 3. Call Nemotron
-      console.log("[API /api/nvidia] Calling Nemotron...");
-      const nemotronRes = await fetchNvidiaText(nemotronMessages);
+      // 3. Call Nemotron and stream its response
+      console.log("[API /api/nvidia] Calling Nemotron with streaming enabled...");
+      const nemotronRes = await fetchNvidiaText(nemotronMessages); // Always streaming
+      
       if (!nemotronRes.ok) {
+          // If Nemotron returns an error (e.g. 4xx, 5xx), it won't be a stream.
+          // We expect our fetchNvidiaText to already convert this to a JSON error Response.
           return nemotronRes;
       }
-      const nemotronData = await nemotronRes.json();
-      console.log("[API /api/nvidia] Nemotron response received.");
       
-      return new Response(JSON.stringify(nemotronData), {
+      // Return the stream directly to the client
+      // Ensure appropriate headers for streaming
+      const headers = new Headers(nemotronRes.headers);
+      headers.set('Content-Type', 'text/event-stream'); // Or 'application/x-ndjson' depending on actual stream format
+      headers.set('Cache-Control', 'no-cache');
+      headers.set('Connection', 'keep-alive');
+
+      return new Response(nemotronRes.body, {
         status: 200,
-        headers: { 'Content-Type': 'application/json' },
+        headers: headers,
       });
 
     } else {
-      console.log("[API /api/nvidia] Received text-only request.");
+      console.log("[API /api/nvidia] Received text-only request (streaming)...");
       const { messages } = body;
-      const aiRes = await fetchNvidiaText(messages);
-       if (!aiRes.ok) {
-          return aiRes;
+      // For text-only, also enable streaming
+      const nemotronRes = await fetchNvidiaText(messages); // Always streaming
+      
+      if (!nemotronRes.ok) {
+          return nemotronRes;
       }
-      const aiData = await aiRes.json();
-      console.log("[API /api/nvidia] Text-only Nemotron response received.");
-      return new Response(JSON.stringify(aiData), {
+
+      const headers = new Headers(nemotronRes.headers);
+      headers.set('Content-Type', 'text/event-stream');
+      headers.set('Cache-Control', 'no-cache');
+      headers.set('Connection', 'keep-alive');
+      
+      return new Response(nemotronRes.body, {
         status: 200,
-        headers: { 'Content-Type': 'application/json' },
+        headers: headers,
       });
     }
   } catch (err: any) {
