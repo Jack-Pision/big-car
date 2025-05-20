@@ -41,8 +41,16 @@ When writing math, always use \$...\$ for inline math and \$\$...\$\$ for block 
 
 For every equation, formula, or calculation step, always use block math with \$\$...\$\$ so it appears large and centered. Do not use inline math for equations or steps—only use inline math for very short expressions within sentences.`;
 
-function cleanAIResponse(text: string) {
-  return text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+function cleanAIResponse(text: string): string {
+  if (typeof text !== 'string') {
+    return ''; // Or handle non-string input as appropriate
+  }
+  let cleanedText = text;
+  // Iteratively remove <think>...</think> blocks
+  while (/<think>[\s\S]*?<\/think>/gi.test(cleanedText)) {
+    cleanedText = cleanedText.replace(/<think>[\s\S]*?<\/think>/gi, '');
+  }
+  return cleanedText.trim();
 }
 
 const markdownComponents = {
@@ -185,9 +193,14 @@ export default function TestChat() {
           body: JSON.stringify({ imageUrl: publicUrl }),
         });
         const responseData = await aiResponse.json();
+        console.log('[DEBUG] Raw AI responseData:', responseData);
+        const rawContent = responseData.choices?.[0]?.message?.content || responseData.error || JSON.stringify(responseData) || 'No response';
+        console.log('[DEBUG] Raw content before cleaning:', rawContent);
+        const cleanedContent = cleanAIResponse(rawContent);
+        console.log('[DEBUG] Content after cleaning:', cleanedContent);
         const aiMsg = {
           role: 'assistant' as const,
-          content: cleanAIResponse(responseData.choices?.[0]?.message?.content || responseData.error || JSON.stringify(responseData) || 'No response'),
+          content: cleanedContent,
         };
         setMessages((prev) => [...prev, aiMsg]);
       } catch (err: any) {
