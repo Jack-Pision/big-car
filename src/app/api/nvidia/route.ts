@@ -89,21 +89,21 @@ async function fetchNvidiaText(messages: any[]) {
   };
   // Using fetchWithTimeout for the NVIDIA API call
   const res = await fetchWithTimeout('https://integrate.api.nvidia.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
+      method: 'POST',
+      headers: {
       'Authorization': `Bearer ${TEXT_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
   }, 12000); // 12-second timeout for NVIDIA Nemotron
 
-  if (!res.ok) {
-    const errorText = await res.text();
+    if (!res.ok) {
+      const errorText = await res.text();
     // Return a Response object with status for consistent error handling upstream
     return new Response(JSON.stringify({ error: `Nvidia API Error: ${errorText}` }), { status: res.status, headers: { 'Content-Type': 'application/json'} });
+    }
+    return res;
   }
-  return res;
-}
 
 // Utility to strip <think>...</think> tags from a string
 function stripThinkTags(text: string): string {
@@ -139,7 +139,7 @@ export async function POST(req: NextRequest) {
       const userImagePrompt = body.messages?.filter((m:any) => m.role === 'user').pop()?.content || (body.imageUrls.length > 1 ? "Tell me more about these images." : "Tell me more about what was found in the image.");
 
       const imageContext = body.imageUrls.length > 1 ? `A set of ${body.imageUrls.length} images were provided.` : "An image was provided.";
-      const nemotronSystemPrompt = `You are an advanced AI assistant. ${imageContext} Image analysis from OpenRouter (primarily of the first image if multiple were sent) yielded: "${imageDescription}". The user has provided the following specific query: "${userImagePrompt}". Based on the image description(s) and the user's query, provide a helpful and detailed response.\n\nAlways format your response in markdown. Use paragraphs, lists, and blank lines for best readability. Use headings where appropriate. Do not output everything as a single block of text.`;
+      const nemotronSystemPrompt = `You are an advanced AI assistant. ${imageContext} Image analysis from OpenRouter (primarily of the first image if multiple were sent) yielded: "${imageDescription}". The user has provided the following specific query: "${userImagePrompt}". Based on the image description(s) and the user's query, provide a helpful and detailed response.\n\nAlways start your response with a single, clear title using a single '#' in markdown (e.g., '# My Title'). Then, write your answer in regular, well-structured paragraphs. Only use bullet points, numbered lists, or additional headings if the user input specifically requests them (e.g., asks for a list, steps, bullet points, or similar). Do not use excessive bold, lists, or headings unless specifically requested.`;
       
       const nemotronMessages = [
         { role: "system", content: nemotronSystemPrompt },
@@ -187,8 +187,8 @@ export async function POST(req: NextRequest) {
                 if (data === '[DONE]') {
                   controller.enqueue(encoder.encode('data: [DONE]\n'));
                   continue;
-                }
-                try {
+    }
+    try {
                   const parsed = JSON.parse(data);
                   // Clean the content field(s)
                   if (parsed.choices?.[0]?.delta?.content) {
@@ -213,11 +213,11 @@ export async function POST(req: NextRequest) {
       });
 
       return new Response(cleanedStream, {
-        status: 200,
+      status: 200,
         headers: headers,
-      });
+    });
 
-    } else {
+  } else {
       console.log("[API /api/nvidia] Received text-only request (streaming)...");
       const { messages } = body;
       // For text-only, also enable streaming

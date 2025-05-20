@@ -54,6 +54,31 @@ function cleanAIResponse(text: string): string {
   return cleanedText.trim();
 }
 
+// Post-process AI response to enforce a single # title and regular paragraphs
+function enforceSingleTitleAndParagraphs(markdown: string): string {
+  if (!markdown) return '';
+  // Find the first # heading
+  const lines = markdown.split(/\r?\n/);
+  let foundTitle = false;
+  const processed: string[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!foundTitle && /^#\s+/.test(line)) {
+      processed.push(line); // Keep the first # heading
+      foundTitle = true;
+    } else if (/^#\s+/.test(line)) {
+      // Skip additional # headings
+      continue;
+    } else {
+      processed.push(line);
+    }
+  }
+  // Join and collapse multiple blank lines
+  let result = processed.join('\n');
+  result = result.replace(/\n{3,}/g, '\n\n');
+  return result.trim();
+}
+
 const markdownComponents = {
   h1: (props: React.ComponentProps<'h1'>) => (
     <h1
@@ -259,9 +284,10 @@ export default function TestChat() {
                       const lastMsgIndex = updatedMessages.length - 1;
                       if(updatedMessages[lastMsgIndex] && updatedMessages[lastMsgIndex].role === 'assistant'){
                         // Format content for display - ensure newlines are preserved
-                        const formattedContent = aiMsg.content
+                        let formattedContent = aiMsg.content
                           .replace(/\. /g, '.\n\n') // Add paragraph breaks after periods
                           .replace(/\n\n\n+/g, '\n\n'); // Prevent too many consecutive newlines
+                        formattedContent = enforceSingleTitleAndParagraphs(formattedContent);
                         updatedMessages[lastMsgIndex] = { ...updatedMessages[lastMsgIndex], content: formattedContent };
                       }
                       return updatedMessages;
@@ -277,9 +303,14 @@ export default function TestChat() {
       } else {
         const data = await res.json();
         const assistantResponseContent = cleanAIResponse(data.choices?.[0]?.message?.content || data.generated_text || data.error || JSON.stringify(data) || "No response");
+        const formattedContent = enforceSingleTitleAndParagraphs(
+          assistantResponseContent
+            .replace(/\. /g, '.\n\n')
+            .replace(/\n\n\n+/g, '\n\n')
+        );
         const aiMsg = {
           role: "assistant" as const,
-          content: assistantResponseContent,
+          content: formattedContent,
           imageUrls: uploadedImageUrls // Associate assistant response with the uploaded images
         };
         setMessages((prev) => [...prev, aiMsg]);
