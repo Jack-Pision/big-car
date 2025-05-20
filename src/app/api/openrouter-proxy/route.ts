@@ -11,6 +11,7 @@ export async function POST(req: NextRequest) {
     }
     const requestBody = {
       model: 'google/gemma-3-27b-it',
+      stream: true,
       messages: [
         {
           role: 'user',
@@ -37,6 +38,18 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify(requestBody),
     });
+    // Forward the stream to the client
+    if (aiRes.body) {
+      return new Response(aiRes.body, {
+        status: aiRes.status,
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        },
+      });
+    }
+    // fallback for non-streamed error
     const aiData = await aiRes.json();
     return new Response(JSON.stringify(aiData), {
       status: aiRes.status,
