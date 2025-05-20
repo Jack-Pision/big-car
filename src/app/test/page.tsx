@@ -78,7 +78,7 @@ const markdownComponents = {
 export default function TestChat() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [messages, setMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
+  const [messages, setMessages] = useState<{ role: "user" | "assistant"; content: string; imageUrl?: string }[]>([]);
   const [showHeading, setShowHeading] = useState(true);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const inputBarRef = useRef<HTMLDivElement>(null);
@@ -93,6 +93,9 @@ export default function TestChat() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef1 = useRef<HTMLInputElement>(null);
+
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [selectedFileForUpload, setSelectedFileForUpload] = useState<File | null>(null);
 
   // Helper to show the image in chat
   const showImageMsg = (content: string, imgSrc: string) => {
@@ -127,37 +130,97 @@ export default function TestChat() {
 
   async function handleSend(e?: React.FormEvent) {
     if (e) e.preventDefault();
-    if (!input.trim()) return;
+    const currentInput = input.trim();
+    const currentSelectedFile = selectedFileForUpload;
+
+    if (!currentInput && !currentSelectedFile) return;
+
     setLoading(true);
     if (showHeading) setShowHeading(false);
-    const userMsg = { role: "user" as const, content: input.trim() };
-    setMessages((prev) => [...prev, userMsg]);
+
+    let userMessageContent = currentInput;
+    let uploadedImageUrl: string | undefined = undefined;
+    let userMessageForDisplay: { role: "user"; content: string; imageUrl?: string } = {
+      role: "user" as const,
+      content: currentInput,
+    };
+
+    // Temp message for image upload indication
+    if (currentSelectedFile && !currentInput) {
+      userMessageForDisplay.content = "Image selected for analysis."; // Placeholder if no text
+    }
+
+    // Add user message to chat (with or without image preview for user message)
+    if (currentSelectedFile) {
+      // For user message display, use the local preview URL directly
+      userMessageForDisplay.imageUrl = imagePreviewUrl || undefined; 
+    }
+    setMessages((prev) => [...prev, userMessageForDisplay]);
+
     setInput("");
+    setImagePreviewUrl(null);
+    setSelectedFileForUpload(null);
+
     try {
+      if (currentSelectedFile) {
+        const clientSideSupabase = createSupabaseClient();
+        if (!clientSideSupabase) throw new Error('Supabase client not available');
+        const fileExt = currentSelectedFile.name.split('.').pop();
+        const fileName = `${Math.random()}.${fileExt}`;
+        const filePath = `${fileName}`;
+        const { data: uploadResult, error: uploadError } = await clientSideSupabase.storage
+          .from('images2')
+          .upload(filePath, currentSelectedFile);
+        if (uploadError) throw uploadError;
+        const { data: urlData } = clientSideSupabase.storage
+          .from('images2')
+          .getPublicUrl(filePath);
+        uploadedImageUrl = urlData.publicUrl;
+        if (!uploadedImageUrl) throw new Error('Failed to get public URL after upload');
+      }
+
+      const apiPayload: any = {
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          // Filter out previous assistant messages before sending, keep user messages
+          ...messages.filter(m => m.role === 'user'), 
+          // Add the current user message (text part)
+          { role: "user", content: userMessageContent }
+        ].filter(msg => msg.content || (msg as any).imageUrl), // Ensure content or imageUrl exists
+      };
+
+      if (uploadedImageUrl) {
+        apiPayload.imageUrl = uploadedImageUrl;
+        // If there was no text input but an image, we construct a default prompt for the API
+        // but the displayed user message might just show the image
+        if (!userMessageContent) {
+          apiPayload.messages[apiPayload.messages.length -1].content = "Describe this image.";
+        }
+      }
+      
       const res = await fetch("/api/nvidia", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          ...messages,
-          userMsg
-        ] }),
+        body: JSON.stringify(apiPayload),
       });
+
       if (res.body && res.headers.get('content-type')?.includes('text/event-stream')) {
-        // Streaming response
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
         let done = false;
-        let aiMsg = { role: "assistant" as const, content: "" };
+        let aiMsg = { 
+          role: "assistant" as const, 
+          content: "", 
+          imageUrl: uploadedImageUrl // Associate assistant response with the uploaded image
+        };
         setMessages((prev) => [...prev, aiMsg]);
-        let msgIndex = null;
+
         while (!done) {
           const { value, done: doneReading } = await reader.read();
           done = doneReading;
           if (value) {
             buffer += decoder.decode(value, { stream: true });
-            // Parse SSE: look for lines starting with 'data:'
             let lines = buffer.split('\n');
             buffer = lines.pop() || '';
             for (let line of lines) {
@@ -170,37 +233,35 @@ export default function TestChat() {
                   if (delta) {
                     aiMsg.content += delta;
                     setMessages((prev) => {
-                      // Find the last assistant message and update it
-                      const idx = prev.findIndex(m => m.role === 'assistant' && m.content === aiMsg.content.slice(0, -delta.length));
-                      if (idx !== -1) {
-                        const updated = [...prev];
-                        updated[idx] = { ...aiMsg };
-                        return updated;
-                      } else {
-                        return [...prev.slice(0, -1), { ...aiMsg }];
+                      const updatedMessages = [...prev];
+                      const lastMsgIndex = updatedMessages.length - 1;
+                      if(updatedMessages[lastMsgIndex] && updatedMessages[lastMsgIndex].role === 'assistant'){
+                        updatedMessages[lastMsgIndex] = { ...updatedMessages[lastMsgIndex], content: aiMsg.content };
                       }
+                      return updatedMessages;
                     });
                   }
                 } catch (err) {
-                  // Ignore JSON parse errors for non-data lines
+                  // console.error("Error parsing stream data:", err, "Data:", data);
                 }
               }
             }
           }
         }
       } else {
-        // Fallback: non-streaming response
         const data = await res.json();
+        const assistantResponseContent = cleanAIResponse(data.choices?.[0]?.message?.content || data.generated_text || data.error || JSON.stringify(data) || "No response");
         const aiMsg = {
           role: "assistant" as const,
-          content: cleanAIResponse(data.choices?.[0]?.message?.content || data.generated_text || data.error || JSON.stringify(data) || "No response"),
+          content: assistantResponseContent,
+          imageUrl: uploadedImageUrl // Associate assistant response with the uploaded image
         };
         setMessages((prev) => [...prev, aiMsg]);
       }
     } catch (err: any) {
       setMessages((prev) => [
         ...prev,
-        { role: "assistant" as const, content: "Error: " + (err?.message || String(err)) },
+        { role: "assistant" as const, content: "Error: " + (err?.message || String(err)), imageUrl: uploadedImageUrl },
       ]);
     } finally {
       setLoading(false);
@@ -216,91 +277,13 @@ export default function TestChat() {
   async function handleFirstFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (file) {
-      setLoading(true);
-      if (showHeading) setShowHeading(false);
-      try {
-        const clientSideSupabase = createSupabaseClient();
-        if (!clientSideSupabase) throw new Error('Supabase client not available');
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Math.random()}.${fileExt}`;
-        const filePath = `${fileName}`;
-        const { data: uploadResult, error: uploadError } = await clientSideSupabase.storage
-          .from('images2')
-          .upload(filePath, file);
-        if (uploadError) throw uploadError;
-        const { data: urlData } = clientSideSupabase.storage
-          .from('images2')
-          .getPublicUrl(filePath);
-        const publicUrl = urlData.publicUrl;
-        if (!publicUrl) throw new Error('Failed to get public URL');
-        showImageMsg('What is in this image (OpenRouter)?', publicUrl);
-        // Send imageUrl to backend API route that proxies to OpenRouter
-        const aiResponse = await fetch('/api/nvidia', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imageUrl: publicUrl }),
-        });
-        if (aiResponse.body && aiResponse.headers.get('content-type')?.includes('text/event-stream')) {
-          // Streaming response
-          const reader = aiResponse.body.getReader();
-          const decoder = new TextDecoder();
-          let buffer = '';
-          let done = false;
-          let aiMsg = { role: 'assistant' as const, content: '' };
-          setMessages((prev) => [...prev, aiMsg]);
-          while (!done) {
-            const { value, done: doneReading } = await reader.read();
-            done = doneReading;
-            if (value) {
-              buffer += decoder.decode(value, { stream: true });
-              let lines = buffer.split('\n');
-              buffer = lines.pop() || '';
-              for (let line of lines) {
-                if (line.startsWith('data:')) {
-                  const data = line.replace('data:', '').trim();
-                  if (data === '[DONE]') continue;
-                  try {
-                    const parsed = JSON.parse(data);
-                    const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.message?.content || parsed.choices?.[0]?.text || parsed.content || '';
-                    if (delta) {
-                      aiMsg.content += delta;
-                      setMessages((prev) => {
-                        const idx = prev.findIndex(m => m.role === 'assistant' && m.content === aiMsg.content.slice(0, -delta.length));
-                        if (idx !== -1) {
-                          const updated = [...prev];
-                          updated[idx] = { ...aiMsg };
-                          return updated;
-                        } else {
-                          return [...prev.slice(0, -1), { ...aiMsg }];
-                        }
-                      });
-                    }
-                  } catch (err) {
-                    // Ignore JSON parse errors for non-data lines
-                  }
-                }
-              }
-            }
-          }
-        } else {
-          // Fallback: non-streaming response
-          const responseData = await aiResponse.json();
-          const rawContent = responseData.choices?.[0]?.message?.content || responseData.error || JSON.stringify(responseData) || 'No response';
-          const cleanedContent = cleanAIResponse(rawContent);
-          const aiMsg = {
-            role: 'assistant' as const,
-            content: cleanedContent,
-          };
-          setMessages((prev) => [...prev, aiMsg]);
-        }
-      } catch (err: any) {
-        setMessages((prev) => [
-          ...prev,
-          { role: 'assistant' as const, content: 'Error: ' + (err?.message || String(err)) },
-        ]);
-      } finally {
-        setLoading(false);
-      }
+      setSelectedFileForUpload(file);
+      setImagePreviewUrl(URL.createObjectURL(file));
+      // Do not upload or send to API here yet
+    }
+    // Clear the file input so the same file can be selected again if removed and re-added
+    if (e.target) {
+      e.target.value = '\0';
     }
   }
 
@@ -340,48 +323,51 @@ export default function TestChat() {
         </div>
         {/* Conversation */}
         <div className="w-full max-w-5xl mx-auto flex flex-col gap-4 items-center justify-center z-10 pt-12 pb-4">
-          {messages.map((msg, i) => (
-            msg.role === "assistant" ? (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, ease: "easeOut" }}
-                className="w-full markdown-body text-left"
-              >
-                <ReactMarkdown
-                  components={markdownComponents}
-                  remarkPlugins={[remarkGfm, remarkMath]}
-                  rehypePlugins={[rehypeKatex]}
+          {messages.map((msg, i) => {
+            if (msg.role === "assistant") {
+              return (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, ease: "easeOut" }}
+                  className="w-full markdown-body text-left flex flex-col items-start"
                 >
-                  {msg.content}
-                </ReactMarkdown>
-              </motion.div>
-            ) : (
-              msg.content.includes('<img src=') ? (
+                  {msg.imageUrl && (
+                    <img 
+                      src={msg.imageUrl} 
+                      alt="User uploaded content" 
+                      className="max-w-xs max-h-64 rounded-md mb-2 self-start" 
+                    />
+                  )}
+                  <ReactMarkdown
+                    components={markdownComponents}
+                    remarkPlugins={[remarkGfm, remarkMath]}
+                    rehypePlugins={[rehypeKatex]}
+                  >
+                    {msg.content}
+                  </ReactMarkdown>
+                </motion.div>
+              );
+            } else { // User message
+              return (
                 <div
                   key={i}
-                  className="px-5 py-3 rounded-2xl shadow bg-black text-white self-end max-w-full text-lg"
+                  className="px-5 py-3 rounded-2xl shadow bg-black text-white self-end max-w-full text-lg flex flex-col items-end"
                   style={{ wordBreak: "break-word" }}
                 >
-                  <div>{msg.content.split('<img')[0].trim()}</div>
-                  <img
-                    src={msg.content.match(/src=\\?"([^"]+)\\?"/)?.[1]}
-                    alt="uploaded"
-                    style={{ maxWidth: 200, maxHeight: 200, marginTop: 8, borderRadius: 8 }}
-                  />
+                  {msg.imageUrl && (
+                     <img 
+                      src={msg.imageUrl} 
+                      alt="Preview" 
+                      className="max-w-xs max-h-64 rounded-md mb-2 self-end" 
+                    />
+                  )}
+                  <div>{msg.content}</div>
                 </div>
-              ) : (
-                <div
-                  key={i}
-                  className="px-5 py-3 rounded-2xl shadow bg-black text-white self-end max-w-full text-lg"
-                  style={{ wordBreak: "break-word" }}
-                >
-                  {msg.content}
-                </div>
-              )
-            )
-          ))}
+              );
+            }
+          })}
         </div>
       </div>
       {/* Fixed Input Bar at Bottom */}
@@ -391,6 +377,23 @@ export default function TestChat() {
           style={{ boxShadow: "0 4px 32px 0 rgba(0,0,0,0.08)" }}
           onSubmit={handleSend}
         >
+          {/* Image Preview Area */}
+          {imagePreviewUrl && (
+            <div className="relative mb-2 w-24 h-24 group">
+              <img src={imagePreviewUrl} alt="Preview" className="w-full h-full object-cover rounded-md" />
+              <button
+                type="button"
+                onClick={() => {
+                  setImagePreviewUrl(null);
+                  setSelectedFileForUpload(null);
+                }}
+                className="absolute top-1 right-1 bg-black bg-opacity-50 text-white rounded-full p-1 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                aria-label="Remove image"
+              >
+                ✕
+              </button>
+            </div>
+          )}
           {/* Textarea */}
           <textarea
             ref={textareaRef}

@@ -126,10 +126,17 @@ export async function POST(req: NextRequest) {
       const imageDescription = openRouterData.choices?.[0]?.message?.content || 'Could not get a description from the image.';
       console.log("[API /api/nvidia] OpenRouter description received:", imageDescription.substring(0, 100) + "...");
 
-      const nemotronSystemPrompt = `You are an advanced AI assistant. An image was analyzed, and the following description was generated: "${imageDescription}". Based on this image description, provide a helpful and detailed response. If the description suggests a question or problem, try to answer or solve it. If it's a scene, you can describe it further, tell a short story about it, or provide interesting facts related to it. Be creative and informative.`;
+      // 2. Construct prompt for Nemotron
+      // Extract the last user message from the payload, which should be the user's prompt related to the image
+      const userImagePrompt = body.messages?.filter((m:any) => m.role === 'user').pop()?.content || "Tell me more about what was found in the image.";
+
+      const nemotronSystemPrompt = `You are an advanced AI assistant. An image was analyzed, and the following description was generated: "${imageDescription}". The user has provided the following specific query about this image: "${userImagePrompt}". Based on both the image description and the user's query, provide a helpful and detailed response. If the user's query is a question, answer it. If it's a request, fulfill it.`;
+      
       const nemotronMessages = [
         { role: "system", content: nemotronSystemPrompt },
-        { role: "user", content: "Tell me more about what was found in the image." }
+        // The user's direct prompt about the image is now part of the system prompt for better context.
+        // We can send a generic follow-up here, or make it more dynamic if needed.
+        { role: "user", content: "Please proceed with the analysis based on my query and the image description." } 
       ];
       
       // 3. Call Nemotron and stream its response
