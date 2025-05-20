@@ -247,7 +247,13 @@ export default function TestChat() {
                   const parsed = JSON.parse(data);
                   const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.message?.content || parsed.choices?.[0]?.text || parsed.content || '';
                   if (delta) {
-                    aiMsg.content += delta;
+                    // Log the delta for debugging
+                    console.log('delta:', JSON.stringify(delta));
+                    // Insert a space if the previous content does not end with space/newline and the delta does not start with punctuation/space/newline
+                    const lastChar = aiMsg.content.slice(-1);
+                    const firstChar = delta[0];
+                    const needsSpace = lastChar && !/\s|[.,!?;:]/.test(lastChar) && firstChar && !/\s|[.,!?;:]/.test(firstChar);
+                    aiMsg.content += (needsSpace ? ' ' : '') + delta;
                     setMessages((prev) => {
                       const updatedMessages = [...prev];
                       const lastMsgIndex = updatedMessages.length - 1;
