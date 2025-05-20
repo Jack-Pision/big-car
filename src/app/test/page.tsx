@@ -333,13 +333,7 @@ export default function TestChat() {
                   transition={{ duration: 0.3, ease: "easeOut" }}
                   className="w-full markdown-body text-left flex flex-col items-start"
                 >
-                  {msg.imageUrl && (
-                    <img 
-                      src={msg.imageUrl} 
-                      alt="User uploaded content" 
-                      className="max-w-xs max-h-64 rounded-md mb-2 self-start" 
-                    />
-                  )}
+                  {/* No image for assistant messages */}
                   <ReactMarkdown
                     components={markdownComponents}
                     remarkPlugins={[remarkGfm, remarkMath]}
