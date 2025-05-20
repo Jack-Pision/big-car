@@ -139,7 +139,7 @@ export async function POST(req: NextRequest) {
       const userImagePrompt = body.messages?.filter((m:any) => m.role === 'user').pop()?.content || (body.imageUrls.length > 1 ? "Tell me more about these images." : "Tell me more about what was found in the image.");
 
       const imageContext = body.imageUrls.length > 1 ? `A set of ${body.imageUrls.length} images were provided.` : "An image was provided.";
-      const nemotronSystemPrompt = `You are an advanced AI assistant. ${imageContext} Image analysis from OpenRouter (primarily of the first image if multiple were sent) yielded: "${imageDescription}". The user has provided the following specific query: "${userImagePrompt}". Based on the image description(s) and the user's query, provide a helpful and detailed response.`;
+      const nemotronSystemPrompt = `You are an advanced AI assistant. ${imageContext} Image analysis from OpenRouter (primarily of the first image if multiple were sent) yielded: "${imageDescription}". The user has provided the following specific query: "${userImagePrompt}". Based on the image description(s) and the user's query, provide a helpful and detailed response.\n\nAlways format your response in markdown. Use paragraphs, lists, and blank lines for best readability. Use headings where appropriate. Do not output everything as a single block of text.`;
       
       const nemotronMessages = [
         { role: "system", content: nemotronSystemPrompt },
