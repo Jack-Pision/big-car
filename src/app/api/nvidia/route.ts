@@ -105,6 +105,11 @@ async function fetchNvidiaText(messages: any[]) {
   return res;
 }
 
+// Utility to strip <think>...</think> tags from a string
+function stripThinkTags(text: string): string {
+  return text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+}
+
 export async function POST(req: NextRequest) {
   const contentType = req.headers.get('content-type') || '';
   if (!contentType.includes('application/json')) {
@@ -159,7 +164,31 @@ export async function POST(req: NextRequest) {
       headers.set('Cache-Control', 'no-cache');
       headers.set('Connection', 'keep-alive');
 
-      return new Response(nemotronRes.body, {
+      // Clean the stream by stripping <think>...</think> tags
+      if (!nemotronRes.body) {
+        return new Response(JSON.stringify({ error: 'No response body from AI' }), { status: 500, headers });
+      }
+      const cleanedStream = new ReadableStream({
+        start(controller) {
+          const reader = nemotronRes.body!.getReader();
+          function push() {
+            reader.read().then(({ done, value }) => {
+              if (done) {
+                controller.close();
+                return;
+              }
+              // Remove <think>...</think> tags from each chunk
+              const chunk = value ? new TextDecoder().decode(value) : '';
+              const cleaned = stripThinkTags(chunk);
+              controller.enqueue(new TextEncoder().encode(cleaned));
+              push();
+            });
+          }
+          push();
+        }
+      });
+
+      return new Response(cleanedStream, {
         status: 200,
         headers: headers,
       });
@@ -179,7 +208,31 @@ export async function POST(req: NextRequest) {
       headers.set('Cache-Control', 'no-cache');
       headers.set('Connection', 'keep-alive');
       
-      return new Response(nemotronRes.body, {
+      // Clean the stream by stripping <think>...</think> tags
+      if (!nemotronRes.body) {
+        return new Response(JSON.stringify({ error: 'No response body from AI' }), { status: 500, headers });
+      }
+      const cleanedStream = new ReadableStream({
+        start(controller) {
+          const reader = nemotronRes.body!.getReader();
+          function push() {
+            reader.read().then(({ done, value }) => {
+              if (done) {
+                controller.close();
+                return;
+              }
+              // Remove <think>...</think> tags from each chunk
+              const chunk = value ? new TextDecoder().decode(value) : '';
+              const cleaned = stripThinkTags(chunk);
+              controller.enqueue(new TextEncoder().encode(cleaned));
+              push();
+            });
+          }
+          push();
+        }
+      });
+
+      return new Response(cleanedStream, {
         status: 200,
         headers: headers,
       });

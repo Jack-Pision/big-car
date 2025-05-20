@@ -2,6 +2,11 @@ import { NextRequest } from 'next/server';
 
 export const runtime = 'edge';
 
+// Utility to strip <think>...</think> tags from a string
+function stripThinkTags(text: string): string {
+  return text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { imageUrl } = await req.json();
@@ -40,7 +45,27 @@ export async function POST(req: NextRequest) {
     });
     // Forward the stream to the client
     if (aiRes.body) {
-      return new Response(aiRes.body, {
+      // Clean the stream by stripping <think>...</think> tags
+      const cleanedStream = new ReadableStream({
+        start(controller) {
+          const reader = aiRes.body!.getReader();
+          function push() {
+            reader.read().then(({ done, value }) => {
+              if (done) {
+                controller.close();
+                return;
+              }
+              // Remove <think>...</think> tags from each chunk
+              const chunk = value ? new TextDecoder().decode(value) : '';
+              const cleaned = stripThinkTags(chunk);
+              controller.enqueue(new TextEncoder().encode(cleaned));
+              push();
+            });
+          }
+          push();
+        }
+      });
+      return new Response(cleanedStream, {
         status: aiRes.status,
         headers: {
           'Content-Type': 'text/event-stream',
