@@ -47,22 +47,45 @@ export async function POST(req: NextRequest) {
     if (aiRes.body) {
       // Clean the stream by stripping <think>...</think> tags
       const cleanedStream = new ReadableStream({
-        start(controller) {
+        async start(controller) {
           const reader = aiRes.body!.getReader();
-          function push() {
-            reader.read().then(({ done, value }) => {
-              if (done) {
-                controller.close();
-                return;
+          const decoder = new TextDecoder();
+          const encoder = new TextEncoder();
+          let buffer = '';
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            let lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+            for (let line of lines) {
+              if (line.startsWith('data:')) {
+                const data = line.replace('data:', '').trim();
+                if (data === '[DONE]') {
+                  controller.enqueue(encoder.encode('data: [DONE]\n'));
+                  continue;
+                }
+                try {
+                  const parsed = JSON.parse(data);
+                  // Clean the content field(s)
+                  if (parsed.choices?.[0]?.delta?.content) {
+                    parsed.choices[0].delta.content = stripThinkTags(parsed.choices[0].delta.content);
+                  }
+                  if (parsed.choices?.[0]?.message?.content) {
+                    parsed.choices[0].message.content = stripThinkTags(parsed.choices[0].message.content);
+                  }
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify(parsed)}\n`));
+                } catch (err) {
+                  // Pass through malformed lines
+                  controller.enqueue(encoder.encode(line + '\n'));
+                }
+              } else {
+                controller.enqueue(encoder.encode(line + '\n'));
               }
-              // Remove <think>...</think> tags from each chunk
-              const chunk = value ? new TextDecoder().decode(value) : '';
-              const cleaned = stripThinkTags(chunk);
-              controller.enqueue(new TextEncoder().encode(cleaned));
-              push();
-            });
+            }
           }
-          push();
+          if (buffer) controller.enqueue(encoder.encode(buffer));
+          controller.close();
         }
       });
       return new Response(cleanedStream, {
