@@ -131,8 +131,9 @@ export async function POST(req: NextRequest) {
         return openRouterRes; 
       }
       const openRouterData = await openRouterRes.json();
-      const imageDescription = openRouterData.choices?.[0]?.message?.content || 'Could not get a description from the image(s).';
-      console.log("[API /api/nvidia] OpenRouter description received:", imageDescription.substring(0, 100) + "...");
+      let imageDescription = openRouterData.choices?.[0]?.message?.content || 'Could not get a description from the image(s).';
+      imageDescription = stripThinkTags(imageDescription); // Clean the image description
+      console.log("[API /api/nvidia] OpenRouter description received (cleaned):", imageDescription.substring(0, 200) + "...");
 
       // 2. Construct prompt for Nemotron
       const userImagePrompt = body.messages?.filter((m:any) => m.role === 'user').pop()?.content || (body.imageUrls.length > 1 ? "Tell me more about these images." : "Tell me more about what was found in the image.");
