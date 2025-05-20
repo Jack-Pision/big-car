@@ -252,7 +252,11 @@ export default function TestChat() {
                       const updatedMessages = [...prev];
                       const lastMsgIndex = updatedMessages.length - 1;
                       if(updatedMessages[lastMsgIndex] && updatedMessages[lastMsgIndex].role === 'assistant'){
-                        updatedMessages[lastMsgIndex] = { ...updatedMessages[lastMsgIndex], content: aiMsg.content };
+                        // Format content for display - ensure newlines are preserved
+                        const formattedContent = aiMsg.content
+                          .replace(/\. /g, '.\n\n') // Add paragraph breaks after periods
+                          .replace(/\n\n\n+/g, '\n\n'); // Prevent too many consecutive newlines
+                        updatedMessages[lastMsgIndex] = { ...updatedMessages[lastMsgIndex], content: formattedContent };
                       }
                       return updatedMessages;
                     });
