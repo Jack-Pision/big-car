@@ -291,6 +291,15 @@ export default function TestChat() {
               try {
                 const json = JSON.parse(line.replace('data:', '').trim());
                 const content = json.choices?.[0]?.delta?.content || '';
+                // Insert a space if needed between accumulatedContent and new content
+                if (
+                  accumulatedContent &&
+                  content &&
+                  /[\w\)]$/.test(accumulatedContent) &&
+                  /^[\w\(]/.test(content)
+                ) {
+                  accumulatedContent += ' ';
+                }
                 accumulatedContent += content;
               } catch (e) {
                 // Ignore parse errors
@@ -298,6 +307,9 @@ export default function TestChat() {
             }
           });
         }
+
+        // Optionally, add a newline after punctuation if not followed by a newline
+        accumulatedContent = accumulatedContent.replace(/([.!?])([^\n])/g, '$1\n$2');
 
         console.log("Raw AI Output (Before cleanAIResponse):", fullAccumulatedStreamedText);
         console.log("Accumulated AI Content:", accumulatedContent);
