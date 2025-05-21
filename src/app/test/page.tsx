@@ -133,6 +133,9 @@ export default function TestChat() {
   const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
   const [selectedFilesForUpload, setSelectedFilesForUpload] = useState<File[]>([]);
   const [isAiResponding, setIsAiResponding] = useState(false);
+  
+  // New state to track previous image descriptions for Gemma's context
+  const [previousImageDescriptions, setPreviousImageDescriptions] = useState<string[]>([]);
 
   // Helper to show the image in chat
   const showImageMsg = (content: string, imgSrc: string) => {
@@ -173,6 +176,7 @@ export default function TestChat() {
     if (!currentInput && !currentSelectedFiles.length) return;
 
     setIsAiResponding(true);
+    setLoading(true);
     if (showHeading) setShowHeading(false);
 
     let userMessageContent = currentInput;
@@ -184,7 +188,7 @@ export default function TestChat() {
 
     // Temp message for image upload indication
     if (currentSelectedFiles.length > 0 && !currentInput) {
-      userMessageForDisplay.content = "Images selected for analysis."; // Placeholder if no text
+      userMessageForDisplay.content = "Image selected for analysis."; // Placeholder if no text
     }
 
     // Add user message to chat (with or without image previews for user messages)
@@ -240,6 +244,8 @@ export default function TestChat() {
           // Add the current user message (text part)
           { role: "user", content: userMessageContent }
         ].filter(msg => msg.content || (msg as any).imageUrls), // Ensure content or imageUrls exists
+        // Add previous image descriptions for Gemma's context
+        previousImageDescriptions: previousImageDescriptions
       };
 
       if (uploadedImageUrls.length > 0) {
@@ -301,15 +307,40 @@ export default function TestChat() {
             }
           }
         }
+        
+        // If this was an image request, store the image description for future context
+        if (uploadedImageUrls.length > 0) {
+          const { content } = cleanAIResponse(aiMsg.content);
+          // Store a summary (first 100 chars) of the image description for context
+          const descriptionSummary = content.slice(0, 100) + (content.length > 100 ? '...' : '');
+          setPreviousImageDescriptions(prev => {
+            // Keep only the last 5 descriptions to prevent context overflow
+            const updated = [...prev, descriptionSummary];
+            return updated.slice(-5);
+          });
+        }
+        
       } else {
-      const data = await res.json();
+        const data = await res.json();
         const assistantResponseContent = cleanAIResponse(data.choices?.[0]?.message?.content || data.generated_text || data.error || JSON.stringify(data) || "No response");
-      const aiMsg = {
-        role: "assistant" as const,
+        const aiMsg = {
+          role: "assistant" as const,
           content: assistantResponseContent.content,
           imageUrls: uploadedImageUrls // Associate assistant response with the uploaded images
-      };
-      setMessages((prev) => [...prev, aiMsg]);
+        };
+        setMessages((prev) => [...prev, aiMsg]);
+        
+        // If this was an image request, store the image description for future context
+        if (uploadedImageUrls.length > 0) {
+          // Store a summary (first 100 chars) of the image description for context
+          const descriptionSummary = assistantResponseContent.content.slice(0, 100) + 
+            (assistantResponseContent.content.length > 100 ? '...' : '');
+          setPreviousImageDescriptions(prev => {
+            // Keep only the last 5 descriptions to prevent context overflow
+            const updated = [...prev, descriptionSummary];
+            return updated.slice(-5);
+          });
+        }
       }
     } catch (err: any) {
       setMessages((prev) => [

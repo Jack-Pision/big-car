@@ -32,21 +32,52 @@ async function fetchWithTimeout(resource: string, options: any = {}, timeout = 1
 }
 
 // New function to fetch image analysis from OpenRouter (via our existing proxy)
-async function fetchOpenRouterImageAnalysis(imageUrls: string[], openRouterApiKey: string) {
+async function fetchOpenRouterImageAnalysis(
+  imageUrls: string[], 
+  openRouterApiKey: string,
+  previousMessages: any[] = [], // Add parameter for previous messages
+  previousImageDescriptions: string[] = [] // Add parameter for previous image descriptions
+) {
   // If multiple images, pick the first one for now, or adapt the prompt for multiple images.
-  // TODO: Enhance this to potentially describe multiple images if the model supports it well,
-  // or create a summary if multiple images are present.
   const targetImageUrl = imageUrls[0]; 
+
+  // Create context from previous image descriptions
+  let previousContext = "";
+  if (previousImageDescriptions.length > 0) {
+    previousContext = `Previous image descriptions: ${previousImageDescriptions.join(' | ')}. `;
+  }
+
+  // Format previous messages for Gemma
+  const formattedPreviousMessages = previousMessages.map(msg => {
+    // Convert to the format Gemma expects
+    return {
+      role: msg.role,
+      content: msg.content
+    };
+  });
+
+  // Limit context to prevent token overflow (keep last 5 messages)
+  const limitedPreviousMessages = formattedPreviousMessages.slice(-5);
 
   const requestBody = {
     model: 'google/gemma-3-27b-it',
     messages: [
+      // Add system message to maintain context
+      {
+        role: 'system',
+        content: `You are a helpful AI assistant that analyzes images. ${previousContext}You should maintain context from previous conversations and images when responding. Do not use <think> tags in your responses. Be clear, detailed, and direct in your descriptions.`
+      },
+      // Include previous messages for context
+      ...limitedPreviousMessages,
+      // Add current request
       {
         role: 'user',
         content: [
           {
             type: 'text',
-            text: imageUrls.length > 1 ? "Describe the first image in this set of images." : "Describe this image."
+            text: imageUrls.length > 1 
+              ? `Describe the first image in this set of images. ${previousContext ? "Reference previous images if relevant." : ""}`
+              : `Describe this image. ${previousContext ? "Reference previous images if relevant." : ""}`
           },
           {
             type: 'image_url',
@@ -118,13 +149,26 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     if (body.imageUrls && Array.isArray(body.imageUrls) && body.imageUrls.length > 0) { // Check for imageUrls array
       console.log(`[API /api/nvidia] Received image request for URLs: ${body.imageUrls.join(', ')}`);
-      // 1. Get image description from OpenRouter
-      console.log("[API /api/nvidia] Calling OpenRouter...");
-      // Send all imageUrls to fetchOpenRouterImageAnalysis
-      const openRouterRes = await fetchOpenRouterImageAnalysis(body.imageUrls, OPENROUTER_API_KEY);
+      
+      // Extract previous user messages and image descriptions
+      const previousUserMessages = body.messages?.filter((m:any) => m.role === 'user') || [];
+      
+      // Extract previous image descriptions from the conversation
+      const previousImageDescriptions = body.previousImageDescriptions || [];
+      
+      // 1. Get image description from OpenRouter with context
+      console.log("[API /api/nvidia] Calling OpenRouter with conversation context...");
+      const openRouterRes = await fetchOpenRouterImageAnalysis(
+        body.imageUrls, 
+        OPENROUTER_API_KEY,
+        previousUserMessages,
+        previousImageDescriptions
+      );
+      
       if (!openRouterRes.ok) {
         return openRouterRes; 
       }
+      
       const openRouterData = await openRouterRes.json();
       const imageDescription = openRouterData.choices?.[0]?.message?.content || 'Could not get a description from the image(s).';
       console.log("[API /api/nvidia] OpenRouter description received:", imageDescription.substring(0, 100) + "...");
