@@ -12,6 +12,7 @@ import { supabase, createSupabaseClient } from '@/lib/supabase-client';
 import { motion } from 'framer-motion';
 import PulsingDot from '@/components/PulsingDot';
 import TextReveal from '@/components/TextReveal';
+import ThinkingIndicator from '@/components/ThinkingIndicator';
 
 const SYSTEM_PROMPT = `You are a friendly, knowledgeable AI tutor that helps students with their studies. You can answer questions, explain concepts, solve math problems step by step, assist with research, and provide clear, concise, and engaging academic help across all subjects.
 
@@ -44,16 +45,49 @@ When writing math, always use \$...\$ for inline math and \$\$...\$\$ for block 
 
 For every equation, formula, or calculation step, always use block math with \$\$...\$\$ so it appears large and centered. Do not use inline math for equations or steps—only use inline math for very short expressions within sentences.`;
 
-function cleanAIResponse(text: string): string {
+interface ProcessedResponse {
+  content: string;
+  thinkingTime?: number;
+}
+
+function cleanAIResponse(text: string): ProcessedResponse {
   if (typeof text !== 'string') {
-    return ''; // Or handle non-string input as appropriate
+    return { content: '' };
   }
+
   let cleanedText = text;
-  // Iteratively remove <think>...</think> blocks
-  while (/<think>[\s\S]*?<\/think>/gi.test(cleanedText)) {
-    cleanedText = cleanedText.replace(/<think>[\s\S]*?<\/think>/gi, '');
+  let thinkingTime = 0;
+
+  // Find and process <think> tags
+  const thinkTagRegex = /<think>([\s\S]*?)<\/think>/gi;
+  let match;
+  let lastIndex = 0;
+  let processedContent = '';
+
+  while ((match = thinkTagRegex.exec(cleanedText)) !== null) {
+    // Add the text before the think tag
+    processedContent += cleanedText.slice(lastIndex, match.index);
+    
+    // Calculate thinking time based on content length
+    const tagContent = match[1];
+    const tagLength = tagContent.length;
+    // Estimate thinking time: 50ms per character, min 1s, max 5s
+    const estimatedTime = Math.max(1000, Math.min(5000, tagLength * 50));
+    thinkingTime += estimatedTime;
+
+    // Add a marker for the thinking indicator
+    processedContent += `\n<thinking-indicator duration="${estimatedTime}" />\n`;
+    
+    lastIndex = match.index + match[0].length;
   }
-  return cleanedText.trim();
+
+  // Add any remaining text
+  processedContent += cleanedText.slice(lastIndex);
+
+  return {
+    content: processedContent.trim(),
+    thinkingTime: thinkingTime > 0 ? thinkingTime : undefined
+  };
 }
 
 const markdownComponents = {
@@ -272,7 +306,7 @@ export default function TestChat() {
         const assistantResponseContent = cleanAIResponse(data.choices?.[0]?.message?.content || data.generated_text || data.error || JSON.stringify(data) || "No response");
       const aiMsg = {
         role: "assistant" as const,
-          content: assistantResponseContent,
+          content: assistantResponseContent.content,
           imageUrls: uploadedImageUrls // Associate assistant response with the uploaded images
       };
       setMessages((prev) => [...prev, aiMsg]);
@@ -352,6 +386,9 @@ export default function TestChat() {
         <div className="w-full max-w-5xl mx-auto flex flex-col gap-4 items-center justify-center z-10 pt-12 pb-4">
           {messages.map((msg, i) => {
             if (msg.role === "assistant") {
+              const { content, thinkingTime } = cleanAIResponse(msg.content);
+              const cleanContent = content.replace(/<thinking-indicator.*?\/>/g, '');
+              
               return (
                 <motion.div
                   key={i}
@@ -363,10 +400,13 @@ export default function TestChat() {
                   {i === messages.length - 1 && isAiResponding ? (
                     <PulsingDot isVisible={true} />
                   ) : (
-                    <TextReveal 
-                      text={msg.content} 
-                      markdownComponents={markdownComponents}
-                    />
+                    <>
+                      {thinkingTime && <ThinkingIndicator duration={thinkingTime} />}
+                      <TextReveal 
+                        text={cleanContent}
+                        markdownComponents={markdownComponents}
+                      />
+                    </>
                   )}
                 </motion.div>
               );
