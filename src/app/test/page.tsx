@@ -123,6 +123,23 @@ function cleanMarkdownFormatting(markdown: string): string {
   return result.trim();
 }
 
+// Aggressive markdown fixer to force structure
+function forceMarkdownStructure(text: string): string {
+  if (typeof text !== 'string' || !text) return '';
+  let result = text;
+  // Headings: lines starting with #
+  result = result.replace(/^(#+)\s*/gm, '\n$1 ');
+  // Lists: lines starting with - or *
+  result = result.replace(/(?:^|\n)[*-]\s*/g, '\n- ');
+  // Numbered lists: lines starting with 1. 2. etc.
+  result = result.replace(/(?:^|\n)(\d+)\.\s*/g, '\n$1. ');
+  // Ensure blank lines between paragraphs
+  result = result.replace(/([a-z0-9])\n([A-Z#*-])/g, '$1\n\n$2');
+  // Remove extra spaces
+  result = result.replace(/[ \t]+$/gm, '');
+  return result.trim();
+}
+
 const markdownComponents = {
   h1: (props: React.ComponentProps<'h1'>) => (
     <h1
@@ -333,10 +350,9 @@ export default function TestChat() {
 
         let cleanedResponse = cleanAIResponse(accumulatedContent);
         cleanedResponse = cleanMarkdownFormatting(cleanedResponse);
-        console.log("AI Output (After cleanMarkdownFormatting):", cleanedResponse);
-
+        cleanedResponse = forceMarkdownStructure(cleanedResponse);
+        console.log("AI Output (After forceMarkdownStructure):", cleanedResponse);
         const formattedContent = enforceSingleTitleAndParagraphs(cleanedResponse);
-        console.log("AI Output (After enforceSingleTitleAndParagraphs):", formattedContent);
 
         const aiMsg = {
           role: "assistant" as const,
@@ -350,10 +366,12 @@ export default function TestChat() {
         const data = await res.json();
         const assistantResponseContent = cleanAIResponse(data.choices?.[0]?.message?.content || data.generated_text || data.error || JSON.stringify(data) || "No response");
         const formattedContent = enforceSingleTitleAndParagraphs(
-          cleanMarkdownFormatting(
-            assistantResponseContent
-              .replace(/\. /g, '.\n\n')
-              .replace(/\n\n\n+/g, '\n\n')
+          forceMarkdownStructure(
+            cleanMarkdownFormatting(
+              assistantResponseContent
+                .replace(/\. /g, '.\n\n')
+                .replace(/\n\n\n+/g, '\n\n')
+            )
           )
         );
         const aiMsg = {
