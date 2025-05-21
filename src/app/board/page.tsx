@@ -345,7 +345,7 @@ export default function BoardPage() {
                 onSubmit={handleBoardSend}
                 aria-label="Chat input form"
               >
-                <div className="bg-white rounded-2xl shadow-lg w-full max-w-[480px] mx-auto flex items-center px-4 py-2 gap-2 transition-all duration-200 focus-within:ring-2 focus-within:ring-black/10">
+                <div className="bg-white rounded-2xl shadow-lg w-full max-w-[480px] mx-auto flex items-center px-4 py-2 gap-2 transition-all duration-200 focus-within:ring-2 focus-within:ring-black/10 relative">
                   {/* Responsive input and send button only */}
                   <input
                     type="text"
@@ -359,7 +359,7 @@ export default function BoardPage() {
                   <button
                     type="submit"
                     aria-label="Send"
-                    className="w-10 h-10 flex items-center justify-center rounded-full bg-black text-white hover:bg-neutral-800 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/30 flex-shrink-0"
+                    className="w-10 h-10 flex items-center justify-center rounded-full bg-black text-white hover:bg-neutral-800 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/30 flex-shrink-0 absolute bottom-2 right-2"
                     disabled={!input.trim()}
                   >
                     <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>

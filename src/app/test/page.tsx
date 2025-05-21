@@ -601,12 +601,6 @@ export default function TestChat() {
           </div>
           {/* Bottom row: icons left */}
           <div className="flex flex-row gap-2 mt-2">
-            <button type="button" className="p-2 rounded-full border border-gray-300 hover:bg-gray-100">
-              <svg width="22" height="22" fill="none" stroke="#222" strokeWidth="2" viewBox="0 0 24 24">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-            </button>
             <button type="button" className="p-2 rounded-full bg-black text-white hover:bg-gray-900 transition" onClick={handleFirstPlusClick}>
               <svg width="22" height="22" fill="none" stroke="#fff" strokeWidth="2" viewBox="0 0 24 24">
                 <line x1="12" y1="5" x2="12" y2="19" />
