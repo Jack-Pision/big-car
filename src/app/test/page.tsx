@@ -275,6 +275,7 @@ export default function TestChat() {
       if (res.body && res.headers.get('content-type')?.includes('text/event-stream')) {
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
+        let accumulatedContent = '';
         let fullAccumulatedStreamedText = '';
 
         while (true) {
@@ -283,11 +284,25 @@ export default function TestChat() {
 
           const chunk = decoder.decode(value, { stream: true });
           fullAccumulatedStreamedText += chunk;
+
+          // Split by newlines in case multiple chunks arrive at once
+          chunk.split('\n').forEach(line => {
+            if (line.startsWith('data:')) {
+              try {
+                const json = JSON.parse(line.replace('data:', '').trim());
+                const content = json.choices?.[0]?.delta?.content || '';
+                accumulatedContent += content;
+              } catch (e) {
+                // Ignore parse errors
+              }
+            }
+          });
         }
 
         console.log("Raw AI Output (Before cleanAIResponse):", fullAccumulatedStreamedText);
+        console.log("Accumulated AI Content:", accumulatedContent);
 
-        let cleanedResponse = cleanAIResponse(fullAccumulatedStreamedText);
+        let cleanedResponse = cleanAIResponse(accumulatedContent);
         console.log("AI Output (After cleanAIResponse, Before enforceSingleTitleAndParagraphs):", cleanedResponse);
 
         const formattedContent = enforceSingleTitleAndParagraphs(cleanedResponse);
