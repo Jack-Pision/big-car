@@ -146,6 +146,8 @@ export default function TestChat() {
   // Keep track of how many images have been uploaded
   const [imageCounter, setImageCounter] = useState(0);
 
+  const aiStreamAbortController = useRef<AbortController | null>(null);
+
   // Helper to show the image in chat
   const showImageMsg = (content: string, imgSrc: string) => {
     setMessages((prev) => [
@@ -187,6 +189,9 @@ export default function TestChat() {
     setIsAiResponding(true);
     setLoading(true);
     if (showHeading) setShowHeading(false);
+
+    // Create a new abort controller for this AI response
+    aiStreamAbortController.current = new AbortController();
 
     let userMessageContent = currentInput;
     let uploadedImageUrls: string[] = [];
@@ -286,6 +291,7 @@ export default function TestChat() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(apiPayload),
+        signal: aiStreamAbortController.current.signal,
       });
 
       if (res.body && res.headers.get('content-type')?.includes('text/event-stream')) {
@@ -394,13 +400,27 @@ export default function TestChat() {
         }
       }
     } catch (err: any) {
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant" as const, content: "Error: " + (err?.message || String(err)), imageUrls: uploadedImageUrls },
-      ]);
+      if (err.name === 'AbortError') {
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant" as const, content: "[Response stopped by user]", imageUrls: uploadedImageUrls },
+        ]);
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant" as const, content: "Error: " + (err?.message || String(err)), imageUrls: uploadedImageUrls },
+        ]);
+      }
     } finally {
       setIsAiResponding(false);
       setLoading(false);
+      aiStreamAbortController.current = null;
+    }
+  }
+
+  function handleStopAIResponse() {
+    if (aiStreamAbortController.current) {
+      aiStreamAbortController.current.abort();
     }
   }
 
@@ -539,28 +559,44 @@ export default function TestChat() {
               ))}
             </div>
           )}
-          {/* Textarea */}
-          <textarea
-            ref={textareaRef}
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            className="w-full border-none outline-none bg-transparent px-4 text-gray-700 text-lg placeholder-gray-400 resize-none overflow-auto"
-            placeholder="Ask anything"
-            disabled={loading}
-            rows={1}
-            style={{height: '48px', maxHeight: '144px'}}
-          />
-          {/* Hidden file input for dark plus button */}
-          <input
-            ref={fileInputRef1}
-            type="file"
-            accept="image/*"
-            multiple // Allow multiple file selection
-            style={{ display: 'none' }}
-            onChange={handleFirstFileChange}
-          />
-          {/* Bottom row: icons left, send button right */}
-          <div className="flex flex-row gap-2">
+          {/* Textarea and send/stop button row */}
+          <div className="relative flex items-center w-full">
+            <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              className="w-full border-none outline-none bg-transparent px-4 text-gray-700 text-lg placeholder-gray-400 resize-none overflow-auto pr-16"
+              placeholder="Ask anything"
+              disabled={loading}
+              rows={1}
+              style={{height: '48px', maxHeight: '144px'}}
+            />
+            {/* Send/Stop button at the far right inside the input */}
+            <div className="absolute right-2 flex items-center h-full">
+              <button
+                type={isAiResponding ? "button" : "submit"}
+                className="w-10 h-10 flex items-center justify-center rounded-full bg-black text-white hover:bg-gray-900 transition relative"
+                style={{ pointerEvents: loading && !isAiResponding ? 'none' : 'auto' }}
+                onClick={isAiResponding ? handleStopAIResponse : undefined}
+                disabled={loading && !isAiResponding}
+                aria-label={isAiResponding ? "Stop AI response" : "Send"}
+              >
+                {isAiResponding ? (
+                  // Stop icon (square in round black button)
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="7" y="7" width="10" height="10" rx="2" fill="white" />
+                  </svg>
+                ) : (
+                  // Send arrow icon
+                  <svg width="22" height="22" fill="none" stroke="#fff" strokeWidth="2" viewBox="0 0 24 24">
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                )}
+              </button>
+            </div>
+          </div>
+          {/* Bottom row: icons left */}
+          <div className="flex flex-row gap-2 mt-2">
             <button type="button" className="p-2 rounded-full border border-gray-300 hover:bg-gray-100">
               <svg width="22" height="22" fill="none" stroke="#222" strokeWidth="2" viewBox="0 0 24 24">
                 <line x1="12" y1="5" x2="12" y2="19" />
@@ -571,15 +607,6 @@ export default function TestChat() {
               <svg width="22" height="22" fill="none" stroke="#fff" strokeWidth="2" viewBox="0 0 24 24">
                 <line x1="12" y1="5" x2="12" y2="19" />
                 <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-            </button>
-            <button
-              type="submit"
-              className="w-10 h-10 flex items-center justify-center rounded-full bg-black text-white hover:bg-gray-900 transition"
-              disabled={loading || !input.trim()}
-            >
-              <svg width="22" height="22" fill="none" stroke="#fff" strokeWidth="2" viewBox="0 0 24 24">
-                <path d="M5 12h14M12 5l7 7-7 7" />
               </svg>
             </button>
           </div>
