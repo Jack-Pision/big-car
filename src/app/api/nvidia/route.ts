@@ -139,7 +139,16 @@ export async function POST(req: NextRequest) {
       const userImagePrompt = body.messages?.filter((m:any) => m.role === 'user').pop()?.content || (body.imageUrls.length > 1 ? "Tell me more about these images." : "Tell me more about what was found in the image.");
 
       const imageContext = body.imageUrls.length > 1 ? `A set of ${body.imageUrls.length} images were provided.` : "An image was provided.";
-      const nemotronSystemPrompt = `You are an advanced AI assistant. ${imageContext} Image analysis from OpenRouter (primarily of the first image if multiple were sent) yielded: "${imageDescription}". The user has provided the following specific query: "${userImagePrompt}". Based on the image description(s) and the user's query, provide a helpful and detailed response.\n\nAlways start your response with a single, clear title using a single '#' in markdown (e.g., '# My Title'). Then, write your answer in regular, well-structured paragraphs. Only use bullet points, numbered lists, or additional headings if the user input specifically requests them (e.g., asks for a list, steps, bullet points, or similar). Do not use excessive bold, lists, or headings unless specifically requested.`;
+      const nemotronSystemPrompt = `You are an advanced AI assistant. ${imageContext} Image analysis from OpenRouter (primarily of the first image if multiple were sent) yielded: "${imageDescription}". The user has provided the following specific query: "${userImagePrompt}". Based on the image description(s) and the user's query, provide a helpful and detailed response.
+
+IMPORTANT FORMATTING INSTRUCTIONS:
+1. For mathematical content, ALWAYS use LaTeX math delimiters:
+   - Inline math: Use single dollar signs, e.g., $x^2 + y^2 = z^2$
+   - Block math: Use double dollar signs, e.g., $$\int_{0}^{1} x^2 dx = \frac{1}{3}$$
+2. Start your response with a single, clear title using a single '#' in markdown (e.g., '# My Title')
+3. Use clear, well-structured paragraphs
+4. Only use bullet points or numbered lists if the query specifically requests them
+5. Ensure mathematical expressions are clear, properly spaced, and mathematically correct`;
       
       const nemotronMessages = [
         { role: "system", content: nemotronSystemPrompt },
@@ -220,8 +229,27 @@ export async function POST(req: NextRequest) {
   } else {
       console.log("[API /api/nvidia] Received text-only request (streaming)...");
       const { messages } = body;
+      
+      // Prepend a system prompt with formatting instructions
+      const textSystemPrompt = `You are an advanced AI assistant. Provide clear, concise, and helpful responses.
+
+IMPORTANT FORMATTING INSTRUCTIONS:
+1. For mathematical content, ALWAYS use LaTeX math delimiters:
+   - Inline math: Use single dollar signs, e.g., $x^2 + y^2 = z^2$
+   - Block math: Use double dollar signs, e.g., $$\int_{0}^{1} x^2 dx = \frac{1}{3}$$
+2. Start your response with a single, clear title using a single '#' in markdown (e.g., '# My Title')
+3. Use clear, well-structured paragraphs
+4. Only use bullet points or numbered lists if the query specifically requests them
+5. Ensure mathematical expressions are clear, properly spaced, and mathematically correct`;
+
+      // Insert system prompt at the beginning of messages
+      const nemotronMessages = [
+        { role: "system", content: textSystemPrompt },
+        ...messages
+      ];
+      
       // For text-only, also enable streaming
-      const nemotronRes = await fetchNvidiaText(messages); // Always streaming
+      const nemotronRes = await fetchNvidiaText(nemotronMessages); // Always streaming
       
       if (!nemotronRes.ok) {
           return nemotronRes;
