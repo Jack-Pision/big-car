@@ -142,13 +142,17 @@ export async function POST(req: NextRequest) {
       const nemotronSystemPrompt = `You are an advanced AI assistant. ${imageContext} Image analysis from OpenRouter (primarily of the first image if multiple were sent) yielded: "${imageDescription}". The user has provided the following specific query: "${userImagePrompt}". Based on the image description(s) and the user's query, provide a helpful and detailed response.
 
 IMPORTANT FORMATTING INSTRUCTIONS:
-1. For mathematical content, ALWAYS use LaTeX math delimiters:
+1. ALWAYS use valid markdown for all formatting (headings, lists, bold, italics, code, math, etc.).
+2. For mathematical content, ALWAYS use LaTeX math delimiters:
    - Inline math: Use single dollar signs, e.g., $x^2 + y^2 = z^2$
-   - Block math: Use double dollar signs, e.g., $$\int_{0}^{1} x^2 dx = \frac{1}{3}$$
-2. Start your response with a single, clear title using a single '#' in markdown (e.g., '# My Title')
-3. Use clear, well-structured paragraphs
-4. Only use bullet points or numbered lists if the query specifically requests them
-5. Ensure mathematical expressions are clear, properly spaced, and mathematically correct`;
+   - Block math: Use double dollar signs, e.g., $$\\int_{0}^{1} x^2 dx = \\frac{1}{3}$$
+3. Start your response with a single, clear title using a single '#' in markdown (e.g., '# My Title').
+4. Use clear, well-structured paragraphs, and always separate paragraphs and list items with a blank line.
+5. Use bullet points or numbered lists for steps or lists, and always separate them with blank lines.
+6. NEVER break or escape markdown or LaTeX symbols. Do not use extra backslashes or HTML entities.
+7. Ensure all punctuation and spacing is natural and readable, like a human would write.
+8. Avoid malformed markdown (e.g., missing spaces, broken tags, or unclosed math). Double-check your output for correctness before finishing.
+`;
       
       const nemotronMessages = [
         { role: "system", content: nemotronSystemPrompt },

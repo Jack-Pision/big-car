@@ -528,6 +528,33 @@ export default function TestChat() {
           </div>
         </form>
       </div>
+      {/* Hardcoded Markdown Test Block */}
+      <div className="w-full max-w-3xl mx-auto my-6">
+        <ReactMarkdown
+          className="markdown-body"
+          remarkPlugins={[remarkGfm, remarkMath]}
+          rehypePlugins={[rehypeKatex]}
+        >
+          {`
+# Test: Markdown & Math
+
+**Bold text** and *italic text*.
+
+- List item 1
+- List item 2
+
+1. Numbered item 1
+2. Numbered item 2
+
+Inline math: $x^2 + y^2 = z^2$
+
+Block math:
+$$
+\int_{0}^{1} x^2 dx = \frac{1}{3}
+$$
+          `}
+        </ReactMarkdown>
+      </div>
     </div>
   );
 } 
