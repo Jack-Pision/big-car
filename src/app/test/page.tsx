@@ -56,26 +56,53 @@ function cleanAIResponse(text: string): string {
 
 // Post-process AI response to enforce a single # title and regular paragraphs
 function enforceSingleTitleAndParagraphs(markdown: string): string {
-  if (!markdown) return '';
-  // Find the first # heading
-  const lines = markdown.split(/\r?\n/);
+  if (typeof markdown !== 'string' || !markdown) return '';
+
+  const mathPlaceholders: { id: string; content: string; type: 'block' | 'inline' }[] = [];
+  let placeholderCounter = 0;
+
+  // Temporarily replace LaTeX block expressions ($$...$$)
+  let tempMarkdown = markdown.replace(/\$\$([\s\S]*?)\$\$/g, (match) => {
+    const id = `__MATH_PLACEHOLDER_${placeholderCounter++}__`;
+    mathPlaceholders.push({ id, content: match, type: 'block' });
+    return id;
+  });
+
+  // Temporarily replace LaTeX inline expressions ($...$)
+  tempMarkdown = tempMarkdown.replace(/(?<!\$)\$([^$\n\r]+?)\$(?!\$)/g, (match) => {
+    const id = `__MATH_PLACEHOLDER_${placeholderCounter++}__`;
+    mathPlaceholders.push({ id, content: match, type: 'inline' });
+    return id;
+  });
+
+  const lines = tempMarkdown.split(/\r?\n/);
   let foundTitle = false;
-  const processed: string[] = [];
+  const processedLines: string[] = [];
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     if (!foundTitle && /^#\s+/.test(line)) {
-      processed.push(line); // Keep the first # heading
+      processedLines.push(line); // Keep the first # heading
       foundTitle = true;
     } else if (/^#\s+/.test(line)) {
-      // Skip additional # headings
+      // Skip additional # headings if a title is already found
       continue;
     } else {
-      processed.push(line);
+      processedLines.push(line);
     }
   }
-  // Join and collapse multiple blank lines
-  let result = processed.join('\n');
-  result = result.replace(/\n{3,}/g, '\n\n');
+  
+  let result = processedLines.join('\n');
+  // Collapse multiple blank lines.
+  result = result.replace(/\n(\s*\n){2,}/g, '\n\n');
+
+  // Restore LaTeX expressions from placeholders
+  // Iterate in reverse to handle potential (though unlikely here) placeholder "nesting" if IDs were not unique
+  for (let i = mathPlaceholders.length - 1; i >= 0; i--) {
+    const placeholder = mathPlaceholders[i];
+    result = result.replace(placeholder.id, placeholder.content);
+  }
+
   return result.trim();
 }
 
@@ -248,58 +275,32 @@ export default function TestChat() {
       if (res.body && res.headers.get('content-type')?.includes('text/event-stream')) {
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
-        let buffer = '';
-        let done = false;
-        let aiMsg = { 
-          role: "assistant" as const, 
-          content: "", 
-          imageUrls: uploadedImageUrls // Associate assistant response with the uploaded images
-        };
-        setMessages((prev) => [...prev, aiMsg]);
+        let fullAccumulatedStreamedText = '';
 
-        while (!done) {
-          const { value, done: doneReading } = await reader.read();
-          done = doneReading;
-          if (value) {
-            buffer += decoder.decode(value, { stream: true });
-            let lines = buffer.split('\n');
-            buffer = lines.pop() || '';
-            for (let line of lines) {
-              if (line.startsWith('data:')) {
-                const data = line.replace('data:', '').trim();
-                if (data === '[DONE]') continue;
-                try {
-                  const parsed = JSON.parse(data);
-                  const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.message?.content || parsed.choices?.[0]?.text || parsed.content || '';
-                  if (delta) {
-                    // Log the delta for debugging
-                    console.log('delta:', JSON.stringify(delta));
-                    // Insert a space if the previous content does not end with space/newline and the delta does not start with punctuation/space/newline
-                    const lastChar = aiMsg.content.slice(-1);
-                    const firstChar = delta[0];
-                    const needsSpace = lastChar && !/\s|[.,!?;:]/.test(lastChar) && firstChar && !/\s|[.,!?;:]/.test(firstChar);
-                    aiMsg.content += (needsSpace ? ' ' : '') + delta;
-                    setMessages((prev) => {
-                      const updatedMessages = [...prev];
-                      const lastMsgIndex = updatedMessages.length - 1;
-                      if(updatedMessages[lastMsgIndex] && updatedMessages[lastMsgIndex].role === 'assistant'){
-                        // Format content for display - ensure newlines are preserved
-                        let formattedContent = aiMsg.content
-                          .replace(/\. /g, '.\n\n') // Add paragraph breaks after periods
-                          .replace(/\n\n\n+/g, '\n\n'); // Prevent too many consecutive newlines
-                        formattedContent = enforceSingleTitleAndParagraphs(formattedContent);
-                        updatedMessages[lastMsgIndex] = { ...updatedMessages[lastMsgIndex], content: formattedContent };
-                      }
-                      return updatedMessages;
-                    });
-                  }
-                } catch (err) {
-                  // console.error("Error parsing stream data:", err, "Data:", data);
-                }
-              }
-            }
-          }
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          fullAccumulatedStreamedText += chunk;
         }
+
+        console.log("Raw AI Output (Before cleanAIResponse):", fullAccumulatedStreamedText);
+
+        let cleanedResponse = cleanAIResponse(fullAccumulatedStreamedText);
+        console.log("AI Output (After cleanAIResponse, Before enforceSingleTitleAndParagraphs):", cleanedResponse);
+
+        const formattedContent = enforceSingleTitleAndParagraphs(cleanedResponse);
+        console.log("AI Output (After enforceSingleTitleAndParagraphs):", formattedContent);
+
+        const aiMsg = {
+          role: "assistant" as const,
+          content: formattedContent,
+          imageUrls: uploadedImageUrls // Preserve any uploaded image URLs
+        };
+
+        setMessages((prev) => [...prev, aiMsg]);
+        setLoading(false);
       } else {
         const data = await res.json();
         const assistantResponseContent = cleanAIResponse(data.choices?.[0]?.message?.content || data.generated_text || data.error || JSON.stringify(data) || "No response");
@@ -502,4 +503,5 @@ export default function TestChat() {
       </div>
     </div>
   );
+} 
 } 
