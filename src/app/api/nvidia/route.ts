@@ -89,25 +89,20 @@ async function fetchNvidiaText(messages: any[]) {
   };
   // Using fetchWithTimeout for the NVIDIA API call
   const res = await fetchWithTimeout('https://integrate.api.nvidia.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
+    method: 'POST',
+    headers: {
       'Authorization': `Bearer ${TEXT_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
   }, 12000); // 12-second timeout for NVIDIA Nemotron
 
-    if (!res.ok) {
-      const errorText = await res.text();
+  if (!res.ok) {
+    const errorText = await res.text();
     // Return a Response object with status for consistent error handling upstream
     return new Response(JSON.stringify({ error: `Nvidia API Error: ${errorText}` }), { status: res.status, headers: { 'Content-Type': 'application/json'} });
-    }
-    return res;
   }
-
-// Utility to strip <think>...</think> tags from a string
-function stripThinkTags(text: string): string {
-  return text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+  return res;
 }
 
 export async function POST(req: NextRequest) {
@@ -131,70 +126,14 @@ export async function POST(req: NextRequest) {
         return openRouterRes; 
       }
       const openRouterData = await openRouterRes.json();
-      let imageDescription = openRouterData.choices?.[0]?.message?.content || 'Could not get a description from the image(s).';
-      imageDescription = stripThinkTags(imageDescription); // Clean the image description
-      console.log("[API /api/nvidia] OpenRouter description received (cleaned):", imageDescription.substring(0, 200) + "...");
+      const imageDescription = openRouterData.choices?.[0]?.message?.content || 'Could not get a description from the image(s).';
+      console.log("[API /api/nvidia] OpenRouter description received:", imageDescription.substring(0, 100) + "...");
 
       // 2. Construct prompt for Nemotron
       const userImagePrompt = body.messages?.filter((m:any) => m.role === 'user').pop()?.content || (body.imageUrls.length > 1 ? "Tell me more about these images." : "Tell me more about what was found in the image.");
 
       const imageContext = body.imageUrls.length > 1 ? `A set of ${body.imageUrls.length} images were provided.` : "An image was provided.";
-      const nemotronSystemPrompt = `You are an advanced AI assistant. ${imageContext} Image analysis from OpenRouter (primarily of the first image if multiple were sent) yielded: "${imageDescription}". The user has provided the following specific query: "${userImagePrompt}". Based on the image description(s) and the user's query, provide a helpful and detailed response.
-
-IMPORTANT FORMATTING INSTRUCTIONS:
-1. Start your response with a single, clear title using a single '#' in markdown.
-2. For mathematical content:
-   - Use $...$ for inline math: $x^2 + y^2 = z^2$
-   - Use $$...$$  for block math:
-     $$
-     \int_{0}^{1} x^2 dx = \frac{1}{3}
-     $$
-   - Never escape backslashes in LaTeX
-   - Always put block math on its own line with blank lines before and after
-
-3. For lists and structure:
-   - Use blank lines between paragraphs
-   - For bullet points, start each item with "- " and a blank line between items:
-     - First item
-     
-     - Second item
-   
-   - For numbered lists, use "1. " format with blank lines:
-     1. First step
-     
-     2. Second step
-
-4. For text emphasis:
-   - Use **bold** for important terms
-   - Use *italic* for emphasis
-   - Leave a space after punctuation marks
-   - Use proper line breaks between sections
-
-Example of good formatting:
-
-# Understanding Mathematics
-
-The **quadratic formula** is one of the most important equations in algebra. For any quadratic equation in the form $ax^2 + bx + c = 0$, the solution is:
-
-$$
-x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}
-$$
-
-Key components:
-
-- The coefficient $a$ must not be zero
-   
-- The term $b^2 - 4ac$ is called the discriminant
-   
-- The ± symbol indicates two possible solutions
-
-Steps to solve:
-
-1. Identify the values of $a$, $b$, and $c$
-   
-2. Plug these values into the formula
-   
-3. Simplify the result`;
+      const nemotronSystemPrompt = `You are an advanced AI assistant. ${imageContext} Image analysis from OpenRouter (primarily of the first image if multiple were sent) yielded: "${imageDescription}". The user has provided the following specific query: "${userImagePrompt}". Based on the image description(s) and the user's query, provide a helpful and detailed response.`;
       
       const nemotronMessages = [
         { role: "system", content: nemotronSystemPrompt },
@@ -220,102 +159,16 @@ Steps to solve:
       headers.set('Cache-Control', 'no-cache');
       headers.set('Connection', 'keep-alive');
 
-      // Clean the stream by stripping <think>...</think> tags
-      if (!nemotronRes.body) {
-        return new Response(JSON.stringify({ error: 'No response body from AI' }), { status: 500, headers });
-      }
-      const cleanedStream = new ReadableStream({
-        async start(controller) {
-          const reader = nemotronRes.body!.getReader();
-          const decoder = new TextDecoder();
-          const encoder = new TextEncoder();
-          let buffer = '';
-          while (true) {
-            const { value, done } = await reader.read();
-            if (done) break;
-            buffer += decoder.decode(value, { stream: true });
-            let lines = buffer.split('\n');
-            buffer = lines.pop() || '';
-            for (let line of lines) {
-              if (line.startsWith('data:')) {
-                const data = line.replace('data:', '').trim();
-                if (data === '[DONE]') {
-                  controller.enqueue(encoder.encode('data: [DONE]\n'));
-                  continue;
-    }
-    try {
-                  const parsed = JSON.parse(data);
-                  // Clean the content field(s)
-                  if (parsed.choices?.[0]?.delta?.content) {
-                    parsed.choices[0].delta.content = stripThinkTags(parsed.choices[0].delta.content);
-                  }
-                  if (parsed.choices?.[0]?.message?.content) {
-                    parsed.choices[0].message.content = stripThinkTags(parsed.choices[0].message.content);
-                  }
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify(parsed)}\n`));
-                } catch (err) {
-                  // Pass through malformed lines
-                  controller.enqueue(encoder.encode(line + '\n'));
-                }
-              } else {
-                controller.enqueue(encoder.encode(line + '\n'));
-              }
-            }
-          }
-          if (buffer) controller.enqueue(encoder.encode(buffer));
-          controller.close();
-        }
+      return new Response(nemotronRes.body, {
+        status: 200,
+        headers: headers,
       });
 
-      return new Response(cleanedStream, {
-      status: 200,
-        headers: headers,
-    });
-
-  } else {
+    } else {
       console.log("[API /api/nvidia] Received text-only request (streaming)...");
       const { messages } = body;
-      
-      // Prepend a system prompt with formatting instructions
-      const textSystemPrompt = `You are an advanced AI assistant. Provide clear, concise, and helpful responses.
-
-IMPORTANT FORMATTING INSTRUCTIONS:
-1. Start your response with a single, clear title using a single '#' in markdown.
-2. For mathematical content:
-   - Use $...$ for inline math: $x^2 + y^2 = z^2$
-   - Use $$...$$  for block math:
-     $$
-     \int_{0}^{1} x^2 dx = \frac{1}{3}
-     $$
-   - Never escape backslashes in LaTeX
-   - Always put block math on its own line with blank lines before and after
-
-3. For lists and structure:
-   - Use blank lines between paragraphs
-   - For bullet points, start each item with "- " and a blank line between items:
-     - First item
-     
-     - Second item
-   
-   - For numbered lists, use "1. " format with blank lines:
-     1. First step
-     
-     2. Second step
-
-4. For text emphasis:
-   - Use **bold** for important terms
-   - Use *italic* for emphasis
-   - Leave a space after punctuation marks
-   - Use proper line breaks between sections`;
-
-      // Insert system prompt at the beginning of messages
-      const nemotronMessages = [
-        { role: "system", content: textSystemPrompt },
-        ...messages
-      ];
-      
       // For text-only, also enable streaming
-      const nemotronRes = await fetchNvidiaText(nemotronMessages); // Always streaming
+      const nemotronRes = await fetchNvidiaText(messages); // Always streaming
       
       if (!nemotronRes.ok) {
           return nemotronRes;
@@ -326,54 +179,7 @@ IMPORTANT FORMATTING INSTRUCTIONS:
       headers.set('Cache-Control', 'no-cache');
       headers.set('Connection', 'keep-alive');
       
-      // Clean the stream by stripping <think>...</think> tags
-      if (!nemotronRes.body) {
-        return new Response(JSON.stringify({ error: 'No response body from AI' }), { status: 500, headers });
-      }
-      const cleanedStreamForTextOnly = new ReadableStream({
-        async start(controller) {
-          const reader = nemotronRes.body!.getReader();
-          const decoder = new TextDecoder();
-          const encoder = new TextEncoder();
-          let buffer = '';
-          while (true) {
-            const { value, done } = await reader.read();
-            if (done) break;
-            buffer += decoder.decode(value, { stream: true });
-            let lines = buffer.split('\n');
-            buffer = lines.pop() || '';
-            for (let line of lines) {
-              if (line.startsWith('data:')) {
-                const data = line.replace('data:', '').trim();
-                if (data === '[DONE]') {
-                  controller.enqueue(encoder.encode('data: [DONE]\n'));
-                  continue;
-                }
-                try {
-                  const parsed = JSON.parse(data);
-                  // Clean the content field(s)
-                  if (parsed.choices?.[0]?.delta?.content) {
-                    parsed.choices[0].delta.content = stripThinkTags(parsed.choices[0].delta.content);
-                  }
-                  if (parsed.choices?.[0]?.message?.content) {
-                    parsed.choices[0].message.content = stripThinkTags(parsed.choices[0].message.content);
-                  }
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify(parsed)}\n`));
-                } catch (err) {
-                  // Pass through malformed lines
-                  controller.enqueue(encoder.encode(line + '\n'));
-                }
-              } else {
-                controller.enqueue(encoder.encode(line + '\n'));
-              }
-            }
-          }
-          if (buffer) controller.enqueue(encoder.encode(buffer));
-          controller.close();
-        }
-      });
-
-      return new Response(cleanedStreamForTextOnly, {
+      return new Response(nemotronRes.body, {
         status: 200,
         headers: headers,
       });

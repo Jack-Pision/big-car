@@ -54,132 +54,6 @@ function cleanAIResponse(text: string): string {
   return cleanedText.trim();
 }
 
-// Post-process AI response to enforce a single # title and regular paragraphs
-function enforceSingleTitleAndParagraphs(markdown: string): string {
-  if (typeof markdown !== 'string' || !markdown) return '';
-
-  const mathPlaceholders: { id: string; content: string; type: 'block' | 'inline' }[] = [];
-  let placeholderCounter = 0;
-
-  // Temporarily replace LaTeX block expressions ($$...$$)
-  let tempMarkdown = markdown.replace(/\$\$([\s\S]*?)\$\$/g, (match) => {
-    const id = `__MATH_PLACEHOLDER_${placeholderCounter++}__`;
-    mathPlaceholders.push({ id, content: match, type: 'block' });
-    return id;
-  });
-
-  // Temporarily replace LaTeX inline expressions ($...$)
-  tempMarkdown = tempMarkdown.replace(/(?<!\$)\$([^$\n\r]+?)\$(?!\$)/g, (match) => {
-    const id = `__MATH_PLACEHOLDER_${placeholderCounter++}__`;
-    mathPlaceholders.push({ id, content: match, type: 'inline' });
-    return id;
-  });
-
-  const lines = tempMarkdown.split(/\r?\n/);
-  let foundTitle = false;
-  const processedLines: string[] = [];
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    if (!foundTitle && /^#\s+/.test(line)) {
-      processedLines.push(line); // Keep the first # heading
-      foundTitle = true;
-    } else if (/^#\s+/.test(line)) {
-      // Skip additional # headings if a title is already found
-      continue;
-    } else {
-      processedLines.push(line);
-    }
-  }
-  
-  let result = processedLines.join('\n');
-  // Collapse multiple blank lines.
-  result = result.replace(/\n(\s*\n){2,}/g, '\n\n');
-
-  // Restore LaTeX expressions from placeholders
-  // Iterate in reverse to handle potential (though unlikely here) placeholder "nesting" if IDs were not unique
-  for (let i = mathPlaceholders.length - 1; i >= 0; i--) {
-    const placeholder = mathPlaceholders[i];
-    result = result.replace(placeholder.id, placeholder.content);
-  }
-
-  return result.trim();
-}
-
-// Post-process AI response to clean up markdown formatting
-function cleanMarkdownFormatting(markdown: string): string {
-  if (typeof markdown !== 'string' || !markdown) return '';
-  let result = markdown;
-  
-  // Fix spacing around math delimiters
-  result = result.replace(/([^\s$])\$/g, '$1 $'); // Add space before $
-  result = result.replace(/\$([^\s$])/g, '$ $1'); // Add space after $
-  
-  // Ensure block math has proper spacing
-  result = result.replace(/\$\$/g, '\n$$\n');
-  
-  // Fix list formatting
-  result = result.replace(/^(-|\d+\.) ([^\n])/gm, '$1 $2'); // Ensure space after bullet/number
-  result = result.replace(/\n(-|\d+\.)\s/g, '\n\n$1 '); // Add blank line before list items
-  
-  // Fix heading spacing
-  result = result.replace(/^(#+)\s*([^\n]+)/gm, '\n$1 $2\n');
-  
-  // Fix paragraph spacing
-  result = result.replace(/([^\n])\n([^\n-\d#])/g, '$1\n\n$2');
-  
-  // Collapse multiple blank lines to max two
-  result = result.replace(/\n{3,}/g, '\n\n');
-  
-  return result.trim();
-}
-
-// Aggressive markdown fixer to force structure
-function forceMarkdownStructure(text: string): string {
-  if (typeof text !== 'string' || !text) return '';
-  let result = text;
-  
-  // Fix list items
-  result = result.replace(/(?:^|\n)[-*]\s*/g, '\n\n- '); // Bullet points
-  result = result.replace(/(?:^|\n)(\d+)\.\s*/g, '\n\n$1. '); // Numbered lists
-  
-  // Fix headings
-  result = result.replace(/(?:^|\n)(#{1,6})\s*/g, '\n\n$1 ');
-  
-  // Ensure proper spacing around math blocks
-  result = result.replace(/\$\$([\s\S]*?)\$\$/g, '\n\n$$\n$1\n$$\n\n');
-  
-  // Fix inline math spacing
-  result = result.replace(/([^\s$])\$([^$\n]+)\$([^\s$])/g, '$1 $$$2$$ $3');
-  
-  // Ensure paragraphs have blank lines
-  result = result.replace(/([a-z0-9])\n([A-Z#*\-\d])/g, '$1\n\n$2');
-  
-  return result.trim();
-}
-
-// Fix broken bold/italic markdown
-function fixBrokenBoldItalic(text: string): string {
-  if (typeof text !== 'string' || !text) return '';
-  let result = text;
-  
-  // Fix broken bold syntax
-  result = result.replace(/\*\*(\s|$)/g, ''); // Remove trailing **
-  result = result.replace(/(\s|^)\*\*/g, ''); // Remove leading **
-  result = result.replace(/([^\s])\*\*([^\s])/g, '$1 **$2'); // Add space around **
-  
-  // Fix broken italic syntax
-  result = result.replace(/([^\s])\*([^\s])/g, '$1 *$2'); // Add space around *
-  
-  // Remove any remaining unmatched * or **
-  const asteriskCount = (result.match(/\*/g) || []).length;
-  if (asteriskCount % 2 !== 0) {
-    result = result.replace(/\*/g, '');
-  }
-  
-  return result;
-}
-
 const markdownComponents = {
   h1: (props: React.ComponentProps<'h1'>) => (
     <h1
@@ -349,77 +223,53 @@ export default function TestChat() {
       if (res.body && res.headers.get('content-type')?.includes('text/event-stream')) {
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
-        let accumulatedContent = '';
-        let fullAccumulatedStreamedText = '';
+        let buffer = '';
+        let done = false;
+        let aiMsg = { 
+          role: "assistant" as const, 
+          content: "", 
+          imageUrls: uploadedImageUrls // Associate assistant response with the uploaded images
+        };
+        setMessages((prev) => [...prev, aiMsg]);
 
-        while (true) {
-          const { value, done } = await reader.read();
-          if (done) break;
-
-          const chunk = decoder.decode(value, { stream: true });
-          fullAccumulatedStreamedText += chunk;
-
-          // Split by newlines in case multiple chunks arrive at once
-          chunk.split('\n').forEach(line => {
-            if (line.startsWith('data:')) {
-              try {
-                const json = JSON.parse(line.replace('data:', '').trim());
-                const content = json.choices?.[0]?.delta?.content || '';
-                // Insert a space if needed between accumulatedContent and new content
-                if (
-                  accumulatedContent &&
-                  content &&
-                  /[\w\)]$/.test(accumulatedContent) &&
-                  /^[\w\(]/.test(content)
-                ) {
-                  accumulatedContent += ' ';
+        while (!done) {
+          const { value, done: doneReading } = await reader.read();
+          done = doneReading;
+          if (value) {
+            buffer += decoder.decode(value, { stream: true });
+            let lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+            for (let line of lines) {
+              if (line.startsWith('data:')) {
+                const data = line.replace('data:', '').trim();
+                if (data === '[DONE]') continue;
+                try {
+                  const parsed = JSON.parse(data);
+                  const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.message?.content || parsed.choices?.[0]?.text || parsed.content || '';
+                  if (delta) {
+                    aiMsg.content += delta;
+                    setMessages((prev) => {
+                      const updatedMessages = [...prev];
+                      const lastMsgIndex = updatedMessages.length - 1;
+                      if(updatedMessages[lastMsgIndex] && updatedMessages[lastMsgIndex].role === 'assistant'){
+                        updatedMessages[lastMsgIndex] = { ...updatedMessages[lastMsgIndex], content: aiMsg.content };
+                      }
+                      return updatedMessages;
+                    });
+                  }
+                } catch (err) {
+                  // console.error("Error parsing stream data:", err, "Data:", data);
                 }
-                accumulatedContent += content;
-              } catch (e) {
-                // Ignore parse errors
               }
             }
-          });
+          }
         }
-
-        // Optionally, add a newline after punctuation if not followed by a newline
-        accumulatedContent = accumulatedContent.replace(/([.!?])([^\n])/g, '$1\n$2');
-
-        console.log("Raw AI Output (Before cleanAIResponse):", fullAccumulatedStreamedText);
-        console.log("Accumulated AI Content:", accumulatedContent);
-
-        let cleanedResponse = cleanAIResponse(accumulatedContent);
-        cleanedResponse = cleanMarkdownFormatting(cleanedResponse);
-        cleanedResponse = forceMarkdownStructure(cleanedResponse);
-        cleanedResponse = fixBrokenBoldItalic(cleanedResponse);
-        console.log("AI Output (After fixBrokenBoldItalic):", cleanedResponse);
-        const formattedContent = enforceSingleTitleAndParagraphs(cleanedResponse);
-
-        const aiMsg = {
-          role: "assistant" as const,
-          content: formattedContent,
-          imageUrls: uploadedImageUrls // Preserve any uploaded image URLs
-        };
-
-        setMessages((prev) => [...prev, aiMsg]);
-        setLoading(false);
       } else {
         const data = await res.json();
         const assistantResponseContent = cleanAIResponse(data.choices?.[0]?.message?.content || data.generated_text || data.error || JSON.stringify(data) || "No response");
-        const formattedContent = enforceSingleTitleAndParagraphs(
-          fixBrokenBoldItalic(
-            forceMarkdownStructure(
-              cleanMarkdownFormatting(
-                assistantResponseContent
-                  .replace(/\. /g, '.\n\n')
-                  .replace(/\n\n\n+/g, '\n\n')
-              )
-            )
-          )
-        );
         const aiMsg = {
           role: "assistant" as const,
-          content: formattedContent,
+          content: assistantResponseContent,
           imageUrls: uploadedImageUrls // Associate assistant response with the uploaded images
         };
         setMessages((prev) => [...prev, aiMsg]);
@@ -508,30 +358,9 @@ export default function TestChat() {
                 >
                   {/* No image for assistant messages */}
                   <ReactMarkdown
-                    className="markdown-body"
+                    components={markdownComponents}
                     remarkPlugins={[remarkGfm, remarkMath]}
                     rehypePlugins={[rehypeKatex]}
-                    components={{
-                      ...markdownComponents,
-                      // Add specific handlers for lists
-                      ul: (props) => (
-                        <ul className="markdown-body-ul list-disc pl-6 my-4" {...props} />
-                      ),
-                      ol: (props) => (
-                        <ol className="markdown-body-ol list-decimal pl-6 my-4" {...props} />
-                      ),
-                      li: (props) => (
-                        <li className="markdown-body-li my-2" {...props} />
-                      ),
-                      // Improve math rendering
-                      code: (props) => {
-                        const match = /language-(\w+)/.exec(props.className || '');
-                        if (match && match[1] === 'math') {
-                          return <span className="math-inline">{props.children}</span>;
-                        }
-                        return <code className="markdown-body-code" {...props} />;
-                      }
-                    }}
                   >
                     {msg.content}
                   </ReactMarkdown>
