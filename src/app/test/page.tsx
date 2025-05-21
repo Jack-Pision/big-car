@@ -140,6 +140,23 @@ function forceMarkdownStructure(text: string): string {
   return result.trim();
 }
 
+// Fix broken bold/italic markdown (** and *)
+function fixBrokenBoldItalic(text: string): string {
+  if (typeof text !== 'string' || !text) return '';
+  let result = text;
+  // Remove lone or unclosed ** at end or before space
+  result = result.replace(/\*\*(\s|$)/g, '');
+  // Remove ** at start or after space
+  result = result.replace(/(\s|^)\*\*/g, '');
+  // Remove * at start/end of lines
+  result = result.replace(/^\*+|\*+$/gm, '');
+  // Remove any remaining unmatched *
+  if ((result.match(/\*/g) || []).length % 2 !== 0) {
+    result = result.replace(/\*/g, '');
+  }
+  return result;
+}
+
 const markdownComponents = {
   h1: (props: React.ComponentProps<'h1'>) => (
     <h1
@@ -351,7 +368,8 @@ export default function TestChat() {
         let cleanedResponse = cleanAIResponse(accumulatedContent);
         cleanedResponse = cleanMarkdownFormatting(cleanedResponse);
         cleanedResponse = forceMarkdownStructure(cleanedResponse);
-        console.log("AI Output (After forceMarkdownStructure):", cleanedResponse);
+        cleanedResponse = fixBrokenBoldItalic(cleanedResponse);
+        console.log("AI Output (After fixBrokenBoldItalic):", cleanedResponse);
         const formattedContent = enforceSingleTitleAndParagraphs(cleanedResponse);
 
         const aiMsg = {
@@ -366,11 +384,13 @@ export default function TestChat() {
         const data = await res.json();
         const assistantResponseContent = cleanAIResponse(data.choices?.[0]?.message?.content || data.generated_text || data.error || JSON.stringify(data) || "No response");
         const formattedContent = enforceSingleTitleAndParagraphs(
-          forceMarkdownStructure(
-            cleanMarkdownFormatting(
-              assistantResponseContent
-                .replace(/\. /g, '.\n\n')
-                .replace(/\n\n\n+/g, '\n\n')
+          fixBrokenBoldItalic(
+            forceMarkdownStructure(
+              cleanMarkdownFormatting(
+                assistantResponseContent
+                  .replace(/\. /g, '.\n\n')
+                  .replace(/\n\n\n+/g, '\n\n')
+              )
             )
           )
         );
