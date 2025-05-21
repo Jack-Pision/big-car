@@ -490,7 +490,7 @@ export default function TestChat() {
             if (msg.role === "assistant") {
               const { content, thinkingTime } = cleanAIResponse(msg.content);
               const cleanContent = content.replace(/<thinking-indicator.*?\/>/g, '');
-              
+              const isStoppedMsg = cleanContent.trim() === '[Response stopped by user]';
               return (
                 <motion.div
                   key={i}
@@ -504,10 +504,14 @@ export default function TestChat() {
                   ) : (
                     <>
                       {thinkingTime && <ThinkingIndicator duration={thinkingTime} />}
-                      <TextReveal 
-                        text={cleanContent}
-                        markdownComponents={markdownComponents}
-                      />
+                      {isStoppedMsg ? (
+                        <span className="text-sm text-gray-500/60 italic font-light mb-2">[Response stopped by user]</span>
+                      ) : (
+                        <TextReveal 
+                          text={cleanContent}
+                          markdownComponents={markdownComponents}
+                        />
+                      )}
                     </>
                   )}
                 </motion.div>
@@ -560,7 +564,7 @@ export default function TestChat() {
             </div>
           )}
           {/* Textarea and send/stop button row */}
-          <div className="relative flex items-center w-full">
+          <div className="relative flex items-end w-full">
             <textarea
               ref={textareaRef}
               value={input}
@@ -571,8 +575,8 @@ export default function TestChat() {
               rows={1}
               style={{height: '48px', maxHeight: '144px'}}
             />
-            {/* Send/Stop button at the far right inside the input */}
-            <div className="absolute right-2 flex items-center h-full">
+            {/* Send/Stop button at the bottom right inside the input */}
+            <div className="absolute bottom-2 right-2 flex items-end h-full">
               <button
                 type={isAiResponding ? "button" : "submit"}
                 className="w-10 h-10 flex items-center justify-center rounded-full bg-black text-white hover:bg-gray-900 transition relative"
