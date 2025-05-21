@@ -152,6 +152,30 @@ IMPORTANT FORMATTING INSTRUCTIONS:
 6. NEVER break or escape markdown or LaTeX symbols. Do not use extra backslashes or HTML entities.
 7. Ensure all punctuation and spacing is natural and readable, like a human would write.
 8. Avoid malformed markdown (e.g., missing spaces, broken tags, or unclosed math). Double-check your output for correctness before finishing.
+
+EXAMPLES OF GOOD OUTPUT:
+# What is Algebra?
+
+Algebra is a branch of mathematics...
+
+- **Variables:** Letters that represent unknowns.
+- **Constants:** Numbers that do not change.
+- **Operations:** Addition, subtraction, etc.
+
+## Example
+
+Solve for $x$ in $2x + 3 = 5$:
+
+$$
+2x + 3 = 5 \\
+2x = 2 \\
+x = 1
+$$
+
+## Why Learn Algebra?
+
+- Problem-solving skills
+- Foundation for science and engineering
 `;
       
       const nemotronMessages = [

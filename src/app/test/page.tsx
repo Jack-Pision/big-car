@@ -106,6 +106,23 @@ function enforceSingleTitleAndParagraphs(markdown: string): string {
   return result.trim();
 }
 
+// Post-process AI response to clean up markdown formatting
+function cleanMarkdownFormatting(markdown: string): string {
+  if (typeof markdown !== 'string' || !markdown) return '';
+  let result = markdown;
+  // Ensure blank lines before and after headings
+  result = result.replace(/(^|\n)(#+ .+)/g, '\n$2\n');
+  // Ensure blank lines before and after lists
+  result = result.replace(/(\n)?([*-] |\d+\. )/g, '\n$2');
+  // Add space after punctuation if missing
+  result = result.replace(/([.,!?:;])(\S)/g, '$1 $2');
+  // Collapse multiple blank lines to max two
+  result = result.replace(/\n{3,}/g, '\n\n');
+  // Remove trailing spaces
+  result = result.replace(/[ \t]+$/gm, '');
+  return result.trim();
+}
+
 const markdownComponents = {
   h1: (props: React.ComponentProps<'h1'>) => (
     <h1
@@ -315,7 +332,8 @@ export default function TestChat() {
         console.log("Accumulated AI Content:", accumulatedContent);
 
         let cleanedResponse = cleanAIResponse(accumulatedContent);
-        console.log("AI Output (After cleanAIResponse, Before enforceSingleTitleAndParagraphs):", cleanedResponse);
+        cleanedResponse = cleanMarkdownFormatting(cleanedResponse);
+        console.log("AI Output (After cleanMarkdownFormatting):", cleanedResponse);
 
         const formattedContent = enforceSingleTitleAndParagraphs(cleanedResponse);
         console.log("AI Output (After enforceSingleTitleAndParagraphs):", formattedContent);
@@ -332,9 +350,11 @@ export default function TestChat() {
         const data = await res.json();
         const assistantResponseContent = cleanAIResponse(data.choices?.[0]?.message?.content || data.generated_text || data.error || JSON.stringify(data) || "No response");
         const formattedContent = enforceSingleTitleAndParagraphs(
-          assistantResponseContent
-            .replace(/\. /g, '.\n\n')
-            .replace(/\n\n\n+/g, '\n\n')
+          cleanMarkdownFormatting(
+            assistantResponseContent
+              .replace(/\. /g, '.\n\n')
+              .replace(/\n\n\n+/g, '\n\n')
+          )
         );
         const aiMsg = {
           role: "assistant" as const,
