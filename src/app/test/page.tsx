@@ -46,14 +46,48 @@ For every equation, formula, or calculation step, always use block math with \$\
 
 function cleanAIResponse(text: string): string {
   if (typeof text !== 'string') {
-    return ''; // Or handle non-string input as appropriate
+    return '';
   }
   let cleanedText = text;
-  // Iteratively remove <think>...</think> blocks
+  
+  // Remove <think> tags and their content
   while (/<think>[\s\S]*?<\/think>/gi.test(cleanedText)) {
     cleanedText = cleanedText.replace(/<think>[\s\S]*?<\/think>/gi, '');
   }
-  return cleanedText.trim();
+  
+  // Remove any remaining think tags (in case they're malformed)
+  cleanedText = cleanedText.replace(/<\/?think>/gi, '');
+  
+  // Remove any text that starts with "Let me" and ends with a period
+  cleanedText = cleanedText.replace(/Let me[^.]*\./gi, '');
+  
+  // Remove common thinking phrases
+  const thinkingPhrases = [
+    /Okay, let me start by understanding/gi,
+    /First, I need to acknowledge/gi,
+    /I should consider/gi,
+    /I need to/gi,
+    /The response needs to be/gi,
+    /Let's analyze/gi,
+    /I will/gi,
+    /I should/gi,
+    /The image shows/gi,
+    /The thumbnail shows/gi,
+    /The user's query/gi,
+    /Based on the image/gi
+  ];
+  
+  thinkingPhrases.forEach(phrase => {
+    cleanedText = cleanedText.replace(phrase, '');
+  });
+  
+  // Clean up any resulting double spaces or empty lines
+  cleanedText = cleanedText
+    .replace(/\s+/g, ' ')
+    .replace(/^\s+|\s+$/gm, '')
+    .trim();
+    
+  return cleanedText;
 }
 
 const markdownComponents = {
@@ -250,15 +284,23 @@ export default function TestChat() {
                   const parsed = JSON.parse(data);
                   const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.message?.content || parsed.choices?.[0]?.text || parsed.content || '';
                   if (delta) {
-                    aiMsg.content += delta;
-                    setMessages((prev) => {
-                      const updatedMessages = [...prev];
-                      const lastMsgIndex = updatedMessages.length - 1;
-                      if(updatedMessages[lastMsgIndex] && updatedMessages[lastMsgIndex].role === 'assistant'){
-                        updatedMessages[lastMsgIndex] = { ...updatedMessages[lastMsgIndex], content: aiMsg.content };
-                      }
-                      return updatedMessages;
-                    });
+                    // Clean each delta before adding it
+                    const cleanedDelta = cleanAIResponse(delta);
+                    if (cleanedDelta) {
+                      aiMsg.content += cleanedDelta;
+                      setMessages((prev) => {
+                        const updatedMessages = [...prev];
+                        const lastMsgIndex = updatedMessages.length - 1;
+                        if(updatedMessages[lastMsgIndex] && updatedMessages[lastMsgIndex].role === 'assistant'){
+                          // Clean the entire message again to catch any patterns that might span across deltas
+                          updatedMessages[lastMsgIndex] = { 
+                            ...updatedMessages[lastMsgIndex], 
+                            content: cleanAIResponse(aiMsg.content) 
+                          };
+                        }
+                        return updatedMessages;
+                      });
+                    }
                   }
                 } catch (err) {
                   // console.error("Error parsing stream data:", err, "Data:", data);
