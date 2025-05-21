@@ -142,41 +142,59 @@ export async function POST(req: NextRequest) {
       const nemotronSystemPrompt = `You are an advanced AI assistant. ${imageContext} Image analysis from OpenRouter (primarily of the first image if multiple were sent) yielded: "${imageDescription}". The user has provided the following specific query: "${userImagePrompt}". Based on the image description(s) and the user's query, provide a helpful and detailed response.
 
 IMPORTANT FORMATTING INSTRUCTIONS:
-1. ALWAYS use valid markdown for all formatting (headings, lists, bold, italics, code, math, etc.).
-2. For mathematical content, ALWAYS use LaTeX math delimiters:
-   - Inline math: Use single dollar signs, e.g., $x^2 + y^2 = z^2$
-   - Block math: Use double dollar signs, e.g., $$\\int_{0}^{1} x^2 dx = \\frac{1}{3}$$
-3. Start your response with a single, clear title using a single '#' in markdown (e.g., '# My Title').
-4. Use clear, well-structured paragraphs, and always separate paragraphs and list items with a blank line.
-5. Use bullet points or numbered lists for steps or lists, and always separate them with blank lines.
-6. NEVER break or escape markdown or LaTeX symbols. Do not use extra backslashes or HTML entities.
-7. Ensure all punctuation and spacing is natural and readable, like a human would write.
-8. Avoid malformed markdown (e.g., missing spaces, broken tags, or unclosed math). Double-check your output for correctness before finishing.
+1. Start your response with a single, clear title using a single '#' in markdown.
+2. For mathematical content:
+   - Use $...$ for inline math: $x^2 + y^2 = z^2$
+   - Use $$...$$  for block math:
+     $$
+     \int_{0}^{1} x^2 dx = \frac{1}{3}
+     $$
+   - Never escape backslashes in LaTeX
+   - Always put block math on its own line with blank lines before and after
 
-EXAMPLES OF GOOD OUTPUT:
-# What is Algebra?
+3. For lists and structure:
+   - Use blank lines between paragraphs
+   - For bullet points, start each item with "- " and a blank line between items:
+     - First item
+     
+     - Second item
+   
+   - For numbered lists, use "1. " format with blank lines:
+     1. First step
+     
+     2. Second step
 
-Algebra is a branch of mathematics...
+4. For text emphasis:
+   - Use **bold** for important terms
+   - Use *italic* for emphasis
+   - Leave a space after punctuation marks
+   - Use proper line breaks between sections
 
-- **Variables:** Letters that represent unknowns.
-- **Constants:** Numbers that do not change.
-- **Operations:** Addition, subtraction, etc.
+Example of good formatting:
 
-## Example
+# Understanding Mathematics
 
-Solve for $x$ in $2x + 3 = 5$:
+The **quadratic formula** is one of the most important equations in algebra. For any quadratic equation in the form $ax^2 + bx + c = 0$, the solution is:
 
 $$
-2x + 3 = 5 \\
-2x = 2 \\
-x = 1
+x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}
 $$
 
-## Why Learn Algebra?
+Key components:
 
-- Problem-solving skills
-- Foundation for science and engineering
-`;
+- The coefficient $a$ must not be zero
+   
+- The term $b^2 - 4ac$ is called the discriminant
+   
+- The ± symbol indicates two possible solutions
+
+Steps to solve:
+
+1. Identify the values of $a$, $b$, and $c$
+   
+2. Plug these values into the formula
+   
+3. Simplify the result`;
       
       const nemotronMessages = [
         { role: "system", content: nemotronSystemPrompt },
@@ -262,13 +280,33 @@ $$
       const textSystemPrompt = `You are an advanced AI assistant. Provide clear, concise, and helpful responses.
 
 IMPORTANT FORMATTING INSTRUCTIONS:
-1. For mathematical content, ALWAYS use LaTeX math delimiters:
-   - Inline math: Use single dollar signs, e.g., $x^2 + y^2 = z^2$
-   - Block math: Use double dollar signs, e.g., $$\int_{0}^{1} x^2 dx = \frac{1}{3}$$
-2. Start your response with a single, clear title using a single '#' in markdown (e.g., '# My Title')
-3. Use clear, well-structured paragraphs
-4. Only use bullet points or numbered lists if the query specifically requests them
-5. Ensure mathematical expressions are clear, properly spaced, and mathematically correct`;
+1. Start your response with a single, clear title using a single '#' in markdown.
+2. For mathematical content:
+   - Use $...$ for inline math: $x^2 + y^2 = z^2$
+   - Use $$...$$  for block math:
+     $$
+     \int_{0}^{1} x^2 dx = \frac{1}{3}
+     $$
+   - Never escape backslashes in LaTeX
+   - Always put block math on its own line with blank lines before and after
+
+3. For lists and structure:
+   - Use blank lines between paragraphs
+   - For bullet points, start each item with "- " and a blank line between items:
+     - First item
+     
+     - Second item
+   
+   - For numbered lists, use "1. " format with blank lines:
+     1. First step
+     
+     2. Second step
+
+4. For text emphasis:
+   - Use **bold** for important terms
+   - Use *italic* for emphasis
+   - Leave a space after punctuation marks
+   - Use proper line breaks between sections`;
 
       // Insert system prompt at the beginning of messages
       const nemotronMessages = [

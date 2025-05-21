@@ -110,16 +110,27 @@ function enforceSingleTitleAndParagraphs(markdown: string): string {
 function cleanMarkdownFormatting(markdown: string): string {
   if (typeof markdown !== 'string' || !markdown) return '';
   let result = markdown;
-  // Ensure blank lines before and after headings
-  result = result.replace(/(^|\n)(#+ .+)/g, '\n$2\n');
-  // Ensure blank lines before and after lists
-  result = result.replace(/(\n)?([*-] |\d+\. )/g, '\n$2');
-  // Add space after punctuation if missing
-  result = result.replace(/([.,!?:;])(\S)/g, '$1 $2');
+  
+  // Fix spacing around math delimiters
+  result = result.replace(/([^\s$])\$/g, '$1 $'); // Add space before $
+  result = result.replace(/\$([^\s$])/g, '$ $1'); // Add space after $
+  
+  // Ensure block math has proper spacing
+  result = result.replace(/\$\$/g, '\n$$\n');
+  
+  // Fix list formatting
+  result = result.replace(/^(-|\d+\.) ([^\n])/gm, '$1 $2'); // Ensure space after bullet/number
+  result = result.replace(/\n(-|\d+\.)\s/g, '\n\n$1 '); // Add blank line before list items
+  
+  // Fix heading spacing
+  result = result.replace(/^(#+)\s*([^\n]+)/gm, '\n$1 $2\n');
+  
+  // Fix paragraph spacing
+  result = result.replace(/([^\n])\n([^\n-\d#])/g, '$1\n\n$2');
+  
   // Collapse multiple blank lines to max two
   result = result.replace(/\n{3,}/g, '\n\n');
-  // Remove trailing spaces
-  result = result.replace(/[ \t]+$/gm, '');
+  
   return result.trim();
 }
 
@@ -127,33 +138,45 @@ function cleanMarkdownFormatting(markdown: string): string {
 function forceMarkdownStructure(text: string): string {
   if (typeof text !== 'string' || !text) return '';
   let result = text;
-  // Headings: lines starting with #
-  result = result.replace(/^(#+)\s*/gm, '\n$1 ');
-  // Lists: lines starting with - or *
-  result = result.replace(/(?:^|\n)[*-]\s*/g, '\n- ');
-  // Numbered lists: lines starting with 1. 2. etc.
-  result = result.replace(/(?:^|\n)(\d+)\.\s*/g, '\n$1. ');
-  // Ensure blank lines between paragraphs
-  result = result.replace(/([a-z0-9])\n([A-Z#*-])/g, '$1\n\n$2');
-  // Remove extra spaces
-  result = result.replace(/[ \t]+$/gm, '');
+  
+  // Fix list items
+  result = result.replace(/(?:^|\n)[-*]\s*/g, '\n\n- '); // Bullet points
+  result = result.replace(/(?:^|\n)(\d+)\.\s*/g, '\n\n$1. '); // Numbered lists
+  
+  // Fix headings
+  result = result.replace(/(?:^|\n)(#{1,6})\s*/g, '\n\n$1 ');
+  
+  // Ensure proper spacing around math blocks
+  result = result.replace(/\$\$([\s\S]*?)\$\$/g, '\n\n$$\n$1\n$$\n\n');
+  
+  // Fix inline math spacing
+  result = result.replace(/([^\s$])\$([^$\n]+)\$([^\s$])/g, '$1 $$$2$$ $3');
+  
+  // Ensure paragraphs have blank lines
+  result = result.replace(/([a-z0-9])\n([A-Z#*\-\d])/g, '$1\n\n$2');
+  
   return result.trim();
 }
 
-// Fix broken bold/italic markdown (** and *)
+// Fix broken bold/italic markdown
 function fixBrokenBoldItalic(text: string): string {
   if (typeof text !== 'string' || !text) return '';
   let result = text;
-  // Remove lone or unclosed ** at end or before space
-  result = result.replace(/\*\*(\s|$)/g, '');
-  // Remove ** at start or after space
-  result = result.replace(/(\s|^)\*\*/g, '');
-  // Remove * at start/end of lines
-  result = result.replace(/^\*+|\*+$/gm, '');
-  // Remove any remaining unmatched *
-  if ((result.match(/\*/g) || []).length % 2 !== 0) {
+  
+  // Fix broken bold syntax
+  result = result.replace(/\*\*(\s|$)/g, ''); // Remove trailing **
+  result = result.replace(/(\s|^)\*\*/g, ''); // Remove leading **
+  result = result.replace(/([^\s])\*\*([^\s])/g, '$1 **$2'); // Add space around **
+  
+  // Fix broken italic syntax
+  result = result.replace(/([^\s])\*([^\s])/g, '$1 *$2'); // Add space around *
+  
+  // Remove any remaining unmatched * or **
+  const asteriskCount = (result.match(/\*/g) || []).length;
+  if (asteriskCount % 2 !== 0) {
     result = result.replace(/\*/g, '');
   }
+  
   return result;
 }
 
@@ -485,9 +508,30 @@ export default function TestChat() {
                 >
                   {/* No image for assistant messages */}
                   <ReactMarkdown
-                    components={markdownComponents}
+                    className="markdown-body"
                     remarkPlugins={[remarkGfm, remarkMath]}
                     rehypePlugins={[rehypeKatex]}
+                    components={{
+                      ...markdownComponents,
+                      // Add specific handlers for lists
+                      ul: (props) => (
+                        <ul className="markdown-body-ul list-disc pl-6 my-4" {...props} />
+                      ),
+                      ol: (props) => (
+                        <ol className="markdown-body-ol list-decimal pl-6 my-4" {...props} />
+                      ),
+                      li: (props) => (
+                        <li className="markdown-body-li my-2" {...props} />
+                      ),
+                      // Improve math rendering
+                      code: (props) => {
+                        const match = /language-(\w+)/.exec(props.className || '');
+                        if (match && match[1] === 'math') {
+                          return <span className="math-inline">{props.children}</span>;
+                        }
+                        return <code className="markdown-body-code" {...props} />;
+                      }
+                    }}
                   >
                     {msg.content}
                   </ReactMarkdown>
