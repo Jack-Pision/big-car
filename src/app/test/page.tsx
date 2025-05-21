@@ -564,8 +564,8 @@ export default function TestChat() {
             </div>
           )}
           {/* Textarea and send/stop button row */}
-          <div className="relative flex items-end w-full gap-2">
-            <button type="button" className="p-2 rounded-full bg-black text-white hover:bg-gray-900 transition" onClick={handleFirstPlusClick}>
+          <div className="relative flex items-center w-full gap-2 py-2">
+            <button type="button" className="p-2 rounded-full bg-black text-white hover:bg-gray-900 transition self-center" onClick={handleFirstPlusClick}>
               <svg width="22" height="22" fill="none" stroke="#fff" strokeWidth="2" viewBox="0 0 24 24">
                 <line x1="12" y1="5" x2="12" y2="19" />
                 <line x1="5" y1="12" x2="19" y2="12" />
@@ -575,13 +575,13 @@ export default function TestChat() {
               ref={textareaRef}
               value={input}
               onChange={e => setInput(e.target.value)}
-              className="w-full border-none outline-none bg-transparent px-4 text-gray-700 text-lg placeholder-gray-400 resize-none overflow-auto pr-16"
+              className="w-full border-none outline-none bg-transparent px-4 text-gray-700 text-lg placeholder-gray-400 resize-none overflow-auto pr-16 min-h-[96px]"
               placeholder="Ask anything"
               disabled={loading}
               rows={1}
-              style={{height: '48px', maxHeight: '144px'}}
+              style={{height: '96px', maxHeight: '144px'}}
             />
-            <div className="absolute bottom-2 right-2 flex items-end h-full">
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center">
               <button
                 type={isAiResponding ? "button" : "submit"}
                 className="w-10 h-10 flex items-center justify-center rounded-full bg-black text-white hover:bg-gray-900 transition relative"
