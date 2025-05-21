@@ -44,7 +44,12 @@ async function fetchOpenRouterImageAnalysis(
   // Create context from previous image descriptions
   let previousContext = "";
   if (previousImageDescriptions.length > 0) {
-    previousContext = `Previous image descriptions: ${previousImageDescriptions.join(' | ')}. `;
+    // Format the previous image descriptions in a more structured way
+    const formattedDescriptions = previousImageDescriptions.map((desc, idx) => 
+      `Image ${idx + 1}: "${desc}"`
+    ).join(' | ');
+    
+    previousContext = `Previous image descriptions: ${formattedDescriptions}. `;
   }
 
   // Format previous messages for Gemma
@@ -65,7 +70,7 @@ async function fetchOpenRouterImageAnalysis(
       // Add system message to maintain context
       {
         role: 'system',
-        content: `You are a helpful AI assistant that analyzes images. ${previousContext}You should maintain context from previous conversations and images when responding. Do not use <think> tags in your responses. Be clear, detailed, and direct in your descriptions.`
+        content: `You are a helpful AI assistant that analyzes images. ${previousContext}You should maintain context from previous conversations and images when responding. If asked about specific images by number (e.g., "first image", "second image"), refer to the correct image. Do not use <think> tags in your responses. Be clear, detailed, and direct in your descriptions.`
       },
       // Include previous messages for context
       ...limitedPreviousMessages,
@@ -176,8 +181,18 @@ export async function POST(req: NextRequest) {
       // 2. Construct prompt for Nemotron
       const userImagePrompt = body.messages?.filter((m:any) => m.role === 'user').pop()?.content || (body.imageUrls.length > 1 ? "Tell me more about these images." : "Tell me more about what was found in the image.");
 
-      const imageContext = body.imageUrls.length > 1 ? `A set of ${body.imageUrls.length} images were provided.` : "An image was provided.";
-      const nemotronSystemPrompt = `You are an advanced AI assistant. ${imageContext} Image analysis from OpenRouter (primarily of the first image if multiple were sent) yielded: "${imageDescription}". The user has provided the following specific query: "${userImagePrompt}". Based on the image description(s) and the user's query, provide a helpful and detailed response.`;
+      // Get the system message from the request which now includes all image contexts
+      const systemMessage = body.messages?.find((m:any) => m.role === 'system')?.content || '';
+      
+      // Extract the image context part if present (everything after the SYSTEM_PROMPT)
+      const imageContext = body.imageUrls.length > 1 
+        ? `A set of ${body.imageUrls.length} images were provided.` 
+        : "An image was provided.";
+      
+      // Create a comprehensive system prompt that includes:
+      // 1. The original system message (which now includes all previous image contexts)
+      // 2. The new image description
+      const nemotronSystemPrompt = `${systemMessage}\n\nLatest image analysis: "${imageDescription}"\n\nThe user has provided the following specific query: "${userImagePrompt}". Based on the image description(s) and the user's query, provide a helpful and detailed response.`;
       
       const nemotronMessages = [
         { role: "system", content: nemotronSystemPrompt },

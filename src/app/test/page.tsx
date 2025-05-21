@@ -111,6 +111,13 @@ const markdownComponents = {
   ),
 };
 
+interface ImageContext {
+  order: number;        // The order in which this image was uploaded (1-based)
+  description: string;  // The description from Gemma
+  imageUrl: string;     // URL of the image for reference
+  timestamp: number;    // When this image was processed
+}
+
 export default function TestChat() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -134,8 +141,10 @@ export default function TestChat() {
   const [selectedFilesForUpload, setSelectedFilesForUpload] = useState<File[]>([]);
   const [isAiResponding, setIsAiResponding] = useState(false);
   
-  // New state to track previous image descriptions for Gemma's context
-  const [previousImageDescriptions, setPreviousImageDescriptions] = useState<string[]>([]);
+  // Replace the simple string array with a more structured approach
+  const [imageContexts, setImageContexts] = useState<ImageContext[]>([]);
+  // Keep track of how many images have been uploaded
+  const [imageCounter, setImageCounter] = useState(0);
 
   // Helper to show the image in chat
   const showImageMsg = (content: string, imgSrc: string) => {
@@ -236,22 +245,38 @@ export default function TestChat() {
         }
       }
 
+      // Build the image context system prompt for Nemotron
+      let imageContextPrompt = "";
+      if (imageContexts.length > 0) {
+        // Build a system prompt with all image contexts
+        imageContextPrompt = imageContexts
+          .map(ctx => `Image ${ctx.order}: "${ctx.description}"`)
+          .join('\n');
+      }
+
+      const systemPrompt = imageContextPrompt 
+        ? `${SYSTEM_PROMPT}\n\n${imageContextPrompt}`
+        : SYSTEM_PROMPT;
+
       const apiPayload: any = {
         messages: [
-          { role: "system", content: SYSTEM_PROMPT },
+          { role: "system", content: systemPrompt },
           // Filter out previous assistant messages before sending, keep user messages
           ...messages.filter(m => m.role === 'user'), 
           // Add the current user message (text part)
           { role: "user", content: userMessageContent }
         ].filter(msg => msg.content || (msg as any).imageUrls), // Ensure content or imageUrls exists
-        // Add previous image descriptions for Gemma's context
-        previousImageDescriptions: previousImageDescriptions
       };
 
+      // For Gemma's context, send the previous image descriptions
       if (uploadedImageUrls.length > 0) {
+        // Extract descriptions only for Gemma
+        const previousImageDescriptions = imageContexts.map(ctx => ctx.description);
+        
         apiPayload.imageUrls = uploadedImageUrls;
+        apiPayload.previousImageDescriptions = previousImageDescriptions;
+        
         // If there was no text input but images, we construct a default prompt for the API
-        // but the displayed user message might just show the images
         if (!userMessageContent) {
           apiPayload.messages[apiPayload.messages.length -1].content = "Describe these images.";
         }
@@ -311,12 +336,25 @@ export default function TestChat() {
         // If this was an image request, store the image description for future context
         if (uploadedImageUrls.length > 0) {
           const { content } = cleanAIResponse(aiMsg.content);
-          // Store a summary (first 100 chars) of the image description for context
-          const descriptionSummary = content.slice(0, 100) + (content.length > 100 ? '...' : '');
-          setPreviousImageDescriptions(prev => {
-            // Keep only the last 5 descriptions to prevent context overflow
-            const updated = [...prev, descriptionSummary];
-            return updated.slice(-5);
+          // Store a summary (first 150 chars) of the image description for context
+          const descriptionSummary = content.slice(0, 150) + (content.length > 150 ? '...' : '');
+          
+          // Increment the image counter for each new image
+          const newImageCount = imageCounter + uploadedImageUrls.length;
+          setImageCounter(newImageCount);
+          
+          // Create new image context entries for each uploaded image
+          const newImageContexts = uploadedImageUrls.map((url, index) => ({
+            order: imageCounter + index + 1, // 1-based numbering
+            description: descriptionSummary,
+            imageUrl: url,
+            timestamp: Date.now()
+          }));
+          
+          // Add to existing image contexts, keeping a maximum of 10 for memory management
+          setImageContexts(prev => {
+            const updated = [...prev, ...newImageContexts];
+            return updated.slice(-10); // Keep the 10 most recent image contexts
           });
         }
         
@@ -332,13 +370,26 @@ export default function TestChat() {
         
         // If this was an image request, store the image description for future context
         if (uploadedImageUrls.length > 0) {
-          // Store a summary (first 100 chars) of the image description for context
-          const descriptionSummary = assistantResponseContent.content.slice(0, 100) + 
-            (assistantResponseContent.content.length > 100 ? '...' : '');
-          setPreviousImageDescriptions(prev => {
-            // Keep only the last 5 descriptions to prevent context overflow
-            const updated = [...prev, descriptionSummary];
-            return updated.slice(-5);
+          // Store a summary (first 150 chars) of the image description for context
+          const descriptionSummary = assistantResponseContent.content.slice(0, 150) + 
+            (assistantResponseContent.content.length > 150 ? '...' : '');
+            
+          // Increment the image counter for each new image
+          const newImageCount = imageCounter + uploadedImageUrls.length;
+          setImageCounter(newImageCount);
+          
+          // Create new image context entries for each uploaded image
+          const newImageContexts = uploadedImageUrls.map((url, index) => ({
+            order: imageCounter + index + 1, // 1-based numbering
+            description: descriptionSummary,
+            imageUrl: url,
+            timestamp: Date.now()
+          }));
+          
+          // Add to existing image contexts, keeping a maximum of 10 for memory management
+          setImageContexts(prev => {
+            const updated = [...prev, ...newImageContexts];
+            return updated.slice(-10); // Keep the 10 most recent image contexts
           });
         }
       }
