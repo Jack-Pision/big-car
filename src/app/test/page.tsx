@@ -564,8 +564,8 @@ export default function TestChat() {
             </div>
           )}
           {/* Textarea and send/stop button row */}
-          <div className="relative flex items-center w-full gap-2 py-2">
-            <button type="button" className="p-2 rounded-full bg-black text-white hover:bg-gray-900 transition self-center" onClick={handleFirstPlusClick}>
+          <div className="relative flex w-full gap-2" style={{ alignItems: 'flex-end', paddingBottom: '10px' }}>
+            <button type="button" className="p-2 rounded-full bg-black text-white hover:bg-gray-900 transition self-end mb-1 ml-1" onClick={handleFirstPlusClick}>
               <svg width="22" height="22" fill="none" stroke="#fff" strokeWidth="2" viewBox="0 0 24 24">
                 <line x1="12" y1="5" x2="12" y2="19" />
                 <line x1="5" y1="12" x2="19" y2="12" />
@@ -581,10 +581,10 @@ export default function TestChat() {
               rows={1}
               style={{height: '96px', maxHeight: '144px'}}
             />
-            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center">
+            <div className="absolute right-2 bottom-2 flex items-end">
               <button
                 type={isAiResponding ? "button" : "submit"}
-                className="w-10 h-10 flex items-center justify-center rounded-full bg-black text-white hover:bg-gray-900 transition relative"
+                className="w-10 h-10 flex items-center justify-center rounded-full bg-black text-white hover:bg-gray-900 transition relative mb-1 mr-1"
                 style={{ pointerEvents: loading && !isAiResponding ? 'none' : 'auto' }}
                 onClick={isAiResponding ? handleStopAIResponse : undefined}
                 disabled={loading && !isAiResponding}
