@@ -49,18 +49,14 @@ function cleanAIResponse(text: string): string {
     return '';
   }
   let cleanedText = text;
-  
   // Remove <think> tags and their content
   while (/<think>[\s\S]*?<\/think>/gi.test(cleanedText)) {
     cleanedText = cleanedText.replace(/<think>[\s\S]*?<\/think>/gi, '');
   }
-  
   // Remove any remaining think tags (in case they're malformed)
   cleanedText = cleanedText.replace(/<\/?think>/gi, '');
-  
   // Remove any text that starts with "Let me" and ends with a period
   cleanedText = cleanedText.replace(/Let me[^.]*\./gi, '');
-  
   // Remove common thinking phrases
   const thinkingPhrases = [
     /Okay, let me start by understanding/gi,
@@ -76,17 +72,11 @@ function cleanAIResponse(text: string): string {
     /The user's query/gi,
     /Based on the image/gi
   ];
-  
   thinkingPhrases.forEach(phrase => {
     cleanedText = cleanedText.replace(phrase, '');
   });
-  
-  // Clean up any resulting double spaces or empty lines
-  cleanedText = cleanedText
-    .replace(/\s+/g, ' ')
-    .replace(/^\s+|\s+$/gm, '')
-    .trim();
-    
+  // Preserve line breaks and markdown formatting
+  cleanedText = cleanedText.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
   return cleanedText;
 }
 
