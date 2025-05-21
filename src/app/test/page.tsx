@@ -10,6 +10,8 @@ import HamburgerMenu from '../../components/HamburgerMenu';
 import { useRouter } from 'next/navigation';
 import { supabase, createSupabaseClient } from '@/lib/supabase-client';
 import { motion } from 'framer-motion';
+import PulsingDot from '@/components/PulsingDot';
+import TextReveal from '@/components/TextReveal';
 
 const SYSTEM_PROMPT = `You are a friendly, knowledgeable AI tutor that helps students with their studies. You can answer questions, explain concepts, solve math problems step by step, assist with research, and provide clear, concise, and engaging academic help across all subjects.
 
@@ -96,6 +98,7 @@ export default function TestChat() {
 
   const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
   const [selectedFilesForUpload, setSelectedFilesForUpload] = useState<File[]>([]);
+  const [isAiResponding, setIsAiResponding] = useState(false);
 
   // Helper to show the image in chat
   const showImageMsg = (content: string, imgSrc: string) => {
@@ -135,7 +138,7 @@ export default function TestChat() {
 
     if (!currentInput && !currentSelectedFiles.length) return;
 
-    setLoading(true);
+    setIsAiResponding(true);
     if (showHeading) setShowHeading(false);
 
     let userMessageContent = currentInput;
@@ -265,14 +268,14 @@ export default function TestChat() {
           }
         }
       } else {
-        const data = await res.json();
+      const data = await res.json();
         const assistantResponseContent = cleanAIResponse(data.choices?.[0]?.message?.content || data.generated_text || data.error || JSON.stringify(data) || "No response");
-        const aiMsg = {
-          role: "assistant" as const,
+      const aiMsg = {
+        role: "assistant" as const,
           content: assistantResponseContent,
           imageUrls: uploadedImageUrls // Associate assistant response with the uploaded images
-        };
-        setMessages((prev) => [...prev, aiMsg]);
+      };
+      setMessages((prev) => [...prev, aiMsg]);
       }
     } catch (err: any) {
       setMessages((prev) => [
@@ -280,6 +283,7 @@ export default function TestChat() {
         { role: "assistant" as const, content: "Error: " + (err?.message || String(err)), imageUrls: uploadedImageUrls },
       ]);
     } finally {
+      setIsAiResponding(false);
       setLoading(false);
     }
   }
@@ -356,14 +360,14 @@ export default function TestChat() {
                   transition={{ duration: 0.3, ease: "easeOut" }}
                   className="w-full markdown-body text-left flex flex-col items-start"
                 >
-                  {/* No image for assistant messages */}
-                  <ReactMarkdown
-                    components={markdownComponents}
-                    remarkPlugins={[remarkGfm, remarkMath]}
-                    rehypePlugins={[rehypeKatex]}
-                  >
-                    {msg.content}
-                  </ReactMarkdown>
+                  {i === messages.length - 1 && isAiResponding ? (
+                    <PulsingDot isVisible={true} />
+                  ) : (
+                    <TextReveal 
+                      text={msg.content} 
+                      markdownComponents={markdownComponents}
+                    />
+                  )}
                 </motion.div>
               );
             } else { // User message
