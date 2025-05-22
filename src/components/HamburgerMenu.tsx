@@ -10,13 +10,13 @@ export default function HamburgerMenu({ open, onClick }: HamburgerMenuProps) {
     <button
       onClick={onClick}
       aria-label={open ? 'Close sidebar' : 'Open sidebar'}
-      className="p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-black/30 bg-white hover:bg-gray-100 transition-colors z-50"
+      className="p-2 rounded-md focus:outline-none z-50 bg-transparent"
       tabIndex={0}
     >
       <span className="sr-only">{open ? 'Close menu' : 'Open menu'}</span>
       <span className="flex items-center justify-center w-6 h-6">
         {/* New static SVG icon */}
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#000000" strokeLinecap="round" strokeLinejoin="round" height="24" width="24">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeLinecap="round" strokeLinejoin="round" height="24" width="24">
           <desc>
             Columns 2 Streamline Icon: https://streamlinehq.com
           </desc>
