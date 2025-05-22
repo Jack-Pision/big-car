@@ -148,6 +148,8 @@ export default function TestChat() {
 
   const aiStreamAbortController = useRef<AbortController | null>(null);
 
+  const [deepResearchActive, setDeepResearchActive] = useState(false);
+
   // Helper to show the image in chat
   const showImageMsg = (content: string, imgSrc: string) => {
     setMessages((prev) => [
@@ -575,18 +577,21 @@ export default function TestChat() {
             {/* Deep Research globe button */}
             <button
               type="button"
-              className="flex items-center gap-2 h-11 px-4 rounded-full border border-black bg-white text-black font-semibold hover:bg-gray-100 transition self-end mb-0.5"
-              style={{ boxShadow: "0 1px 4px 0 rgba(0,0,0,0.04)", minHeight: '44px', maxHeight: '44px' }}
+              className={`flex items-center gap-2 h-11 px-3 rounded-full border transition self-end mb-0.5
+                ${deepResearchActive ? 'border-cyan-400 text-cyan-400 bg-transparent' : 'border-black text-black bg-white hover:bg-gray-100'}
+              `}
+              style={{ minHeight: '44px', maxHeight: '44px' }}
               tabIndex={0}
+              onClick={() => setDeepResearchActive(a => !a)}
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={deepResearchActive ? '#22d3ee' : 'black'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10" />
                 <ellipse cx="12" cy="12" rx="10" ry="4" />
                 <path d="M2 12a10 10 0 0 0 20 0" />
                 <path d="M12 2a15.3 15.3 0 0 1 0 20" />
                 <path d="M12 2a15.3 15.3 0 0 0 0 20" />
               </svg>
-              <span className="whitespace-nowrap">Deep Research</span>
+              <span className="whitespace-nowrap font-semibold text-base">Deep Research</span>
             </button>
             {/* Textarea */}
             <textarea
