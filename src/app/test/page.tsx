@@ -568,8 +568,8 @@ export default function TestChat() {
           {/* Textarea and send/stop button row */}
           <div className="relative flex w-full gap-2" style={{ alignItems: 'flex-end', paddingBottom: '2px' }}>
             {/* Plus button */}
-            <button type="button" className="p-2 rounded-full bg-black text-white hover:bg-gray-900 transition self-end mb-0.5 ml-1" onClick={handleFirstPlusClick}>
-              <svg width="22" height="22" fill="none" stroke="#fff" strokeWidth="2" viewBox="0 0 24 24">
+            <button type="button" className="p-2 rounded-full bg-black text-white hover:bg-gray-900 transition self-end mb-0.5 ml-1" onClick={handleFirstPlusClick} style={{ minWidth: 40, minHeight: 40, width: 40, height: 40 }}>
+              <svg width="18" height="18" fill="none" stroke="#fff" strokeWidth="2" viewBox="0 0 24 24">
                 <line x1="12" y1="5" x2="12" y2="19" />
                 <line x1="5" y1="12" x2="19" y2="12" />
               </svg>
@@ -577,50 +577,50 @@ export default function TestChat() {
             {/* Deep Research globe button */}
             <button
               type="button"
-              className={`flex items-center gap-2 h-11 px-3 rounded-full border transition self-end mb-0.5
+              className={`flex items-center gap-2 h-10 px-3 rounded-full border transition self-end mb-0.5
                 ${deepResearchActive ? 'border-cyan-400 text-cyan-400 bg-transparent' : 'border-black text-black bg-white hover:bg-gray-100'}
               `}
-              style={{ minHeight: '44px', maxHeight: '44px' }}
+              style={{ minHeight: '40px', maxHeight: '40px', fontSize: '1rem' }}
               tabIndex={0}
               onClick={() => setDeepResearchActive(a => !a)}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={deepResearchActive ? '#22d3ee' : 'black'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={deepResearchActive ? '#22d3ee' : 'black'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10" />
                 <ellipse cx="12" cy="12" rx="10" ry="4" />
                 <path d="M2 12a10 10 0 0 0 20 0" />
                 <path d="M12 2a15.3 15.3 0 0 1 0 20" />
                 <path d="M12 2a15.3 15.3 0 0 0 0 20" />
               </svg>
-              <span className="whitespace-nowrap font-semibold text-base">Deep Research</span>
+              <span className="whitespace-nowrap font-semibold">Deep Research</span>
             </button>
             {/* Textarea */}
             <textarea
               ref={textareaRef}
               value={input}
               onChange={e => setInput(e.target.value)}
-              className="w-full border-none outline-none bg-transparent px-4 text-gray-700 text-lg placeholder-gray-400 resize-none overflow-auto pr-16 min-h-[96px]"
+              className="border-none outline-none bg-transparent px-3 text-gray-700 text-base placeholder-gray-400 resize-none overflow-auto min-h-[40px] max-h-[80px]"
               placeholder="Ask anything"
               disabled={loading}
               rows={1}
-              style={{height: '96px', maxHeight: '144px'}}
+              style={{ width: '320px', minWidth: '180px', maxWidth: '360px', height: '40px', maxHeight: '80px' }}
             />
-            <div className="absolute right-2 bottom-1 flex items-end">
+            <div className="flex items-end ml-2">
               <button
                 type={isAiResponding ? "button" : "submit"}
                 className="w-10 h-10 flex items-center justify-center rounded-full bg-black text-white hover:bg-gray-900 transition relative mb-0.5 mr-1"
-                style={{ pointerEvents: loading && !isAiResponding ? 'none' : 'auto' }}
+                style={{ pointerEvents: loading && !isAiResponding ? 'none' : 'auto', minWidth: 40, minHeight: 40 }}
                 onClick={isAiResponding ? handleStopAIResponse : undefined}
                 disabled={loading && !isAiResponding}
                 aria-label={isAiResponding ? "Stop AI response" : "Send"}
               >
                 {isAiResponding ? (
                   // Stop icon (square in round black button)
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <rect x="7" y="7" width="10" height="10" rx="2" fill="white" />
                   </svg>
                 ) : (
                   // Send arrow icon
-                  <svg width="22" height="22" fill="none" stroke="#fff" strokeWidth="2" viewBox="0 0 24 24">
+                  <svg width="18" height="18" fill="none" stroke="#fff" strokeWidth="2" viewBox="0 0 24 24">
                     <path d="M5 12h14M12 5l7 7-7 7" />
                   </svg>
                 )}
