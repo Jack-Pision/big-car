@@ -90,6 +90,33 @@ function cleanAIResponse(text: string): ProcessedResponse {
   };
 }
 
+// Add global style to force all AI text to be white
+const GlobalStyles = () => (
+  <style jsx global>{`
+    .ai-response-text, 
+    .ai-response-text * {
+      color: #ffffff !important;
+    }
+    
+    .ai-response-text h1,
+    .ai-response-text h2,
+    .ai-response-text h3,
+    .ai-response-text h4,
+    .ai-response-text h5,
+    .ai-response-text h6,
+    .ai-response-text p,
+    .ai-response-text a,
+    .ai-response-text li,
+    .ai-response-text span,
+    .ai-response-text strong,
+    .ai-response-text em,
+    .ai-response-text code,
+    .ai-response-text pre {
+      color: #ffffff !important;
+    }
+  `}</style>
+);
+
 const markdownComponents = {
   h1: (props: React.ComponentProps<'h1'>) => (
     <h1
@@ -454,6 +481,7 @@ export default function TestChat() {
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: '#232323' }}>
+      <GlobalStyles />
       {/* Hamburger menu and sidebar */}
       <div className="fixed top-6 left-6 z-50 md:static md:z-10">
         <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
@@ -499,7 +527,7 @@ export default function TestChat() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, ease: "easeOut" }}
-                  className="w-full markdown-body text-left flex flex-col items-start"
+                  className="w-full markdown-body text-left flex flex-col items-start ai-response-text"
                   style={{ color: '#fff' }}
                 >
                   {i === messages.length - 1 && isAiResponding ? (
@@ -508,7 +536,7 @@ export default function TestChat() {
                     <>
                       {thinkingTime && <ThinkingIndicator duration={thinkingTime} />}
                       {isStoppedMsg ? (
-                        <span className="text-sm text-gray-500/60 italic font-light mb-2">[Response stopped by user]</span>
+                        <span className="text-sm text-white italic font-light mb-2">[Response stopped by user]</span>
                       ) : (
                         <TextReveal 
                           text={cleanContent}

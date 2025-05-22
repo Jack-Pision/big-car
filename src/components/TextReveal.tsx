@@ -7,10 +7,11 @@ import rehypeKatex from 'rehype-katex';
 
 interface TextRevealProps {
   text: string;
+  className?: string;
   markdownComponents?: any;
 }
 
-const TextReveal: React.FC<TextRevealProps> = ({ text, markdownComponents }) => {
+const TextReveal: React.FC<TextRevealProps> = ({ text, className = '', markdownComponents = {} }) => {
   const [chunks, setChunks] = useState<string[]>([]);
   const [visibleChunks, setVisibleChunks] = useState<number>(0);
 
@@ -39,7 +40,10 @@ const TextReveal: React.FC<TextRevealProps> = ({ text, markdownComponents }) => 
   }, [text]);
 
   return (
-    <div className="space-y-2">
+    <div 
+      className={`text-reveal-container ai-response-text ${className}`}
+      style={{ color: '#ffffff' }}
+    >
       <AnimatePresence>
         {chunks.slice(0, visibleChunks).map((chunk, index) => (
           <motion.div
@@ -52,6 +56,7 @@ const TextReveal: React.FC<TextRevealProps> = ({ text, markdownComponents }) => 
               components={markdownComponents}
               remarkPlugins={[remarkGfm, remarkMath]}
               rehypePlugins={[rehypeKatex]}
+              className="text-white"
             >
               {chunk}
             </ReactMarkdown>
