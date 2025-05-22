@@ -40,10 +40,7 @@ const TextReveal: React.FC<TextRevealProps> = ({ text, className = '', markdownC
   }, [text]);
 
   return (
-    <div 
-      className={`text-reveal-container ai-response-text ${className}`}
-      style={{ color: '#ffffff' }}
-    >
+    <div className="space-y-2 w-full overflow-hidden">
       <AnimatePresence>
         {chunks.slice(0, visibleChunks).map((chunk, index) => (
           <motion.div
@@ -51,12 +48,14 @@ const TextReveal: React.FC<TextRevealProps> = ({ text, className = '', markdownC
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, ease: "easeOut" }}
+            className="w-full max-w-full overflow-hidden"
+            style={{ overflowWrap: 'break-word', wordWrap: 'break-word' }}
           >
             <ReactMarkdown
               components={markdownComponents}
               remarkPlugins={[remarkGfm, remarkMath]}
               rehypePlugins={[rehypeKatex]}
-              className="text-white"
+              className="w-full max-w-full overflow-wrap-normal"
             >
               {chunk}
             </ReactMarkdown>

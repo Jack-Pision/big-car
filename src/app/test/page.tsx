@@ -75,6 +75,7 @@ const GlobalStyles = () => (
     .ai-response-text * {
       color: #ffffff !important;
     }
+    
     .ai-response-text h1,
     .ai-response-text h2,
     .ai-response-text h3,
@@ -88,14 +89,24 @@ const GlobalStyles = () => (
     .ai-response-text strong,
     .ai-response-text em {
       color: #ffffff !important;
+      max-width: 100% !important;
+      word-wrap: break-word !important;
+      white-space: pre-wrap !important;
+      overflow-wrap: break-word !important;
     }
+    
     .ai-response-text pre,
     .ai-response-text code {
       color: #fff !important;
       background: #232323 !important;
       border-radius: 6px;
       padding: 0.2em 0.4em;
+      max-width: 100% !important;
+      white-space: pre-wrap !important;
+      overflow-x: hidden !important;
+      word-break: break-word !important;
     }
+    
     .ai-response-text blockquote {
       color: #fff !important;
       background: #232323 !important;
@@ -103,10 +114,43 @@ const GlobalStyles = () => (
       padding: 0.5em 1em;
       margin: 0.5em 0;
       border-radius: 6px;
+      max-width: 100% !important;
+      word-wrap: break-word !important;
     }
+    
     .ai-response-text li {
       color: #fff !important;
       background: transparent !important;
+      margin-left: 1.5rem !important;
+      position: relative !important;
+      display: list-item !important;
+    }
+    
+    .ai-response-text ul {
+      list-style-type: disc !important;
+      margin: 0.5em 0 !important;
+      padding-left: 1.5em !important;
+    }
+    
+    .ai-response-text ol {
+      list-style-type: decimal !important;
+      margin: 0.5em 0 !important;
+      padding-left: 1.5em !important;
+    }
+    
+    .ai-response-text ul li {
+      list-style-type: disc !important;
+      display: list-item !important;
+    }
+    
+    .ai-response-text ol li {
+      list-style-type: decimal !important;
+      display: list-item !important;
+    }
+    
+    .ai-response-text * {
+      max-width: 100% !important;
+      overflow-wrap: break-word !important;
     }
   `}</style>
 );
@@ -522,7 +566,7 @@ export default function TestChat() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, ease: "easeOut" }}
                   className="w-full markdown-body text-left flex flex-col items-start ai-response-text"
-                  style={{ color: '#fff' }}
+                  style={{ color: '#fff', maxWidth: '100%', overflowWrap: 'break-word' }}
                 >
                   {i === messages.length - 1 && isAiResponding ? (
                     <PulsingDot isVisible={true} />
@@ -532,10 +576,12 @@ export default function TestChat() {
                       {isStoppedMsg ? (
                         <span className="text-sm text-white italic font-light mb-2">[Response stopped by user]</span>
                       ) : (
-                        <TextReveal 
-                          text={cleanContent}
-                          markdownComponents={markdownComponents}
-                        />
+                        <div className="w-full max-w-full overflow-hidden">
+                          <TextReveal 
+                            text={cleanContent}
+                            markdownComponents={markdownComponents}
+                          />
+                        </div>
                       )}
                     </>
                   )}
