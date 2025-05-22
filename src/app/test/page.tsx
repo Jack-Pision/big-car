@@ -542,11 +542,8 @@ export default function TestChat() {
       </div>
       {/* Fixed Input Bar at Bottom */}
       <div ref={inputBarRef} className="fixed left-0 right-0 bottom-0 w-full flex justify-center z-50" style={{ pointerEvents: 'auto' }}>
-        <div className="w-full max-w-5xl px-6 mx-4 mb-1">
-          <span className="block text-gray-400 text-base font-medium mb-2" style={{letterSpacing: '0.01em'}}>Ask anything...</span>
-        </div>
         <form
-          className="w-full max-w-5xl flex flex-col gap-2 bg-gray-900 rounded-2xl shadow-lg px-6 py-4 mx-4 mb-4 border border-gray-800"
+          className="w-full max-w-5xl flex flex-col gap-2 bg-gray-900 rounded-2xl shadow-lg px-4 py-3 mx-4 mb-4 border border-gray-800"
           style={{ boxShadow: "0 4px 32px 0 rgba(0,0,0,0.2)" }}
           onSubmit={handleSend}
         >
@@ -554,12 +551,12 @@ export default function TestChat() {
           {imagePreviewUrls.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-2">
               {imagePreviewUrls.map((url, index) => (
-                <div key={index} className="relative w-24 h-24 group">
+                <div key={index} className="relative w-20 h-20 group">
                   <img src={url} alt={`Preview ${index + 1}`} className="w-full h-full object-cover rounded-md" />
                   <button
                     type="button"
                     onClick={() => removeImagePreview(index)}
-                    className="absolute top-1 right-1 bg-black bg-opacity-50 text-white rounded-full p-1 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute top-1 right-1 bg-black bg-opacity-60 text-white rounded-full p-0.5 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
                     aria-label={`Remove image ${index + 1}`}
                   >
                     ✕
@@ -569,15 +566,15 @@ export default function TestChat() {
             </div>
           )}
           {/* Textarea and send/stop button row */}
-          <div className="relative flex w-full gap-2" style={{ alignItems: 'center' }}>
+          <div className="relative flex w-full gap-3 items-center">
             {/* Plus button */}
             <button 
               type="button" 
-              className="p-2 rounded-full bg-gray-800 text-white hover:bg-gray-700 transition flex items-center justify-center" 
-              style={{ width: "40px", height: "40px" }}
+              className="p-2 rounded-full bg-gray-800 text-gray-300 hover:bg-gray-700 transition flex items-center justify-center flex-shrink-0"
+              style={{ width: "36px", height: "36px" }}
               onClick={handleFirstPlusClick}
             >
-              <svg width="18" height="18" fill="none" stroke="#fff" strokeWidth="2" viewBox="0 0 24 24">
+              <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                 <line x1="12" y1="5" x2="12" y2="19" />
                 <line x1="5" y1="12" x2="19" y2="12" />
               </svg>
@@ -586,33 +583,33 @@ export default function TestChat() {
             {/* Search button */}
             <button
               type="button"
-              className="rounded-full bg-gray-800 text-cyan-400 hover:bg-gray-700 transition flex items-center justify-center gap-2 px-4 py-2"
-              style={{ height: "40px" }}
+              className="rounded-full bg-gray-800 text-cyan-400 hover:bg-gray-700 transition flex items-center justify-center gap-1.5 px-3 py-1.5 flex-shrink-0"
+              style={{ height: "36px" }}
             >
-              <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                 <circle cx="11" cy="11" r="7"/>
                 <line x1="21" y1="21" x2="16.65" y2="16.65"/>
               </svg>
-              <span className="text-sm font-medium">Search</span>
+              <span className="text-xs font-medium">Search</span>
             </button>
             
             {/* Deep Research button with Atom icon */}
             <button
               type="button"
-              className={`flex items-center gap-2 rounded-full bg-gray-800 hover:bg-gray-700 transition px-4 py-2
-                ${deepResearchActive ? 'text-cyan-400' : 'text-gray-300'}
+              className={`flex items-center gap-1.5 rounded-full bg-gray-800 hover:bg-gray-700 transition px-3 py-1.5 flex-shrink-0
+                ${deepResearchActive ? 'text-cyan-400' : 'text-gray-400'}
               `}
-              style={{ height: "40px" }}
+              style={{ height: "36px" }}
               tabIndex={0}
               onClick={() => setDeepResearchActive(a => !a)}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="2" />
-                <ellipse cx="12" cy="12" rx="10" ry="4" />
-                <ellipse cx="12" cy="12" rx="4" ry="10" transform="rotate(45 12 12)" />
-                <ellipse cx="12" cy="12" rx="4" ry="10" transform="rotate(-45 12 12)" />
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="1" fill="currentColor"/>
+                <ellipse cx="12" cy="12" rx="9" ry="3.5" />
+                <ellipse cx="12" cy="12" rx="3.5" ry="9" transform="rotate(60 12 12)" />
+                <ellipse cx="12" cy="12" rx="3.5" ry="9" transform="rotate(-60 12 12)" />
               </svg>
-              <span className="whitespace-nowrap text-sm font-medium">Deep Research</span>
+              <span className="whitespace-nowrap text-xs font-medium">Deep Research</span>
             </button>
             
             {/* Textarea */}
@@ -620,30 +617,30 @@ export default function TestChat() {
               ref={textareaRef}
               value={input}
               onChange={e => setInput(e.target.value)}
-              className="flex-1 border-none outline-none bg-transparent px-4 text-gray-200 text-base placeholder-gray-500 resize-none overflow-auto"
-              placeholder=""
+              className="flex-1 border-none outline-none bg-transparent px-2 py-1.5 text-gray-200 text-sm placeholder-gray-500 resize-none overflow-auto self-center"
+              placeholder="Ask anything..."
               disabled={loading}
               rows={1}
-              style={{ maxHeight: '80px', minHeight: '40px' }}
+              style={{ maxHeight: '72px', minHeight: '36px', lineHeight: '1.5' }}
             />
             
             {/* Send/Stop button */}
             <button
               type={isAiResponding ? "button" : "submit"}
-              className="rounded-full bg-gray-100 hover:bg-white transition flex items-center justify-center"
-              style={{ width: "40px", height: "40px", pointerEvents: loading && !isAiResponding ? 'none' : 'auto' }}
+              className="rounded-full bg-gray-200 hover:bg-white transition flex items-center justify-center flex-shrink-0"
+              style={{ width: "36px", height: "36px", pointerEvents: loading && !isAiResponding ? 'none' : 'auto' }}
               onClick={isAiResponding ? handleStopAIResponse : undefined}
               disabled={loading && !isAiResponding}
               aria-label={isAiResponding ? "Stop AI response" : "Send"}
             >
               {isAiResponding ? (
                 // Stop icon (square in round button)
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <rect x="7" y="7" width="10" height="10" rx="2" fill="#000" />
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="7" y="7" width="10" height="10" rx="2" fill="#374151" /> {/* Darker gray for stop icon */}
                 </svg>
               ) : (
                 // Up arrow icon
-                <svg width="18" height="18" fill="none" stroke="#000" strokeWidth="2" viewBox="0 0 24 24">
+                <svg width="16" height="16" fill="none" stroke="#374151" strokeWidth="2.5" viewBox="0 0 24 24">
                   <path d="M12 19V5M5 12l7-7 7 7" />
                 </svg>
               )}
