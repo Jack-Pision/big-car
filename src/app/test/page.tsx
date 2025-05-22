@@ -565,12 +565,27 @@ export default function TestChat() {
           )}
           {/* Textarea and send/stop button row */}
           <div className="relative flex w-full gap-2" style={{ alignItems: 'flex-end', paddingBottom: '2px' }}>
+            {/* Plus button */}
             <button type="button" className="p-2 rounded-full bg-black text-white hover:bg-gray-900 transition self-end mb-0.5 ml-1" onClick={handleFirstPlusClick}>
               <svg width="22" height="22" fill="none" stroke="#fff" strokeWidth="2" viewBox="0 0 24 24">
                 <line x1="12" y1="5" x2="12" y2="19" />
                 <line x1="5" y1="12" x2="19" y2="12" />
               </svg>
             </button>
+            {/* Deep Research search button */}
+            <button
+              type="button"
+              className="flex items-center gap-2 px-4 py-2 rounded-full border border-black bg-white text-black font-semibold hover:bg-gray-100 transition self-end mb-0.5"
+              style={{ boxShadow: "0 1px 4px 0 rgba(0,0,0,0.04)" }}
+              tabIndex={0}
+            >
+              <svg width="20" height="20" fill="none" stroke="black" strokeWidth="2" viewBox="0 0 24 24">
+                <circle cx="11" cy="11" r="7"/>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <span>Deep Research</span>
+            </button>
+            {/* Textarea */}
             <textarea
               ref={textareaRef}
               value={input}
