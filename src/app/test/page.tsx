@@ -542,6 +542,9 @@ export default function TestChat() {
       </div>
       {/* Fixed Input Bar at Bottom */}
       <div ref={inputBarRef} className="fixed left-0 right-0 bottom-0 w-full flex justify-center z-50" style={{ pointerEvents: 'auto' }}>
+        <div className="w-full max-w-5xl px-6 mx-4 mb-1">
+          <span className="block text-gray-400 text-base font-medium mb-2" style={{letterSpacing: '0.01em'}}>Ask anything...</span>
+        </div>
         <form
           className="w-full max-w-5xl flex flex-col gap-2 bg-gray-900 rounded-2xl shadow-lg px-6 py-4 mx-4 mb-4 border border-gray-800"
           style={{ boxShadow: "0 4px 32px 0 rgba(0,0,0,0.2)" }}
@@ -593,7 +596,7 @@ export default function TestChat() {
               <span className="text-sm font-medium">Search</span>
             </button>
             
-            {/* Deep Research button with X icon */}
+            {/* Deep Research button with Atom icon */}
             <button
               type="button"
               className={`flex items-center gap-2 rounded-full bg-gray-800 hover:bg-gray-700 transition px-4 py-2
@@ -604,8 +607,10 @@ export default function TestChat() {
               onClick={() => setDeepResearchActive(a => !a)}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
+                <circle cx="12" cy="12" r="2" />
+                <ellipse cx="12" cy="12" rx="10" ry="4" />
+                <ellipse cx="12" cy="12" rx="4" ry="10" transform="rotate(45 12 12)" />
+                <ellipse cx="12" cy="12" rx="4" ry="10" transform="rotate(-45 12 12)" />
               </svg>
               <span className="whitespace-nowrap text-sm font-medium">Deep Research</span>
             </button>
@@ -616,7 +621,7 @@ export default function TestChat() {
               value={input}
               onChange={e => setInput(e.target.value)}
               className="flex-1 border-none outline-none bg-transparent px-4 text-gray-200 text-base placeholder-gray-500 resize-none overflow-auto"
-              placeholder="Ask anything..."
+              placeholder=""
               disabled={loading}
               rows={1}
               style={{ maxHeight: '80px', minHeight: '40px' }}
