@@ -97,7 +97,6 @@ const GlobalStyles = () => (
     .ai-response-text * {
       color: #ffffff !important;
     }
-    
     .ai-response-text h1,
     .ai-response-text h2,
     .ai-response-text h3,
@@ -109,10 +108,27 @@ const GlobalStyles = () => (
     .ai-response-text li,
     .ai-response-text span,
     .ai-response-text strong,
-    .ai-response-text em,
-    .ai-response-text code,
-    .ai-response-text pre {
+    .ai-response-text em {
       color: #ffffff !important;
+    }
+    .ai-response-text pre,
+    .ai-response-text code {
+      color: #fff !important;
+      background: #232323 !important;
+      border-radius: 6px;
+      padding: 0.2em 0.4em;
+    }
+    .ai-response-text blockquote {
+      color: #fff !important;
+      background: #232323 !important;
+      border-left: 4px solid #00bcd4;
+      padding: 0.5em 1em;
+      margin: 0.5em 0;
+      border-radius: 6px;
+    }
+    .ai-response-text li {
+      color: #fff !important;
+      background: transparent !important;
     }
   `}</style>
 );
