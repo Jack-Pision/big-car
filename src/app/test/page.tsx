@@ -499,7 +499,8 @@ export default function TestChat() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, ease: "easeOut" }}
-                  className="w-full markdown-body text-left flex flex-col items-start text-white"
+                  className="w-full markdown-body text-left flex flex-col items-start"
+                  style={{ color: '#fff' }}
                 >
                   {i === messages.length - 1 && isAiResponding ? (
                     <PulsingDot isVisible={true} />
