@@ -453,7 +453,7 @@ export default function TestChat() {
   }
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div className="min-h-screen flex flex-col" style={{ background: '#232323' }}>
       {/* Hamburger menu and sidebar */}
       <div className="fixed top-6 left-6 z-50 md:static md:z-10">
         <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
@@ -482,7 +482,7 @@ export default function TestChat() {
             showHeading && messages.length === 0 ? "opacity-100" : "opacity-0 pointer-events-none"
           }`}
         >
-          <h1 className="text-4xl font-semibold text-gray-800 text-center">
+          <h1 className="text-4xl font-semibold text-gray-200 text-center">
             Seek and You'll find
           </h1>
         </div>
@@ -522,7 +522,7 @@ export default function TestChat() {
               return (
                 <div
                   key={i}
-                  className="px-5 py-3 rounded-2xl shadow bg-black text-white self-end max-w-full text-lg flex flex-col items-end"
+                  className="px-5 py-3 rounded-2xl shadow bg-gray-800 text-white self-end max-w-full text-lg flex flex-col items-end"
                   style={{ wordBreak: "break-word" }}
                 >
                   {msg.imageUrls && msg.imageUrls.map((url, index) => (
@@ -543,8 +543,8 @@ export default function TestChat() {
       {/* Fixed Input Bar at Bottom */}
       <div ref={inputBarRef} className="fixed left-0 right-0 bottom-0 w-full flex justify-center z-50" style={{ pointerEvents: 'auto' }}>
         <form
-          className="w-full max-w-5xl flex flex-col gap-2 bg-gray-900 rounded-2xl shadow-lg px-4 py-3 mx-4 mb-4 border border-gray-800"
-          style={{ boxShadow: "0 4px 32px 0 rgba(0,0,0,0.2)" }}
+          className="w-full max-w-5xl flex flex-col gap-2 rounded-2xl shadow-lg px-4 py-3 mx-4 mb-4"
+          style={{ background: '#232323', border: '2px solid rgba(255,255,255,0.18)', boxShadow: '0 4px 32px 0 rgba(0,0,0,0.32)' }}
           onSubmit={handleSend}
         >
           {/* Image Preview Area - displays multiple images */}
