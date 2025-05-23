@@ -6,8 +6,7 @@ import HamburgerMenu from '../../components/HamburgerMenu';
 import { v4 as uuidv4 } from 'uuid';
 import SearchPopup from '../../components/SearchPopup';
 import { useRouter } from 'next/navigation';
-import ReactMarkdown from 'react-markdown';
-import { MarkdownRenderer, cleanMarkdown } from '../../utils/markdown-utils';
+import { MarkdownRenderer } from '../../utils/markdown-utils';
 
 const NVIDIA_API_URL = "/api/nvidia";
 
