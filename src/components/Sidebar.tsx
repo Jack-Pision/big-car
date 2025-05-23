@@ -69,8 +69,7 @@ export default function Sidebar({
             animate={{ x: 0 }}
             exit={{ x: '-100%' }}
             transition={{ duration: 0.12, ease: [0.4, 0, 0.2, 1] }}
-            className="fixed inset-y-0 left-0 z-40 w-72 max-w-full shadow-xl flex flex-col border-r border-gray-200 h-full transition-all"
-            style={{ backgroundColor: '#292b2c' }}
+            className="fixed inset-y-0 left-0 z-40 w-72 max-w-full bg-white shadow-xl flex flex-col border-r border-gray-200 h-full transition-all"
             aria-label="Sidebar navigation"
           >
             <div className="flex flex-col h-full relative z-40">
