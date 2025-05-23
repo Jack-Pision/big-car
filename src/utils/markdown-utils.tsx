@@ -115,6 +115,11 @@ export function cleanMarkdown(md: string): string {
   cleaned = cleaned.replace(/(\n\s*(?:\d+\.|-|\*)\s.*)\n{2,}(?=\s*(?:#|\*\*|\d+\.|-|\*)\s)/gm, '$1\n');
   cleaned = cleaned.replace(/(\n\s*(?:\d+\.|-|\*)\s.*)\n{2,}(?=\s*\S)/gm, '$1\n');
 
+  // Enforce: after a numbered list item, only bullet points are allowed as sub-items (not another numbered list)
+  // Convert any nested or immediately following numbered lists to bullet points
+  cleaned = cleaned.replace(/(\n\s*\d+\. .+?\n)(\s*)(\d+\.)/g, '$1$2-');
+  cleaned = cleaned.replace(/(\n\s*- .+?\n)(\s*)(\d+\.)/g, '$1$2-');
+
   // Cleanup
   // -------
   
