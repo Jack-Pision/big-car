@@ -367,11 +367,11 @@ export default function TestChat() {
         let buffer = '';
         let done = false;
         let aiMsg = { 
-          role: "assistant" as const, 
+        role: "assistant" as const,
           content: "", 
           imageUrls: uploadedImageUrls // Associate assistant response with the uploaded images
-        };
-        setMessages((prev) => [...prev, aiMsg]);
+      };
+      setMessages((prev) => [...prev, aiMsg]);
 
         while (!done) {
           const { value, done: doneReading } = await reader.read();
@@ -466,7 +466,7 @@ export default function TestChat() {
           });
         }
       }
-    } catch (err: any) {
+      } catch (err: any) {
       if (err.name === 'AbortError') {
         setMessages((prev) => [
           ...prev,
@@ -580,8 +580,8 @@ export default function TestChat() {
                           <TextReveal 
                             text={cleanContent}
                             markdownComponents={markdownComponents}
-                          />
-                        </div>
+                  />
+                </div>
                       )}
                     </>
                   )}
@@ -629,7 +629,7 @@ export default function TestChat() {
                     aria-label={`Remove image ${index + 1}`}
                   >
                     ✕
-                  </button>
+            </button>
                 </div>
               ))}
             </div>
