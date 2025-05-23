@@ -90,11 +90,12 @@ export function cleanMarkdown(md: string): string {
   cleaned = cleaned.replace(/(#{1,6} .+)(?!\n\n)/g, '$1\n\n');
   
   // Insert blank lines after bolded section titles
-  cleaned = cleaned.replace(/(\*\*[^\n]+?[:\.]+\*\*)(?!\n\n)/g, '$1\n\n');
+  cleaned = cleaned.replace(/(\*\*[^
+]+?[:\.]+\*\*)(?!\n\n)/g, '$1\n\n');
   
   // Insert blank lines between list items and following content if missing
-  cleaned = cleaned.replace(/(\n- [^\n]+)(?!\n\n|\n- )/g, '$1\n\n');
-  cleaned = cleaned.replace(/(\n\d+\. [^\n]+)(?!\n\n|\n\d+\. )/g, '$1\n\n');
+  cleaned = cleaned.replace(/((?:^|\n)- [^\n]+)(?!\n- )/gm, '$1\n');
+  cleaned = cleaned.replace(/((?:^|\n)\d+\. [^\n]+)(?!\n\d+\. )/gm, '$1\n');
   
   // Ensure consecutive list items don't have blank lines between them
   cleaned = cleaned.replace(/^(- [^\n]+)\n\n(- )/gm, '$1\n$2');
