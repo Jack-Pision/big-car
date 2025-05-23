@@ -12,56 +12,88 @@ interface TextRevealProps {
 }
 
 const TextReveal: React.FC<TextRevealProps> = ({ text, className = '', markdownComponents = {} }) => {
-  const [chunks, setChunks] = useState<string[]>([]);
-  const [visibleChunks, setVisibleChunks] = useState<number>(0);
+  const [processedText, setProcessedText] = useState<string>('');
+  const [isRevealing, setIsRevealing] = useState<boolean>(true);
 
   useEffect(() => {
-    // Split text into paragraphs or chunks
-    const textChunks = text
-      .split('\n')
-      .filter(chunk => chunk.trim() !== '');
-    setChunks(textChunks);
+    // Reset state
+    setProcessedText('');
+    setIsRevealing(true);
 
-    // Reset visibility
-    setVisibleChunks(0);
+    // Process the text to handle multi-line markdown properly
+    const cleanedText = text
+      .trim()
+      .replace(/\n{3,}/g, '\n\n'); // Normalize multiple blank lines to just two
 
-    // Animate chunks appearing
-    const timer = setInterval(() => {
-      setVisibleChunks(prev => {
-        if (prev < textChunks.length) {
-          return prev + 1;
+    // Reveal text progressively
+    let currentPosition = 0;
+    const revealInterval = setInterval(() => {
+      if (currentPosition >= cleanedText.length) {
+        clearInterval(revealInterval);
+        setIsRevealing(false);
+        return;
+      }
+      
+      // Find a good break point - end of a paragraph or list item
+      let nextPosition = cleanedText.indexOf('\n\n', currentPosition);
+      
+      // If no paragraph break found, look for a single line break
+      if (nextPosition === -1) {
+        nextPosition = cleanedText.indexOf('\n', currentPosition);
+      }
+      
+      // If no line break found or we're at the end, use the entire remaining text
+      if (nextPosition === -1) {
+        nextPosition = cleanedText.length;
+      } else {
+        // Include the line breaks in the revealed text
+        nextPosition += 2;
+      }
+      
+      // Ensure we don't break within a list item
+      const partialText = cleanedText.substring(0, nextPosition);
+      const lastNewlinePos = partialText.lastIndexOf('\n');
+      
+      // Check if the last line is a list item
+      if (lastNewlinePos !== -1) {
+        const lastLine = partialText.substring(lastNewlinePos).trim();
+        const isListItem = /^(\d+\.|\*|-)\s/.test(lastLine);
+        
+        // If it's a list item and not followed by another list item, find the next list item
+        if (isListItem && nextPosition < cleanedText.length) {
+          const followingText = cleanedText.substring(nextPosition);
+          const nextListItemPos = followingText.search(/\n(\d+\.|\*|-)\s/);
+          
+          if (nextListItemPos !== -1) {
+            nextPosition += nextListItemPos + 1; // Include the newline
+          }
         }
-        clearInterval(timer);
-        return prev;
-      });
-    }, 100); // Adjust timing as needed
+      }
+      
+      setProcessedText(cleanedText.substring(0, nextPosition));
+      currentPosition = nextPosition;
+    }, 100);
 
-    return () => clearInterval(timer);
+    return () => clearInterval(revealInterval);
   }, [text]);
 
   return (
-    <div className="space-y-2 w-full overflow-hidden">
-      <AnimatePresence>
-        {chunks.slice(0, visibleChunks).map((chunk, index) => (
-          <motion.div
-            key={index}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
-            className="w-full max-w-full overflow-hidden"
-            style={{ overflowWrap: 'break-word', wordWrap: 'break-word' }}
-          >
-            <ReactMarkdown
-              components={markdownComponents}
-              remarkPlugins={[remarkGfm, remarkMath]}
-              rehypePlugins={[rehypeKatex]}
-              className="w-full max-w-full overflow-wrap-normal"
-            >
-              {chunk}
-            </ReactMarkdown>
-          </motion.div>
-        ))}
-      </AnimatePresence>
+    <div className={`w-full markdown-body ${className}`}>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3 }}
+        className="w-full max-w-full overflow-hidden"
+      >
+        <ReactMarkdown
+          components={markdownComponents}
+          remarkPlugins={[remarkGfm, remarkMath]}
+          rehypePlugins={[rehypeKatex]}
+          className="w-full max-w-full"
+        >
+          {processedText}
+        </ReactMarkdown>
+      </motion.div>
     </div>
   );
 };

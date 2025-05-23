@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import SearchPopup from '../../components/SearchPopup';
 import { useRouter } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
+import { MarkdownRenderer, cleanMarkdown } from '../../utils/markdown-utils';
 
 const NVIDIA_API_URL = "/api/nvidia";
 
@@ -14,61 +15,6 @@ interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
-}
-
-function cleanMarkdown(md: string): string {
-  let cleaned = md;
-  // Convert lines of dashes to '---' for <hr>
-  cleaned = cleaned.replace(/^-{3,}$/gm, '---');
-  cleaned = cleaned.replace(/_{3,}/gm, '---');
-  // Ensure headings have a space after # (e.g., '###Heading' -> '### Heading')
-  cleaned = cleaned.replace(/^(#{1,6})([^ #])/gm, '$1 $2');
-  // Fix numbered lists: 1.**Ask, 2.Thing, 3.*Bold* etc. → 1. **Ask, 2. Thing, 3. *Bold*
-  cleaned = cleaned.replace(/(\d+)\.([A-Za-z*\[])/g, '$1. $2');
-  // Normalize all list markers (+, *, -) to '-'
-  cleaned = cleaned.replace(/^(\s*)[+*\-]([^ \-\*\+])/gm, '$1- $2');
-  // Ensure a space after every list marker
-  cleaned = cleaned.replace(/^(\s*)-([^ ])/gm, '$1- $2');
-  // Fix common AI mistakes: **word* or *word** → **word**
-  cleaned = cleaned.replace(/\*\*([^\*\n]+)\*/g, '**$1**');
-  cleaned = cleaned.replace(/\*([^\*\n]+)\*\*/g, '**$1**');
-  // Remove stray asterisks not part of markdown (e.g., at line start/end)
-  cleaned = cleaned.replace(/(^|\s)\*+(\s|$)/g, ' ');
-  // Remove multiple consecutive asterisks (e.g., ****word**** → **word**)
-  cleaned = cleaned.replace(/\*{3,}/g, '**');
-  // Remove malformed headers (e.g., ### at end of line)
-  cleaned = cleaned.replace(/#+\s*$/gm, '');
-  // Insert blank lines after headings
-  cleaned = cleaned.replace(/(#{1,6} .+)(?!\n\n)/g, '$1\n');
-  // Insert blank lines after bolded section titles (e.g., '**Title:**', '**Title.**')
-  cleaned = cleaned.replace(/(\*\*[^\n]+?[:\.]+\*\*)(?!\n\n)/g, '$1\n');
-  // Insert blank lines between consecutive bolded phrases (e.g., '**A**B' -> '**A**\n\nB')
-  cleaned = cleaned.replace(/(\*\*[^\n]+?\*\*)([A-Za-z])/g, '$1\n\n$2');
-  // Insert blank lines between list items and following content if missing
-  cleaned = cleaned.replace(/(\n- [^\n]+)(?!\n\n|\n- )/g, '$1\n');
-  cleaned = cleaned.replace(/(\n\d+\. [^\n]+)(?!\n\n|\n\d+\. )/g, '$1\n');
-  // Collapse multiple blank lines
-  cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
-  // Remove leading/trailing blank lines
-  cleaned = cleaned.replace(/^\s+|\s+$/g, '');
-  // Remove any remaining unmatched asterisks at line start/end
-  cleaned = cleaned.replace(/(^|\n)\*+(?=\s|$)/g, '');
-  cleaned = cleaned.replace(/\*+(?=\n|$)/g, '');
-  // Aggressive post-processing:
-  // 1. Remove lines that are just stray asterisks or malformed markdown
-  cleaned = cleaned.split('\n').filter(line => !/^\s*\*+\s*$/.test(line)).join('\n');
-  // 2. If a line starts with ** and has no closing **, remove or close it
-  cleaned = cleaned.replace(/(^|\n)\*\*([^\n*]+)(?=\n|$)/g, (m, p1, p2) => {
-    return p1 + (p2.trim().endsWith('**') ? p2 : p2 + '**');
-  });
-  // 3. Remove unpaired bold/italic markers at end of lines
-  cleaned = cleaned.replace(/\*+(?=\s|$)/g, '');
-  // 4. Normalize spaces around formatting markers
-  cleaned = cleaned.replace(/\s*\*\*\s*/g, '**');
-  cleaned = cleaned.replace(/\s*\*\s*/g, '*');
-  // 5. Remove any remaining unmatched asterisks
-  cleaned = cleaned.replace(/(^|\s)\*+(?=\s|$)/g, '');
-  return cleaned;
 }
 
 const markdownComponents = {
@@ -194,7 +140,26 @@ export default function StreamingChat() {
     const payload = {
       model: "nvidia/llama-3.1-nemotron-ultra-253b-v1",
       messages: [
-        { role: "system", content: `You are a helpful study tutor. Always use standard markdown. Add blank lines after headings, bolded section titles, and between sections. Use standard list markers ('-', '*', or '1.') with a space after the marker. Always close bold/italic markers before punctuation or line breaks. Do not merge bold/italic markers with text. Structure your output for maximum readability.` },
+        { role: "system", content: `You are a helpful study tutor. Follow these strict markdown formatting guidelines:
+
+1. Structure: Always use proper markdown with clean structure.
+2. Lists: 
+   - For ordered lists, use the format: "1. " with a space after the period
+   - For unordered lists, use "- " with a space after the dash
+   - Keep list items single-spaced (no blank lines between items)
+   - Add a blank line before and after list blocks
+3. Headings: 
+   - Use "# " for headings with a space after the #
+   - Add blank lines after all headings
+4. Emphasis:
+   - Use **bold** for important terms
+   - Use *italics* sparingly for emphasis
+   - Never combine formatting with spaces (**not like this **)
+5. Paragraphs:
+   - Separate paragraphs with blank lines
+   - Don't split paragraphs unnecessarily
+
+Your replies should have excellent markdown formatting that looks good even in plain text.` },
         ...msgs.map(({ role, content }) => ({ role, content }))
       ],
       temperature: 0.6,
@@ -309,41 +274,29 @@ export default function StreamingChat() {
       {/* Chat area fills all available space, scrollbar at window edge */}
       <div className="flex-1 w-full overflow-y-auto" ref={chatRef}>
         <div className="max-w-[850px] mx-auto px-2 pb-4 space-y-4">
-          {messages.map((msg, i) => {
-            // If this is the last message and it's an empty AI message, show the animated streaming message instead
-            if (
-              i === messages.length - 1 &&
-              msg.role === 'assistant' &&
-              aiTyping &&
-              !msg.content
-            ) {
-              return (
-                <div key={msg.id} className="flex justify-start">
-                  <div className="text-neutral-900 text-base whitespace-pre-line">
-                    {displayed}
+          {messages.map((message, i) => (
+            <div key={message.id} className={`message ${message.role === 'user' ? 'user-message' : 'ai-message'}`}>
+              <div className={`message-content px-4 py-3 rounded-xl max-w-full overflow-hidden ${message.role === 'user' ? 'ml-auto bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-800'}`}>
+                {message.role === 'user' ? (
+                  <div className="whitespace-pre-wrap break-words">{message.content}</div>
+                ) : (
+                  <div className="w-full markdown-body text-left flex flex-col items-start ai-response-text">
+                    <MarkdownRenderer content={message.content} />
                   </div>
+                )}
+              </div>
+            </div>
+          ))}
+          {/* If AI is currently typing, show the streamed content */}
+          {aiTyping && (
+            <div className="message ai-message">
+              <div className="message-content px-4 py-3 rounded-xl max-w-full overflow-hidden bg-gray-100 dark:bg-gray-800">
+                <div className="w-full markdown-body text-left flex flex-col items-start ai-response-text">
+                  <MarkdownRenderer content={displayed} />
                 </div>
-              );
-            }
-            // Otherwise, render as usual
-            if (msg.role === 'user') {
-              return (
-                <div key={msg.id} className="flex justify-end">
-                  <div className="bg-blue-100 text-neutral-900 rounded-xl px-4 py-2 max-w-[80%] shadow-md text-base">
-                    {msg.content}
-                  </div>
-                </div>
-              );
-            } else {
-              return (
-                <div key={msg.id} className="flex justify-start">
-                  <div className="text-neutral-900 text-base whitespace-pre-line">
-                    {msg.content}
-                  </div>
-                </div>
-              );
-            }
-          })}
+              </div>
+            </div>
+          )}
           {error && (
             <div className="text-red-500 text-sm text-center mt-2">{error}</div>
           )}
