@@ -50,21 +50,20 @@ export function cleanMarkdown(md: string): string {
   cleaned = cleaned.replace(/^-{3,}$/gm, '---');
   cleaned = cleaned.replace(/_{3,}/gm, '---');
   
-  // Ensure headings have a space after # and are on their own line, followed by a blank line.
-  cleaned = cleaned.replace(/^(#{1,6})([^#\\s])/gm, '$1 $2');
-  cleaned = cleaned.replace(/(\\n)?(#{1,6}\\s.+?)(?!\\n\\n)/g, (match, p1, p2) => {
-    // if p1 is undefined (heading is at the start of the document) or not a newline, add a newline before
-    const prefix = (p1 === undefined || p1 !== '\\n') && md.indexOf(p2.trim()) !== 0 ? '\\n' : (p1 || '');
-    return prefix + p2.trim() + '\\n\\n';
+  // Ensure headings have a space after # and are on their own line, consistently followed by one blank line.
+  cleaned = cleaned.replace(/^(#{1,6})([^#\\sR])/gm, '$1 $2'); // Ensure space if not followed by space or EOL
+  cleaned = cleaned.replace(/(\n)?(#{1,6}\\s.+?)(\n(?!\\n)|$)/g, (match, p1, p2, p3, offset) => {
+    const isFirstLine = offset === 0;
+    const prefix = (!isFirstLine && p1 !== '\n' && p1 !== '\n\n') ? '\n\n' : (p1 || '');
+    const suffix = (p3 === '\n' || p3 === '') ? '\n\n' : p3; // ensure \n\n if ends with \n or EOL
+    return prefix.replace(/\n{3,}/g, '\n\n') + p2.trim() + suffix.replace(/\n{3,}/g, '\n\n');
   });
   
   // Fix list formatting
   // ------------------
 
-  // Consolidate list item lines: If a line starts with number/bullet, and the next line is content (incl. bold), join them.
-  // Handles: 1.\\n**Title:** Text -> 1. **Title:** Text
-  // And: -\\nContent -> - Content
-  cleaned = cleaned.replace(/^(\\s*(?:\\d+\\.|-|\\*)\\s*)\\n(?=\\s*(?!\\d+\\.|-|\\*|\#))(\\S)/gm, '$1 $2');
+  // Consolidate list item lines: If a line starts with number/bullet, and the next line is content (incl. bold starting content), join them.
+  cleaned = cleaned.replace(/^(\\s*(?:\\d+\\.|-|\\*)\\s*)\\n(?=\\s*(?!\\d+\\.|-|\\*|#))(\*\*.*?\*\*:?|\\S)/gm, '$1 $2');
   
   // Fix numbered lists: Ensure space after dot.
   cleaned = cleaned.replace(/^(\\s*\\d+)\\.(?!\\s)/gm, '$1. ');
@@ -118,20 +117,34 @@ export function cleanMarkdown(md: string): string {
   cleaned = cleaned.replace(/(\n\s*(?:\d+\.|-|\*)\s.*)\n{2,}(?=\s*\S)/gm, '$1\n');
 
   // Enforce: after a numbered list item, only bullet points are allowed as sub-items.
-  // Convert any indented numbered list (e.g., "  2. Item") to a bullet point if it's under a numbered list.
-  // This also handles cases where a numbered list immediately follows another numbered list item without proper indentation.
-  cleaned = cleaned.replace(/(\\n\\s*\\d+\\.\\s(?:.|\\n)*?)(^\\s+)(\\d+\\.)/gm, (match, p1, p2, p3) => {
-    return p1 + p2 + '-';
-  });
-   // Convert a numbered list item that directly follows another numbered list item on a new line, to a bullet.
+  // Convert any indented numbered list to a bullet point if it's under a numbered list.
+  // Iteratively apply to handle multiple levels of incorrect nesting.
+  let previousCleaned = '';
+  while (previousCleaned !== cleaned) {
+    previousCleaned = cleaned;
+    // Converts "1. Item\n  2. SubItem" to "1. Item\n  - SubItem"
+    cleaned = cleaned.replace(/(^\\s*\\d+\\.\\s(?:.|\\n)*?)(\\n\\s{2,})(\\d+\\.)/gm, '$1$2-');
+    // Converts "- Item\n  1. SubItem" to "- Item\n  - SubItem"
+    cleaned = cleaned.replace(/(^\\s*-\\s(?:.|\\n)*?)(\\n\\s{2,})(\\d+\\.)/gm, '$1$2-');
+  }
+
+  // Convert a numbered list item that directly follows another numbered list item (no/minimal indent) to a bullet.
   cleaned = cleaned.replace(/(\\n\\s*\\d+\\.\\s.+)(\\n)(\\s*)(\\d+\\.)/gm, '$1$2$3-');
-  // Convert a numbered list item that directly follows a bullet list item on a new line, to a bullet.
+  // Convert a numbered list item that directly follows a bullet list item (no/minimal indent) to a bullet.
   cleaned = cleaned.replace(/(\\n\\s*-\\s.+)(\\n)(\\s*)(\\d+\\.)/gm, '$1$2$3-');
 
-  // Cleanup
-  // -------
-  
-  // Collapse multiple blank lines to a single blank line
+  // Remove blank lines *between* list items of the same list (both numbered and bulleted)
+  cleaned = cleaned.replace(/(\\n\\s*(?:\\d+\\.|-)\\s.+)\\n\\n(?=\\s*(?:\\d+\\.|-)\\s)/gm, '$1\\n');
+
+  // Ensure there's exactly one blank line *before* a list/heading if preceded by text, and *after* if followed by text.
+  cleaned = cleaned.replace(/([^\\n\\s])(\\n)(?=\\s*(?:\\d+\\.|-|\\*|#)\\s)/gm, '$1\\n\\n');
+  cleaned = cleaned.replace(/(^\\s*(?:\\d+\\.|-|\\*|#)\\s.+?(?:\\n|$))(?!(?:\\s*(?:\\d+\\.|-|\\*|#))|\\n|$)/gm, '$1\\n');
+
+  // Remove blank lines between a list marker and its content (second pass after consolidation)
+  cleaned = cleaned.replace(/(\n\s*(?:\d+\.|-|\*)\s.*)\n{2,}(?=\s*(?:#|\*\*|\d+\.|-|\*)\s)/gm, '$1\n');
+  cleaned = cleaned.replace(/(\n\s*(?:\d+\.|-|\*)\s.*)\n{2,}(?=\s*\S)/gm, '$1\n');
+
+  // Cleanup: Collapse multiple blank lines to a single blank line globally.
   cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
   
   // Remove leading/trailing blank lines from the whole text
