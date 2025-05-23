@@ -6,6 +6,7 @@ import HamburgerMenu from '../../components/HamburgerMenu';
 import { v4 as uuidv4 } from 'uuid';
 import SearchPopup from '../../components/SearchPopup';
 import { useRouter } from 'next/navigation';
+import ReactMarkdown from 'react-markdown';
 import { MarkdownRenderer } from '../../utils/markdown-utils';
 
 const NVIDIA_API_URL = "/api/nvidia";
@@ -142,23 +143,27 @@ export default function StreamingChat() {
         { role: "system", content: `You are a helpful study tutor. Follow these strict markdown formatting guidelines:
 
 1. Structure: Always use proper markdown with clean structure.
-2. Lists: 
-   - For ordered lists, use the format: "1. " with a space after the period
-   - For unordered lists, use "- " with a space after the dash
-   - Keep list items single-spaced (no blank lines between items)
-   - Add a blank line before and after list blocks
-3. Headings: 
-   - Use "# " for headings with a space after the #
-   - Add blank lines after all headings
+2. Lists:
+   - For ordered lists, use the format: "1. **Item Title:** Item description..." (Number, bold title, and text on the same line).
+   - For unordered lists, use "- **Item Title:** Item description..." (Dash, bold title, and text on the same line).
+   - If there's no specific title for a list item, use "1. Item description..." or "- Item description...".
+   - Ensure list items are single-spaced (no blank lines between items within the same list).
+   - Add a blank line *before* the start of a list block and *after* the end of a list block, but not within it.
+3. Headings:
+   - Use "# ", "## ", "### " etc. for headings, with a space after the #.
+   - Add blank lines after all headings.
 4. Emphasis:
-   - Use **bold** for important terms
-   - Use *italics* sparingly for emphasis
-   - Never combine formatting with spaces (**not like this **)
+   - Use **bold** for important terms or section titles.
+   - Use *italics* sparingly for emphasis.
+   - Do not put spaces inside emphasis markers (e.g., use **bold** not ** bold ** ).
 5. Paragraphs:
-   - Separate paragraphs with blank lines
-   - Don't split paragraphs unnecessarily
+   - Separate paragraphs with a single blank line.
+   - Don't split paragraphs unnecessarily.
 
-Your replies should have excellent markdown formatting that looks good even in plain text.` },
+Your replies should have excellent markdown formatting that looks good even in plain text. Avoid extra blank lines, especially within list structures.
+Example of a good list:
+1. **Water Droplets:** Most clouds are made of water droplets, like the ones you see in fog, but way up high.
+2. **Ice Crystals:** High up in the sky, where it's really cold, clouds can also be made of ice crystals.` },
         ...msgs.map(({ role, content }) => ({ role, content }))
       ],
       temperature: 0.6,
