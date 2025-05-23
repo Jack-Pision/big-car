@@ -50,24 +50,27 @@ export function cleanMarkdown(md: string): string {
   cleaned = cleaned.replace(/^-{3,}$/gm, '---');
   cleaned = cleaned.replace(/_{3,}/gm, '---');
   
-  // Ensure headings have a space after #
-  cleaned = cleaned.replace(/^(#{1,6})([^#\s])/gm, '$1 $2');
+  // Ensure headings have a space after # and are on their own line, followed by a blank line.
+  cleaned = cleaned.replace(/^(#{1,6})([^#\\s])/gm, '$1 $2');
+  cleaned = cleaned.replace(/(\\n)?(#{1,6}\\s.+?)(?!\\n\\n)/g, (match, p1, p2) => {
+    // if p1 is undefined (heading is at the start of the document) or not a newline, add a newline before
+    const prefix = (p1 === undefined || p1 !== '\\n') && md.indexOf(p2.trim()) !== 0 ? '\\n' : (p1 || '');
+    return prefix + p2.trim() + '\\n\\n';
+  });
   
   // Fix list formatting
   // ------------------
 
-  // Consolidate list item lines: If a line starts with number/bullet, and the next line is content, join them.
-  // Handles cases like:
-  // 1.
-  // **Title:** Text
-  // Becomes: 1. **Title:** Text
-  cleaned = cleaned.replace(/^(\s*(\d+\.|-|\*)\s*)\n(?!\s*(\d+\.|-|\*)|\s*$)/gm, '$1 ');
+  // Consolidate list item lines: If a line starts with number/bullet, and the next line is content (incl. bold), join them.
+  // Handles: 1.\\n**Title:** Text -> 1. **Title:** Text
+  // And: -\\nContent -> - Content
+  cleaned = cleaned.replace(/^(\\s*(?:\\d+\\.|-|\\*)\\s*)\\n(?=\\s*(?!\\d+\\.|-|\\*|\#))(\\S)/gm, '$1 $2');
   
-  // Fix numbered lists: Ensure space after dot, and content on same line.
-  cleaned = cleaned.replace(/^(\s*\d+)\.\s*([^\S\n]*)/gm, '$1. ');
+  // Fix numbered lists: Ensure space after dot.
+  cleaned = cleaned.replace(/^(\\s*\\d+)\\.(?!\\s)/gm, '$1. ');
   
-  // Fix unordered lists: Ensure space after marker, and content on same line.
-  cleaned = cleaned.replace(/^(\s*[-*])\s*([^\S\n]*)/gm, '$1 ');
+  // Fix unordered lists: Ensure space after marker.
+  cleaned = cleaned.replace(/^(\\s*[-*])(?!\\s)/gm, '$1 ');
 
   // Normalize all unordered list markers (+, *) to '-'
   cleaned = cleaned.replace(/^(\s*)[+*](?=\s)/gm, '$1-');
@@ -103,22 +106,27 @@ export function cleanMarkdown(md: string): string {
   // Insert blank lines after bolded section titles if they are a paragraph of their own
   cleaned = cleaned.replace(/(^\*\*[^\n]+?[:.]\*\*(?:\n|$))(?!\n)/gm, '$1\n');
   
-  // Remove blank lines *between* list items of the same list
+  // Remove blank lines *between* list items of the same list (both numbered and bulleted)
   cleaned = cleaned.replace(/(\n\s*(?:\d+\.|-|\*)\s.+)\n\n(?=\s*(?:\d+\.|-|\*)\s)/gm, '$1\n');
   
   // Ensure there's a blank line *before* a list if preceded by text, and *after* a list if followed by text.
-  cleaned = cleaned.replace(/([^\n\s])(\n)(?=\s*(?:\d+\.|-|\*)\s)/gm, '$1\n\n'); // Before list
-  cleaned = cleaned.replace(/(^\s*(?:\d+\.|-|\*)\s.+?)(\n)([^\n\s\d-*])/gm, '$1\n\n$3'); // After list, ensuring not to break subsequent list
+  cleaned = cleaned.replace(/([^\\n\\s])(\\n)(?=\\s*(?:\\d+\\.|-|\\*|#)\\s)/gm, '$1\\n\\n'); // Before list or heading
+  cleaned = cleaned.replace(/(^\\s*(?:\\d+\\.|-|\\*)\\s.+?(?:\\n|$))(?!(?:\\s*(?:\\d+\\.|-|\\*))|\\n|$)/gm, '$1\\n'); // After list, ensuring not to break subsequent list item or add too many blank lines.
 
-  // Remove blank lines between a list marker and its content (heading, bold, another list, etc.)
-  // This ensures that list items are always directly followed by their content without blank lines
+  // Remove blank lines between a list marker and its content
   cleaned = cleaned.replace(/(\n\s*(?:\d+\.|-|\*)\s.*)\n{2,}(?=\s*(?:#|\*\*|\d+\.|-|\*)\s)/gm, '$1\n');
   cleaned = cleaned.replace(/(\n\s*(?:\d+\.|-|\*)\s.*)\n{2,}(?=\s*\S)/gm, '$1\n');
 
-  // Enforce: after a numbered list item, only bullet points are allowed as sub-items (not another numbered list)
-  // Convert any nested or immediately following numbered lists to bullet points
-  cleaned = cleaned.replace(/(\n\s*\d+\. .+?\n)(\s*)(\d+\.)/g, '$1$2-');
-  cleaned = cleaned.replace(/(\n\s*- .+?\n)(\s*)(\d+\.)/g, '$1$2-');
+  // Enforce: after a numbered list item, only bullet points are allowed as sub-items.
+  // Convert any indented numbered list (e.g., "  2. Item") to a bullet point if it's under a numbered list.
+  // This also handles cases where a numbered list immediately follows another numbered list item without proper indentation.
+  cleaned = cleaned.replace(/(\\n\\s*\\d+\\.\\s(?:.|\\n)*?)(^\\s+)(\\d+\\.)/gm, (match, p1, p2, p3) => {
+    return p1 + p2 + '-';
+  });
+   // Convert a numbered list item that directly follows another numbered list item on a new line, to a bullet.
+  cleaned = cleaned.replace(/(\\n\\s*\\d+\\.\\s.+)(\\n)(\\s*)(\\d+\\.)/gm, '$1$2$3-');
+  // Convert a numbered list item that directly follows a bullet list item on a new line, to a bullet.
+  cleaned = cleaned.replace(/(\\n\\s*-\\s.+)(\\n)(\\s*)(\\d+\\.)/gm, '$1$2$3-');
 
   // Cleanup
   // -------
