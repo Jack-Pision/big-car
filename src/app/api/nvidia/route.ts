@@ -241,7 +241,7 @@ async function fetchNvidiaText(messages: any[], options: any = {}) {
     messages,
     temperature: options.temperature || 0.6,
     top_p: options.top_p || 0.95,
-    max_tokens: options.max_tokens || 4096,
+    max_tokens: 10000, // Enforced to 10000 tokens
     presence_penalty: options.presence_penalty || 0.8,  // Discourage repetition
     frequency_penalty: options.frequency_penalty || 0.5, // Reduce phrase repetition
     stream: true, // Always stream
@@ -281,7 +281,7 @@ export async function POST(req: NextRequest) {
     const modelParams = {
       temperature: body.temperature,
       top_p: body.top_p,
-      max_tokens: body.max_tokens,
+      max_tokens: 10000, // Enforced to 10000 tokens
       presence_penalty: body.presence_penalty,
       frequency_penalty: body.frequency_penalty
     };
