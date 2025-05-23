@@ -137,11 +137,23 @@ export default function StreamingChat() {
     let didRespond = false;
     let fullText = "";
     let timeoutId: NodeJS.Timeout | null = null;
-    const payload = {
-      model: "nvidia/llama-3.1-nemotron-ultra-253b-v1",
-      messages: [
-        { role: "system", content: `You are a helpful study tutor. Follow these strict markdown formatting guidelines:
+    
+    // Check if this is a follow-up question (not the first message)
+    const isFollowUp = msgs.filter(m => m.role === 'user').length > 1;
+    
+    // Enhanced system prompt with conversation guidelines
+    const systemPrompt = `You are a helpful study tutor. ${isFollowUp ? 'This is a follow-up question. Answer directly without repeating previous information.' : ''}
 
+CONVERSATION GUIDELINES:
+1. Maintain full awareness of the conversation history for context.
+2. Answer follow-up questions directly without summarizing previous exchanges.
+3. Do NOT repeat information from earlier messages unless explicitly asked.
+4. If a question builds on previous topics, just answer the new aspects.
+5. Only introduce yourself in the very first message of a conversation.
+6. Use natural conversational flow as if continuing an ongoing discussion.
+7. When answering follow-up questions, assume the user remembers previous answers.
+
+MARKDOWN FORMATTING GUIDELINES:
 1. Structure: Always use proper markdown with clean structure.
 2. Lists:
    - For ordered lists, use the format: "1. **Item Title:** Item description..." (Number, bold title, and text on the same line).
@@ -163,12 +175,19 @@ export default function StreamingChat() {
 Your replies should have excellent markdown formatting that looks good even in plain text. Avoid extra blank lines, especially within list structures.
 Example of a good list:
 1. **Water Droplets:** Most clouds are made of water droplets, like the ones you see in fog, but way up high.
-2. **Ice Crystals:** High up in the sky, where it's really cold, clouds can also be made of ice crystals.` },
+2. **Ice Crystals:** High up in the sky, where it's really cold, clouds can also be made of ice crystals.`;
+
+    const payload = {
+      model: "nvidia/llama-3.1-nemotron-ultra-253b-v1",
+      messages: [
+        { role: "system", content: systemPrompt },
         ...msgs.map(({ role, content }) => ({ role, content }))
       ],
       temperature: 0.6,
       top_p: 0.95,
       max_tokens: 4096,
+      presence_penalty: 0.6,  // Discourages repetition of content
+      frequency_penalty: 0.3, // Further reduces repetitive phrases
       stream: false,
     };
     try {
