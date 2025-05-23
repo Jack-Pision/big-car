@@ -110,6 +110,11 @@ export function cleanMarkdown(md: string): string {
   cleaned = cleaned.replace(/([^\n\s])(\n)(?=\s*(?:\d+\.|-|\*)\s)/gm, '$1\n\n'); // Before list
   cleaned = cleaned.replace(/(^\s*(?:\d+\.|-|\*)\s.+?)(\n)([^\n\s\d-*])/gm, '$1\n\n$3'); // After list, ensuring not to break subsequent list
 
+  // Remove blank lines between a list marker and its content (heading, bold, another list, etc.)
+  // This ensures that list items are always directly followed by their content without blank lines
+  cleaned = cleaned.replace(/(\n\s*(?:\d+\.|-|\*)\s.*)\n{2,}(?=\s*(?:#|\*\*|\d+\.|-|\*)\s)/gm, '$1\n');
+  cleaned = cleaned.replace(/(\n\s*(?:\d+\.|-|\*)\s.*)\n{2,}(?=\s*\S)/gm, '$1\n');
+
   // Cleanup
   // -------
   
