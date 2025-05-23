@@ -121,6 +121,8 @@ async function fetchNvidiaText(messages: any[]) {
     temperature: 0.6,
     top_p: 0.95,
     max_tokens: 4096,
+    presence_penalty: 0.8,  // Added to discourage repetition
+    frequency_penalty: 0.5, // Added to reduce phrase repetition
     stream: true, // Always stream
   };
   // Using fetchWithTimeout for the NVIDIA API call

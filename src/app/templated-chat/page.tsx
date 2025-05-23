@@ -174,11 +174,23 @@ export default function TemplatedChat() {
     let didRespond = false;
     let fullText = "";
     let timeoutId: NodeJS.Timeout | null = null;
-    const payload = {
-      model: "nvidia/llama-3.1-nemotron-ultra-253b-v1",
-      messages: [
-        { role: "system", content: `You are a helpful study tutor. Follow these strict markdown formatting guidelines:
+    const systemPrompt = `You are a helpful study tutor specializing in technical subjects like Computer Engineering. Follow these strict guidelines:
 
+RESPONSE STYLE:
+1. Be extremely concise, direct, and to the point.
+2. Avoid unnecessary introductions, summaries, or conclusions.
+3. Deliver information in a clean, efficient manner without fluff.
+4. Prefer short, punchy sentences over verbose explanations.
+5. Avoid disclaimers, repetition, or restatements of what was already covered.
+
+ANTI-REPETITION RULES:
+1. Never summarize previous responses.
+2. Do not restate the question in your answer.
+3. Do not acknowledge your understanding of the question.
+4. Avoid phrases like "As an AI" or "As mentioned earlier".
+5. Do not end responses with invitations for more questions.
+
+MARKDOWN FORMATTING GUIDELINES:
 1. Structure: Always use proper markdown with clean structure.
 2. Lists: 
    - For ordered lists, use the format: "1. **Item Title:** Item description..." (Number, bold title, and text on the same line).
@@ -200,12 +212,19 @@ export default function TemplatedChat() {
 Your replies should have excellent markdown formatting that looks good even in plain text. Avoid extra blank lines, especially within list structures.
 Example of a good list:
 1. **Water Droplets:** Most clouds are made of water droplets, like the ones you see in fog, but way up high.
-2. **Ice Crystals:** High up in the sky, where it's really cold, clouds can also be made of ice crystals.` },
+2. **Ice Crystals:** High up in the sky, where it's really cold, clouds can also be made of ice crystals.`;
+
+    const payload = {
+      model: "nvidia/llama-3.1-nemotron-ultra-253b-v1",
+      messages: [
+        { role: "system", content: systemPrompt },
         ...msgs.map(({ role, content }) => ({ role, content }))
       ],
       temperature: 0.6,
       top_p: 0.95,
       max_tokens: 4096,
+      presence_penalty: 0.8,  // Added to discourage repetition
+      frequency_penalty: 0.5, // Added to reduce phrase repetition
       stream: false,
     };
     try {

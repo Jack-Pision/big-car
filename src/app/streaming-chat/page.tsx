@@ -8,6 +8,7 @@ import SearchPopup from '../../components/SearchPopup';
 import { useRouter } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import { MarkdownRenderer } from '../../utils/markdown-utils';
+import { QueryContext } from '../../utils/template-utils';
 
 const NVIDIA_API_URL = "/api/nvidia";
 
@@ -15,6 +16,7 @@ interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  userQuery?: string;
 }
 
 const markdownComponents = {
@@ -48,6 +50,11 @@ export default function StreamingChat() {
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [searchPopupOpen, setSearchPopupOpen] = useState(false);
   const router = useRouter();
+  const [currentUserQuery, setCurrentUserQuery] = useState<string>("");
+  const [queryContext, setQueryContext] = useState<QueryContext>({
+    conversationLength: 0,
+    queryKeywords: []
+  });
 
   // Scroll to bottom on new message
   useEffect(() => {
@@ -72,7 +79,11 @@ export default function StreamingChat() {
         setAiTyping(false);
         setMessages((prev) => [
           ...prev.slice(0, -1),
-          { ...prev[prev.length - 1], content: streamedContent },
+          { 
+            ...prev[prev.length - 1], 
+            content: streamedContent,
+            userQuery: prev[prev.length - 2]?.userQuery || ''
+          },
         ]);
         setStreamedContent("");
       }
@@ -117,16 +128,40 @@ export default function StreamingChat() {
     if (e) e.preventDefault();
     if (!input.trim() || isLoading || aiTyping) return;
     setError("");
+    
+    // Extract keywords for template selection
+    const keywords = input.trim().toLowerCase()
+      .split(/\s+/)
+      .filter(word => word.length > 3)
+      .filter(word => !['what', 'when', 'where', 'which', 'who', 'whom', 'whose', 'why', 'how', 'this', 'that', 'these', 'those', 'with', 'from', 'about'].includes(word));
+    
+    // Update query context
+    setQueryContext({
+      conversationLength: messages.length / 2, // Approximate conversation turns
+      queryKeywords: keywords
+    });
+    
+    // Save the current query for template selection
+    setCurrentUserQuery(input.trim());
+    
     const userMsg: Message = {
       id: Date.now() + "-user",
       role: 'user',
       content: input.trim(),
     };
+    
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setIsLoading(true);
-    // Add a placeholder for the AI message
-    setMessages((prev) => [...prev, { id: Date.now() + "-ai", role: 'assistant', content: "" }]);
+    
+    // Add a placeholder for the AI message with the userQuery
+    setMessages((prev) => [...prev, { 
+      id: Date.now() + "-ai", 
+      role: 'assistant', 
+      content: "",
+      userQuery: input.trim() // Store the user query that triggered this response
+    }]);
+    
     await streamAI([...messages, userMsg]);
   }
 
@@ -304,7 +339,11 @@ Example of a good list:
                   <div className="whitespace-pre-wrap break-words">{message.content}</div>
                 ) : (
                   <div className="w-full markdown-body text-left flex flex-col items-start ai-response-text">
-                    <MarkdownRenderer content={message.content} />
+                    <MarkdownRenderer 
+                      content={message.content} 
+                      userQuery={message.userQuery || ''} 
+                      context={queryContext}
+                    />
                   </div>
                 )}
               </div>
@@ -315,7 +354,11 @@ Example of a good list:
             <div className="message ai-message">
               <div className="message-content px-4 py-3 rounded-xl max-w-full overflow-hidden bg-gray-100 dark:bg-gray-800">
                 <div className="w-full markdown-body text-left flex flex-col items-start ai-response-text">
-                  <MarkdownRenderer content={displayed} />
+                  <MarkdownRenderer 
+                    content={displayed} 
+                    userQuery={currentUserQuery} 
+                    context={queryContext}
+                  />
                 </div>
               </div>
             </div>
