@@ -3,11 +3,22 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import React from 'react';
+import { selectTemplate, structureAIResponse, applyTemplate, TemplateType, QueryContext } from './template-utils';
 
 /**
  * Standard markdown renderer with consistent styling
  */
-export function MarkdownRenderer({ content, className = '' }: { content: string, className?: string }) {
+export function MarkdownRenderer({ 
+  content, 
+  className = '',
+  userQuery = '',
+  context
+}: { 
+  content: string, 
+  className?: string,
+  userQuery?: string,
+  context?: QueryContext
+}) {
   // Common component overrides for consistent styling
   const markdownComponents = {
     h1: (props: React.ComponentProps<'h1'>) => <h1 className="markdown-body-heading markdown-body-h1" {...props} />,
@@ -20,6 +31,29 @@ export function MarkdownRenderer({ content, className = '' }: { content: string,
     p: (props: React.ComponentProps<'p'>) => <p className="my-2" {...props} />,
   };
 
+  // Apply templating if we have content and a user query
+  const processedContent = React.useMemo(() => {
+    if (!content) return '';
+    
+    // If we have a user query, apply templating
+    if (userQuery) {
+      // 1. Select the appropriate template based on the user's query and context
+      const templateType = selectTemplate(userQuery, context);
+      
+      // 2. Structure the AI response according to the selected template
+      const structuredContent = structureAIResponse(content, templateType);
+      
+      // 3. Apply the template to the structured content
+      const templatedMarkdown = applyTemplate(structuredContent, templateType);
+      
+      // 4. Clean the markdown for consistent rendering
+      return cleanMarkdown(templatedMarkdown);
+    }
+    
+    // If no user query, just clean the markdown
+    return cleanMarkdown(content);
+  }, [content, userQuery, context]);
+
   return (
     <ReactMarkdown
       className={`markdown-body ${className}`}
@@ -27,7 +61,7 @@ export function MarkdownRenderer({ content, className = '' }: { content: string,
       remarkPlugins={[remarkGfm, remarkMath]}
       rehypePlugins={[rehypeKatex]}
     >
-      {cleanMarkdown(content)}
+      {processedContent}
     </ReactMarkdown>
   );
 }
@@ -109,8 +143,8 @@ export function cleanMarkdown(md: string): string {
   cleaned = cleaned.replace(/(\n\s*(?:\d+\.|-|\*)\s.+)\n\n(?=\s*(?:\d+\.|-|\*)\s)/gm, '$1\n');
   
   // Ensure there's a blank line *before* a list if preceded by text, and *after* a list if followed by text.
-  cleaned = cleaned.replace(/([^\\n\\s])(\\n)(?=\\s*(?:\\d+\\.|-|\\*|#)\\s)/gm, '$1\\n\\n'); // Before list or heading
-  cleaned = cleaned.replace(/(^\\s*(?:\\d+\\.|-|\\*)\\s.+?(?:\\n|$))(?!(?:\\s*(?:\\d+\\.|-|\\*))|\\n|$)/gm, '$1\\n'); // After list, ensuring not to break subsequent list item or add too many blank lines.
+  cleaned = cleaned.replace(/([^\n\s])(\n)(?=\s*(?:\d+\.|-|\*|#)\s)/gm, '$1\n\n'); // Before list or heading
+  cleaned = cleaned.replace(/(^\s*(?:\d+\.|-|\*|#)\s.+?(?:\n|$))(?!(?:\s*(?:\d+\.|-|\*|#))|\n|$)/gm, '$1\n'); // After list, ensuring not to break subsequent list item or add too many blank lines.
 
   // Remove blank lines between a list marker and its content
   cleaned = cleaned.replace(/(\n\s*(?:\d+\.|-|\*)\s.*)\n{2,}(?=\s*(?:#|\*\*|\d+\.|-|\*)\s)/gm, '$1\n');
@@ -134,11 +168,11 @@ export function cleanMarkdown(md: string): string {
   cleaned = cleaned.replace(/(\\n\\s*-\\s.+)(\\n)(\\s*)(\\d+\\.)/gm, '$1$2$3-');
 
   // Remove blank lines *between* list items of the same list (both numbered and bulleted)
-  cleaned = cleaned.replace(/(\\n\\s*(?:\\d+\\.|-)\\s.+)\\n\\n(?=\\s*(?:\\d+\\.|-)\\s)/gm, '$1\\n');
+  cleaned = cleaned.replace(/(\n\s*(?:\d+\.|-|\*)\s.+)\n\n(?=\s*(?:\d+\.|-|\*)\s)/gm, '$1\n');
 
   // Ensure there's exactly one blank line *before* a list/heading if preceded by text, and *after* if followed by text.
-  cleaned = cleaned.replace(/([^\\n\\s])(\\n)(?=\\s*(?:\\d+\\.|-|\\*|#)\\s)/gm, '$1\\n\\n');
-  cleaned = cleaned.replace(/(^\\s*(?:\\d+\\.|-|\\*|#)\\s.+?(?:\\n|$))(?!(?:\\s*(?:\\d+\\.|-|\\*|#))|\\n|$)/gm, '$1\\n');
+  cleaned = cleaned.replace(/([^\n\s])(\n)(?=\s*(?:\d+\.|-|\*|#)\s)/gm, '$1\n\n'); // Before list or heading
+  cleaned = cleaned.replace(/(^\s*(?:\d+\.|-|\*|#)\s.+?(?:\n|$))(?!(?:\s*(?:\d+\.|-|\*|#))|\n|$)/gm, '$1\n'); // After list, ensuring not to break subsequent list item or add too many blank lines.
 
   // Remove blank lines between a list marker and its content (second pass after consolidation)
   cleaned = cleaned.replace(/(\n\s*(?:\d+\.|-|\*)\s.*)\n{2,}(?=\s*(?:#|\*\*|\d+\.|-|\*)\s)/gm, '$1\n');
