@@ -70,7 +70,15 @@ async function fetchOpenRouterImageAnalysis(
       // Add system message to maintain context
       {
         role: 'system',
-        content: `You are a helpful AI assistant that analyzes images. ${previousContext}You should maintain context from previous conversations and images when responding. If asked about specific images by number (e.g., "first image", "second image"), refer to the correct image. Do not use <think> tags in your responses. Be clear, detailed, and direct in your descriptions.`
+        content: `You are a helpful AI assistant that analyzes images. ${previousContext}You should maintain context from previous conversations and images when responding. If asked about specific images by number (e.g., "first image", "second image"), refer to the correct image. 
+
+RESPONSE STYLE:
+1. Be extremely concise, direct, and to the point.
+2. Avoid unnecessary verbosity, repetition, and filler words.
+3. Use simple language and short sentences.
+4. Do not use <think> tags in your responses.
+5. Avoid phrases like "I apologize," "I'm sorry," "As an AI," or "As a language model."
+6. Be clear, detailed, and direct in your descriptions.`
       },
       // Include previous messages for context
       ...limitedPreviousMessages,
@@ -114,17 +122,18 @@ async function fetchOpenRouterImageAnalysis(
   return res; // Return the full response object to be processed by the caller
 }
 
-async function fetchNvidiaText(messages: any[]) {
+async function fetchNvidiaText(messages: any[], options: any = {}) {
   const payload = {
     model: 'nvidia/llama-3.1-nemotron-ultra-253b-v1',
     messages,
-    temperature: 0.6,
-    top_p: 0.95,
-    max_tokens: 4096,
-    presence_penalty: 0.8,  // Added to discourage repetition
-    frequency_penalty: 0.5, // Added to reduce phrase repetition
+    temperature: options.temperature || 0.6,
+    top_p: options.top_p || 0.95,
+    max_tokens: options.max_tokens || 4096,
+    presence_penalty: options.presence_penalty || 0.8,  // Discourage repetition
+    frequency_penalty: options.frequency_penalty || 0.5, // Reduce phrase repetition
     stream: true, // Always stream
   };
+  
   // Using fetchWithTimeout for the NVIDIA API call
   const res = await fetchWithTimeout('https://integrate.api.nvidia.com/v1/chat/completions', {
     method: 'POST',
@@ -154,6 +163,16 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
+    
+    // Extract model parameters if provided
+    const modelParams = {
+      temperature: body.temperature,
+      top_p: body.top_p,
+      max_tokens: body.max_tokens,
+      presence_penalty: body.presence_penalty,
+      frequency_penalty: body.frequency_penalty
+    };
+    
     if (body.imageUrls && Array.isArray(body.imageUrls) && body.imageUrls.length > 0) { // Check for imageUrls array
       console.log(`[API /api/nvidia] Received image request for URLs: ${body.imageUrls.join(', ')}`);
       
@@ -205,7 +224,7 @@ export async function POST(req: NextRequest) {
       
       // 3. Call Nemotron and stream its response
       console.log("[API /api/nvidia] Calling Nemotron with streaming enabled...");
-      const nemotronRes = await fetchNvidiaText(nemotronMessages); // Always streaming
+      const nemotronRes = await fetchNvidiaText(nemotronMessages, modelParams); // Pass model parameters
       
       if (!nemotronRes.ok) {
           // If Nemotron returns an error (e.g. 4xx, 5xx), it won't be a stream.
@@ -229,7 +248,7 @@ export async function POST(req: NextRequest) {
       console.log("[API /api/nvidia] Received text-only request (streaming)...");
       const { messages } = body;
       // For text-only, also enable streaming
-      const nemotronRes = await fetchNvidiaText(messages); // Always streaming
+      const nemotronRes = await fetchNvidiaText(messages, modelParams); // Pass model parameters
       
       if (!nemotronRes.ok) {
           return nemotronRes;

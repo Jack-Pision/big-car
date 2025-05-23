@@ -14,14 +14,19 @@ import PulsingDot from '@/components/PulsingDot';
 import TextReveal from '@/components/TextReveal';
 import ThinkingIndicator from '@/components/ThinkingIndicator';
 
-const SYSTEM_PROMPT = `You are a helpful, friendly, and knowledgeable AI assistant designed to provide accurate and concise answers to user queries. Respond in a conversational tone, as if you are a trusted friend explaining things clearly and naturally. Follow these guidelines:
-- Provide accurate, factual, and relevant information.
-- Use a neutral, respectful tone unless otherwise specified by the user.
-- Break down complex topics into simple, clear explanations with examples or analogies when appropriate.
-- If the query is ambiguous, ask clarifying questions to ensure the response meets the user's needs.
-- For creative tasks, be imaginative but stay grounded in the user's request.
-- If you don't know the answer or lack sufficient information, admit it humbly and suggest how the user might find the answer.
-- Avoid biased, harmful, or offensive content, and prioritize user privacy.`;
+const SYSTEM_PROMPT = `You are a helpful, friendly, and knowledgeable AI assistant designed to provide accurate and concise answers to user queries.
+
+RESPONSE STYLE:
+1. Be extremely concise, direct, and to the point.
+2. Avoid unnecessary verbosity, repetition, and filler words.
+3. Use simple language and short sentences.
+4. Avoid phrases like "I apologize," "I'm sorry," "As an AI," or "As a language model."
+5. Never repeat information already discussed in the conversation.
+6. For follow-up questions, answer directly without restating the context.
+7. Avoid lengthy introductions and conclusions.
+8. When explaining technical concepts, use clear examples and analogies.
+9. Format information with bullet points and short paragraphs for readability.
+10. If you don't know something, say so directly without apology.`;
 
 interface ProcessedResponse {
   content: string;
@@ -61,9 +66,27 @@ function cleanAIResponse(text: string): ProcessedResponse {
 
   // Add any remaining text
   processedContent += cleanedText.slice(lastIndex);
+  
+  // Clean up common verbose patterns
+  let finalContent = processedContent.trim()
+    // Remove "I apologize" statements
+    .replace(/I apologize[^.!?]*\./gi, '')
+    .replace(/I'm sorry[^.!?]*\./gi, '')
+    // Remove "As an AI" statements
+    .replace(/As an AI[^.!?]*\./gi, '')
+    .replace(/As a language model[^.!?]*\./gi, '')
+    // Remove "I hope this helps" and similar closings
+    .replace(/I hope (this|that) helps[^.!?]*\.?/gi, '')
+    .replace(/Let me know if you have any (other |more |further )?questions[^.!?]*\.?/gi, '')
+    // Remove redundant phrases
+    .replace(/To answer your question,?\s*/gi, '')
+    .replace(/In response to your query,?\s*/gi, '')
+    // Clean up extra spaces and line breaks from removals
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\n{3,}/g, '\n\n');
 
   return {
-    content: processedContent.trim(),
+    content: finalContent,
     thinkingTime: thinkingTime > 0 ? thinkingTime : undefined
   };
 }
@@ -326,9 +349,18 @@ export default function TestChat() {
           .join('\n');
       }
 
+      // Check if this is a follow-up question (not the first message)
+      const isFollowUp = messages.filter(m => m.role === 'user').length > 0;
+      
+      // Add follow-up instruction to system prompt if needed
+      let enhancedSystemPrompt = SYSTEM_PROMPT;
+      if (isFollowUp) {
+        enhancedSystemPrompt = `${SYSTEM_PROMPT}\n\nThis is a follow-up question. Answer directly without repeating previous information or context. Focus only on new information.`;
+      }
+      
       const systemPrompt = imageContextPrompt 
-        ? `${SYSTEM_PROMPT}\n\n${imageContextPrompt}`
-        : SYSTEM_PROMPT;
+        ? `${enhancedSystemPrompt}\n\n${imageContextPrompt}`
+        : enhancedSystemPrompt;
 
       const apiPayload: any = {
         messages: [
@@ -338,6 +370,13 @@ export default function TestChat() {
           // Add the current user message (text part)
           { role: "user", content: userMessageContent }
         ].filter(msg => msg.content || (msg as any).imageUrls), // Ensure content or imageUrls exists
+        
+        // Add parameters to control verbosity and repetition
+        temperature: 0.7,
+        max_tokens: 1024,
+        top_p: 0.9,
+        frequency_penalty: 0.5,  // Penalize repetition of tokens
+        presence_penalty: 0.5,   // Penalize repetition of topics
       };
 
       // For Gemma's context, send the previous image descriptions
