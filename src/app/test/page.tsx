@@ -743,6 +743,30 @@ export default function TestChat() {
         enhancedSystemPrompt = `${SYSTEM_PROMPT}\n\nThis is a follow-up question. While maintaining your detailed and helpful approach, try to build on previous context rather than repeating information already covered. Focus on advancing the conversation and providing new insights.`;
       }
       
+      // Add Deep Research instructions if active
+      if (deepResearchActive) {
+        const deepResearchPrompt = `
+You are now in DEEP RESEARCH mode. This requires a more thorough, comprehensive approach to the query.
+
+When responding to the user's query, follow these steps:
+1. PLAN: Break down the problem into smaller parts and plan your approach.
+2. GATHER: Gather all relevant information from your knowledge.
+3. ANALYZE: Analyze the information critically, considering different perspectives and potential contradictions.
+4. SYNTHESIZE: Combine your findings into a coherent, well-structured response.
+5. CONCLUDE: Provide a clear conclusion or recommendation based on your analysis.
+
+Your response should be:
+- COMPREHENSIVE: Cover all important aspects of the topic
+- DETAILED: Provide specific examples, data points, and explanations
+- STRUCTURED: Use headings, bullet points, and sections to organize information
+- BALANCED: Consider multiple perspectives and potential counterarguments
+- EDUCATIONAL: Explain complex concepts in an accessible way
+
+Aim to be both thorough and precise. Your goal is to provide the most complete and useful answer possible.
+`;
+        enhancedSystemPrompt = `${enhancedSystemPrompt}\n\n${deepResearchPrompt}`;
+      }
+      
       const systemPrompt = imageContextPrompt 
         ? `${enhancedSystemPrompt}\n\n${imageContextPrompt}`
         : enhancedSystemPrompt;
@@ -757,11 +781,11 @@ export default function TestChat() {
         ].filter(msg => msg.content || (msg as any).imageUrls), // Ensure content or imageUrls exists
         
         // Adjust parameters for more detailed responses
-        temperature: 0.8,
-        max_tokens: 2048,
-        top_p: 0.95,
-        frequency_penalty: 0.3,  // Lower to allow more detailed explanations
-        presence_penalty: 0.3,   // Lower to allow more detailed explanations
+        temperature: deepResearchActive ? 0.5 : 0.8, // Lower temperature for more focused, deterministic responses in Deep Research mode
+        max_tokens: deepResearchActive ? 15000 : 2048, // Much higher token limit for Deep Research mode
+        top_p: deepResearchActive ? 0.85 : 0.95, // Slightly lower top_p for more focused responses in Deep Research mode
+        frequency_penalty: 0.3,
+        presence_penalty: 0.3,
       };
 
       // For Gemma's context, send the previous image descriptions
