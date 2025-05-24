@@ -13,6 +13,8 @@ import { motion } from 'framer-motion';
 import PulsingDot from '@/components/PulsingDot';
 import TextReveal from '@/components/TextReveal';
 import ThinkingIndicator from '@/components/ThinkingIndicator';
+import DeepResearchView from '@/components/DeepResearchView';
+import { useDeepResearch } from '@/hooks/useDeepResearch';
 
 const SYSTEM_PROMPT = `You are a helpful, knowledgeable, and friendly AI assistant. Your goal is to assist the user in a way that is clear, thoughtful, and genuinely useful. Follow these guidelines:
 
@@ -325,6 +327,17 @@ export default function TestChat() {
   const aiStreamAbortController = useRef<AbortController | null>(null);
 
   const [deepResearchActive, setDeepResearchActive] = useState(false);
+  const [showDeepResearchView, setShowDeepResearchView] = useState(false);
+  const [currentQuery, setCurrentQuery] = useState('');
+  
+  // Deep Research hook
+  const {
+    steps,
+    activeStepId,
+    detailedThinking,
+    isComplete: deepResearchComplete,
+    isInProgress: deepResearchInProgress
+  } = useDeepResearch(showDeepResearchView, currentQuery);
 
   // Helper to show the image in chat
   const showImageMsg = (content: string, imgSrc: string) => {
@@ -357,12 +370,28 @@ export default function TestChat() {
     }
   }, [messages]);
 
+  // Update the useEffect to hide the Deep Research view when research completes
+  useEffect(() => {
+    if (deepResearchComplete && !isAiResponding) {
+      // Hide the Deep Research view when both research is complete and AI has responded
+      setShowDeepResearchView(false);
+    }
+  }, [deepResearchComplete, isAiResponding]);
+
   async function handleSend(e?: React.FormEvent) {
     if (e) e.preventDefault();
     const currentInput = input.trim();
     const currentSelectedFiles = selectedFilesForUpload;
 
     if (!currentInput && !currentSelectedFiles.length) return;
+
+    // Store the current query for Deep Research
+    setCurrentQuery(currentInput);
+    
+    // If Deep Research is active, show the view
+    if (deepResearchActive) {
+      setShowDeepResearchView(true);
+    }
 
     setIsAiResponding(true);
     setLoading(true);
@@ -664,6 +693,20 @@ export default function TestChat() {
         onOpenSearch={() => {}}
         onNavigateBoard={() => router.push('/board')}
       />
+      
+      {/* Deep Research View (conditionally shown) */}
+      {showDeepResearchView && (
+        <div className="fixed inset-0 z-40 bg-neutral-900 bg-opacity-90">
+          <div className="w-full h-full max-w-6xl mx-auto my-8 bg-neutral-900 rounded-xl border border-neutral-800 shadow-2xl overflow-hidden">
+            <DeepResearchView 
+              steps={steps}
+              activeStepId={activeStepId}
+              detailedThinking={detailedThinking}
+            />
+          </div>
+        </div>
+      )}
+      
       {/* Conversation area (scrollable) */}
       <div
         ref={scrollRef}
@@ -831,6 +874,16 @@ export default function TestChat() {
           </div>
         </form>
       </div>
+      
+      {/* Hidden file input */}
+      <input 
+        type="file"
+        ref={fileInputRef1}
+        style={{ display: 'none' }}
+        onChange={handleFirstFileChange}
+        accept="image/*"
+        multiple
+      />
     </div>
   );
 } 
