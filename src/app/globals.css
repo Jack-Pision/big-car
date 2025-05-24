@@ -252,22 +252,27 @@ body {
 }
 .markdown-body table {
   border-collapse: collapse;
-  margin: 1em 0;
-  width: auto;
-  max-width: 600px;
+  margin: 2em auto;
+  width: 100%;
+  max-width: 700px;
   font-size: 0.97rem;
-  margin-left: auto;
-  margin-right: auto;
+  background: transparent;
 }
 .markdown-body th, .markdown-body td {
-  border: 1px solid #e5e7eb;
+  border: none;
+  border-bottom: 1px solid #333;
   padding: 0.35em 0.7em;
   text-align: left;
   font-size: 0.97rem;
+  background: transparent;
 }
 .markdown-body th {
-  background: transparent;
   font-weight: 700;
+  background: transparent;
+}
+.markdown-body tr:last-child th,
+.markdown-body tr:last-child td {
+  border-bottom: none;
 }
 .markdown-body img {
   max-width: 100%;
