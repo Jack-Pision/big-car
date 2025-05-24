@@ -508,7 +508,7 @@ export default function TestChat() {
 
       // After file upload logic and before prompt construction
       let webData = {
-        redditPosts: null as any,
+        wikipediaArticles: null as any,
         sources: [] as any[],
         webCitations: '' as string
       };
@@ -533,22 +533,22 @@ export default function TestChat() {
       
       // Prepend citation instructions ONLY for Deep Research
       if (deepResearchActive && webData) {
-        // Format Reddit posts for the prompt
-        let redditSection = '';
-        if (webData.redditPosts && webData.redditPosts.length > 0) {
-          redditSection += '===REDDIT SEARCH RESULTS===\n';
-          webData.redditPosts.forEach((post: any, i: number) => {
-            redditSection += `[${i + 1}] Title: "${post.title}" (${post.url})\n`;
-            if (post.content) {
-              const excerpt = post.content.length > 200 ? post.content.slice(0, 200) + '...' : post.content;
-              redditSection += `Excerpt: ${excerpt}\n`;
+        // Format Wikipedia articles for the prompt
+        let wikiSection = '';
+        if (webData.wikipediaArticles && webData.wikipediaArticles.length > 0) {
+          wikiSection += '===WIKIPEDIA SEARCH RESULTS===\n';
+          webData.wikipediaArticles.forEach((article: any, i: number) => {
+            wikiSection += `[${i + 1}] Title: "${article.title}" (${article.url})\n`;
+            if (article.summary) {
+              const excerpt = article.summary.length > 200 ? article.summary.slice(0, 200) + '...' : article.summary;
+              wikiSection += `Excerpt: ${excerpt}\n`;
             }
           });
-          redditSection += '===END REDDIT SEARCH RESULTS===\n';
+          wikiSection += '===END WIKIPEDIA SEARCH RESULTS===\n';
         }
         // Strong explicit instruction
-        const redditInstruction = 'IMPORTANT: You MUST use only the above Reddit posts as your web sources. Do NOT use or invent any other web links. When citing, use [@Web](Reddit URL) or [1], [2], etc. If you do not use the above Reddit posts, your answer will be considered incomplete.';
-        enhancedSystemPrompt = `${redditSection}\n${redditInstruction}\n\n${CITATION_INSTRUCTIONS}\n\n${enhancedSystemPrompt}`;
+        const wikiInstruction = 'IMPORTANT: You MUST use only the above Wikipedia articles as your web sources. Do NOT use or invent any other web links. When citing, use [@Web](Wikipedia URL) or [1], [2], etc. If you do not use the above Wikipedia articles, your answer will be considered incomplete.';
+        enhancedSystemPrompt = `${wikiSection}\n${wikiInstruction}\n\n${CITATION_INSTRUCTIONS}\n\n${enhancedSystemPrompt}`;
       }
       
       const systemPrompt = imageContextPrompt 
@@ -776,59 +776,33 @@ export default function TestChat() {
 
       // Create objects to store web data we fetch
       let webData = {
-        redditPosts: null as any,
+        wikipediaArticles: null as any,
         sources: [] as any[],
         webCitations: '' as string
       };
 
-      // When Deep Research is active, fetch relevant web data
+      // When Deep Research is active, fetch relevant Wikipedia data
       if (deepResearchActive) {
         try {
-          console.log("Fetching web data for Deep Research...");
-          // Call our Reddit API to get relevant posts for the query
-          const redditResponse = await fetch('/api/reddit/search', {
+          console.log("Fetching Wikipedia data for Deep Research...");
+          // Call our Wikipedia API to get relevant articles for the query
+          const wikiResponse = await fetch('/api/wikipedia/search', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ query: userMessage, limit: 8 }),
             signal: aiStreamAbortController.current.signal,
           });
           
-          if (redditResponse.ok) {
-            const redditData = await redditResponse.json();
-            webData.redditPosts = redditData.posts;
-            webData.webCitations = redditData.webCitations;
-            webData.sources = [...webData.sources, ...(redditData.sources || [])];
-            console.log(`Retrieved ${redditData.posts?.length || 0} Reddit posts for query`);
+          if (wikiResponse.ok) {
+            const wikiData = await wikiResponse.json();
+            webData.wikipediaArticles = wikiData.articles;
+            webData.webCitations = wikiData.summary;
+            webData.sources = [...webData.sources, ...(wikiData.sources || [])];
+            console.log(`Retrieved ${wikiData.articles?.length || 0} Wikipedia articles for query`);
           }
         } catch (error) {
-          console.error("Error fetching web data:", error);
+          console.error("Error fetching Wikipedia data:", error);
           // Continue with normal processing if web data fetching fails
-        }
-      }
-
-      // Check if the query is about a Reddit user
-      let redditUserData = null;
-      const redditUsernameRegex = /(?:^|\s)(?:u\/|\/u\/|user\/|reddit\.com\/(?:u|user)\/|about\s+)([a-zA-Z0-9_-]{3,20})(?:\s|$)/i;
-      const redditMatch = userMessage.match(redditUsernameRegex);
-      
-      if (redditMatch && redditMatch[1]) {
-        try {
-          console.log(`Detected Reddit username: ${redditMatch[1]}`);
-          // Call our Reddit API to get user data
-          const redditResponse = await fetch('/api/reddit', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ query: redditMatch[1] }),
-            signal: aiStreamAbortController.current.signal,
-          });
-          
-          if (redditResponse.ok) {
-            redditUserData = await redditResponse.json();
-            console.log("Retrieved Reddit user data:", redditUserData.username);
-          }
-        } catch (error) {
-          console.error("Error fetching Reddit data:", error);
-          // Continue with normal processing if Reddit API fails
         }
       }
 
@@ -852,57 +826,22 @@ export default function TestChat() {
       
       // Prepend citation instructions ONLY for Deep Research
       if (deepResearchActive && webData) {
-        // Format Reddit posts for the prompt
-        let redditSection = '';
-        if (webData.redditPosts && webData.redditPosts.length > 0) {
-          redditSection += '===REDDIT SEARCH RESULTS===\n';
-          webData.redditPosts.forEach((post: any, i: number) => {
-            redditSection += `[${i + 1}] Title: "${post.title}" (${post.url})\n`;
-            if (post.content) {
-              const excerpt = post.content.length > 200 ? post.content.slice(0, 200) + '...' : post.content;
-              redditSection += `Excerpt: ${excerpt}\n`;
+        // Format Wikipedia articles for the prompt
+        let wikiSection = '';
+        if (webData.wikipediaArticles && webData.wikipediaArticles.length > 0) {
+          wikiSection += '===WIKIPEDIA SEARCH RESULTS===\n';
+          webData.wikipediaArticles.forEach((article: any, i: number) => {
+            wikiSection += `[${i + 1}] Title: "${article.title}" (${article.url})\n`;
+            if (article.summary) {
+              const excerpt = article.summary.length > 200 ? article.summary.slice(0, 200) + '...' : article.summary;
+              wikiSection += `Excerpt: ${excerpt}\n`;
             }
           });
-          redditSection += '===END REDDIT SEARCH RESULTS===\n';
+          wikiSection += '===END WIKIPEDIA SEARCH RESULTS===\n';
         }
         // Strong explicit instruction
-        const redditInstruction = 'IMPORTANT: You MUST use only the above Reddit posts as your web sources. Do NOT use or invent any other web links. When citing, use [@Web](Reddit URL) or [1], [2], etc. If you do not use the above Reddit posts, your answer will be considered incomplete.';
-        enhancedSystemPrompt = `${redditSection}\n${redditInstruction}\n\n${CITATION_INSTRUCTIONS}\n\n${enhancedSystemPrompt}`;
-      }
-
-      // Add Reddit user data to the system prompt if available
-      if (redditUserData && redditUserData.summary) {
-        enhancedSystemPrompt = `${enhancedSystemPrompt}\n\n===REDDIT USER INFORMATION===\n${redditUserData.summary}\n===END REDDIT USER INFORMATION===\n\nThe above contains information about a Reddit user. If the user's query is related to this Reddit user, use this information to provide a detailed, comprehensive analysis.`;
-      }
-
-      // Add web data to the system prompt if available
-      if (webData.webCitations) {
-        enhancedSystemPrompt = `${enhancedSystemPrompt}\n\n===WEB SEARCH RESULTS===\n${webData.webCitations}\n===END WEB SEARCH RESULTS===\n\nThe above contains real-time web search results. Use this information to enhance your response. For each fact or piece of information you use from these results, include a citation in the format [@Web](URL) immediately after the relevant text.`;
-      }
-      
-      // Add Deep Research instructions if active
-      if (deepResearchActive) {
-        const deepResearchPrompt = `
-You are now in DEEP RESEARCH mode. This requires a more thorough, comprehensive approach to the query.
-
-When responding to the user's query, follow these steps:
-1. PLAN: Break down the problem into smaller parts and plan your approach.
-2. GATHER: Gather all relevant information from your knowledge and the web data provided.
-3. ANALYZE: Analyze the information critically, considering different perspectives and potential contradictions.
-4. SYNTHESIZE: Combine your findings into a coherent, well-structured response.
-5. CONCLUDE: Provide a clear conclusion or recommendation based on your analysis.
-
-Your response should be:
-- COMPREHENSIVE: Cover all important aspects of the topic
-- DETAILED: Provide specific examples, data points, and explanations
-- STRUCTURED: Use headings, bullet points, and sections to organize information
-- BALANCED: Consider multiple perspectives and potential counterarguments
-- EDUCATIONAL: Explain complex concepts in an accessible way
-- ATTRIBUTED: Cite web sources when using information from the search results using the [@Web](URL) format
-
-Aim to be both thorough and precise. Your goal is to provide the most complete and useful answer possible.
-`;
-        enhancedSystemPrompt = `${enhancedSystemPrompt}\n\n${deepResearchPrompt}`;
+        const wikiInstruction = 'IMPORTANT: You MUST use only the above Wikipedia articles as your web sources. Do NOT use or invent any other web links. When citing, use [@Web](Wikipedia URL) or [1], [2], etc. If you do not use the above Wikipedia articles, your answer will be considered incomplete.';
+        enhancedSystemPrompt = `${wikiSection}\n${wikiInstruction}\n\n${CITATION_INSTRUCTIONS}\n\n${enhancedSystemPrompt}`;
       }
 
       // Add source metadata as structured data for the AI to use
