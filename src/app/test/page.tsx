@@ -506,6 +506,13 @@ export default function TestChat() {
         }
       }
 
+      // After file upload logic and before prompt construction
+      let webData = {
+        redditPosts: null as any,
+        sources: [] as any[],
+        webCitations: '' as string
+      };
+
       // Build the image context system prompt for Nemotron
       let imageContextPrompt = "";
       if (imageContexts.length > 0) {
@@ -525,8 +532,23 @@ export default function TestChat() {
       }
       
       // Prepend citation instructions ONLY for Deep Research
-      if (deepResearchActive) {
-        enhancedSystemPrompt = `${CITATION_INSTRUCTIONS}\n\n${enhancedSystemPrompt}`;
+      if (deepResearchActive && webData) {
+        // Format Reddit posts for the prompt
+        let redditSection = '';
+        if (webData.redditPosts && webData.redditPosts.length > 0) {
+          redditSection += '===REDDIT SEARCH RESULTS===\n';
+          webData.redditPosts.forEach((post: any, i: number) => {
+            redditSection += `[${i + 1}] Title: "${post.title}" (${post.url})\n`;
+            if (post.content) {
+              const excerpt = post.content.length > 200 ? post.content.slice(0, 200) + '...' : post.content;
+              redditSection += `Excerpt: ${excerpt}\n`;
+            }
+          });
+          redditSection += '===END REDDIT SEARCH RESULTS===\n';
+        }
+        // Strong explicit instruction
+        const redditInstruction = 'IMPORTANT: You MUST use only the above Reddit posts as your web sources. Do NOT use or invent any other web links. When citing, use [@Web](Reddit URL) or [1], [2], etc. If you do not use the above Reddit posts, your answer will be considered incomplete.';
+        enhancedSystemPrompt = `${redditSection}\n${redditInstruction}\n\n${CITATION_INSTRUCTIONS}\n\n${enhancedSystemPrompt}`;
       }
       
       const systemPrompt = imageContextPrompt 
@@ -829,10 +851,25 @@ export default function TestChat() {
       }
       
       // Prepend citation instructions ONLY for Deep Research
-      if (deepResearchActive) {
-        enhancedSystemPrompt = `${CITATION_INSTRUCTIONS}\n\n${enhancedSystemPrompt}`;
+      if (deepResearchActive && webData) {
+        // Format Reddit posts for the prompt
+        let redditSection = '';
+        if (webData.redditPosts && webData.redditPosts.length > 0) {
+          redditSection += '===REDDIT SEARCH RESULTS===\n';
+          webData.redditPosts.forEach((post: any, i: number) => {
+            redditSection += `[${i + 1}] Title: "${post.title}" (${post.url})\n`;
+            if (post.content) {
+              const excerpt = post.content.length > 200 ? post.content.slice(0, 200) + '...' : post.content;
+              redditSection += `Excerpt: ${excerpt}\n`;
+            }
+          });
+          redditSection += '===END REDDIT SEARCH RESULTS===\n';
+        }
+        // Strong explicit instruction
+        const redditInstruction = 'IMPORTANT: You MUST use only the above Reddit posts as your web sources. Do NOT use or invent any other web links. When citing, use [@Web](Reddit URL) or [1], [2], etc. If you do not use the above Reddit posts, your answer will be considered incomplete.';
+        enhancedSystemPrompt = `${redditSection}\n${redditInstruction}\n\n${CITATION_INSTRUCTIONS}\n\n${enhancedSystemPrompt}`;
       }
-      
+
       // Add Reddit user data to the system prompt if available
       if (redditUserData && redditUserData.summary) {
         enhancedSystemPrompt = `${enhancedSystemPrompt}\n\n===REDDIT USER INFORMATION===\n${redditUserData.summary}\n===END REDDIT USER INFORMATION===\n\nThe above contains information about a Reddit user. If the user's query is related to this Reddit user, use this information to provide a detailed, comprehensive analysis.`;
@@ -888,7 +925,7 @@ Aim to be both thorough and precise. Your goal is to provide the most complete a
         ].filter(msg => msg.content || (msg as any).imageUrls), // Ensure content or imageUrls exists
         
         // Adjust parameters for more detailed responses
-        temperature: deepResearchActive ? 0.5 : 0.8, // Lower temperature for more focused, deterministic responses in Deep Research mode
+        temperature: deepResearchActive ? 0.2 : 0.8, // Lower temperature for more focused, deterministic responses in Deep Research mode
         max_tokens: deepResearchActive ? 15000 : 2048, // Much higher token limit for Deep Research mode
         top_p: deepResearchActive ? 0.85 : 0.95, // Slightly lower top_p for more focused responses in Deep Research mode
         frequency_penalty: 0.3,
