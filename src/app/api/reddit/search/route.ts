@@ -142,6 +142,25 @@ function formatAIPrompt(posts: any[]): string {
   return prompt;
 }
 
+// Add RedditPost type for strong typing
+
+type RedditPost = {
+  title: string;
+  author: string;
+  subreddit: string;
+  url: string;
+  score: number;
+  num_comments: number;
+  content: string;
+  created_utc: number;
+  is_self: boolean;
+  source: {
+    name: string;
+    url: string;
+    icon: string;
+  };
+};
+
 export const runtime = 'edge';
 
 export async function POST(req: NextRequest) {
@@ -161,7 +180,7 @@ export async function POST(req: NextRequest) {
       summary,
       webCitations,
       aiPrompt,
-      sources: posts.map(post => ({
+      sources: posts.map((post: RedditPost) => ({
         title: post.title,
         url: post.url,
         icon: '/icons/reddit-icon.svg',
