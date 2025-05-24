@@ -739,7 +739,7 @@ export default function TestChat() {
       {/* Fixed Input Bar at Bottom */}
       <div ref={inputBarRef} className="fixed left-0 right-0 bottom-0 w-full flex justify-center z-50" style={{ pointerEvents: 'auto' }}>
         <form
-          className="w-full max-w-5xl flex flex-col gap-2 rounded-2xl shadow-lg px-4 py-3 mx-4 mb-4"
+          className="w-full max-w-3xl flex flex-col gap-2 rounded-2xl shadow-lg px-3 py-2 mx-4 mb-3"
           style={{ background: '#232323', border: '2px solid rgba(255,255,255,0.18)', boxShadow: '0 4px 32px 0 rgba(0,0,0,0.32)' }}
           onSubmit={handleSend}
         >
@@ -751,11 +751,11 @@ export default function TestChat() {
                 ref={textareaRef}
                 value={input}
                 onChange={e => setInput(e.target.value)}
-                className="w-full border-none outline-none bg-transparent px-2 py-1.5 text-gray-200 text-sm placeholder-gray-500 resize-none overflow-auto self-center rounded-lg"
+                className="w-full border-none outline-none bg-transparent px-2 py-1 text-gray-200 text-sm placeholder-gray-500 resize-none overflow-auto self-center rounded-lg"
                 placeholder="Ask anything..."
                 disabled={loading}
                 rows={1}
-                style={{ maxHeight: '112px', minHeight: '56px', lineHeight: '1.5' }}
+                style={{ maxHeight: '96px', minHeight: '40px', lineHeight: '1.5' }}
               />
             </div>
             {/* Actions row */}
