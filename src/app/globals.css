@@ -253,15 +253,20 @@ body {
 .markdown-body table {
   border-collapse: collapse;
   margin: 1em 0;
-  width: 100%;
+  width: auto;
+  max-width: 600px;
+  font-size: 0.97rem;
+  margin-left: auto;
+  margin-right: auto;
 }
 .markdown-body th, .markdown-body td {
   border: 1px solid #e5e7eb;
-  padding: 0.5em 1em;
+  padding: 0.35em 0.7em;
   text-align: left;
+  font-size: 0.97rem;
 }
 .markdown-body th {
-  background: #f3f4f6;
+  background: transparent;
   font-weight: 700;
 }
 .markdown-body img {
