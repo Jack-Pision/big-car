@@ -680,7 +680,7 @@ export default function TestChat() {
           </h1>
         </div>
         {/* Conversation */}
-        <div className="w-full max-w-5xl mx-auto flex flex-col gap-4 items-center justify-center z-10 pt-12 pb-4">
+        <div className="w-full max-w-3xl mx-auto flex flex-col gap-4 items-center justify-center z-10 pt-12 pb-4">
           {messages.map((msg, i) => {
             if (msg.role === "assistant") {
               const { content, thinkingTime } = cleanAIResponse(msg.content);
