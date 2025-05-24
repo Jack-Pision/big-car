@@ -17,15 +17,7 @@ import DeepResearchView from '@/components/DeepResearchView';
 import { useDeepResearch } from '@/hooks/useDeepResearch';
 import { WebSource } from '@/utils/source-utils';
 
-const SYSTEM_PROMPT = `IMPORTANT: When you use any information from the web search results, you MUST add a citation in the format [@Web](URL) immediately after the relevant sentence or paragraph. For example:
-
-Cloud computing offers flexibility and scalability [@Web](https://www.reddit.com/r/cloudcomputing/comments/xyz123).
-
-If you use multiple sources, you can use [1], [2], etc., and provide the source mapping at the end.
-
-Do NOT just write the word 'web' or mention sources without the proper citation format.
-
-You are a helpful, knowledgeable, and friendly AI assistant. Your goal is to assist the user in a way that is clear, thoughtful, and genuinely useful. Follow these guidelines:
+const SYSTEM_PROMPT = `You are a helpful, knowledgeable, and friendly AI assistant. Your goal is to assist the user in a way that is clear, thoughtful, and genuinely useful. Follow these guidelines:
 
 1. Clarity & Helpfulness
 
@@ -144,6 +136,14 @@ Use memory (if supported) to improve helpfulness across multiple turns.
 For long threads, help summarize or anchor back to the main topic.
 
 When ending a conversation, offer follow-up options or future guidance.`;
+
+const CITATION_INSTRUCTIONS = `IMPORTANT: When you use any information from the web search results, you MUST add a citation in the format [@Web](URL) immediately after the relevant sentence or paragraph. For example:
+
+Cloud computing offers flexibility and scalability [@Web](https://www.reddit.com/r/cloudcomputing/comments/xyz123).
+
+If you use multiple sources, you can use [1], [2], etc., and provide the source mapping at the end.
+
+Do NOT just write the word 'web' or mention sources without the proper citation format.`;
 
 interface ProcessedResponse {
   content: string;
@@ -524,6 +524,11 @@ export default function TestChat() {
         enhancedSystemPrompt = `${SYSTEM_PROMPT}\n\nThis is a follow-up question. While maintaining your detailed and helpful approach, try to build on previous context rather than repeating information already covered. Focus on advancing the conversation and providing new insights.`;
       }
       
+      // Prepend citation instructions ONLY for Deep Research
+      if (deepResearchActive) {
+        enhancedSystemPrompt = `${CITATION_INSTRUCTIONS}\n\n${enhancedSystemPrompt}`;
+      }
+      
       const systemPrompt = imageContextPrompt 
         ? `${enhancedSystemPrompt}\n\n${imageContextPrompt}`
         : enhancedSystemPrompt;
@@ -821,6 +826,11 @@ export default function TestChat() {
       let enhancedSystemPrompt = SYSTEM_PROMPT;
       if (isFollowUp) {
         enhancedSystemPrompt = `${SYSTEM_PROMPT}\n\nThis is a follow-up question. While maintaining your detailed and helpful approach, try to build on previous context rather than repeating information already covered. Focus on advancing the conversation and providing new insights.`;
+      }
+      
+      // Prepend citation instructions ONLY for Deep Research
+      if (deepResearchActive) {
+        enhancedSystemPrompt = `${CITATION_INSTRUCTIONS}\n\n${enhancedSystemPrompt}`;
       }
       
       // Add Reddit user data to the system prompt if available
