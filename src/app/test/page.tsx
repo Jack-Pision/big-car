@@ -299,7 +299,7 @@ interface ImageContext {
 export default function TestChat() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [messages, setMessages] = useState<{ role: "user" | "assistant"; content: string; imageUrls?: string[] }[]>([]);
+  const [messages, setMessages] = useState<{ role: "user" | "assistant" | "deep-research"; content: string; imageUrls?: string[] }[]>([]);
   const [showHeading, setShowHeading] = useState(true);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const inputBarRef = useRef<HTMLDivElement>(null);
@@ -370,10 +370,10 @@ export default function TestChat() {
     }
   }, [messages]);
 
-  // Update the useEffect to hide the Deep Research view when research completes
+  // Hide the Deep Research view when research completes and AI responds
   useEffect(() => {
     if (deepResearchComplete && !isAiResponding) {
-      // Hide the Deep Research view when both research is complete and AI has responded
+      // Only hide the research view when both research is complete and AI has responded
       setShowDeepResearchView(false);
     }
   }, [deepResearchComplete, isAiResponding]);
@@ -388,11 +388,48 @@ export default function TestChat() {
     // Store the current query for Deep Research
     setCurrentQuery(currentInput);
     
-    // If Deep Research is active, show the view
+    // If Deep Research is active, show the view inline in the chat
     if (deepResearchActive) {
       setShowDeepResearchView(true);
+      
+      // Add a special message for Deep Research view
+      setMessages(prev => [
+        ...prev,
+        { 
+          role: "user", 
+          content: currentInput 
+        },
+        { 
+          role: "deep-research" as any, 
+          content: "deep-research-view" 
+        }
+      ]);
+    } else {
+      // Normal user message for regular chat flow
+      setMessages(prev => [
+        ...prev,
+        { 
+          role: "user", 
+          content: currentInput 
+        }
+      ]);
     }
 
+    setInput("");
+    setImagePreviewUrls([]);
+    setSelectedFilesForUpload([]);
+
+    // If Deep Research is active, wait until it completes before sending to AI
+    if (deepResearchActive) {
+      setLoading(true);
+      if (showHeading) setShowHeading(false);
+      
+      // We'll let the deep research process continue
+      // The API call to the AI will happen after deepResearchComplete becomes true
+      return;
+    }
+
+    // This is the existing AI request code which we'll now only run when deep research is not active
     setIsAiResponding(true);
     setLoading(true);
     if (showHeading) setShowHeading(false);
@@ -418,10 +455,6 @@ export default function TestChat() {
       userMessageForDisplay.imageUrls = imagePreviewUrls || undefined; 
     }
     setMessages((prev) => [...prev, userMessageForDisplay]);
-
-    setInput("");
-    setImagePreviewUrls([]);
-    setSelectedFilesForUpload([]);
 
     try {
       if (currentSelectedFiles.length > 0) {
@@ -641,6 +674,241 @@ export default function TestChat() {
     }
   }
 
+  // When deep research completes, automatically start the AI request
+  useEffect(() => {
+    if (deepResearchComplete && deepResearchActive && !isAiResponding && currentQuery) {
+      // Now send the request to the AI
+      sendAIRequest(currentQuery);
+    }
+  }, [deepResearchComplete, deepResearchActive, isAiResponding]);
+
+  // Separate the AI request part from handleSend to make it reusable
+  async function sendAIRequest(userMessage: string) {
+    setIsAiResponding(true);
+    
+    // Create a new abort controller for this AI response
+    aiStreamAbortController.current = new AbortController();
+
+    let uploadedImageUrls: string[] = [];
+    
+    try {
+      if (selectedFilesForUpload.length > 0) {
+        const clientSideSupabase = createSupabaseClient();
+        if (!clientSideSupabase) throw new Error('Supabase client not available');
+        
+        // Upload each file individually and collect their public URLs
+        uploadedImageUrls = await Promise.all(
+          selectedFilesForUpload.map(async (file) => {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Math.random()}.${fileExt}`;
+            const filePath = `${fileName}`;
+            const { error: uploadError } = await clientSideSupabase.storage
+              .from('images2')
+              .upload(filePath, file);
+            if (uploadError) {
+              console.error('Supabase upload error for file:', file.name, uploadError);
+              throw new Error(`Failed to upload ${file.name}: ${uploadError.message}`);
+            }
+            const { data: urlData } = clientSideSupabase.storage
+              .from('images2')
+              .getPublicUrl(filePath);
+            if (!urlData.publicUrl) {
+              console.error('Failed to get public URL for file:', file.name);
+              throw new Error(`Failed to get public URL for ${file.name}`);
+            }
+            return urlData.publicUrl;
+          })
+        );
+
+        if (uploadedImageUrls.length === 0 && selectedFilesForUpload.length > 0) {
+          throw new Error('Failed to get public URLs for any of the uploaded images.');
+        }
+      }
+
+      // Build the image context system prompt for Nemotron
+      let imageContextPrompt = "";
+      if (imageContexts.length > 0) {
+        // Build a system prompt with all image contexts
+        imageContextPrompt = imageContexts
+          .map(ctx => `Image ${ctx.order}: "${ctx.description}"`)
+          .join('\n');
+      }
+
+      // Check if this is a follow-up question (not the first message)
+      const isFollowUp = messages.filter(m => m.role === 'user').length > 0;
+      
+      // Add follow-up instruction to system prompt if needed
+      let enhancedSystemPrompt = SYSTEM_PROMPT;
+      if (isFollowUp) {
+        enhancedSystemPrompt = `${SYSTEM_PROMPT}\n\nThis is a follow-up question. While maintaining your detailed and helpful approach, try to build on previous context rather than repeating information already covered. Focus on advancing the conversation and providing new insights.`;
+      }
+      
+      const systemPrompt = imageContextPrompt 
+        ? `${enhancedSystemPrompt}\n\n${imageContextPrompt}`
+        : enhancedSystemPrompt;
+
+      const apiPayload: any = {
+        messages: [
+          { role: "system", content: systemPrompt },
+          // Filter out previous assistant messages before sending, keep user messages
+          ...messages.filter(m => m.role === 'user'), 
+          // Add the current user message (text part)
+          { role: "user", content: userMessage }
+        ].filter(msg => msg.content || (msg as any).imageUrls), // Ensure content or imageUrls exists
+        
+        // Adjust parameters for more detailed responses
+        temperature: 0.8,
+        max_tokens: 2048,
+        top_p: 0.95,
+        frequency_penalty: 0.3,  // Lower to allow more detailed explanations
+        presence_penalty: 0.3,   // Lower to allow more detailed explanations
+      };
+
+      // For Gemma's context, send the previous image descriptions
+      if (uploadedImageUrls.length > 0) {
+        // Extract descriptions only for Gemma
+        const previousImageDescriptions = imageContexts.map(ctx => ctx.description);
+        
+        apiPayload.imageUrls = uploadedImageUrls;
+        apiPayload.previousImageDescriptions = previousImageDescriptions;
+        
+        // If there was no text input but images, we construct a default prompt for the API
+        if (!userMessage) {
+          apiPayload.messages[apiPayload.messages.length -1].content = "Describe these images.";
+        }
+      }
+      
+      const res = await fetch("/api/nvidia", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(apiPayload),
+        signal: aiStreamAbortController.current.signal,
+      });
+
+      if (res.body && res.headers.get('content-type')?.includes('text/event-stream')) {
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let done = false;
+        let aiMsg = { 
+        role: "assistant" as const,
+          content: "", 
+          imageUrls: uploadedImageUrls // Associate assistant response with the uploaded images
+      };
+      setMessages((prev) => [...prev, aiMsg]);
+
+        while (!done) {
+          const { value, done: doneReading } = await reader.read();
+          done = doneReading;
+          if (value) {
+            buffer += decoder.decode(value, { stream: true });
+            let lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+            for (let line of lines) {
+              if (line.startsWith('data:')) {
+                const data = line.replace('data:', '').trim();
+                if (data === '[DONE]') continue;
+                try {
+                  const parsed = JSON.parse(data);
+                  const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.message?.content || parsed.choices?.[0]?.text || parsed.content || '';
+                  if (delta) {
+                    aiMsg.content += delta;
+                    setMessages((prev) => {
+                      const updatedMessages = [...prev];
+                      const lastMsgIndex = updatedMessages.length - 1;
+                      if(updatedMessages[lastMsgIndex] && updatedMessages[lastMsgIndex].role === 'assistant'){
+                        updatedMessages[lastMsgIndex] = { ...updatedMessages[lastMsgIndex], content: aiMsg.content };
+                      }
+                      return updatedMessages;
+                    });
+                  }
+                } catch (err) {
+                  // console.error("Error parsing stream data:", err, "Data:", data);
+                }
+              }
+            }
+          }
+        }
+        
+        // If this was an image request, store the image description for future context
+        if (uploadedImageUrls.length > 0) {
+          const { content } = cleanAIResponse(aiMsg.content);
+          // Store a summary (first 150 chars) of the image description for context
+          const descriptionSummary = content.slice(0, 150) + (content.length > 150 ? '...' : '');
+          
+          // Increment the image counter for each new image
+          const newImageCount = imageCounter + uploadedImageUrls.length;
+          setImageCounter(newImageCount);
+          
+          // Create new image context entries for each uploaded image
+          const newImageContexts = uploadedImageUrls.map((url, index) => ({
+            order: imageCounter + index + 1, // 1-based numbering
+            description: descriptionSummary,
+            imageUrl: url,
+            timestamp: Date.now()
+          }));
+          
+          // Add to existing image contexts, keeping a maximum of 10 for memory management
+          setImageContexts(prev => {
+            const updated = [...prev, ...newImageContexts];
+            return updated.slice(-10); // Keep the 10 most recent image contexts
+          });
+        }
+        
+      } else {
+        const data = await res.json();
+        const assistantResponseContent = cleanAIResponse(data.choices?.[0]?.message?.content || data.generated_text || data.error || JSON.stringify(data) || "No response");
+        const aiMsg = {
+          role: "assistant" as const,
+          content: assistantResponseContent.content,
+          imageUrls: uploadedImageUrls // Associate assistant response with the uploaded images
+        };
+        setMessages((prev) => [...prev, aiMsg]);
+        
+        // If this was an image request, store the image description for future context
+        if (uploadedImageUrls.length > 0) {
+          // Store a summary (first 150 chars) of the image description for context
+          const descriptionSummary = assistantResponseContent.content.slice(0, 150) + 
+            (assistantResponseContent.content.length > 150 ? '...' : '');
+            
+          // Increment the image counter for each new image
+          const newImageCount = imageCounter + uploadedImageUrls.length;
+          setImageCounter(newImageCount);
+          
+          // Create new image context entries for each uploaded image
+          const newImageContexts = uploadedImageUrls.map((url, index) => ({
+            order: imageCounter + index + 1, // 1-based numbering
+            description: descriptionSummary,
+            imageUrl: url,
+            timestamp: Date.now()
+          }));
+          
+          // Add to existing image contexts, keeping a maximum of 10 for memory management
+          setImageContexts(prev => {
+            const updated = [...prev, ...newImageContexts];
+            return updated.slice(-10); // Keep the 10 most recent image contexts
+          });
+        }
+      }
+      } catch (err: any) {
+      if (err.name === 'AbortError') {
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant" as const, content: "[Response stopped by user]", imageUrls: uploadedImageUrls },
+        ]);
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant" as const, content: "Error: " + (err?.message || String(err)), imageUrls: uploadedImageUrls },
+        ]);
+      }
+    } finally {
+      setIsAiResponding(false);
+      setLoading(false);
+      aiStreamAbortController.current = null;
+    }
+  }
+
   function handleStopAIResponse() {
     if (aiStreamAbortController.current) {
       aiStreamAbortController.current.abort();
@@ -694,19 +962,6 @@ export default function TestChat() {
         onNavigateBoard={() => router.push('/board')}
       />
       
-      {/* Deep Research View (conditionally shown) */}
-      {showDeepResearchView && (
-        <div className="fixed inset-0 z-40 bg-neutral-900 bg-opacity-90">
-          <div className="w-full h-full max-w-6xl mx-auto my-8 bg-neutral-900 rounded-xl border border-neutral-800 shadow-2xl overflow-hidden">
-            <DeepResearchView 
-              steps={steps}
-              activeStepId={activeStepId}
-              detailedThinking={detailedThinking}
-            />
-          </div>
-        </div>
-      )}
-      
       {/* Conversation area (scrollable) */}
       <div
         ref={scrollRef}
@@ -750,11 +1005,95 @@ export default function TestChat() {
                           <TextReveal 
                             text={cleanContent}
                             markdownComponents={markdownComponents}
-                  />
-                </div>
+                          />
+                        </div>
                       )}
                     </>
                   )}
+                </motion.div>
+              );
+            } else if (msg.role === "deep-research") {
+              // Deep Research view embedded in chat
+              return (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, ease: "easeOut" }}
+                  className="w-full rounded-xl border border-neutral-800 overflow-hidden mb-2 mt-2 bg-neutral-900"
+                  style={{ minHeight: "300px", maxHeight: "500px" }}
+                >
+                  <div className="h-full grid grid-cols-[240px_1fr]">
+                    {/* Left sidebar with step list */}
+                    <div className="border-r border-neutral-800 p-3 flex flex-col h-full">
+                      <div className="mb-3 px-3 py-1">
+                        <div className="flex items-center gap-2 text-neutral-400">
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="12" r="1" fill="currentColor"/>
+                            <ellipse cx="12" cy="12" rx="9" ry="3.5" />
+                            <ellipse cx="12" cy="12" rx="3.5" ry="9" transform="rotate(60 12 12)" />
+                            <ellipse cx="12" cy="12" rx="3.5" ry="9" transform="rotate(-60 12 12)" />
+                          </svg>
+                          <span className="text-sm font-medium">DeepSearch</span>
+                        </div>
+                      </div>
+                      
+                      {/* Steps list */}
+                      <div className="flex flex-col gap-2 overflow-y-auto">
+                        {steps.map((step) => (
+                          <div key={step.id} className="flex items-start gap-2 px-3 py-1.5">
+                            <div className="mt-0.5 flex-shrink-0">
+                              {step.status === 'completed' ? (
+                                <div className="w-5 h-5 rounded-full bg-neutral-800 flex items-center justify-center text-cyan-400">
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <polyline points="20 6 9 17 4 12" />
+                                  </svg>
+                                </div>
+                              ) : step.status === 'active' ? (
+                                <div className="w-5 h-5 rounded-full border-2 border-cyan-400 flex items-center justify-center animate-pulse">
+                                  <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full"></div>
+                                </div>
+                              ) : (
+                                <div className="w-5 h-5 rounded-full border border-neutral-700 flex items-center justify-center">
+                                </div>
+                              )}
+                            </div>
+                            <div className={`text-xs ${
+                              step.status === 'completed' ? 'text-neutral-200' : 
+                              step.status === 'active' ? 'text-cyan-400' : 'text-neutral-500'
+                            }`}>
+                              {step.title}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    {/* Right content area with detailed thinking */}
+                    <div className="p-4 overflow-y-auto">
+                      <h2 className="text-lg text-neutral-200 mb-3">Thinking</h2>
+                      
+                      {activeStepId ? (
+                        <motion.div
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ duration: 0.3 }}
+                          className="text-neutral-300 text-sm leading-relaxed"
+                        >
+                          {detailedThinking || (
+                            <div className="flex items-center gap-2 text-neutral-500">
+                              <div className="w-2.5 h-2.5 bg-neutral-700 rounded-full animate-pulse"></div>
+                              <span>Thinking...</span>
+                            </div>
+                          )}
+                        </motion.div>
+                      ) : (
+                        <div className="text-neutral-500 text-sm">
+                          Waiting to start...
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </motion.div>
               );
             } else { // User message
@@ -779,6 +1118,7 @@ export default function TestChat() {
           })}
         </div>
       </div>
+
       {/* Fixed Input Bar at Bottom */}
       <div ref={inputBarRef} className="fixed left-0 right-0 bottom-0 w-full flex justify-center z-50" style={{ pointerEvents: 'auto' }}>
         <form
@@ -790,14 +1130,14 @@ export default function TestChat() {
           <div className="flex flex-col w-full gap-2">
             {/* Textarea row */}
             <div className="w-full">
-          <textarea
-            ref={textareaRef}
-            value={input}
-            onChange={e => setInput(e.target.value)}
+              <textarea
+                ref={textareaRef}
+                value={input}
+                onChange={e => setInput(e.target.value)}
                 className="w-full border-none outline-none bg-transparent px-2 py-1 text-gray-200 text-sm placeholder-gray-500 resize-none overflow-auto self-center rounded-lg"
                 placeholder="Ask anything..."
-            disabled={loading}
-            rows={1}
+                disabled={loading}
+                rows={1}
                 style={{ maxHeight: '96px', minHeight: '40px', lineHeight: '1.5' }}
               />
             </div>
@@ -830,9 +1170,9 @@ export default function TestChat() {
                     <ellipse cx="12" cy="12" rx="9" ry="3.5" />
                     <ellipse cx="12" cy="12" rx="3.5" ry="9" transform="rotate(60 12 12)" />
                     <ellipse cx="12" cy="12" rx="3.5" ry="9" transform="rotate(-60 12 12)" />
-              </svg>
+                  </svg>
                   <span className="whitespace-nowrap text-xs font-medium">Deep Research</span>
-            </button>
+                </button>
               </div>
               {/* Right group: Plus, Send */}
               <div className="flex flex-row gap-2 items-center">
@@ -844,12 +1184,12 @@ export default function TestChat() {
                   onClick={handleFirstPlusClick}
                 >
                   <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-            </button>
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                </button>
                 {/* Send/Stop button */}
-            <button
+                <button
                   type={isAiResponding ? "button" : "submit"}
                   className="rounded-full bg-gray-200 hover:bg-white transition flex items-center justify-center flex-shrink-0"
                   style={{ width: "36px", height: "36px", pointerEvents: loading && !isAiResponding ? 'none' : 'auto' }}
@@ -866,9 +1206,9 @@ export default function TestChat() {
                     // Up arrow icon
                     <svg width="16" height="16" fill="none" stroke="#374151" strokeWidth="2.5" viewBox="0 0 24 24">
                       <path d="M12 19V5M5 12l7-7 7 7" />
-              </svg>
+                    </svg>
                   )}
-            </button>
+                </button>
               </div>
             </div>
           </div>
