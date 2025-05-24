@@ -726,9 +726,7 @@ export default function TestChat() {
       }
 
       // Check if the query is about a Reddit user
-      let redditData: any = null;
-      
-      // First check if it's a username query
+      let redditUserData = null;
       const redditUsernameRegex = /(?:^|\s)(?:u\/|\/u\/|user\/|reddit\.com\/(?:u|user)\/|about\s+)([a-zA-Z0-9_-]{3,20})(?:\s|$)/i;
       const redditMatch = userMessage.match(redditUsernameRegex);
       
@@ -736,7 +734,7 @@ export default function TestChat() {
         try {
           console.log(`Detected Reddit username: ${redditMatch[1]}`);
           // Call our Reddit API to get user data
-          const redditResponse = await fetch('/api/reddit/user', {
+          const redditResponse = await fetch('/api/reddit', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ query: redditMatch[1] }),
@@ -744,33 +742,11 @@ export default function TestChat() {
           });
           
           if (redditResponse.ok) {
-            redditData = await redditResponse.json();
-            console.log("Retrieved Reddit user data:", redditData.username);
+            redditUserData = await redditResponse.json();
+            console.log("Retrieved Reddit user data:", redditUserData.username);
           }
         } catch (error) {
-          console.error("Error fetching Reddit user data:", error);
-          // Continue with normal processing if Reddit API fails
-        }
-      } 
-      // If it's not a username query and we're in Deep Research mode, 
-      // search Reddit for topic-related content
-      else if (deepResearchActive) {
-        try {
-          console.log(`Searching Reddit for topic: ${userMessage}`);
-          // Call our Reddit API to search for the topic
-          const redditResponse = await fetch('/api/reddit/search', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ query: userMessage, limit: 10 }),
-            signal: aiStreamAbortController.current.signal,
-          });
-          
-          if (redditResponse.ok) {
-            redditData = await redditResponse.json();
-            console.log("Retrieved Reddit topic data for:", redditData.query);
-          }
-        } catch (error) {
-          console.error("Error searching Reddit:", error);
+          console.error("Error fetching Reddit data:", error);
           // Continue with normal processing if Reddit API fails
         }
       }
@@ -793,15 +769,9 @@ export default function TestChat() {
         enhancedSystemPrompt = `${SYSTEM_PROMPT}\n\nThis is a follow-up question. While maintaining your detailed and helpful approach, try to build on previous context rather than repeating information already covered. Focus on advancing the conversation and providing new insights.`;
       }
       
-      // Add Reddit data to the system prompt if available
-      if (redditData && redditData.summary) {
-        if (redditData.username) {
-          // It's user data
-          enhancedSystemPrompt = `${enhancedSystemPrompt}\n\n===REDDIT USER INFORMATION===\n${redditData.summary}\n===END REDDIT USER INFORMATION===\n\nThe above contains information about a Reddit user. If the user's query is related to this Reddit user, use this information to provide a detailed, comprehensive analysis.`;
-        } else {
-          // It's topic search data
-          enhancedSystemPrompt = `${enhancedSystemPrompt}\n\n===REDDIT DISCUSSIONS===\n${redditData.summary}\n===END REDDIT DISCUSSIONS===\n\nThe above contains recent discussions from Reddit related to the user's query. Use these real-world perspectives to enhance your response with current information and diverse viewpoints.`;
-        }
+      // Add Reddit user data to the system prompt if available
+      if (redditUserData && redditUserData.summary) {
+        enhancedSystemPrompt = `${enhancedSystemPrompt}\n\n===REDDIT USER INFORMATION===\n${redditUserData.summary}\n===END REDDIT USER INFORMATION===\n\nThe above contains information about a Reddit user. If the user's query is related to this Reddit user, use this information to provide a detailed, comprehensive analysis.`;
       }
       
       // Add Deep Research instructions if active
