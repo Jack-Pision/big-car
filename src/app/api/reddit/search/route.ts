@@ -29,7 +29,7 @@ async function getAccessToken(): Promise<string> {
   return cachedToken.token;
 }
 
-async function searchRedditPosts(query: string, limit: number = 5) {
+async function searchRedditPosts(query: string, limit: number = 20) {
   const token = await getAccessToken();
   const response = await axios({
     method: 'get',
@@ -42,11 +42,12 @@ async function searchRedditPosts(query: string, limit: number = 5) {
       q: query,
       limit: limit,
       sort: 'relevance',
-      t: 'year'
+      t: 'all',
+      type: 'link'
     }
   });
-  // Filter for only valid, public, non-deleted Reddit posts
-  return response.data.data.children
+  // Filter for only valid, public, non-deleted, high-quality Reddit posts
+  const filtered = response.data.data.children
     .map((child: any) => child.data)
     .filter((post: any) =>
       !post.removed_by_category &&
@@ -55,24 +56,30 @@ async function searchRedditPosts(query: string, limit: number = 5) {
       post.author !== '[removed]' &&
       post.permalink &&
       post.title &&
-      (!post.is_self || (post.selftext && post.selftext.length > 10))
-    )
-    .map((post: any) => ({
-      title: post.title,
-      author: post.author,
-      subreddit: post.subreddit_name_prefixed,
+      (!post.is_self || (post.selftext && post.selftext.length > 10)) &&
+      post.score >= 5 &&
+      post.num_comments >= 2 &&
+      !post.over_18
+    );
+  if (filtered.length === 0) {
+    return [];
+  }
+  return filtered.map((post: any) => ({
+    title: post.title,
+    author: post.author,
+    subreddit: post.subreddit_name_prefixed,
+    url: `https://www.reddit.com${post.permalink}`,
+    score: post.score,
+    num_comments: post.num_comments,
+    content: post.selftext || post.url,
+    created_utc: post.created_utc,
+    is_self: post.is_self,
+    source: {
+      name: post.subreddit_name_prefixed,
       url: `https://www.reddit.com${post.permalink}`,
-      score: post.score,
-      num_comments: post.num_comments,
-      content: post.selftext || post.url,
-      created_utc: post.created_utc,
-      is_self: post.is_self,
-      source: {
-        name: post.subreddit_name_prefixed,
-        url: `https://www.reddit.com${post.permalink}`,
-        icon: '/icons/reddit-icon.svg'
-      }
-    }));
+      icon: '/icons/reddit-icon.svg'
+    }
+  }));
 }
 
 /**
@@ -179,7 +186,19 @@ export async function POST(req: NextRequest) {
     if (!query) {
       return new Response(JSON.stringify({ error: 'No query provided' }), { status: 400 });
     }
-    const posts = await searchRedditPosts(query, limit || 8);
+    const posts = await searchRedditPosts(query, limit || 20);
+    if (!posts.length) {
+      return new Response(JSON.stringify({
+        posts: [],
+        summary: 'No relevant Reddit posts found.',
+        webCitations: 'No relevant Reddit posts found.',
+        aiPrompt: 'No relevant Reddit posts found.',
+        sources: []
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
     const summary = formatRedditSummary(posts);
     const webCitations = formatWebCitations(posts);
     const aiPrompt = formatAIPrompt(posts);
