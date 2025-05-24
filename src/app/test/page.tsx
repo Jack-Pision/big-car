@@ -655,17 +655,17 @@ export default function TestChat() {
           });
         }
       }
-      } catch (err: any) {
+    } catch (err: any) {
       if (err.name === 'AbortError') {
         setMessages((prev) => [
           ...prev,
           { role: "assistant" as const, content: "[Response stopped by user]", imageUrls: uploadedImageUrls },
         ]);
       } else {
-        setMessages((prev) => [
-          ...prev,
+      setMessages((prev) => [
+        ...prev,
           { role: "assistant" as const, content: "Error: " + (err?.message || String(err)), imageUrls: uploadedImageUrls },
-        ]);
+      ]);
       }
     } finally {
       setIsAiResponding(false);
@@ -699,9 +699,9 @@ export default function TestChat() {
         // Upload each file individually and collect their public URLs
         uploadedImageUrls = await Promise.all(
           selectedFilesForUpload.map(async (file) => {
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${Math.random()}.${fileExt}`;
-            const filePath = `${fileName}`;
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Math.random()}.${fileExt}`;
+        const filePath = `${fileName}`;
             const { error: uploadError } = await clientSideSupabase.storage
               .from('images2')
               .upload(filePath, file);
@@ -726,7 +726,9 @@ export default function TestChat() {
       }
 
       // Check if the query is about a Reddit user
-      let redditUserData = null;
+      let redditData: any = null;
+      
+      // First check if it's a username query
       const redditUsernameRegex = /(?:^|\s)(?:u\/|\/u\/|user\/|reddit\.com\/(?:u|user)\/|about\s+)([a-zA-Z0-9_-]{3,20})(?:\s|$)/i;
       const redditMatch = userMessage.match(redditUsernameRegex);
       
@@ -734,7 +736,7 @@ export default function TestChat() {
         try {
           console.log(`Detected Reddit username: ${redditMatch[1]}`);
           // Call our Reddit API to get user data
-          const redditResponse = await fetch('/api/reddit', {
+          const redditResponse = await fetch('/api/reddit/user', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ query: redditMatch[1] }),
@@ -742,11 +744,33 @@ export default function TestChat() {
           });
           
           if (redditResponse.ok) {
-            redditUserData = await redditResponse.json();
-            console.log("Retrieved Reddit user data:", redditUserData.username);
+            redditData = await redditResponse.json();
+            console.log("Retrieved Reddit user data:", redditData.username);
           }
         } catch (error) {
-          console.error("Error fetching Reddit data:", error);
+          console.error("Error fetching Reddit user data:", error);
+          // Continue with normal processing if Reddit API fails
+        }
+      } 
+      // If it's not a username query and we're in Deep Research mode, 
+      // search Reddit for topic-related content
+      else if (deepResearchActive) {
+        try {
+          console.log(`Searching Reddit for topic: ${userMessage}`);
+          // Call our Reddit API to search for the topic
+          const redditResponse = await fetch('/api/reddit/search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: userMessage, limit: 10 }),
+            signal: aiStreamAbortController.current.signal,
+          });
+          
+          if (redditResponse.ok) {
+            redditData = await redditResponse.json();
+            console.log("Retrieved Reddit topic data for:", redditData.query);
+          }
+        } catch (error) {
+          console.error("Error searching Reddit:", error);
           // Continue with normal processing if Reddit API fails
         }
       }
@@ -769,9 +793,15 @@ export default function TestChat() {
         enhancedSystemPrompt = `${SYSTEM_PROMPT}\n\nThis is a follow-up question. While maintaining your detailed and helpful approach, try to build on previous context rather than repeating information already covered. Focus on advancing the conversation and providing new insights.`;
       }
       
-      // Add Reddit user data to the system prompt if available
-      if (redditUserData && redditUserData.summary) {
-        enhancedSystemPrompt = `${enhancedSystemPrompt}\n\n===REDDIT USER INFORMATION===\n${redditUserData.summary}\n===END REDDIT USER INFORMATION===\n\nThe above contains information about a Reddit user. If the user's query is related to this Reddit user, use this information to provide a detailed, comprehensive analysis.`;
+      // Add Reddit data to the system prompt if available
+      if (redditData && redditData.summary) {
+        if (redditData.username) {
+          // It's user data
+          enhancedSystemPrompt = `${enhancedSystemPrompt}\n\n===REDDIT USER INFORMATION===\n${redditData.summary}\n===END REDDIT USER INFORMATION===\n\nThe above contains information about a Reddit user. If the user's query is related to this Reddit user, use this information to provide a detailed, comprehensive analysis.`;
+        } else {
+          // It's topic search data
+          enhancedSystemPrompt = `${enhancedSystemPrompt}\n\n===REDDIT DISCUSSIONS===\n${redditData.summary}\n===END REDDIT DISCUSSIONS===\n\nThe above contains recent discussions from Reddit related to the user's query. Use these real-world perspectives to enhance your response with current information and diverse viewpoints.`;
+        }
       }
       
       // Add Deep Research instructions if active
@@ -1041,7 +1071,7 @@ Aim to be both thorough and precise. Your goal is to provide the most complete a
               const isStoppedMsg = cleanContent.trim() === '[Response stopped by user]';
               return (
                 <motion.div
-                  key={i}
+                key={i}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, ease: "easeOut" }}
@@ -1061,7 +1091,7 @@ Aim to be both thorough and precise. Your goal is to provide the most complete a
                             text={cleanContent}
                             markdownComponents={markdownComponents}
                           />
-                        </div>
+              </div>
                       )}
                     </>
                   )}
@@ -1107,8 +1137,8 @@ Aim to be both thorough and precise. Your goal is to provide the most complete a
                               ) : step.status === 'active' ? (
                                 <div className="w-5 h-5 rounded-full border-2 border-cyan-400 flex items-center justify-center animate-pulse">
                                   <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full"></div>
-                                </div>
-                              ) : (
+                </div>
+              ) : (
                                 <div className="w-5 h-5 rounded-full border border-neutral-700 flex items-center justify-center">
                                 </div>
                               )}
@@ -1185,14 +1215,14 @@ Aim to be both thorough and precise. Your goal is to provide the most complete a
           <div className="flex flex-col w-full gap-2">
             {/* Textarea row */}
             <div className="w-full">
-              <textarea
-                ref={textareaRef}
-                value={input}
-                onChange={e => setInput(e.target.value)}
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={e => setInput(e.target.value)}
                 className="w-full border-none outline-none bg-transparent px-2 py-1 text-gray-200 text-sm placeholder-gray-500 resize-none overflow-auto self-center rounded-lg"
                 placeholder="Ask anything..."
-                disabled={loading}
-                rows={1}
+            disabled={loading}
+            rows={1}
                 style={{ maxHeight: '96px', minHeight: '40px', lineHeight: '1.5' }}
               />
             </div>
@@ -1225,9 +1255,9 @@ Aim to be both thorough and precise. Your goal is to provide the most complete a
                     <ellipse cx="12" cy="12" rx="9" ry="3.5" />
                     <ellipse cx="12" cy="12" rx="3.5" ry="9" transform="rotate(60 12 12)" />
                     <ellipse cx="12" cy="12" rx="3.5" ry="9" transform="rotate(-60 12 12)" />
-                  </svg>
+              </svg>
                   <span className="whitespace-nowrap text-xs font-medium">Deep Research</span>
-                </button>
+            </button>
               </div>
               {/* Right group: Plus, Send */}
               <div className="flex flex-row gap-2 items-center">
@@ -1239,12 +1269,12 @@ Aim to be both thorough and precise. Your goal is to provide the most complete a
                   onClick={handleFirstPlusClick}
                 >
                   <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                    <line x1="12" y1="5" x2="12" y2="19" />
-                    <line x1="5" y1="12" x2="19" y2="12" />
-                  </svg>
-                </button>
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+            </button>
                 {/* Send/Stop button */}
-                <button
+            <button
                   type={isAiResponding ? "button" : "submit"}
                   className="rounded-full bg-gray-200 hover:bg-white transition flex items-center justify-center flex-shrink-0"
                   style={{ width: "36px", height: "36px", pointerEvents: loading && !isAiResponding ? 'none' : 'auto' }}
@@ -1261,9 +1291,9 @@ Aim to be both thorough and precise. Your goal is to provide the most complete a
                     // Up arrow icon
                     <svg width="16" height="16" fill="none" stroke="#374151" strokeWidth="2.5" viewBox="0 0 24 24">
                       <path d="M12 19V5M5 12l7-7 7 7" />
-                    </svg>
+              </svg>
                   )}
-                </button>
+            </button>
               </div>
             </div>
           </div>

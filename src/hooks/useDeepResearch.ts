@@ -6,56 +6,63 @@ import { extractRedditUsername } from '@/utils/reddit-api';
 const DEFAULT_THINKING_STEPS: ThinkingStep[] = [
   {
     id: 'clarify',
-    title: 'Clarifying the request',
+    title: 'Clarifying the Question',
     content: '',
     status: 'pending'
   },
   {
-    id: 'search',
-    title: 'Searching for information',
+    id: 'background',
+    title: 'Gathering Background Information',
     content: '',
     status: 'pending'
   },
   {
-    id: 'analyze',
-    title: 'Analyzing search results',
-    content: '',
-    status: 'pending'
-  },
-  {
-    id: 'refine',
-    title: 'Refining the response',
-    content: '',
-    status: 'pending'
-  },
-  {
-    id: 'finalize',
-    title: 'Finalizing details',
-    content: '',
-    status: 'pending'
-  },
-  {
-    id: 'confirm',
-    title: 'Confirming completeness',
+    id: 'sources',
+    title: 'Identifying Key Sources',
     content: '',
     status: 'pending'
   },
   {
     id: 'reddit',
-    title: 'Analyzing Reddit Data',
+    title: 'Analyzing Reddit User Data',
     content: '',
     status: 'pending'
-  }
+  },
+  {
+    id: 'redditSearch',
+    title: 'Searching Reddit Discussions',
+    content: '',
+    status: 'pending'
+  },
+  {
+    id: 'arguments',
+    title: 'Evaluating Different Arguments',
+    content: '',
+    status: 'pending'
+  },
+  {
+    id: 'synthesis',
+    title: 'Synthesizing Information',
+    content: '',
+    status: 'pending'
+  },
+  {
+    id: 'conclusion',
+    title: 'Forming Conclusions',
+    content: '',
+    status: 'pending'
+  },
 ];
 
 const STEP_TIMINGS = {
-  clarify: { min: 2000, max: 4000 },
-  search: { min: 3000, max: 5000 },
-  analyze: { min: 4000, max: 7000 },
-  refine: { min: 3000, max: 5000 },
-  finalize: { min: 2000, max: 4000 },
-  confirm: { min: 1500, max: 3000 },
-  reddit: { min: 3000, max: 6000 }
+  clarify: { min: 3000, max: 5000 },
+  background: { min: 4000, max: 7000 },
+  sources: { min: 3000, max: 6000 },
+  reddit: { min: 3000, max: 6000 },
+  redditSearch: { min: 3000, max: 6000 },
+  arguments: { min: 5000, max: 8000 },
+  synthesis: { min: 4000, max: 7000 },
+  conclusion: { min: 3000, max: 5000 },
 };
 
 const THINKING_CONTENT = {
@@ -97,7 +104,7 @@ const getRandomThinkingContent = (stepId: string, query: string): string => {
   const randomIndex = Math.floor(Math.random() * contents.length);
   let content = contents[randomIndex]?.replace(/\{query\}/g, query) || '';
 
-  // For the Reddit step, create specialized thinking content
+  // For the Reddit user analysis step
   if (stepId === 'reddit') {
     const username = extractRedditUsername(query);
     
@@ -119,11 +126,29 @@ This analysis will help provide a more complete understanding of the user's onli
       `;
     } else {
       content = `
-## Checking for Reddit-Related Information
+## Checking for Reddit User Data
 
-The query doesn't appear to contain a specific Reddit username. Skipping detailed Reddit analysis, but I'll still consider any Reddit-related concepts that might be relevant to answering the query completely.
+The query doesn't appear to contain a specific Reddit username. Skipping detailed Reddit user analysis.
       `;
     }
+  }
+  
+  // For the Reddit topic search step
+  if (stepId === 'redditSearch') {
+    content = `
+## Searching Reddit for Real-Time Discussions
+
+I'm searching Reddit for discussions about "${query}" to gather:
+
+- Current community perspectives
+- Real-world experiences and examples
+- Common questions and misconceptions
+- Recent developments not in my training data
+- Popular opinions and viewpoints
+- Expert insights from specialized communities
+
+This will enhance my response with up-to-date, real-world information.
+    `;
   }
 
   return content;
@@ -147,7 +172,8 @@ export const useDeepResearch = (isActive: boolean, query: string = '') => {
       // Check if the query contains a Reddit username
       const username = extractRedditUsername(query);
       
-      // If no Reddit username is found, remove the Reddit step
+      // If no Reddit username is found, remove the Reddit user step
+      // But always keep the redditSearch step for topic search
       const filteredSteps = username 
         ? [...DEFAULT_THINKING_STEPS]
         : DEFAULT_THINKING_STEPS.filter(step => step.id !== 'reddit');

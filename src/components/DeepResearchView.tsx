@@ -22,8 +22,10 @@ const DeepResearchView: React.FC<DeepResearchViewProps> = ({
   activeStepId,
   detailedThinking 
 }) => {
-  // Check if the current step is the Reddit analysis step
-  const isRedditStep = activeStepId === 'reddit';
+  // Check if the current step is a Reddit-related step
+  const isRedditUserStep = activeStepId === 'reddit';
+  const isRedditSearchStep = activeStepId === 'redditSearch';
+  const isRedditStep = isRedditUserStep || isRedditSearchStep;
 
   return (
     <div className="grid grid-cols-[300px_1fr] h-full">
@@ -67,7 +69,10 @@ const DeepResearchView: React.FC<DeepResearchViewProps> = ({
               }`}>
                 {step.title}
                 {step.id === 'reddit' && (
-                  <span className="ml-2 px-1.5 py-0.5 bg-blue-900/40 text-blue-400 text-xs rounded">Reddit</span>
+                  <span className="ml-2 px-1.5 py-0.5 bg-blue-900/40 text-blue-400 text-xs rounded">User</span>
+                )}
+                {step.id === 'redditSearch' && (
+                  <span className="ml-2 px-1.5 py-0.5 bg-blue-900/40 text-blue-400 text-xs rounded">Topics</span>
                 )}
               </div>
             </div>
@@ -97,14 +102,16 @@ const DeepResearchView: React.FC<DeepResearchViewProps> = ({
       {/* Right content area with detailed thinking */}
       <div className="p-6 overflow-y-auto">
         <h2 className="text-xl text-neutral-200 mb-4">
-          {isRedditStep ? 'Reddit Analysis' : 'Thinking'}
+          {isRedditUserStep ? 'Reddit User Analysis' : 
+           isRedditSearchStep ? 'Reddit Topic Search' : 
+           'Thinking'}
           {isRedditStep && (
             <span className="ml-2 text-sm font-normal text-blue-400">
               <svg className="inline-block w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="10"></circle>
                 <path d="M16.2 7.8l-2 8-2.6-4.8-4.8-2.6 8-2"></path>
               </svg>
-              Analyzing Reddit data
+              {isRedditUserStep ? 'Analyzing user data' : 'Searching discussions'}
             </span>
           )}
         </h2>
@@ -121,14 +128,24 @@ const DeepResearchView: React.FC<DeepResearchViewProps> = ({
               className={isRedditStep ? 'reddit-analysis-content' : ''}
             >
               {detailedThinking || (
-                isRedditStep ? "Analyzing Reddit user data..." : "Thinking..."
+                isRedditUserStep ? "Analyzing Reddit user data..." : 
+                isRedditSearchStep ? "Searching Reddit discussions..." :
+                "Thinking..."
               )}
             </ReactMarkdown>
             
-            {isRedditStep && (
+            {isRedditUserStep && (
               <div className="mt-4 p-3 bg-neutral-800/50 border border-neutral-700 rounded-md">
                 <p className="text-xs text-neutral-400">
                   The AI is analyzing data from Reddit's API to provide insights about the user's account, posts, comments, and activity patterns.
+                </p>
+              </div>
+            )}
+            
+            {isRedditSearchStep && (
+              <div className="mt-4 p-3 bg-neutral-800/50 border border-neutral-700 rounded-md">
+                <p className="text-xs text-neutral-400">
+                  The AI is searching Reddit for discussions related to your query to provide real-time, community-based perspectives and information.
                 </p>
               </div>
             )}
