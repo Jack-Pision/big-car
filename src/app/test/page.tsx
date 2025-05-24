@@ -817,7 +817,7 @@ export default function TestChat() {
               placeholder="Ask anything..."
               disabled={loading}
               rows={1}
-              style={{ maxHeight: '72px', minHeight: '36px', lineHeight: '1.5' }}
+              style={{ maxHeight: '144px', minHeight: '72px', lineHeight: '1.5' }}
             />
             
             {/* Send/Stop button */}
