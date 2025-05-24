@@ -340,4 +340,31 @@ html, body {
 
 .markdown-body .katex {
   font-size: 1.13em;
+}
+
+/* Custom dark, thin, rounded scrollbar for chat input and markdown */
+.markdown-body textarea,
+textarea,
+.chat-input-container textarea,
+.markdown-body,
+.chat-input-container {
+  scrollbar-width: thin;
+  scrollbar-color: #444 #232323;
+}
+.markdown-body textarea::-webkit-scrollbar,
+textarea::-webkit-scrollbar,
+.chat-input-container textarea::-webkit-scrollbar,
+.markdown-body::-webkit-scrollbar,
+.chat-input-container::-webkit-scrollbar {
+  width: 8px;
+  background: #232323;
+  border-radius: 8px;
+}
+.markdown-body textarea::-webkit-scrollbar-thumb,
+textarea::-webkit-scrollbar-thumb,
+.chat-input-container textarea::-webkit-scrollbar-thumb,
+.markdown-body::-webkit-scrollbar-thumb,
+.chat-input-container::-webkit-scrollbar-thumb {
+  background: #444;
+  border-radius: 8px;
 } 

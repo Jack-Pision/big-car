@@ -755,7 +755,7 @@ export default function TestChat() {
                 placeholder="Ask anything..."
                 disabled={loading}
                 rows={1}
-                style={{ maxHeight: '144px', minHeight: '72px', lineHeight: '1.5' }}
+                style={{ maxHeight: '112px', minHeight: '56px', lineHeight: '1.5' }}
               />
             </div>
             {/* Actions row */}
