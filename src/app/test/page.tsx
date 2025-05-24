@@ -725,6 +725,32 @@ export default function TestChat() {
         }
       }
 
+      // Check if the query is about a Reddit user
+      let redditUserData = null;
+      const redditUsernameRegex = /(?:^|\s)(?:u\/|\/u\/|user\/|reddit\.com\/(?:u|user)\/|about\s+)([a-zA-Z0-9_-]{3,20})(?:\s|$)/i;
+      const redditMatch = userMessage.match(redditUsernameRegex);
+      
+      if (redditMatch && redditMatch[1]) {
+        try {
+          console.log(`Detected Reddit username: ${redditMatch[1]}`);
+          // Call our Reddit API to get user data
+          const redditResponse = await fetch('/api/reddit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: redditMatch[1] }),
+            signal: aiStreamAbortController.current.signal,
+          });
+          
+          if (redditResponse.ok) {
+            redditUserData = await redditResponse.json();
+            console.log("Retrieved Reddit user data:", redditUserData.username);
+          }
+        } catch (error) {
+          console.error("Error fetching Reddit data:", error);
+          // Continue with normal processing if Reddit API fails
+        }
+      }
+
       // Build the image context system prompt for Nemotron
       let imageContextPrompt = "";
       if (imageContexts.length > 0) {
@@ -741,6 +767,11 @@ export default function TestChat() {
       let enhancedSystemPrompt = SYSTEM_PROMPT;
       if (isFollowUp) {
         enhancedSystemPrompt = `${SYSTEM_PROMPT}\n\nThis is a follow-up question. While maintaining your detailed and helpful approach, try to build on previous context rather than repeating information already covered. Focus on advancing the conversation and providing new insights.`;
+      }
+      
+      // Add Reddit user data to the system prompt if available
+      if (redditUserData && redditUserData.summary) {
+        enhancedSystemPrompt = `${enhancedSystemPrompt}\n\n===REDDIT USER INFORMATION===\n${redditUserData.summary}\n===END REDDIT USER INFORMATION===\n\nThe above contains information about a Reddit user. If the user's query is related to this Reddit user, use this information to provide a detailed, comprehensive analysis.`;
       }
       
       // Add Deep Research instructions if active

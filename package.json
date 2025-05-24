@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.4",
+    "axios": "^1.9.0",
     "clsx": "^2.1.0",
     "date-fns": "^3.3.1",
     "framer-motion": "^12.12.1",

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ThinkingStep } from '@/components/DeepResearchView';
+import { extractRedditUsername } from '@/utils/reddit-api';
 
 // Default thinking steps that will be used for every query
 const DEFAULT_THINKING_STEPS: ThinkingStep[] = [
@@ -38,6 +39,12 @@ const DEFAULT_THINKING_STEPS: ThinkingStep[] = [
     title: 'Confirming completeness',
     content: '',
     status: 'pending'
+  },
+  {
+    id: 'reddit',
+    title: 'Analyzing Reddit Data',
+    content: '',
+    status: 'pending'
   }
 ];
 
@@ -47,7 +54,8 @@ const STEP_TIMINGS = {
   analyze: { min: 4000, max: 7000 },
   refine: { min: 3000, max: 5000 },
   finalize: { min: 2000, max: 4000 },
-  confirm: { min: 1500, max: 3000 }
+  confirm: { min: 1500, max: 3000 },
+  reddit: { min: 3000, max: 6000 }
 };
 
 const THINKING_CONTENT = {
@@ -87,7 +95,38 @@ const THINKING_CONTENT = {
 const getRandomThinkingContent = (stepId: string, query: string): string => {
   const contents = THINKING_CONTENT[stepId as keyof typeof THINKING_CONTENT] || [];
   const randomIndex = Math.floor(Math.random() * contents.length);
-  return contents[randomIndex]?.replace(/\{query\}/g, query) || '';
+  let content = contents[randomIndex]?.replace(/\{query\}/g, query) || '';
+
+  // For the Reddit step, create specialized thinking content
+  if (stepId === 'reddit') {
+    const username = extractRedditUsername(query);
+    
+    if (username) {
+      content = `
+## Analyzing Reddit User: u/${username}
+
+I'm examining the available data for this Reddit user to understand:
+
+- Account history and creation date
+- Karma score and distribution
+- Recent posting activity
+- Comment patterns and engagement
+- Most active subreddits
+- Topics of interest
+- Potential expertise areas
+
+This analysis will help provide a more complete understanding of the user's online presence and interests.
+      `;
+    } else {
+      content = `
+## Checking for Reddit-Related Information
+
+The query doesn't appear to contain a specific Reddit username. Skipping detailed Reddit analysis, but I'll still consider any Reddit-related concepts that might be relevant to answering the query completely.
+      `;
+    }
+  }
+
+  return content;
 };
 
 // Random time between min and max
@@ -105,7 +144,15 @@ export const useDeepResearch = (isActive: boolean, query: string = '') => {
   // Reset steps when a new query starts
   useEffect(() => {
     if (query && isActive && !isInProgress) {
-      setSteps([...DEFAULT_THINKING_STEPS]);
+      // Check if the query contains a Reddit username
+      const username = extractRedditUsername(query);
+      
+      // If no Reddit username is found, remove the Reddit step
+      const filteredSteps = username 
+        ? [...DEFAULT_THINKING_STEPS]
+        : DEFAULT_THINKING_STEPS.filter(step => step.id !== 'reddit');
+      
+      setSteps(filteredSteps);
       setActiveStepId(null);
       setDetailedThinking('');
       setIsComplete(false);

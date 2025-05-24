@@ -1,5 +1,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import 'katex/dist/katex.min.css';
 
 export interface ThinkingStep {
   id: string;
@@ -19,6 +22,9 @@ const DeepResearchView: React.FC<DeepResearchViewProps> = ({
   activeStepId,
   detailedThinking 
 }) => {
+  // Check if the current step is the Reddit analysis step
+  const isRedditStep = activeStepId === 'reddit';
+
   return (
     <div className="grid grid-cols-[300px_1fr] h-full">
       {/* Left sidebar with step list */}
@@ -36,7 +42,7 @@ const DeepResearchView: React.FC<DeepResearchViewProps> = ({
         </div>
         
         {/* Steps list */}
-        <div className="flex flex-col gap-3 overflow-y-auto">
+        <div className="space-y-1">
           {steps.map((step) => (
             <div key={step.id} className="flex items-start gap-3 px-4 py-2">
               <div className="mt-1 flex-shrink-0">
@@ -60,6 +66,9 @@ const DeepResearchView: React.FC<DeepResearchViewProps> = ({
                 step.status === 'active' ? 'text-cyan-400' : 'text-neutral-500'
               }`}>
                 {step.title}
+                {step.id === 'reddit' && (
+                  <span className="ml-2 px-1.5 py-0.5 bg-blue-900/40 text-blue-400 text-xs rounded">Reddit</span>
+                )}
               </div>
             </div>
           ))}
@@ -87,19 +96,40 @@ const DeepResearchView: React.FC<DeepResearchViewProps> = ({
       
       {/* Right content area with detailed thinking */}
       <div className="p-6 overflow-y-auto">
-        <h2 className="text-xl text-neutral-200 mb-4">Thinking</h2>
+        <h2 className="text-xl text-neutral-200 mb-4">
+          {isRedditStep ? 'Reddit Analysis' : 'Thinking'}
+          {isRedditStep && (
+            <span className="ml-2 text-sm font-normal text-blue-400">
+              <svg className="inline-block w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="M16.2 7.8l-2 8-2.6-4.8-4.8-2.6 8-2"></path>
+              </svg>
+              Analyzing Reddit data
+            </span>
+          )}
+        </h2>
         
         {activeStepId ? (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.3 }}
-            className="text-neutral-300 text-sm leading-relaxed"
+            className="text-neutral-300 text-sm leading-relaxed markdown-body"
           >
-            {detailedThinking || (
-              <div className="flex items-center gap-2 text-neutral-500">
-                <div className="w-3 h-3 bg-neutral-700 rounded-full animate-pulse"></div>
-                <span>Thinking...</span>
+            <ReactMarkdown 
+              remarkPlugins={[remarkGfm]}
+              className={isRedditStep ? 'reddit-analysis-content' : ''}
+            >
+              {detailedThinking || (
+                isRedditStep ? "Analyzing Reddit user data..." : "Thinking..."
+              )}
+            </ReactMarkdown>
+            
+            {isRedditStep && (
+              <div className="mt-4 p-3 bg-neutral-800/50 border border-neutral-700 rounded-md">
+                <p className="text-xs text-neutral-400">
+                  The AI is analyzing data from Reddit's API to provide insights about the user's account, posts, comments, and activity patterns.
+                </p>
               </div>
             )}
           </motion.div>
