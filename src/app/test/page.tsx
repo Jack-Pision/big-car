@@ -15,6 +15,7 @@ import TextReveal from '@/components/TextReveal';
 import ThinkingIndicator from '@/components/ThinkingIndicator';
 import DeepResearchView from '@/components/DeepResearchView';
 import { useDeepResearch } from '@/hooks/useDeepResearch';
+import { WebSource } from '@/utils/source-utils';
 
 const SYSTEM_PROMPT = `You are a helpful, knowledgeable, and friendly AI assistant. Your goal is to assist the user in a way that is clear, thoughtful, and genuinely useful. Follow these guidelines:
 
@@ -296,10 +297,17 @@ interface ImageContext {
   timestamp: number;    // When this image was processed
 }
 
+interface Message {
+  role: 'user' | 'assistant' | 'deep-research';
+  content: string;
+  imageUrls?: string[];
+  webSources?: WebSource[];
+}
+
 export default function TestChat() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [messages, setMessages] = useState<{ role: "user" | "assistant" | "deep-research"; content: string; imageUrls?: string[] }[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [showHeading, setShowHeading] = useState(true);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const inputBarRef = useRef<HTMLDivElement>(null);
@@ -439,7 +447,7 @@ export default function TestChat() {
 
     let userMessageContent = currentInput;
     let uploadedImageUrls: string[] = [];
-    let userMessageForDisplay: { role: "user"; content: string; imageUrls?: string[] } = {
+    let userMessageForDisplay: Message = {
       role: "user" as const,
       content: currentInput,
     };
@@ -555,12 +563,13 @@ export default function TestChat() {
         const decoder = new TextDecoder();
         let buffer = '';
         let done = false;
-        let aiMsg = { 
-        role: "assistant" as const,
+        let aiMsg: Message = { 
+          role: "assistant" as const,
           content: "", 
-          imageUrls: uploadedImageUrls // Associate assistant response with the uploaded images
-      };
-      setMessages((prev) => [...prev, aiMsg]);
+          imageUrls: uploadedImageUrls, // Associate assistant response with the uploaded images
+          webSources: [] // Initialize webSources
+        };
+        setMessages((prev) => [...prev, aiMsg]);
 
         while (!done) {
           const { value, done: doneReading } = await reader.read();
@@ -582,7 +591,11 @@ export default function TestChat() {
                       const updatedMessages = [...prev];
                       const lastMsgIndex = updatedMessages.length - 1;
                       if(updatedMessages[lastMsgIndex] && updatedMessages[lastMsgIndex].role === 'assistant'){
-                        updatedMessages[lastMsgIndex] = { ...updatedMessages[lastMsgIndex], content: aiMsg.content };
+                        updatedMessages[lastMsgIndex] = { 
+                          ...updatedMessages[lastMsgIndex], 
+                          content: aiMsg.content,
+                          webSources: aiMsg.webSources // Preserve web sources
+                        };
                       }
                       return updatedMessages;
                     });
@@ -623,10 +636,11 @@ export default function TestChat() {
       } else {
         const data = await res.json();
         const assistantResponseContent = cleanAIResponse(data.choices?.[0]?.message?.content || data.generated_text || data.error || JSON.stringify(data) || "No response");
-        const aiMsg = {
+        const aiMsg: Message = {
           role: "assistant" as const,
           content: assistantResponseContent.content,
-          imageUrls: uploadedImageUrls // Associate assistant response with the uploaded images
+          imageUrls: uploadedImageUrls, // Associate assistant response with the uploaded images
+          webSources: [] // Initialize webSources
         };
         setMessages((prev) => [...prev, aiMsg]);
         
@@ -725,6 +739,38 @@ export default function TestChat() {
         }
       }
 
+      // Create objects to store web data we fetch
+      let webData = {
+        redditPosts: null as any,
+        sources: [] as any[],
+        webCitations: '' as string
+      };
+
+      // When Deep Research is active, fetch relevant web data
+      if (deepResearchActive) {
+        try {
+          console.log("Fetching web data for Deep Research...");
+          // Call our Reddit API to get relevant posts for the query
+          const redditResponse = await fetch('/api/reddit/search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: userMessage, limit: 8 }),
+            signal: aiStreamAbortController.current.signal,
+          });
+          
+          if (redditResponse.ok) {
+            const redditData = await redditResponse.json();
+            webData.redditPosts = redditData.posts;
+            webData.webCitations = redditData.webCitations;
+            webData.sources = [...webData.sources, ...(redditData.sources || [])];
+            console.log(`Retrieved ${redditData.posts?.length || 0} Reddit posts for query`);
+          }
+        } catch (error) {
+          console.error("Error fetching web data:", error);
+          // Continue with normal processing if web data fetching fails
+        }
+      }
+
       // Check if the query is about a Reddit user
       let redditUserData = null;
       const redditUsernameRegex = /(?:^|\s)(?:u\/|\/u\/|user\/|reddit\.com\/(?:u|user)\/|about\s+)([a-zA-Z0-9_-]{3,20})(?:\s|$)/i;
@@ -773,6 +819,11 @@ export default function TestChat() {
       if (redditUserData && redditUserData.summary) {
         enhancedSystemPrompt = `${enhancedSystemPrompt}\n\n===REDDIT USER INFORMATION===\n${redditUserData.summary}\n===END REDDIT USER INFORMATION===\n\nThe above contains information about a Reddit user. If the user's query is related to this Reddit user, use this information to provide a detailed, comprehensive analysis.`;
       }
+
+      // Add web data to the system prompt if available
+      if (webData.webCitations) {
+        enhancedSystemPrompt = `${enhancedSystemPrompt}\n\n===WEB SEARCH RESULTS===\n${webData.webCitations}\n===END WEB SEARCH RESULTS===\n\nThe above contains real-time web search results. Use this information to enhance your response. For each fact or piece of information you use from these results, include a citation in the format [@Web](URL) immediately after the relevant text.`;
+      }
       
       // Add Deep Research instructions if active
       if (deepResearchActive) {
@@ -781,7 +832,7 @@ You are now in DEEP RESEARCH mode. This requires a more thorough, comprehensive 
 
 When responding to the user's query, follow these steps:
 1. PLAN: Break down the problem into smaller parts and plan your approach.
-2. GATHER: Gather all relevant information from your knowledge.
+2. GATHER: Gather all relevant information from your knowledge and the web data provided.
 3. ANALYZE: Analyze the information critically, considering different perspectives and potential contradictions.
 4. SYNTHESIZE: Combine your findings into a coherent, well-structured response.
 5. CONCLUDE: Provide a clear conclusion or recommendation based on your analysis.
@@ -792,10 +843,17 @@ Your response should be:
 - STRUCTURED: Use headings, bullet points, and sections to organize information
 - BALANCED: Consider multiple perspectives and potential counterarguments
 - EDUCATIONAL: Explain complex concepts in an accessible way
+- ATTRIBUTED: Cite web sources when using information from the search results using the [@Web](URL) format
 
 Aim to be both thorough and precise. Your goal is to provide the most complete and useful answer possible.
 `;
         enhancedSystemPrompt = `${enhancedSystemPrompt}\n\n${deepResearchPrompt}`;
+      }
+
+      // Add source metadata as structured data for the AI to use
+      if (webData.sources && webData.sources.length > 0) {
+        const sourcesData = JSON.stringify(webData.sources, null, 2);
+        enhancedSystemPrompt = `${enhancedSystemPrompt}\n\n===SOURCE METADATA===\n\`\`\`json\n${sourcesData}\n\`\`\`\n===END SOURCE METADATA===\n\nThe above JSON contains metadata about the web sources. When citing a source, use the URL from this metadata.`;
       }
       
       const systemPrompt = imageContextPrompt 
@@ -818,6 +876,11 @@ Aim to be both thorough and precise. Your goal is to provide the most complete a
         frequency_penalty: 0.3,
         presence_penalty: 0.3,
       };
+
+      // Store web sources with the message context for rendering with icons
+      if (webData.sources && webData.sources.length > 0) {
+        apiPayload.webSources = webData.sources;
+      }
 
       // For Gemma's context, send the previous image descriptions
       if (uploadedImageUrls.length > 0) {
@@ -845,12 +908,13 @@ Aim to be both thorough and precise. Your goal is to provide the most complete a
         const decoder = new TextDecoder();
         let buffer = '';
         let done = false;
-        let aiMsg = { 
-        role: "assistant" as const,
+        let aiMsg: Message = { 
+          role: "assistant" as const,
           content: "", 
-          imageUrls: uploadedImageUrls // Associate assistant response with the uploaded images
-      };
-      setMessages((prev) => [...prev, aiMsg]);
+          imageUrls: uploadedImageUrls, // Associate assistant response with the uploaded images
+          webSources: webData.sources || [] // Add web sources to the response
+        };
+        setMessages((prev) => [...prev, aiMsg]);
 
         while (!done) {
           const { value, done: doneReading } = await reader.read();
@@ -872,7 +936,11 @@ Aim to be both thorough and precise. Your goal is to provide the most complete a
                       const updatedMessages = [...prev];
                       const lastMsgIndex = updatedMessages.length - 1;
                       if(updatedMessages[lastMsgIndex] && updatedMessages[lastMsgIndex].role === 'assistant'){
-                        updatedMessages[lastMsgIndex] = { ...updatedMessages[lastMsgIndex], content: aiMsg.content };
+                        updatedMessages[lastMsgIndex] = { 
+                          ...updatedMessages[lastMsgIndex], 
+                          content: aiMsg.content,
+                          webSources: aiMsg.webSources // Preserve web sources
+                        };
                       }
                       return updatedMessages;
                     });
@@ -913,10 +981,11 @@ Aim to be both thorough and precise. Your goal is to provide the most complete a
       } else {
         const data = await res.json();
         const assistantResponseContent = cleanAIResponse(data.choices?.[0]?.message?.content || data.generated_text || data.error || JSON.stringify(data) || "No response");
-        const aiMsg = {
+        const aiMsg: Message = {
           role: "assistant" as const,
           content: assistantResponseContent.content,
-          imageUrls: uploadedImageUrls // Associate assistant response with the uploaded images
+          imageUrls: uploadedImageUrls, // Associate assistant response with the uploaded images
+          webSources: [] // Initialize webSources
         };
         setMessages((prev) => [...prev, aiMsg]);
         
@@ -945,7 +1014,7 @@ Aim to be both thorough and precise. Your goal is to provide the most complete a
           });
         }
       }
-      } catch (err: any) {
+    } catch (err: any) {
       if (err.name === 'AbortError') {
         setMessages((prev) => [
           ...prev,
@@ -1060,8 +1129,9 @@ Aim to be both thorough and precise. Your goal is to provide the most complete a
                           <TextReveal 
                             text={cleanContent}
                             markdownComponents={markdownComponents}
+                            webSources={(msg as any).webSources || []}
                           />
-              </div>
+                        </div>
                       )}
                     </>
                   )}

@@ -367,4 +367,30 @@ textarea::-webkit-scrollbar-thumb,
 .chat-input-container::-webkit-scrollbar-thumb {
   background: #444;
   border-radius: 8px;
+}
+
+/* Add styles for web citations */
+.web-citation {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
+  text-decoration: none;
+}
+
+.citation-icon {
+  width: 16px;
+  height: 16px;
+  margin-left: 2px;
+  vertical-align: middle;
+  transition: transform 0.2s ease;
+}
+
+.web-citation:hover .citation-icon {
+  transform: scale(1.2);
+}
+
+.web-citations-container .markdown-body {
+  color: inherit;
+  font-size: inherit;
+  line-height: inherit;
 } 
