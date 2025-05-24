@@ -759,68 +759,74 @@ export default function TestChat() {
               />
             </div>
             {/* Actions row */}
-            <div className="flex flex-row gap-2 items-center">
-              {/* Plus button */}
-              <button 
-                type="button" 
-                className="p-2 rounded-full bg-gray-800 text-gray-300 hover:bg-gray-700 transition flex items-center justify-center flex-shrink-0"
-                style={{ width: "36px", height: "36px" }}
-                onClick={handleFirstPlusClick}
-              >
-                <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                  <line x1="12" y1="5" x2="12" y2="19" />
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
-              </button>
-              {/* Search button */}
-              <button
-                type="button"
-                className="rounded-full bg-gray-800 text-cyan-400 hover:bg-gray-700 transition flex items-center justify-center gap-1.5 px-3 py-1.5 flex-shrink-0"
-                style={{ height: "36px" }}
-              >
-                <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                  <circle cx="11" cy="11" r="7"/>
-                  <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                </svg>
-                <span className="text-xs font-medium">Search</span>
-              </button>
-              {/* Deep Research button with Atom icon */}
-              <button
-                type="button"
-                className={`flex items-center gap-1.5 rounded-full bg-gray-800 hover:bg-gray-700 transition px-3 py-1.5 flex-shrink-0 ${deepResearchActive ? 'text-cyan-400' : 'text-gray-400'}`}
-                style={{ height: "36px" }}
-                tabIndex={0}
-                onClick={() => setDeepResearchActive(a => !a)}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="1" fill="currentColor"/>
-                  <ellipse cx="12" cy="12" rx="9" ry="3.5" />
-                  <ellipse cx="12" cy="12" rx="3.5" ry="9" transform="rotate(60 12 12)" />
-                  <ellipse cx="12" cy="12" rx="3.5" ry="9" transform="rotate(-60 12 12)" />
-                </svg>
-                <span className="whitespace-nowrap text-xs font-medium">Deep Research</span>
-              </button>
-              {/* Send/Stop button */}
-              <button
-                type={isAiResponding ? "button" : "submit"}
-                className="rounded-full bg-gray-200 hover:bg-white transition flex items-center justify-center flex-shrink-0"
-                style={{ width: "36px", height: "36px", pointerEvents: loading && !isAiResponding ? 'none' : 'auto' }}
-                onClick={isAiResponding ? handleStopAIResponse : undefined}
-                disabled={loading && !isAiResponding}
-                aria-label={isAiResponding ? "Stop AI response" : "Send"}
-              >
-                {isAiResponding ? (
-                  // Stop icon (square in round button)
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="7" y="7" width="10" height="10" rx="2" fill="#374151" /> {/* Darker gray for stop icon */}
+            <div className="flex flex-row w-full items-center justify-between gap-2">
+              {/* Left group: Search, Deep Research */}
+              <div className="flex flex-row gap-2 items-center">
+                {/* Search button */}
+                <button
+                  type="button"
+                  className="rounded-full bg-gray-800 text-cyan-400 hover:bg-gray-700 transition flex items-center justify-center gap-1.5 px-3 py-1.5 flex-shrink-0"
+                  style={{ height: "36px" }}
+                >
+                  <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <circle cx="11" cy="11" r="7"/>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"/>
                   </svg>
-                ) : (
-                  // Up arrow icon
-                  <svg width="16" height="16" fill="none" stroke="#374151" strokeWidth="2.5" viewBox="0 0 24 24">
-                    <path d="M12 19V5M5 12l7-7 7 7" />
+                  <span className="text-xs font-medium">Search</span>
+                </button>
+                {/* Deep Research button with Atom icon */}
+                <button
+                  type="button"
+                  className={`flex items-center gap-1.5 rounded-full bg-gray-800 hover:bg-gray-700 transition px-3 py-1.5 flex-shrink-0 ${deepResearchActive ? 'text-cyan-400' : 'text-gray-400'}`}
+                  style={{ height: "36px" }}
+                  tabIndex={0}
+                  onClick={() => setDeepResearchActive(a => !a)}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="1" fill="currentColor"/>
+                    <ellipse cx="12" cy="12" rx="9" ry="3.5" />
+                    <ellipse cx="12" cy="12" rx="3.5" ry="9" transform="rotate(60 12 12)" />
+                    <ellipse cx="12" cy="12" rx="3.5" ry="9" transform="rotate(-60 12 12)" />
                   </svg>
-                )}
-              </button>
+                  <span className="whitespace-nowrap text-xs font-medium">Deep Research</span>
+                </button>
+              </div>
+              {/* Right group: Plus, Send */}
+              <div className="flex flex-row gap-2 items-center">
+                {/* Plus button */}
+                <button 
+                  type="button" 
+                  className="p-2 rounded-full bg-gray-800 text-gray-300 hover:bg-gray-700 transition flex items-center justify-center flex-shrink-0"
+                  style={{ width: "36px", height: "36px" }}
+                  onClick={handleFirstPlusClick}
+                >
+                  <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                </button>
+                {/* Send/Stop button */}
+                <button
+                  type={isAiResponding ? "button" : "submit"}
+                  className="rounded-full bg-gray-200 hover:bg-white transition flex items-center justify-center flex-shrink-0"
+                  style={{ width: "36px", height: "36px", pointerEvents: loading && !isAiResponding ? 'none' : 'auto' }}
+                  onClick={isAiResponding ? handleStopAIResponse : undefined}
+                  disabled={loading && !isAiResponding}
+                  aria-label={isAiResponding ? "Stop AI response" : "Send"}
+                >
+                  {isAiResponding ? (
+                    // Stop icon (square in round button)
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <rect x="7" y="7" width="10" height="10" rx="2" fill="#374151" /> {/* Darker gray for stop icon */}
+                    </svg>
+                  ) : (
+                    // Up arrow icon
+                    <svg width="16" height="16" fill="none" stroke="#374151" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <path d="M12 19V5M5 12l7-7 7 7" />
+                    </svg>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </form>
