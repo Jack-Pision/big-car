@@ -747,14 +747,14 @@ export default function TestChat() {
           <div className="flex flex-col w-full gap-2">
             {/* Textarea row */}
             <div className="w-full">
-              <textarea
-                ref={textareaRef}
-                value={input}
-                onChange={e => setInput(e.target.value)}
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={e => setInput(e.target.value)}
                 className="w-full border-none outline-none bg-transparent px-2 py-1 text-gray-200 text-sm placeholder-gray-500 resize-none overflow-auto self-center rounded-lg"
                 placeholder="Ask anything..."
-                disabled={loading}
-                rows={1}
+            disabled={loading}
+            rows={1}
                 style={{ maxHeight: '96px', minHeight: '40px', lineHeight: '1.5' }}
               />
             </div>
@@ -787,9 +787,9 @@ export default function TestChat() {
                     <ellipse cx="12" cy="12" rx="9" ry="3.5" />
                     <ellipse cx="12" cy="12" rx="3.5" ry="9" transform="rotate(60 12 12)" />
                     <ellipse cx="12" cy="12" rx="3.5" ry="9" transform="rotate(-60 12 12)" />
-                  </svg>
+              </svg>
                   <span className="whitespace-nowrap text-xs font-medium">Deep Research</span>
-                </button>
+            </button>
               </div>
               {/* Right group: Plus, Send */}
               <div className="flex flex-row gap-2 items-center">
@@ -801,12 +801,12 @@ export default function TestChat() {
                   onClick={handleFirstPlusClick}
                 >
                   <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                    <line x1="12" y1="5" x2="12" y2="19" />
-                    <line x1="5" y1="12" x2="19" y2="12" />
-                  </svg>
-                </button>
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+            </button>
                 {/* Send/Stop button */}
-                <button
+            <button
                   type={isAiResponding ? "button" : "submit"}
                   className="rounded-full bg-gray-200 hover:bg-white transition flex items-center justify-center flex-shrink-0"
                   style={{ width: "36px", height: "36px", pointerEvents: loading && !isAiResponding ? 'none' : 'auto' }}
@@ -823,9 +823,9 @@ export default function TestChat() {
                     // Up arrow icon
                     <svg width="16" height="16" fill="none" stroke="#374151" strokeWidth="2.5" viewBox="0 0 24 24">
                       <path d="M12 19V5M5 12l7-7 7 7" />
-                    </svg>
+              </svg>
                   )}
-                </button>
+            </button>
               </div>
             </div>
           </div>

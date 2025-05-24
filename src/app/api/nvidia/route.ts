@@ -249,20 +249,20 @@ async function fetchNvidiaText(messages: any[], options: any = {}) {
   
   // Using fetchWithTimeout for the NVIDIA API call
   const res = await fetchWithTimeout('https://integrate.api.nvidia.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
+      method: 'POST',
+      headers: {
       'Authorization': `Bearer ${TEXT_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
   }, 12000); // 12-second timeout for NVIDIA Nemotron
 
-  if (!res.ok) {
-    const errorText = await res.text();
+    if (!res.ok) {
+      const errorText = await res.text();
     // Return a Response object with status for consistent error handling upstream
     return new Response(JSON.stringify({ error: `Nvidia API Error: ${errorText}` }), { status: res.status, headers: { 'Content-Type': 'application/json'} });
-  }
-  return res;
+    }
+    return res;
 }
 
 export async function POST(req: NextRequest) {
@@ -353,11 +353,11 @@ export async function POST(req: NextRequest) {
       headers.set('Connection', 'keep-alive');
 
       return new Response(nemotronRes.body, {
-        status: 200,
+      status: 200,
         headers: headers,
-      });
+    });
 
-    } else {
+  } else {
       console.log("[API /api/nvidia] Received text-only request (streaming)...");
       const { messages } = body;
       // For text-only, also enable streaming
