@@ -45,9 +45,19 @@ async function searchRedditPosts(query: string, limit: number = 5) {
       t: 'year'
     }
   });
-  return response.data.data.children.map((child: any) => {
-    const post = child.data;
-    return {
+  // Filter for only valid, public, non-deleted Reddit posts
+  return response.data.data.children
+    .map((child: any) => child.data)
+    .filter((post: any) =>
+      !post.removed_by_category &&
+      !post.is_deleted &&
+      post.author !== '[deleted]' &&
+      post.author !== '[removed]' &&
+      post.permalink &&
+      post.title &&
+      (!post.is_self || (post.selftext && post.selftext.length > 10))
+    )
+    .map((post: any) => ({
       title: post.title,
       author: post.author,
       subreddit: post.subreddit_name_prefixed,
@@ -62,8 +72,7 @@ async function searchRedditPosts(query: string, limit: number = 5) {
         url: `https://www.reddit.com${post.permalink}`,
         icon: '/icons/reddit-icon.svg'
       }
-    };
-  });
+    }));
 }
 
 /**
