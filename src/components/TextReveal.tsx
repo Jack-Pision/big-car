@@ -134,10 +134,64 @@ const TextReveal: React.FC<TextRevealProps> = ({
           margin-left: 2px;
           vertical-align: middle;
         }
+        .citation-badge {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 12px;
+          font-weight: 600;
+          background-color: #222;
+          color: white !important;
+          border-radius: 50%;
+          width: 18px;
+          height: 18px;
+          margin-left: 2px;
+          text-decoration: none;
+          vertical-align: super;
+          line-height: 1;
+          padding: 2px;
+        }
+        .citation-badge:hover {
+          background-color: #444;
+        }
         .web-citations-container .markdown-body {
           color: inherit;
           font-size: inherit;
           line-height: inherit;
+        }
+        /* Styling for markdown headers and lists */
+        .web-citations-container .markdown-body h1 {
+          font-size: 1.8rem;
+          font-weight: 700;
+          margin-top: 1.5rem;
+          margin-bottom: 1rem;
+        }
+        .web-citations-container .markdown-body h2 {
+          font-size: 1.5rem;
+          font-weight: 700;
+          margin-top: 1.5rem;
+          margin-bottom: 0.8rem;
+          border-bottom: none;
+        }
+        .web-citations-container .markdown-body ul {
+          margin-left: 1.5rem;
+        }
+        .web-citations-container .markdown-body li {
+          margin-bottom: 0.5rem;
+        }
+        .web-citations-container .markdown-body table {
+          border-collapse: collapse;
+          width: 100%;
+          margin: 1rem 0;
+        }
+        .web-citations-container .markdown-body th,
+        .web-citations-container .markdown-body td {
+          border: 1px solid #444;
+          padding: 8px 12px;
+        }
+        .web-citations-container .markdown-body th {
+          background-color: #222;
+          font-weight: 600;
         }
       `}</style>
     </div>

@@ -82,13 +82,14 @@ export function processWebCitations(text: string, sources?: WebSource[]): string
       const icon = SOURCE_ICONS[sourceType] || SOURCE_ICONS.default;
       return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="web-citation"><img src="${icon}" alt="${sourceType}" class="citation-icon" /></a>`;
     } else if (number) {
-      // Handle [N] numbered reference format
+      // Handle [N] numbered reference format with professional badge styling
       const index = parseInt(number) - 1;
       if (allSources && index >= 0 && index < allSources.length) {
         const source = allSources[index];
-        return `<a href="${source.url}" target="_blank" rel="noopener noreferrer" class="web-citation">[${number}]<img src="${source.icon}" alt="${source.type}" class="citation-icon" /></a>`;
+        return `<a href="${source.url}" target="_blank" rel="noopener noreferrer" class="web-citation citation-badge">${number}</a>`;
       }
-      return match; // Keep as is if no matching source
+      // If no matching source, still show the badge but without a link
+      return `<span class="citation-badge">${number}</span>`;
     }
     // Generic @Web without URL
     return `<a href="#" class="web-citation"><img src="${SOURCE_ICONS.web}" alt="web" class="citation-icon" /></a>`;

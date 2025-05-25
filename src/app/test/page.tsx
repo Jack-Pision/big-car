@@ -137,13 +137,29 @@ For long threads, help summarize or anchor back to the main topic.
 
 When ending a conversation, offer follow-up options or future guidance.`;
 
-const CITATION_INSTRUCTIONS = `IMPORTANT: When you use any information from the web search results, you MUST add a citation in the format [@Web](URL) immediately after the relevant sentence or paragraph. For example:
+const CITATION_INSTRUCTIONS = `IMPORTANT: Format your response like a professional research document with the following structure:
 
-Cloud computing offers flexibility and scalability [@Web](https://www.reddit.com/r/cloudcomputing/comments/xyz123).
+1. Start with a clear, bold main title that summarizes the topic (e.g., "# Major News Events in Bangladesh, 2025").
 
-If you use multiple sources, you can use [1], [2], etc., and provide the source mapping at the end.
+2. Organize content into sections with bold headers (e.g., "## Political Crisis and Caretaker Government").
 
-Do NOT just write the word 'web' or mention sources without the proper citation format.`;
+3. Use bullet points for all key points and details:
+   * Start each detail with a bullet point (*)
+   * Keep bullets concise but informative
+   * Indent sub-points if needed
+
+4. For citations, use numbered references in square brackets [1], [2], etc. at the end of sentences or bullet points that use information from sources. You can include multiple citations together [1] [2].
+
+5. Include a "Summary Table" if appropriate, using markdown table format:
+   | Column 1 | Column 2 |
+   |----------|----------|
+   | Data     | Data     |
+
+6. End with a "## Conclusion" section that summarizes the key points.
+
+7. When you use any information from the web search results, you MUST add a citation in the format [1], [2], etc. immediately after the relevant sentence or paragraph. DO NOT use [@Web](URL) format.
+
+The result should look like a professional, well-formatted research document with clear hierarchy and organization.`;
 
 interface ProcessedResponse {
   content: string;
@@ -559,9 +575,22 @@ export default function TestChat() {
           });
           newsSection += '===END NEWSDATA.IO SEARCH RESULTS===\n';
         }
+        
         // Strong explicit instruction
-        const combinedInstruction = 'IMPORTANT: You MUST use only the above Wikipedia and NewsData.io articles as your web sources. Do NOT use or invent any other web links. When citing, use [@Web](URL) or [1], [2], etc. If you do not use the above articles, your answer will be considered incomplete.';
-        enhancedSystemPrompt = `${wikiSection}\n${newsSection}\n${combinedInstruction}\n\n${CITATION_INSTRUCTIONS}\n\n${enhancedSystemPrompt}`;
+        const combinedInstruction = 'IMPORTANT: You MUST use only the above Wikipedia and NewsData.io articles as your web sources. Do NOT use or invent any other web links. When citing, use numbered references [1], [2], etc. at the end of sentences or bullet points that use information from sources.';
+        
+        // Professional formatting instructions
+        const formattingInstructions = `
+FORMATTING REQUIREMENTS:
+1. Your response MUST follow a professional, well-structured format like a research document or report.
+2. Start with a clear main title using # heading (e.g., "# Latest Developments in AI, 2025").
+3. Divide content into logical sections with ## headings.
+4. Use bullet points (*) for all key details and findings - NOT paragraphs.
+5. End with a "## Conclusion" section.
+6. Include a "## Summary Table" if the information can be presented in tabular form.
+7. For citations, use ONLY numbered references in square brackets [1], [2] at the end of sentences/bullets.`;
+        
+        enhancedSystemPrompt = `${wikiSection}\n${newsSection}\n${combinedInstruction}\n\n${formattingInstructions}\n\n${CITATION_INSTRUCTIONS}\n\n${enhancedSystemPrompt}`;
       }
       
       const systemPrompt = imageContextPrompt 
@@ -878,9 +907,22 @@ export default function TestChat() {
           });
           newsSection += '===END NEWSDATA.IO SEARCH RESULTS===\n';
         }
+        
         // Strong explicit instruction
-        const combinedInstruction = 'IMPORTANT: You MUST use only the above Wikipedia and NewsData.io articles as your web sources. Do NOT use or invent any other web links. When citing, use [@Web](URL) or [1], [2], etc. If you do not use the above articles, your answer will be considered incomplete.';
-        enhancedSystemPrompt = `${wikiSection}\n${newsSection}\n${combinedInstruction}\n\n${CITATION_INSTRUCTIONS}\n\n${enhancedSystemPrompt}`;
+        const combinedInstruction = 'IMPORTANT: You MUST use only the above Wikipedia and NewsData.io articles as your web sources. Do NOT use or invent any other web links. When citing, use numbered references [1], [2], etc. at the end of sentences or bullet points that use information from sources.';
+        
+        // Professional formatting instructions
+        const formattingInstructions = `
+FORMATTING REQUIREMENTS:
+1. Your response MUST follow a professional, well-structured format like a research document or report.
+2. Start with a clear main title using # heading (e.g., "# Latest Developments in AI, 2025").
+3. Divide content into logical sections with ## headings.
+4. Use bullet points (*) for all key details and findings - NOT paragraphs.
+5. End with a "## Conclusion" section.
+6. Include a "## Summary Table" if the information can be presented in tabular form.
+7. For citations, use ONLY numbered references in square brackets [1], [2] at the end of sentences/bullets.`;
+        
+        enhancedSystemPrompt = `${wikiSection}\n${newsSection}\n${combinedInstruction}\n\n${formattingInstructions}\n\n${CITATION_INSTRUCTIONS}\n\n${enhancedSystemPrompt}`;
       }
 
       // Add source metadata as structured data for the AI to use
