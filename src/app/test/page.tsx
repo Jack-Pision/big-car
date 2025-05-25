@@ -590,7 +590,7 @@ FORMATTING REQUIREMENTS:
 1. Your response MUST follow a professional, well-structured format like a research document or report.
 2. Start with a clear main title using # heading (e.g., "# Latest Developments in AI, 2025").
 3. Divide content into logical sections with ## headings.
-4. Use bullet points (*) for all key details and findings - NOT paragraphs.
+4. Use bullet points (*) for all key details and findings.
 5. End with a "## Conclusion" section.
 6. Include a "## Summary Table" if the information can be presented in tabular form.
 7. For citations, use ONLY numbered references in square brackets [1], [2] at the end of sentences/bullets.`;
