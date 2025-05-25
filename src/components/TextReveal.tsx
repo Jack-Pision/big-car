@@ -160,12 +160,9 @@ const TextReveal: React.FC<TextRevealProps> = ({
             
             if (targetNode && targetText) {
               // Create the citation element
-              const citation = document.createElement('span');
-              citation.className = 'citation-badge';
-              citation.textContent = number || '1';
-              
-              // If we have a matching source, make it a link
+              let citationElem: HTMLElement;
               if (number && webSources && webSources.length >= parseInt(number)) {
+                // If we have a matching source, make it a link
                 const source = webSources[parseInt(number) - 1];
                 const link = document.createElement('a');
                 link.href = source.url;
@@ -173,14 +170,19 @@ const TextReveal: React.FC<TextRevealProps> = ({
                 link.rel = 'noopener noreferrer';
                 link.className = 'web-citation citation-badge';
                 link.textContent = number;
-                citation.replaceWith(link);
+                citationElem = link;
+              } else {
+                // Otherwise, just a badge
+                const span = document.createElement('span');
+                span.className = 'citation-badge';
+                span.textContent = number || '1';
+                citationElem = span;
               }
-              
               // Replace the [N] in the text with our citation element
               const newText = targetText.replace(fullMatch, '');
               const newTextNode = document.createTextNode(newText);
               targetNode.parentNode?.replaceChild(newTextNode, targetNode);
-              newTextNode.parentNode?.insertBefore(citation, newTextNode.nextSibling);
+              newTextNode.parentNode?.insertBefore(citationElem, newTextNode.nextSibling);
             }
           });
         }
