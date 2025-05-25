@@ -140,9 +140,9 @@ const DeepResearchView: React.FC<DeepResearchViewProps> = ({
   };
 
   return (
-    <div className="grid grid-cols-[300px_1fr] h-full">
+    <div className="grid grid-cols-[300px_1fr] h-full" style={{ maxHeight: '600px', overflowY: 'auto' }}>
       {/* Left sidebar with step list */}
-      <div className="border-r border-neutral-800 p-4 flex flex-col">
+      <div className="border-r border-neutral-800 p-4 flex flex-col" style={{ maxHeight: '600px', overflowY: 'auto' }}>
         <div className="mb-4 px-4 py-2">
           <div className="flex items-center gap-2 text-neutral-400">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -187,7 +187,7 @@ const DeepResearchView: React.FC<DeepResearchViewProps> = ({
       </div>
       
       {/* Right content area with step output */}
-      <div className="p-6 overflow-y-auto">
+      <div className="p-6 overflow-y-auto" style={{ maxHeight: '600px' }}>
         {error ? (
           <div className="p-4 bg-red-900/20 border border-red-900/50 rounded-lg text-red-400">
             {error}
