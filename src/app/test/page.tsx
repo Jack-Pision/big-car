@@ -139,27 +139,15 @@ When ending a conversation, offer follow-up options or future guidance.`;
 
 const CITATION_INSTRUCTIONS = `IMPORTANT: Format your response like a professional research document with the following structure:
 
-1. Start with a clear, bold main title that summarizes the topic (e.g., "# Major News Events in Bangladesh, 2025").
-
-2. Organize content into sections with bold headers (e.g., "## Political Crisis and Caretaker Government").
-
-3. Use bullet points for all key points and details:
-   * Start each detail with a bullet point (*)
-   * Keep bullets concise but informative
-   * Indent sub-points if needed
-
-4. For citations, use numbered references in square brackets [1], [2], etc. at the end of sentences or bullet points that use information from sources. You can include multiple citations together [1] [2].
-
-5. Include a "Summary Table" if appropriate, using markdown table format:
-   | Column 1 | Column 2 |
-   |----------|----------|
-   | Data     | Data     |
-
-6. End with a "## Conclusion" section that summarizes the key points.
-
-7. When you use any information from the web search results, you MUST add a citation in the format [1], [2], etc. immediately after the relevant sentence or paragraph. DO NOT use [@Web](URL) format.
-
-The result should look like a professional, well-formatted research document with clear hierarchy and organization.`;
+1. Begin with a 5–7 sentence introductory paragraph that welcomes the reader and introduces the topic. Do NOT use any bullets or numbering in the introduction.
+2. Use a clear main title at the top with a single # (e.g., "# The History of Artificial Intelligence"). Do NOT use bullets or numbering for the title.
+3. Organize the main content into sections with subtitles using ## headings (e.g., "## Historical Context"). Do NOT use bullets or numbering for section titles.
+4. Inside each section, use bullet points (*) for all lists. Each bullet point should be a detailed mini-paragraph (2–4 sentences) with facts, context, and analysis. Do NOT use numbered lists.
+5. End with a "## Summary Table" (if appropriate) and a "## Conclusion" section.
+6. Ensure all citations use [1], [2], etc. at the end of relevant sentences.
+7. The output should be clean, well-spaced, and easy to read—like a professional research summary.
+8. Do not use numbered lists or bullets for section titles or the main title. Only use bullet points for content inside sections.
+9. Numbered lists are only allowed inside tables if needed.`;
 
 interface ProcessedResponse {
   content: string;
@@ -584,7 +572,7 @@ export default function TestChat() {
 IMPORTANT: Your answer MUST be at least 750 words. Do not stop before you reach this length. If you finish early, add more details, examples, or analysis until you reach the required length.
 
 BULLET POINT DETAIL REQUIREMENT:
-For each bullet point, write a detailed, self-contained summary (2–4 sentences) that explains the topic, provides context, and includes key facts or findings. Do not use single-sentence or headline-style bullets. Each bullet should be a mini-paragraph.
+For each bullet point, write a detailed, self-contained summary (5–8 sentences) that explains the topic, provides context, and includes key facts or findings. Do not use single-sentence or headline-style bullets. Each bullet should be a mini-paragraph.
 
 FORMATTING REQUIREMENTS:
 1. Your response MUST follow a professional, well-structured format like a research document or report.
