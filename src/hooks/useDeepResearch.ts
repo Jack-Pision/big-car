@@ -148,14 +148,43 @@ export const useDeepResearch = (isActive: boolean, query: string = '') => {
         })
       });
 
-      if (!response.ok) throw new Error('Failed to analyze query');
-      const data = await response.json();
-      
-      // Update step with AI's analysis
-      updateStepStatus('understand', 'completed', data.content, data.content);
-      
+      let aiContent = '';
+      if (response.body && response.headers.get('content-type')?.includes('text/event-stream')) {
+        // Handle streaming response
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let done = false;
+        while (!done) {
+          const { value, done: doneReading } = await reader.read();
+          done = doneReading;
+          if (value) {
+            buffer += decoder.decode(value, { stream: true });
+            let lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+            for (let line of lines) {
+              if (line.startsWith('data:')) {
+                const data = line.replace('data:', '').trim();
+                if (data === '[DONE]') continue;
+                try {
+                  const parsed = JSON.parse(data);
+                  const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.message?.content || parsed.choices?.[0]?.text || parsed.content || '';
+                  if (delta) aiContent += delta;
+                } catch (err) {
+                  // Ignore parse errors for incomplete lines
+                }
+              }
+            }
+          }
+        }
+      } else {
+        // Handle regular JSON response
+        const data = await response.json();
+        aiContent = data.content || data.choices?.[0]?.message?.content || data.generated_text || '';
+      }
+      updateStepStatus('understand', 'completed', aiContent, aiContent);
       // Move to research step
-      processResearchStep(query, data.content);
+      processResearchStep(query, aiContent);
     } catch (err: any) {
       handleError('understand', err.message);
     }
