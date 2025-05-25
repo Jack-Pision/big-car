@@ -8,19 +8,22 @@ const DEFAULT_THINKING_STEPS: ThinkingStep[] = [
     id: 'understand',
     title: 'Understanding the Query',
     content: '',
-    status: 'pending'
+    status: 'pending',
+    output: null // Will store the AI's analysis
   },
   {
     id: 'research',
     title: 'Gathering Research',
     content: '',
-    status: 'pending'
+    status: 'pending',
+    output: null // Will store the fetched web data
   },
   {
     id: 'synthesize',
     title: 'Synthesizing Response',
     content: '',
-    status: 'pending'
+    status: 'pending',
+    output: null // Will store the final AI response
   }
 ];
 
@@ -91,88 +94,185 @@ const getRandomTime = (min: number, max: number): number => {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 };
 
+interface WebData {
+  serperArticles: any[];
+  wikipediaArticles: any[];
+  newsdataArticles: any[];
+  sources: any[];
+  webCitations: string;
+}
+
 export const useDeepResearch = (isActive: boolean, query: string = '') => {
   const [steps, setSteps] = useState<ThinkingStep[]>([...DEFAULT_THINKING_STEPS]);
   const [activeStepId, setActiveStepId] = useState<string | null>(null);
-  const [detailedThinking, setDetailedThinking] = useState('');
   const [isComplete, setIsComplete] = useState(false);
   const [isInProgress, setIsInProgress] = useState(false);
+  const [webData, setWebData] = useState<WebData | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  // Reset steps when a new query starts
+  // Reset everything when a new query starts
   useEffect(() => {
     if (query && isActive && !isInProgress) {
-      // Check if the query contains a Reddit username
-      const username = extractRedditUsername(query);
-      
-      // If no Reddit username is found, remove the Reddit step
-      const filteredSteps = username 
-        ? [...DEFAULT_THINKING_STEPS]
-        : DEFAULT_THINKING_STEPS.filter(step => step.id !== 'reddit');
-      
-      setSteps(filteredSteps);
+      setSteps([...DEFAULT_THINKING_STEPS]);
       setActiveStepId(null);
-      setDetailedThinking('');
       setIsComplete(false);
       setIsInProgress(true);
+      setWebData(null);
+      setError(null);
       
-      // Start the thinking process after a short delay
-      setTimeout(() => {
-        setActiveStepId('understand');
-        setDetailedThinking(getRandomThinkingContent('understand', query));
-        processNextStep('understand', 0);
-      }, 500);
+      // Start the process with understanding step
+      processUnderstandStep(query);
     }
     
-    // When DeepResearch is turned off, reset everything
     if (!isActive) {
       setIsInProgress(false);
       setIsComplete(false);
     }
   }, [query, isActive]);
 
-  // Process steps in sequence
-  const processNextStep = (currentStepId: string, stepIndex: number) => {
-    if (!isActive || stepIndex >= steps.length) {
+  // Step 1: Understanding - Call AI to analyze the query
+  const processUnderstandStep = async (query: string) => {
+    try {
+      setActiveStepId('understand');
+      updateStepStatus('understand', 'active', 'Analyzing your query...');
+
+      const response = await fetch('/api/nvidia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [
+            { role: 'system', content: 'You are a research planning assistant. Analyze the query and create a detailed research plan. What information is needed? What are the key concepts? What sources should be prioritized?' },
+            { role: 'user', content: query }
+          ],
+          temperature: 0.2
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to analyze query');
+      const data = await response.json();
+      
+      // Update step with AI's analysis
+      updateStepStatus('understand', 'completed', data.content, data.content);
+      
+      // Move to research step
+      processResearchStep(query, data.content);
+    } catch (err: any) {
+      handleError('understand', err.message);
+    }
+  };
+
+  // Step 2: Research - Fetch web data based on AI's analysis
+  const processResearchStep = async (query: string, analysis: string) => {
+    try {
+      setActiveStepId('research');
+      updateStepStatus('research', 'active', 'Gathering information from multiple sources...');
+
+      // Fetch from all sources in parallel
+      const [serperRes, wikiRes, newsRes] = await Promise.all([
+        fetch('/api/serper/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query, limit: 10 })
+        }),
+        fetch('/api/wikipedia/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query, limit: 8 })
+        }),
+        fetch('/api/newsdata/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query, limit: 8 })
+        })
+      ]);
+
+      const [serperData, wikiData, newsData] = await Promise.all([
+        serperRes.json(),
+        wikiRes.json(),
+        newsRes.json()
+      ]);
+
+      const newWebData: WebData = {
+        serperArticles: serperData.articles || [],
+        wikipediaArticles: wikiData.articles || [],
+        newsdataArticles: newsData.articles || [],
+        sources: [...(serperData.sources || [])],
+        webCitations: serperData.summary || ''
+      };
+
+      setWebData(newWebData);
+      
+      // Create a summary of found data
+      const dataSummary = `Found:
+- ${newWebData.serperArticles.length} web articles
+- ${newWebData.wikipediaArticles.length} Wikipedia entries
+- ${newWebData.newsdataArticles.length} news articles`;
+
+      updateStepStatus('research', 'completed', dataSummary, newWebData);
+      
+      // Move to synthesis step
+      processSynthesisStep(query, analysis, newWebData);
+    } catch (err: any) {
+      handleError('research', err.message);
+    }
+  };
+
+  // Step 3: Synthesis - Generate final response
+  const processSynthesisStep = async (query: string, analysis: string, webData: WebData) => {
+    try {
+      setActiveStepId('synthesize');
+      updateStepStatus('synthesize', 'active', 'Creating your comprehensive response...');
+
+      const response = await fetch('/api/nvidia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [
+            { role: 'system', content: 'You are a Deep Research AI assistant. Use the provided web data to create a comprehensive, well-structured response.' },
+            { role: 'user', content: `Query: ${query}\n\nAnalysis: ${analysis}\n\nWeb Data: ${JSON.stringify(webData)}` }
+          ],
+          temperature: 0.2
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to synthesize response');
+      const data = await response.json();
+
+      updateStepStatus('synthesize', 'completed', 'Response ready!', data.content);
       setIsComplete(true);
       setIsInProgress(false);
-      return;
+    } catch (err: any) {
+      handleError('synthesize', err.message);
     }
+  };
 
-    // Mark current step as active
-    setSteps(prev => prev.map(step => 
-      step.id === currentStepId 
-        ? { ...step, status: 'active', content: getRandomThinkingContent(step.id, query) } 
+  // Helper to update step status and content
+  const updateStepStatus = (
+    stepId: string,
+    status: 'pending' | 'active' | 'completed',
+    content: string,
+    output: any = null
+  ) => {
+    setSteps(prev => prev.map(step =>
+      step.id === stepId
+        ? { ...step, status, content, output }
         : step
     ));
-    
-    // After some time, mark the current step as completed and move to the next
-    const timing = STEP_TIMINGS[currentStepId as keyof typeof STEP_TIMINGS] || { min: 2000, max: 4000 };
-    const stepTime = getRandomTime(timing.min, timing.max);
-    
-    setTimeout(() => {
-      // Complete the current step
-      setSteps(prev => prev.map(step => 
-        step.id === currentStepId ? { ...step, status: 'completed' } : step
-      ));
-      
-      // Move to the next step
-      if (stepIndex + 1 < steps.length) {
-        const nextStep = steps[stepIndex + 1];
-        setActiveStepId(nextStep.id);
-        setDetailedThinking(getRandomThinkingContent(nextStep.id, query));
-        processNextStep(nextStep.id, stepIndex + 1);
-      } else {
-        setIsComplete(true);
-        setIsInProgress(false);
-      }
-    }, stepTime);
+  };
+
+  // Helper to handle errors
+  const handleError = (stepId: string, errorMessage: string) => {
+    setError(`Error in ${stepId} step: ${errorMessage}`);
+    updateStepStatus(stepId, 'pending', `Error: ${errorMessage}`);
+    setIsInProgress(false);
   };
 
   return {
     steps,
     activeStepId,
-    detailedThinking,
     isComplete,
-    isInProgress
+    isInProgress,
+    error,
+    webData
   };
 }; 

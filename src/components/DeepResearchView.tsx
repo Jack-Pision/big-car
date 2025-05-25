@@ -9,21 +9,135 @@ export interface ThinkingStep {
   title: string;
   content: string;
   status: 'pending' | 'active' | 'completed';
+  output: any; // Store the actual output of each step
 }
 
 interface DeepResearchViewProps {
   steps: ThinkingStep[];
   activeStepId: string | null;
-  detailedThinking: string;
+  error: string | null;
+  webData: any | null;
 }
 
 const DeepResearchView: React.FC<DeepResearchViewProps> = ({ 
   steps, 
   activeStepId,
-  detailedThinking 
+  error,
+  webData
 }) => {
-  // Check if the current step is the Reddit analysis step
-  const isRedditStep = activeStepId === 'reddit';
+  // Get the current active step
+  const activeStep = steps.find(step => step.id === activeStepId);
+  
+  // Helper to render step-specific content
+  const renderStepContent = (step: ThinkingStep) => {
+    if (step.status === 'pending') {
+      return <div className="text-neutral-500">Waiting to start...</div>;
+    }
+
+    if (step.status === 'active') {
+      return (
+        <div className="flex items-center gap-2 text-cyan-400">
+          <div className="animate-spin w-4 h-4">⚡</div>
+          <span>{step.content}</span>
+        </div>
+      );
+    }
+
+    // For completed steps, show their specific outputs
+    switch (step.id) {
+      case 'understand':
+        return (
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium text-neutral-200">Research Plan</h3>
+            <ReactMarkdown 
+              remarkPlugins={[remarkGfm]}
+              className="text-neutral-300 text-sm leading-relaxed"
+            >
+              {step.output || step.content}
+            </ReactMarkdown>
+          </div>
+        );
+
+      case 'research':
+        if (!webData) return null;
+        return (
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium text-neutral-200">Found Sources</h3>
+            <div className="grid grid-cols-1 gap-3">
+              {webData.serperArticles.length > 0 && (
+                <div className="p-3 bg-neutral-800/50 rounded-lg">
+                  <h4 className="text-sm font-medium text-neutral-300 mb-2">Web Articles</h4>
+                  <ul className="space-y-2">
+                    {webData.serperArticles.slice(0, 3).map((article: any, i: number) => (
+                      <li key={i} className="text-xs text-neutral-400">
+                        {article.title}
+                      </li>
+                    ))}
+                    {webData.serperArticles.length > 3 && (
+                      <li className="text-xs text-neutral-500">
+                        + {webData.serperArticles.length - 3} more articles
+                      </li>
+                    )}
+                  </ul>
+                </div>
+              )}
+              
+              {webData.wikipediaArticles.length > 0 && (
+                <div className="p-3 bg-neutral-800/50 rounded-lg">
+                  <h4 className="text-sm font-medium text-neutral-300 mb-2">Wikipedia Articles</h4>
+                  <ul className="space-y-2">
+                    {webData.wikipediaArticles.slice(0, 3).map((article: any, i: number) => (
+                      <li key={i} className="text-xs text-neutral-400">
+                        {article.title}
+                      </li>
+                    ))}
+                    {webData.wikipediaArticles.length > 3 && (
+                      <li className="text-xs text-neutral-500">
+                        + {webData.wikipediaArticles.length - 3} more articles
+                      </li>
+                    )}
+                  </ul>
+                </div>
+              )}
+              
+              {webData.newsdataArticles.length > 0 && (
+                <div className="p-3 bg-neutral-800/50 rounded-lg">
+                  <h4 className="text-sm font-medium text-neutral-300 mb-2">News Articles</h4>
+                  <ul className="space-y-2">
+                    {webData.newsdataArticles.slice(0, 3).map((article: any, i: number) => (
+                      <li key={i} className="text-xs text-neutral-400">
+                        {article.title}
+                      </li>
+                    ))}
+                    {webData.newsdataArticles.length > 3 && (
+                      <li className="text-xs text-neutral-500">
+                        + {webData.newsdataArticles.length - 3} more articles
+                      </li>
+                    )}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+
+      case 'synthesize':
+        return (
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium text-neutral-200">Final Response</h3>
+            <ReactMarkdown 
+              remarkPlugins={[remarkGfm]}
+              className="text-neutral-300 text-sm leading-relaxed"
+            >
+              {step.output || step.content}
+            </ReactMarkdown>
+          </div>
+        );
+
+      default:
+        return <div className="text-neutral-300">{step.content}</div>;
+    }
+  };
 
   return (
     <div className="grid grid-cols-[300px_1fr] h-full">
@@ -66,76 +180,31 @@ const DeepResearchView: React.FC<DeepResearchViewProps> = ({
                 step.status === 'active' ? 'text-cyan-400' : 'text-neutral-500'
               }`}>
                 {step.title}
-                {step.id === 'reddit' && (
-                  <span className="ml-2 px-1.5 py-0.5 bg-blue-900/40 text-blue-400 text-xs rounded">Reddit</span>
-                )}
               </div>
             </div>
           ))}
         </div>
-        
-        {/* Expand/collapse controls */}
-        <div className="mt-auto pt-4 flex items-center justify-between px-4">
-          <button className="text-neutral-400 hover:text-neutral-200 transition-colors">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <polyline points="15 18 9 12 15 6" />
-            </svg>
-          </button>
-          <button className="text-neutral-400 hover:text-neutral-200 transition-colors">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="8" y1="6" x2="21" y2="6" />
-              <line x1="8" y1="12" x2="21" y2="12" />
-              <line x1="8" y1="18" x2="21" y2="18" />
-              <line x1="3" y1="6" x2="3.01" y2="6" />
-              <line x1="3" y1="12" x2="3.01" y2="12" />
-              <line x1="3" y1="18" x2="3.01" y2="18" />
-            </svg>
-          </button>
-        </div>
       </div>
       
-      {/* Right content area with detailed thinking */}
+      {/* Right content area with step output */}
       <div className="p-6 overflow-y-auto">
-        <h2 className="text-xl text-neutral-200 mb-4">
-          {isRedditStep ? 'Reddit Analysis' : 'Thinking'}
-          {isRedditStep && (
-            <span className="ml-2 text-sm font-normal text-blue-400">
-              <svg className="inline-block w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10"></circle>
-                <path d="M16.2 7.8l-2 8-2.6-4.8-4.8-2.6 8-2"></path>
-              </svg>
-              Analyzing Reddit data
-            </span>
-          )}
-        </h2>
-        
-        {activeStepId ? (
+        {error ? (
+          <div className="p-4 bg-red-900/20 border border-red-900/50 rounded-lg text-red-400">
+            {error}
+          </div>
+        ) : activeStep ? (
           <motion.div
+            key={activeStep.id}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.3 }}
-            className="text-neutral-300 text-sm leading-relaxed markdown-body"
+            className="space-y-4"
           >
-            <ReactMarkdown 
-              remarkPlugins={[remarkGfm]}
-              className={isRedditStep ? 'reddit-analysis-content' : ''}
-            >
-              {detailedThinking || (
-                isRedditStep ? "Analyzing Reddit user data..." : "Thinking..."
-              )}
-            </ReactMarkdown>
-            
-            {isRedditStep && (
-              <div className="mt-4 p-3 bg-neutral-800/50 border border-neutral-700 rounded-md">
-                <p className="text-xs text-neutral-400">
-                  The AI is analyzing data from Reddit's API to provide insights about the user's account, posts, comments, and activity patterns.
-                </p>
-              </div>
-            )}
+            {renderStepContent(activeStep)}
           </motion.div>
         ) : (
-          <div className="text-neutral-500 text-sm">
-            Waiting to start...
+          <div className="text-neutral-500">
+            Select a step to view details...
           </div>
         )}
       </div>

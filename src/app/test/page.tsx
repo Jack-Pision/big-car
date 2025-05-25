@@ -380,10 +380,11 @@ export default function TestChat() {
   const {
     steps,
     activeStepId,
-    detailedThinking,
-    isComplete: deepResearchComplete,
-    isInProgress: deepResearchInProgress
-  } = useDeepResearch(showDeepResearchView, currentQuery);
+    isComplete,
+    isInProgress,
+    error,
+    webData
+  } = useDeepResearch(deepResearchActive, currentQuery);
 
   // Helper to show the image in chat
   const showImageMsg = (content: string, imgSrc: string) => {
@@ -418,11 +419,31 @@ export default function TestChat() {
 
   // Hide the Deep Research view when research completes and AI responds
   useEffect(() => {
-    if (deepResearchComplete && !isAiResponding) {
+    if (isComplete && !isAiResponding) {
       // Only hide the research view when both research is complete and AI has responded
       setShowDeepResearchView(false);
     }
-  }, [deepResearchComplete, isAiResponding]);
+  }, [isComplete, isAiResponding]);
+
+  // When deep research completes, automatically start the AI request
+  useEffect(() => {
+    if (isComplete && deepResearchActive && !isAiResponding && currentQuery) {
+      // Get the final synthesized response from the steps
+      const synthesisStep = steps.find(step => step.id === 'synthesize');
+      if (synthesisStep?.output) {
+        // Update messages with the final response
+        setMessages(prev => [
+          ...prev.filter(m => m.role !== 'assistant'), // Remove any pending assistant message
+          { 
+            role: 'assistant',
+            content: synthesisStep.output
+          }
+        ]);
+        setIsAiResponding(false);
+        setLoading(false);
+      }
+    }
+  }, [isComplete, deepResearchActive, isAiResponding, steps]);
 
   async function handleSend(e?: React.FormEvent) {
     if (e) e.preventDefault();
@@ -450,29 +471,11 @@ export default function TestChat() {
           content: "deep-research-view" 
         }
       ]);
-    } else {
-      // Normal user message for regular chat flow
-      setMessages(prev => [
-        ...prev,
-        { 
-          role: "user", 
-          content: currentInput 
-        }
-      ]);
-    }
 
-    setInput("");
-    setImagePreviewUrls([]);
-    setSelectedFilesForUpload([]);
-
-    // If Deep Research is active, wait until it completes before sending to AI
-    if (deepResearchActive) {
-    setLoading(true);
-    if (showHeading) setShowHeading(false);
-      
-      // We'll let the deep research process continue
-      // The API call to the AI will happen after deepResearchComplete becomes true
-      return;
+      setInput("");
+      setImagePreviewUrls([]);
+      setSelectedFilesForUpload([]);
+      return; // Let the Deep Research process handle everything
     }
 
     // This is the existing AI request code which we'll now only run when deep research is not active
@@ -787,372 +790,6 @@ FORMATTING REQUIREMENTS:
     setSelectedFilesForUpload([]);
   }
 
-  // When deep research completes, automatically start the AI request
-  useEffect(() => {
-    if (deepResearchComplete && deepResearchActive && !isAiResponding && currentQuery) {
-      // Now send the request to the AI
-      sendAIRequest(currentQuery);
-    }
-  }, [deepResearchComplete, deepResearchActive, isAiResponding]);
-
-  // Separate the AI request part from handleSend to make it reusable
-  async function sendAIRequest(userMessage: string) {
-    setIsAiResponding(true);
-    
-    // Create a new abort controller for this AI response
-    aiStreamAbortController.current = new AbortController();
-
-    let uploadedImageUrls: string[] = [];
-    
-    try {
-      if (selectedFilesForUpload.length > 0) {
-        const clientSideSupabase = createSupabaseClient();
-        if (!clientSideSupabase) throw new Error('Supabase client not available');
-        
-        // Upload each file individually and collect their public URLs
-        uploadedImageUrls = await Promise.all(
-          selectedFilesForUpload.map(async (file) => {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Math.random()}.${fileExt}`;
-        const filePath = `${fileName}`;
-            const { error: uploadError } = await clientSideSupabase.storage
-              .from('images2')
-          .upload(filePath, file);
-        if (uploadError) {
-              console.error('Supabase upload error for file:', file.name, uploadError);
-              throw new Error(`Failed to upload ${file.name}: ${uploadError.message}`);
-        }
-        const { data: urlData } = clientSideSupabase.storage
-              .from('images2')
-          .getPublicUrl(filePath);
-            if (!urlData.publicUrl) {
-              console.error('Failed to get public URL for file:', file.name);
-              throw new Error(`Failed to get public URL for ${file.name}`);
-            }
-            return urlData.publicUrl;
-          })
-        );
-
-        if (uploadedImageUrls.length === 0 && selectedFilesForUpload.length > 0) {
-          throw new Error('Failed to get public URLs for any of the uploaded images.');
-        }
-      }
-
-      // Create objects to store web data we fetch
-      let webData = {
-        serperArticles: null as any,
-        wikipediaArticles: null as any,
-        newsdataArticles: null as any,
-        sources: [] as any[],
-        webCitations: '' as string
-      };
-
-      // When Deep Research is active, fetch Serper first, then Wikipedia and NewsData.io in parallel
-      if (deepResearchActive) {
-        try {
-          console.log("Fetching Serper, Wikipedia, and NewsData.io data for Deep Research...");
-          // 1. Fetch Serper first (10 articles)
-          const serperResponse = await fetch('/api/serper/search', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ query: userMessage, limit: 10 }),
-            signal: aiStreamAbortController.current.signal,
-          });
-          let serperData = { articles: [], summary: '', sources: [] };
-          if (serperResponse.ok) {
-            serperData = await serperResponse.json();
-            webData.serperArticles = serperData.articles;
-            webData.webCitations += serperData.summary ? serperData.summary + '\n' : '';
-            webData.sources = [...(serperData.sources || [])];
-            console.log(`Retrieved ${serperData.articles?.length || 0} Serper articles for query`);
-          }
-
-          // 2. Fetch Wikipedia and NewsData in parallel
-          const [wikiResponse, newsResponse] = await Promise.all([
-            fetch('/api/wikipedia/search', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ query: userMessage, limit: 8 }),
-              signal: aiStreamAbortController.current.signal,
-            }),
-            fetch('/api/newsdata/search', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ query: userMessage, limit: 8 }),
-              signal: aiStreamAbortController.current.signal,
-            })
-          ]);
-          if (wikiResponse.ok) {
-            const wikiData = await wikiResponse.json();
-            webData.wikipediaArticles = wikiData.articles;
-            webData.webCitations += wikiData.summary ? wikiData.summary + '\n' : '';
-            webData.sources = [...webData.sources, ...(wikiData.sources || [])];
-            console.log(`Retrieved ${wikiData.articles?.length || 0} Wikipedia articles for query`);
-          }
-          if (newsResponse.ok) {
-            const newsData = await newsResponse.json();
-            webData.newsdataArticles = newsData.articles;
-            webData.webCitations += newsData.summary ? newsData.summary + '\n' : '';
-            webData.sources = [...webData.sources, ...(newsData.sources || [])];
-            console.log(`Retrieved ${newsData.articles?.length || 0} NewsData.io articles for query`);
-          }
-        } catch (error) {
-          console.error("Error fetching Serper, Wikipedia, or NewsData.io data:", error);
-          // Continue with normal processing if web data fetching fails
-        }
-      }
-
-      // Build the image context system prompt for Nemotron
-      let imageContextPrompt = "";
-      if (imageContexts.length > 0) {
-        // Build a system prompt with all image contexts
-        imageContextPrompt = imageContexts
-          .map(ctx => `Image ${ctx.order}: "${ctx.description}"`)
-          .join('\n');
-      }
-
-      // Check if this is a follow-up question (not the first message)
-      const isFollowUp = messages.filter(m => m.role === 'user').length > 0;
-      
-      // Add follow-up instruction to system prompt if needed
-      let enhancedSystemPrompt = SYSTEM_PROMPT;
-      if (isFollowUp) {
-        enhancedSystemPrompt = `${SYSTEM_PROMPT}\n\nThis is a follow-up question. While maintaining your detailed and helpful approach, try to build on previous context rather than repeating information already covered. Focus on advancing the conversation and providing new insights.`;
-      }
-      
-      // Prepend citation instructions ONLY for Deep Research
-      if (deepResearchActive && webData) {
-        // Format Wikipedia and NewsData.io articles for the prompt
-        let wikiSection = '';
-        if (webData.wikipediaArticles && webData.wikipediaArticles.length > 0) {
-          wikiSection += '===WIKIPEDIA SEARCH RESULTS===\n';
-          webData.wikipediaArticles.forEach((article: any, i: number) => {
-            wikiSection += `[${i + 1}] Title: "${article.title}" (${article.url})\n`;
-            if (article.summary) {
-              const excerpt = article.summary.length > 200 ? article.summary.slice(0, 200) + '...' : article.summary;
-              wikiSection += `Excerpt: ${excerpt}\n`;
-            }
-          });
-          wikiSection += '===END WIKIPEDIA SEARCH RESULTS===\n';
-        }
-        let newsSection = '';
-        if (webData.newsdataArticles && webData.newsdataArticles.length > 0) {
-          newsSection += '===NEWSDATA.IO SEARCH RESULTS===\n';
-          webData.newsdataArticles.forEach((article: any, i: number) => {
-            newsSection += `[${i + 1}] Title: "${article.title}" (${article.url})\n`;
-            if (article.description) {
-              const excerpt = article.description.length > 200 ? article.description.slice(0, 200) + '...' : article.description;
-              newsSection += `Excerpt: ${excerpt}\n`;
-            }
-          });
-          newsSection += '===END NEWSDATA.IO SEARCH RESULTS===\n';
-        }
-        
-        // Strong explicit instruction
-        const combinedInstruction = 'IMPORTANT: You MUST use only the above Wikipedia and NewsData.io articles as your web sources. Do NOT use or invent any other web links. When citing, use numbered references [1], [2], etc. at the end of sentences or bullet points that use information from sources.';
-        
-        // Professional formatting instructions
-        const formattingInstructions = `
-IMPORTANT: Your answer MUST be at least 750 words. Do not stop before you reach this length. If you finish early, add more details, examples, or analysis until you reach the required length.
-
-BULLET POINT DETAIL REQUIREMENT:
-For each bullet point, write a detailed, self-contained summary (2–4 sentences) that explains the topic, provides context, and includes key facts or findings. Do not use single-sentence or headline-style bullets. Each bullet should be a mini-paragraph.
-
-FORMATTING REQUIREMENTS:
-1. Your response MUST follow a professional, well-structured format like a research document or report.
-2. Start with a clear main title using # heading (e.g., "# Latest Developments in AI, 2025").
-3. Divide content into logical sections with ## headings.
-4. Use bullet points (*) for all key details and findings - NOT paragraphs.
-5. End with a "## Conclusion" section.
-6. Include a "## Summary Table" if the information can be presented in tabular form.
-7. For citations, use ONLY numbered references in square brackets [1], [2] at the end of sentences/bullets.`;
-        
-        enhancedSystemPrompt = `${wikiSection}\n${newsSection}\n${combinedInstruction}\n\n${formattingInstructions}\n\n${CITATION_INSTRUCTIONS}\n\n${enhancedSystemPrompt}`;
-      }
-
-      // Add source metadata as structured data for the AI to use
-      if (webData.sources && webData.sources.length > 0) {
-        const sourcesData = JSON.stringify(webData.sources, null, 2);
-        enhancedSystemPrompt = `${enhancedSystemPrompt}\n\n===SOURCE METADATA===\n\`\`\`json\n${sourcesData}\n\`\`\`\n===END SOURCE METADATA===\n\nThe above JSON contains metadata about the web sources. When citing a source, use the URL from this metadata.`;
-      }
-      
-      const systemPrompt = imageContextPrompt 
-        ? `${enhancedSystemPrompt}\n\n${imageContextPrompt}`
-        : enhancedSystemPrompt;
-
-      const apiPayload: any = {
-        messages: [
-          { role: "system", content: systemPrompt },
-          // Filter out previous assistant messages before sending, keep user messages
-          ...messages.filter(m => m.role === 'user'), 
-          // Add the current user message (text part)
-          { role: "user", content: userMessage }
-        ].filter(msg => msg.content || (msg as any).imageUrls), // Ensure content or imageUrls exists
-        
-        // Adjust parameters for more detailed responses
-        temperature: deepResearchActive ? 0.2 : 0.8, // Lower temperature for more focused, deterministic responses in Deep Research mode
-        max_tokens: deepResearchActive ? 15000 : 2048, // Much higher token limit for Deep Research mode
-        top_p: deepResearchActive ? 0.85 : 0.95, // Slightly lower top_p for more focused responses in Deep Research mode
-        frequency_penalty: 0.3,
-        presence_penalty: 0.3,
-      };
-
-      // Store web sources with the message context for rendering with icons
-      if (webData.sources && webData.sources.length > 0) {
-        apiPayload.webSources = webData.sources;
-      }
-
-      // For Gemma's context, send the previous image descriptions
-      if (uploadedImageUrls.length > 0) {
-        // Extract descriptions only for Gemma
-        const previousImageDescriptions = imageContexts.map(ctx => ctx.description);
-        
-        apiPayload.imageUrls = uploadedImageUrls;
-        apiPayload.previousImageDescriptions = previousImageDescriptions;
-        
-        // If there was no text input but images, we construct a default prompt for the API
-        if (!userMessage) {
-          apiPayload.messages[apiPayload.messages.length -1].content = "Describe these images.";
-        }
-      }
-      
-      const res = await fetch("/api/nvidia", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(apiPayload),
-        signal: aiStreamAbortController.current.signal,
-      });
-
-      if (res.body && res.headers.get('content-type')?.includes('text/event-stream')) {
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-        let done = false;
-        let aiMsg: Message = { 
-          role: "assistant" as const,
-          content: "", 
-          imageUrls: uploadedImageUrls, // Associate assistant response with the uploaded images
-          webSources: webData.sources || [] // Add web sources to the response
-        };
-        setMessages((prev) => [...prev, aiMsg]);
-
-        while (!done) {
-          const { value, done: doneReading } = await reader.read();
-          done = doneReading;
-          if (value) {
-            buffer += decoder.decode(value, { stream: true });
-            let lines = buffer.split('\n');
-            buffer = lines.pop() || '';
-            for (let line of lines) {
-              if (line.startsWith('data:')) {
-                const data = line.replace('data:', '').trim();
-                if (data === '[DONE]') continue;
-                try {
-                  const parsed = JSON.parse(data);
-                  const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.message?.content || parsed.choices?.[0]?.text || parsed.content || '';
-                  if (delta) {
-                    aiMsg.content += delta;
-                    setMessages((prev) => {
-                      const updatedMessages = [...prev];
-                      const lastMsgIndex = updatedMessages.length - 1;
-                      if(updatedMessages[lastMsgIndex] && updatedMessages[lastMsgIndex].role === 'assistant'){
-                        updatedMessages[lastMsgIndex] = { 
-                          ...updatedMessages[lastMsgIndex], 
-                          content: aiMsg.content,
-                          webSources: aiMsg.webSources // Preserve web sources
-                        };
-                      }
-                      return updatedMessages;
-                    });
-                  }
-                } catch (err) {
-                  // console.error("Error parsing stream data:", err, "Data:", data);
-                }
-              }
-            }
-          }
-        }
-        
-        // If this was an image request, store the image description for future context
-        if (uploadedImageUrls.length > 0) {
-          const { content } = cleanAIResponse(aiMsg.content);
-          // Store a summary (first 150 chars) of the image description for context
-          const descriptionSummary = content.slice(0, 150) + (content.length > 150 ? '...' : '');
-          
-          // Increment the image counter for each new image
-          const newImageCount = imageCounter + uploadedImageUrls.length;
-          setImageCounter(newImageCount);
-          
-          // Create new image context entries for each uploaded image
-          const newImageContexts = uploadedImageUrls.map((url, index) => ({
-            order: imageCounter + index + 1, // 1-based numbering
-            description: descriptionSummary,
-            imageUrl: url,
-            timestamp: Date.now()
-          }));
-          
-          // Add to existing image contexts, keeping a maximum of 10 for memory management
-          setImageContexts(prev => {
-            const updated = [...prev, ...newImageContexts];
-            return updated.slice(-10); // Keep the 10 most recent image contexts
-          });
-        }
-        
-      } else {
-        const data = await res.json();
-        const assistantResponseContent = cleanAIResponse(data.choices?.[0]?.message?.content || data.generated_text || data.error || JSON.stringify(data) || "No response");
-        const aiMsg: Message = {
-          role: "assistant" as const,
-          content: assistantResponseContent.content,
-          imageUrls: uploadedImageUrls, // Associate assistant response with the uploaded images
-          webSources: [] // Initialize webSources
-        };
-        setMessages((prev) => [...prev, aiMsg]);
-        
-        // If this was an image request, store the image description for future context
-        if (uploadedImageUrls.length > 0) {
-          // Store a summary (first 150 chars) of the image description for context
-          const descriptionSummary = assistantResponseContent.content.slice(0, 150) + 
-            (assistantResponseContent.content.length > 150 ? '...' : '');
-            
-          // Increment the image counter for each new image
-          const newImageCount = imageCounter + uploadedImageUrls.length;
-          setImageCounter(newImageCount);
-          
-          // Create new image context entries for each uploaded image
-          const newImageContexts = uploadedImageUrls.map((url, index) => ({
-            order: imageCounter + index + 1, // 1-based numbering
-            description: descriptionSummary,
-            imageUrl: url,
-            timestamp: Date.now()
-          }));
-          
-          // Add to existing image contexts, keeping a maximum of 10 for memory management
-          setImageContexts(prev => {
-            const updated = [...prev, ...newImageContexts];
-            return updated.slice(-10); // Keep the 10 most recent image contexts
-          });
-        }
-      }
-      } catch (err: any) {
-      if (err.name === 'AbortError') {
-        setMessages((prev) => [
-          ...prev,
-          { role: "assistant" as const, content: "[Response stopped by user]", imageUrls: uploadedImageUrls },
-        ]);
-      } else {
-        setMessages((prev) => [
-          ...prev,
-          { role: "assistant" as const, content: "Error: " + (err?.message || String(err)), imageUrls: uploadedImageUrls },
-        ]);
-      }
-      } finally {
-      setIsAiResponding(false);
-        setLoading(false);
-      aiStreamAbortController.current = null;
-    }
-  }
-
   function handleStopAIResponse() {
     if (aiStreamAbortController.current) {
       aiStreamAbortController.current.abort();
@@ -1268,77 +905,12 @@ FORMATTING REQUIREMENTS:
                   className="w-full rounded-xl border border-neutral-800 overflow-hidden mb-2 mt-2 bg-neutral-900"
                   style={{ minHeight: "300px", maxHeight: "500px" }}
                 >
-                  <div className="h-full grid grid-cols-[240px_1fr]">
-                    {/* Left sidebar with step list */}
-                    <div className="border-r border-neutral-800 p-3 flex flex-col h-full">
-                      <div className="mb-3 px-3 py-1">
-                        <div className="flex items-center gap-2 text-neutral-400">
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <circle cx="12" cy="12" r="1" fill="currentColor"/>
-                            <ellipse cx="12" cy="12" rx="9" ry="3.5" />
-                            <ellipse cx="12" cy="12" rx="3.5" ry="9" transform="rotate(60 12 12)" />
-                            <ellipse cx="12" cy="12" rx="3.5" ry="9" transform="rotate(-60 12 12)" />
-                          </svg>
-                          <span className="text-sm font-medium">DeepSearch</span>
-                        </div>
-                      </div>
-                      
-                      {/* Steps list */}
-                      <div className="flex flex-col gap-2 overflow-y-auto">
-                        {steps.map((step) => (
-                          <div key={step.id} className="flex items-start gap-2 px-3 py-1.5">
-                            <div className="mt-0.5 flex-shrink-0">
-                              {step.status === 'completed' ? (
-                                <div className="w-5 h-5 rounded-full bg-neutral-800 flex items-center justify-center text-cyan-400">
-                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <polyline points="20 6 9 17 4 12" />
-                                  </svg>
-                                </div>
-                              ) : step.status === 'active' ? (
-                                <div className="w-5 h-5 rounded-full border-2 border-cyan-400 flex items-center justify-center animate-pulse">
-                                  <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full"></div>
-              </div>
-            ) : (
-                                <div className="w-5 h-5 rounded-full border border-neutral-700 flex items-center justify-center">
-                                </div>
-                              )}
-                            </div>
-                            <div className={`text-xs ${
-                              step.status === 'completed' ? 'text-neutral-200' : 
-                              step.status === 'active' ? 'text-cyan-400' : 'text-neutral-500'
-                            }`}>
-                              {step.title}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    {/* Right content area with detailed thinking */}
-                    <div className="p-4 overflow-y-auto">
-                      <h2 className="text-lg text-neutral-200 mb-3">Thinking</h2>
-                      
-                      {activeStepId ? (
-                        <motion.div
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          transition={{ duration: 0.3 }}
-                          className="text-neutral-300 text-sm leading-relaxed"
-                        >
-                          {detailedThinking || (
-                            <div className="flex items-center gap-2 text-neutral-500">
-                              <div className="w-2.5 h-2.5 bg-neutral-700 rounded-full animate-pulse"></div>
-                              <span>Thinking...</span>
-                </div>
-                          )}
-                        </motion.div>
-                      ) : (
-                        <div className="text-neutral-500 text-sm">
-                          Waiting to start...
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                  <DeepResearchView
+                    steps={steps}
+                    activeStepId={activeStepId}
+                    error={error}
+                    webData={webData}
+                  />
                 </motion.div>
               );
             } else { // User message
