@@ -763,6 +763,8 @@ FORMATTING REQUIREMENTS:
       setLoading(false);
       aiStreamAbortController.current = null;
     }
+    setImagePreviewUrls([]);
+    setSelectedFilesForUpload([]);
   }
 
   // When deep research completes, automatically start the AI request
@@ -1131,7 +1133,7 @@ FORMATTING REQUIREMENTS:
     }
     // Clear the file input so the same file can be selected again if removed and re-added
     if (e.target) {
-      e.target.value = '\0';
+      e.target.value = '';
     }
   }
 
@@ -1326,6 +1328,23 @@ FORMATTING REQUIREMENTS:
           style={{ background: '#232323', border: '2px solid rgba(255,255,255,0.18)', boxShadow: '0 4px 32px 0 rgba(0,0,0,0.32)' }}
           onSubmit={handleSend}
         >
+          {/* Image previews above textarea */}
+          {imagePreviewUrls.length > 0 && (
+            <div className="flex flex-row gap-2 mb-2">
+              {imagePreviewUrls.map((url, idx) => (
+                <div key={idx} className="relative">
+                  <img src={url} alt={`Preview ${idx + 1}`} className="w-16 h-16 object-cover rounded-lg" />
+                  <button
+                    type="button"
+                    className="absolute top-0 right-0 bg-black bg-opacity-60 text-white rounded-full p-1"
+                    onClick={() => removeImagePreview(idx)}
+                  >
+                    &times;
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
           {/* Input area: textarea on top, actions below */}
           <div className="flex flex-col w-full gap-2">
             {/* Textarea row */}
