@@ -513,6 +513,7 @@ export default function TestChat() {
 
       // After file upload logic and before prompt construction
       let webData = {
+        serperArticles: null as any,
         wikipediaArticles: null as any,
         newsdataArticles: null as any,
         sources: [] as any[],
@@ -814,16 +815,34 @@ FORMATTING REQUIREMENTS:
 
       // Create objects to store web data we fetch
       let webData = {
+        serperArticles: null as any,
         wikipediaArticles: null as any,
         newsdataArticles: null as any,
         sources: [] as any[],
         webCitations: '' as string
       };
 
-      // When Deep Research is active, fetch relevant Wikipedia and NewsData.io data in parallel
+      // When Deep Research is active, fetch Serper first, then Wikipedia and NewsData.io in parallel
       if (deepResearchActive) {
         try {
-          console.log("Fetching Wikipedia and NewsData.io data for Deep Research...");
+          console.log("Fetching Serper, Wikipedia, and NewsData.io data for Deep Research...");
+          // 1. Fetch Serper first (10 articles)
+          const serperResponse = await fetch('/api/serper/search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: userMessage, limit: 10 }),
+            signal: aiStreamAbortController.current.signal,
+          });
+          let serperData = { articles: [], summary: '', sources: [] };
+          if (serperResponse.ok) {
+            serperData = await serperResponse.json();
+            webData.serperArticles = serperData.articles;
+            webData.webCitations += serperData.summary ? serperData.summary + '\n' : '';
+            webData.sources = [...(serperData.sources || [])];
+            console.log(`Retrieved ${serperData.articles?.length || 0} Serper articles for query`);
+          }
+
+          // 2. Fetch Wikipedia and NewsData in parallel
           const [wikiResponse, newsResponse] = await Promise.all([
             fetch('/api/wikipedia/search', {
               method: 'POST',
@@ -853,7 +872,7 @@ FORMATTING REQUIREMENTS:
             console.log(`Retrieved ${newsData.articles?.length || 0} NewsData.io articles for query`);
           }
         } catch (error) {
-          console.error("Error fetching Wikipedia or NewsData.io data:", error);
+          console.error("Error fetching Serper, Wikipedia, or NewsData.io data:", error);
           // Continue with normal processing if web data fetching fails
         }
       }
