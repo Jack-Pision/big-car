@@ -5,83 +5,46 @@ import { extractRedditUsername } from '@/utils/reddit-api';
 // Default thinking steps that will be used for every query
 const DEFAULT_THINKING_STEPS: ThinkingStep[] = [
   {
-    id: 'clarify',
-    title: 'Clarifying the request',
+    id: 'understand',
+    title: 'Understanding the Query',
     content: '',
     status: 'pending'
   },
   {
-    id: 'search',
-    title: 'Searching for information',
+    id: 'research',
+    title: 'Gathering Research',
     content: '',
     status: 'pending'
   },
   {
-    id: 'analyze',
-    title: 'Analyzing search results',
-    content: '',
-    status: 'pending'
-  },
-  {
-    id: 'refine',
-    title: 'Refining the response',
-    content: '',
-    status: 'pending'
-  },
-  {
-    id: 'finalize',
-    title: 'Finalizing details',
-    content: '',
-    status: 'pending'
-  },
-  {
-    id: 'confirm',
-    title: 'Confirming completeness',
+    id: 'synthesize',
+    title: 'Synthesizing Response',
     content: '',
     status: 'pending'
   }
 ];
 
 const STEP_TIMINGS = {
-  clarify: { min: 2000, max: 4000 },
-  search: { min: 3000, max: 5000 },
-  analyze: { min: 4000, max: 7000 },
-  refine: { min: 3000, max: 5000 },
-  finalize: { min: 2000, max: 4000 },
-  confirm: { min: 1500, max: 3000 },
-  reddit: { min: 3000, max: 6000 }
+  understand: { min: 2000, max: 4000 },
+  research: { min: 4000, max: 7000 },
+  synthesize: { min: 3000, max: 5000 }
 };
 
 const THINKING_CONTENT = {
-  clarify: [
-    "The question is about \"{query}\", which I need to understand clearly.",
-    "I'm trying to determine what \"{query}\" is asking for specifically.",
-    "Let me break down what \"{query}\" means and what information would be most helpful."
+  understand: [
+    "Analyzing your question in detail to understand the key concepts and requirements.",
+    "Breaking down the query to identify the specific information needed.",
+    "Planning the research approach to gather the most relevant information."
   ],
-  search: [
-    "Searching for the most relevant and reliable information about \"{query}\".",
-    "Looking for authoritative sources that can provide accurate data on \"{query}\".",
-    "Gathering different perspectives and approaches related to \"{query}\"."
+  research: [
+    "Searching through Serper, Wikipedia, and NewsData.io for authoritative sources.",
+    "Gathering and filtering the most relevant information from trusted sources.",
+    "Cross-referencing information across multiple sources for accuracy."
   ],
-  analyze: [
-    "Evaluating the quality and relevance of the information I've found.",
-    "Comparing different sources and identifying consensus views on \"{query}\".",
-    "Prioritizing the most important and accurate information for my response."
-  ],
-  refine: [
-    "Organizing the information into a clear structure for my response.",
-    "Deciding how to present technical details at an appropriate level.",
-    "Ensuring my explanation addresses all aspects of \"{query}\"."
-  ],
-  finalize: [
-    "Adding important details and examples to strengthen my explanation.",
-    "Checking that my response is comprehensive and addresses the core question.",
-    "Making sure my answer is both accurate and useful for the specific query."
-  ],
-  confirm: [
-    "Verifying that all parts of \"{query}\" have been addressed.",
-    "Ensuring the response is complete and covers all relevant angles.",
-    "Checking for any gaps or areas that need further explanation."
+  synthesize: [
+    "Organizing the research into a clear, structured response.",
+    "Creating detailed, informative sections with proper citations.",
+    "Ensuring comprehensive coverage of all aspects of your query."
   ]
 };
 
@@ -154,9 +117,9 @@ export const useDeepResearch = (isActive: boolean, query: string = '') => {
       
       // Start the thinking process after a short delay
       setTimeout(() => {
-        setActiveStepId('clarify');
-        setDetailedThinking(getRandomThinkingContent('clarify', query));
-        processNextStep('clarify', 0);
+        setActiveStepId('understand');
+        setDetailedThinking(getRandomThinkingContent('understand', query));
+        processNextStep('understand', 0);
       }, 500);
     }
     
