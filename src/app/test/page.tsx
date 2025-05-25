@@ -509,6 +509,7 @@ export default function TestChat() {
       // After file upload logic and before prompt construction
       let webData = {
         wikipediaArticles: null as any,
+        newsdataArticles: null as any,
         sources: [] as any[],
         webCitations: '' as string
       };
@@ -533,7 +534,7 @@ export default function TestChat() {
       
       // Prepend citation instructions ONLY for Deep Research
       if (deepResearchActive && webData) {
-        // Format Wikipedia articles for the prompt
+        // Format Wikipedia and NewsData.io articles for the prompt
         let wikiSection = '';
         if (webData.wikipediaArticles && webData.wikipediaArticles.length > 0) {
           wikiSection += '===WIKIPEDIA SEARCH RESULTS===\n';
@@ -546,9 +547,21 @@ export default function TestChat() {
           });
           wikiSection += '===END WIKIPEDIA SEARCH RESULTS===\n';
         }
+        let newsSection = '';
+        if (webData.newsdataArticles && webData.newsdataArticles.length > 0) {
+          newsSection += '===NEWSDATA.IO SEARCH RESULTS===\n';
+          webData.newsdataArticles.forEach((article: any, i: number) => {
+            newsSection += `[${i + 1}] Title: "${article.title}" (${article.url})\n`;
+            if (article.description) {
+              const excerpt = article.description.length > 200 ? article.description.slice(0, 200) + '...' : article.description;
+              newsSection += `Excerpt: ${excerpt}\n`;
+            }
+          });
+          newsSection += '===END NEWSDATA.IO SEARCH RESULTS===\n';
+        }
         // Strong explicit instruction
-        const wikiInstruction = 'IMPORTANT: You MUST use only the above Wikipedia articles as your web sources. Do NOT use or invent any other web links. When citing, use [@Web](Wikipedia URL) or [1], [2], etc. If you do not use the above Wikipedia articles, your answer will be considered incomplete.';
-        enhancedSystemPrompt = `${wikiSection}\n${wikiInstruction}\n\n${CITATION_INSTRUCTIONS}\n\n${enhancedSystemPrompt}`;
+        const combinedInstruction = 'IMPORTANT: You MUST use only the above Wikipedia and NewsData.io articles as your web sources. Do NOT use or invent any other web links. When citing, use [@Web](URL) or [1], [2], etc. If you do not use the above articles, your answer will be considered incomplete.';
+        enhancedSystemPrompt = `${wikiSection}\n${newsSection}\n${combinedInstruction}\n\n${CITATION_INSTRUCTIONS}\n\n${enhancedSystemPrompt}`;
       }
       
       const systemPrompt = imageContextPrompt 
@@ -777,31 +790,45 @@ export default function TestChat() {
       // Create objects to store web data we fetch
       let webData = {
         wikipediaArticles: null as any,
+        newsdataArticles: null as any,
         sources: [] as any[],
         webCitations: '' as string
       };
 
-      // When Deep Research is active, fetch relevant Wikipedia data
+      // When Deep Research is active, fetch relevant Wikipedia and NewsData.io data in parallel
       if (deepResearchActive) {
         try {
-          console.log("Fetching Wikipedia data for Deep Research...");
-          // Call our Wikipedia API to get relevant articles for the query
-          const wikiResponse = await fetch('/api/wikipedia/search', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ query: userMessage, limit: 8 }),
-            signal: aiStreamAbortController.current.signal,
-          });
-          
+          console.log("Fetching Wikipedia and NewsData.io data for Deep Research...");
+          const [wikiResponse, newsResponse] = await Promise.all([
+            fetch('/api/wikipedia/search', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ query: userMessage, limit: 8 }),
+              signal: aiStreamAbortController.current.signal,
+            }),
+            fetch('/api/newsdata/search', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ query: userMessage, limit: 8 }),
+              signal: aiStreamAbortController.current.signal,
+            })
+          ]);
           if (wikiResponse.ok) {
             const wikiData = await wikiResponse.json();
             webData.wikipediaArticles = wikiData.articles;
-            webData.webCitations = wikiData.summary;
+            webData.webCitations += wikiData.summary ? wikiData.summary + '\n' : '';
             webData.sources = [...webData.sources, ...(wikiData.sources || [])];
             console.log(`Retrieved ${wikiData.articles?.length || 0} Wikipedia articles for query`);
           }
+          if (newsResponse.ok) {
+            const newsData = await newsResponse.json();
+            webData.newsdataArticles = newsData.articles;
+            webData.webCitations += newsData.summary ? newsData.summary + '\n' : '';
+            webData.sources = [...webData.sources, ...(newsData.sources || [])];
+            console.log(`Retrieved ${newsData.articles?.length || 0} NewsData.io articles for query`);
+          }
         } catch (error) {
-          console.error("Error fetching Wikipedia data:", error);
+          console.error("Error fetching Wikipedia or NewsData.io data:", error);
           // Continue with normal processing if web data fetching fails
         }
       }
@@ -826,7 +853,7 @@ export default function TestChat() {
       
       // Prepend citation instructions ONLY for Deep Research
       if (deepResearchActive && webData) {
-        // Format Wikipedia articles for the prompt
+        // Format Wikipedia and NewsData.io articles for the prompt
         let wikiSection = '';
         if (webData.wikipediaArticles && webData.wikipediaArticles.length > 0) {
           wikiSection += '===WIKIPEDIA SEARCH RESULTS===\n';
@@ -839,9 +866,21 @@ export default function TestChat() {
           });
           wikiSection += '===END WIKIPEDIA SEARCH RESULTS===\n';
         }
+        let newsSection = '';
+        if (webData.newsdataArticles && webData.newsdataArticles.length > 0) {
+          newsSection += '===NEWSDATA.IO SEARCH RESULTS===\n';
+          webData.newsdataArticles.forEach((article: any, i: number) => {
+            newsSection += `[${i + 1}] Title: "${article.title}" (${article.url})\n`;
+            if (article.description) {
+              const excerpt = article.description.length > 200 ? article.description.slice(0, 200) + '...' : article.description;
+              newsSection += `Excerpt: ${excerpt}\n`;
+            }
+          });
+          newsSection += '===END NEWSDATA.IO SEARCH RESULTS===\n';
+        }
         // Strong explicit instruction
-        const wikiInstruction = 'IMPORTANT: You MUST use only the above Wikipedia articles as your web sources. Do NOT use or invent any other web links. When citing, use [@Web](Wikipedia URL) or [1], [2], etc. If you do not use the above Wikipedia articles, your answer will be considered incomplete.';
-        enhancedSystemPrompt = `${wikiSection}\n${wikiInstruction}\n\n${CITATION_INSTRUCTIONS}\n\n${enhancedSystemPrompt}`;
+        const combinedInstruction = 'IMPORTANT: You MUST use only the above Wikipedia and NewsData.io articles as your web sources. Do NOT use or invent any other web links. When citing, use [@Web](URL) or [1], [2], etc. If you do not use the above articles, your answer will be considered incomplete.';
+        enhancedSystemPrompt = `${wikiSection}\n${newsSection}\n${combinedInstruction}\n\n${CITATION_INSTRUCTIONS}\n\n${enhancedSystemPrompt}`;
       }
 
       // Add source metadata as structured data for the AI to use
