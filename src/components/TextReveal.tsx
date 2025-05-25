@@ -1,10 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
-import { processWebCitations, WebSource } from '@/utils/source-utils';
+import rehypeSanitize from 'rehype-sanitize';
+import parse from 'html-react-parser';
+import { processWebCitations, WebSource, WEB_CITATION_REGEX } from '@/utils/source-utils';
 
 interface TextRevealProps {
   text: string;
@@ -21,13 +23,14 @@ const TextReveal: React.FC<TextRevealProps> = ({
 }) => {
   const [processedText, setProcessedText] = useState<string>('');
   const [isRevealing, setIsRevealing] = useState<boolean>(true);
-  const [textWithCitations, setTextWithCitations] = useState<string>('');
+  const [renderedContent, setRenderedContent] = useState<React.ReactNode>(null);
+  const markdownContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Reset state
     setProcessedText('');
     setIsRevealing(true);
-    setTextWithCitations('');
+    setRenderedContent(null);
 
     // Process the text to handle multi-line markdown properly
     const cleanedText = text
@@ -83,14 +86,124 @@ const TextReveal: React.FC<TextRevealProps> = ({
       const currentText = cleanedText.substring(0, nextPosition);
       setProcessedText(currentText);
       
-      // Process web citations separately
-      setTextWithCitations(processWebCitations(currentText, webSources));
-      
       currentPosition = nextPosition;
     }, 100);
 
     return () => clearInterval(revealInterval);
-  }, [text, webSources]);
+  }, [text]);
+
+  // Process the markdown and citations together using client-side only logic
+  useEffect(() => {
+    if (!processedText || typeof window === 'undefined') return;
+
+    // Check if there are any citations in the text
+    const hasCitations = WEB_CITATION_REGEX.test(processedText);
+    WEB_CITATION_REGEX.lastIndex = 0; // Reset regex state
+    
+    if (!hasCitations && !webSources?.length) {
+      // If no citations, just render the markdown normally
+      setRenderedContent(
+        <ReactMarkdown
+          components={markdownComponents}
+          remarkPlugins={[remarkGfm, remarkMath]}
+          rehypePlugins={[rehypeKatex, rehypeSanitize]}
+        >
+          {processedText}
+        </ReactMarkdown>
+      );
+      return;
+    }
+
+    // For cases with citations, we'll use a two-step approach
+    // First render the markdown, then in a useEffect we'll process the HTML
+
+    // Step 1: Render markdown normally first
+    setRenderedContent(
+      <ReactMarkdown
+        components={markdownComponents}
+        remarkPlugins={[remarkGfm, remarkMath]}
+        rehypePlugins={[rehypeKatex, rehypeSanitize]}
+      >
+        {processedText}
+      </ReactMarkdown>
+    );
+    
+    // Step 2: After rendering, we'll process the citations in the DOM
+    // This will run after the component updates and the markdown is rendered
+    setTimeout(() => {
+      if (markdownContainerRef.current) {
+        // Process citations in the rendered HTML
+        const container = markdownContainerRef.current;
+        
+        // Find all citation markers in the text
+        const citationMatches = Array.from(processedText.matchAll(WEB_CITATION_REGEX));
+        
+        if (citationMatches.length > 0 || webSources?.length) {
+          // For each citation marker, find the corresponding text node
+          citationMatches.forEach((match) => {
+            const [fullMatch, url, number] = match;
+            const matchIndex = match.index;
+            
+            // Find the text node containing this citation
+            const textNodes = getAllTextNodes(container);
+            let targetNode = null;
+            let targetText = '';
+            
+            // Look through text nodes to find the one containing our citation
+            for (const node of textNodes) {
+              if (node.textContent?.includes(fullMatch)) {
+                targetNode = node;
+                targetText = node.textContent;
+                break;
+              }
+            }
+            
+            if (targetNode && targetText) {
+              // Create the citation element
+              const citation = document.createElement('span');
+              citation.className = 'citation-badge';
+              citation.textContent = number || '1';
+              
+              // If we have a matching source, make it a link
+              if (number && webSources && webSources.length >= parseInt(number)) {
+                const source = webSources[parseInt(number) - 1];
+                const link = document.createElement('a');
+                link.href = source.url;
+                link.target = '_blank';
+                link.rel = 'noopener noreferrer';
+                link.className = 'web-citation citation-badge';
+                link.textContent = number;
+                citation.replaceWith(link);
+              }
+              
+              // Replace the [N] in the text with our citation element
+              const newText = targetText.replace(fullMatch, '');
+              const newTextNode = document.createTextNode(newText);
+              targetNode.parentNode?.replaceChild(newTextNode, targetNode);
+              newTextNode.parentNode?.insertBefore(citation, newTextNode.nextSibling);
+            }
+          });
+        }
+      }
+    }, 0);
+  }, [processedText, webSources, markdownComponents]);
+
+  // Helper function to get all text nodes in an element
+  function getAllTextNodes(element: HTMLElement): Text[] {
+    const textNodes: Text[] = [];
+    const walker = document.createTreeWalker(
+      element,
+      NodeFilter.SHOW_TEXT,
+      null
+    );
+    
+    let node;
+    while ((node = walker.nextNode())) {
+      textNodes.push(node as Text);
+    }
+    
+    return textNodes;
+  }
 
   return (
     <div className={`w-full markdown-body ${className}`}>
@@ -100,24 +213,12 @@ const TextReveal: React.FC<TextRevealProps> = ({
         transition={{ duration: 0.3 }}
         className="w-full max-w-full overflow-hidden"
       >
-        {/* If we have web citations, use dangerouslySetInnerHTML to preserve the HTML for icons */}
-        {textWithCitations ? (
-          <div 
-            className="web-citations-container"
-            dangerouslySetInnerHTML={{ 
-              __html: `<div class="markdown-body">${textWithCitations}</div>` 
-            }} 
-          />
-        ) : (
-          <ReactMarkdown
-            components={markdownComponents}
-            remarkPlugins={[remarkGfm, remarkMath]}
-            rehypePlugins={[rehypeKatex]}
-            className="w-full max-w-full"
-          >
-            {processedText}
-          </ReactMarkdown>
-        )}
+        <div 
+          ref={markdownContainerRef}
+          className="web-citations-container markdown-body"
+        >
+          {renderedContent}
+        </div>
       </motion.div>
       
       {/* Add styles for web citations */}
@@ -160,36 +261,36 @@ const TextReveal: React.FC<TextRevealProps> = ({
           line-height: inherit;
         }
         /* Styling for markdown headers and lists */
-        .web-citations-container .markdown-body h1 {
+        .markdown-body h1 {
           font-size: 1.8rem;
           font-weight: 700;
           margin-top: 1.5rem;
           margin-bottom: 1rem;
         }
-        .web-citations-container .markdown-body h2 {
+        .markdown-body h2 {
           font-size: 1.5rem;
           font-weight: 700;
           margin-top: 1.5rem;
           margin-bottom: 0.8rem;
           border-bottom: none;
         }
-        .web-citations-container .markdown-body ul {
+        .markdown-body ul {
           margin-left: 1.5rem;
         }
-        .web-citations-container .markdown-body li {
+        .markdown-body li {
           margin-bottom: 0.5rem;
         }
-        .web-citations-container .markdown-body table {
+        .markdown-body table {
           border-collapse: collapse;
           width: 100%;
           margin: 1rem 0;
         }
-        .web-citations-container .markdown-body th,
-        .web-citations-container .markdown-body td {
+        .markdown-body th,
+        .markdown-body td {
           border: 1px solid #444;
           padding: 8px 12px;
         }
-        .web-citations-container .markdown-body th {
+        .markdown-body th {
           background-color: #222;
           font-weight: 600;
         }
