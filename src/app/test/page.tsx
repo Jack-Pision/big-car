@@ -147,7 +147,8 @@ const CITATION_INSTRUCTIONS = `IMPORTANT: Format your response like a profession
 6. Ensure all citations use [1], [2], etc. at the end of relevant sentences.
 7. The output should be clean, well-spaced, and easy to read—like a professional research summary.
 8. Do not use numbered lists or bullets for section titles or the main title. Only use bullet points for content inside sections.
-9. Numbered lists are only allowed inside tables if needed.`;
+9. Numbered lists are only allowed inside tables if needed.
+10. DO NOT include a 'References' section or any list of references at the end. Only use in-text citations ([1], [2], etc.) after relevant sentences or bullet points.`;
 
 interface ProcessedResponse {
   content: string;
