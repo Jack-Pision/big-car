@@ -583,6 +583,9 @@ export default function TestChat() {
         const formattingInstructions = `
 IMPORTANT: Your answer MUST be at least 750 words. Do not stop before you reach this length. If you finish early, add more details, examples, or analysis until you reach the required length.
 
+BULLET POINT DETAIL REQUIREMENT:
+For each bullet point, write a detailed, self-contained summary (2–4 sentences) that explains the topic, provides context, and includes key facts or findings. Do not use single-sentence or headline-style bullets. Each bullet should be a mini-paragraph.
+
 FORMATTING REQUIREMENTS:
 1. Your response MUST follow a professional, well-structured format like a research document or report.
 2. Start with a clear main title using # heading (e.g., "# Latest Developments in AI, 2025").
@@ -918,6 +921,9 @@ FORMATTING REQUIREMENTS:
         // Professional formatting instructions
         const formattingInstructions = `
 IMPORTANT: Your answer MUST be at least 750 words. Do not stop before you reach this length. If you finish early, add more details, examples, or analysis until you reach the required length.
+
+BULLET POINT DETAIL REQUIREMENT:
+For each bullet point, write a detailed, self-contained summary (2–4 sentences) that explains the topic, provides context, and includes key facts or findings. Do not use single-sentence or headline-style bullets. Each bullet should be a mini-paragraph.
 
 FORMATTING REQUIREMENTS:
 1. Your response MUST follow a professional, well-structured format like a research document or report.
