@@ -581,6 +581,9 @@ export default function TestChat() {
         
         // Professional formatting instructions
         const formattingInstructions = `
+LENGTH REQUIREMENT:
+Your answer MUST be detailed and comprehensive, with a length of approximately 750 words. If your answer is too short, expand with more detail, examples, or context. If it is too long, summarize or condense as needed.
+
 FORMATTING REQUIREMENTS:
 1. Your response MUST follow a professional, well-structured format like a research document or report.
 2. Start with a clear main title using # heading (e.g., "# Latest Developments in AI, 2025").
@@ -915,6 +918,9 @@ FORMATTING REQUIREMENTS:
         
         // Professional formatting instructions
         const formattingInstructions = `
+LENGTH REQUIREMENT:
+Your answer MUST be detailed and comprehensive, with a length of approximately 750 words. If your answer is too short, expand with more detail, examples, or context. If it is too long, summarize or condense as needed.
+
 FORMATTING REQUIREMENTS:
 1. Your response MUST follow a professional, well-structured format like a research document or report.
 2. Start with a clear main title using # heading (e.g., "# Latest Developments in AI, 2025").
