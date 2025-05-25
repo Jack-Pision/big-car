@@ -39,12 +39,6 @@ const DEFAULT_THINKING_STEPS: ThinkingStep[] = [
     title: 'Confirming completeness',
     content: '',
     status: 'pending'
-  },
-  {
-    id: 'reddit',
-    title: 'Analyzing Reddit Data',
-    content: '',
-    status: 'pending'
   }
 ];
 
