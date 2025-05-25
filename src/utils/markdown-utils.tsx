@@ -76,7 +76,7 @@ export function cleanMarkdown(md: string): string {
   
   // Preliminary: Normalize line endings to LF
   cleaned = cleaned.replace(/\r\n|\r/g, '\n');
-
+  
   // Fix document structure
   // ----------------------
   
@@ -95,7 +95,7 @@ export function cleanMarkdown(md: string): string {
   
   // Fix list formatting
   // ------------------
-
+  
   // Consolidate list item lines: If a line starts with number/bullet, and the next line is content (incl. bold starting content), join them.
   cleaned = cleaned.replace(/^(\\s*(?:\\d+\\.|-|\\*)\\s*)\\n(?=\\s*(?!\\d+\\.|-|\\*|#))(\*\*.*?\*\*:?|\\S)/gm, '$1 $2');
   
@@ -110,7 +110,7 @@ export function cleanMarkdown(md: string): string {
   
   // Ensure a single space after list markers if content follows immediately
   cleaned = cleaned.replace(/^(\s*(?:\d+\.|-|\*))([^\s])/gm, '$1 $2');
-
+  
   // Fix emphasis formatting
   // ----------------------
   
@@ -186,6 +186,6 @@ export function cleanMarkdown(md: string): string {
   
   // Remove any remaining unmatched asterisks at line start/end (less aggressive)
   cleaned = cleaned.replace(/^\*\s+|\s+\*$/gm, ''); 
-
+  
   return cleaned;
 } 

@@ -148,6 +148,7 @@ STEP 1 - UNDERSTANDING (Use <think> tags):
 </think>
 
 STEP 2 - RESEARCH:
+When researching, prioritize the most recent and up-to-date information, especially for topics that change frequently. However, if older information is important for context, background, or is still widely referenced, include it as well.
 The system will provide you with search results from:
 - Serper (Google Search API)
 - Wikipedia
@@ -466,8 +467,8 @@ export default function TestChat() {
 
     // If Deep Research is active, wait until it completes before sending to AI
     if (deepResearchActive) {
-      setLoading(true);
-      if (showHeading) setShowHeading(false);
+    setLoading(true);
+    if (showHeading) setShowHeading(false);
       
       // We'll let the deep research process continue
       // The API call to the AI will happen after deepResearchComplete becomes true
@@ -730,15 +731,15 @@ FORMATTING REQUIREMENTS:
         }
         
       } else {
-        const data = await res.json();
+      const data = await res.json();
         const assistantResponseContent = cleanAIResponse(data.choices?.[0]?.message?.content || data.generated_text || data.error || JSON.stringify(data) || "No response");
         const aiMsg: Message = {
-          role: "assistant" as const,
+        role: "assistant" as const,
           content: assistantResponseContent.content,
           imageUrls: uploadedImageUrls, // Associate assistant response with the uploaded images
           webSources: [] // Initialize webSources
-        };
-        setMessages((prev) => [...prev, aiMsg]);
+      };
+      setMessages((prev) => [...prev, aiMsg]);
         
         // If this was an image request, store the image description for future context
         if (uploadedImageUrls.length > 0) {
@@ -767,8 +768,8 @@ FORMATTING REQUIREMENTS:
       }
     } catch (err: any) {
       if (err.name === 'AbortError') {
-        setMessages((prev) => [
-          ...prev,
+      setMessages((prev) => [
+        ...prev,
           { role: "assistant" as const, content: "[Response stopped by user]", imageUrls: uploadedImageUrls },
         ]);
       } else {
@@ -816,14 +817,14 @@ FORMATTING REQUIREMENTS:
         const filePath = `${fileName}`;
             const { error: uploadError } = await clientSideSupabase.storage
               .from('images2')
-              .upload(filePath, file);
-            if (uploadError) {
+          .upload(filePath, file);
+        if (uploadError) {
               console.error('Supabase upload error for file:', file.name, uploadError);
               throw new Error(`Failed to upload ${file.name}: ${uploadError.message}`);
-            }
-            const { data: urlData } = clientSideSupabase.storage
+        }
+        const { data: urlData } = clientSideSupabase.storage
               .from('images2')
-              .getPublicUrl(filePath);
+          .getPublicUrl(filePath);
             if (!urlData.publicUrl) {
               console.error('Failed to get public URL for file:', file.name);
               throw new Error(`Failed to get public URL for ${file.name}`);
@@ -852,8 +853,8 @@ FORMATTING REQUIREMENTS:
           console.log("Fetching Serper, Wikipedia, and NewsData.io data for Deep Research...");
           // 1. Fetch Serper first (10 articles)
           const serperResponse = await fetch('/api/serper/search', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ query: userMessage, limit: 10 }),
             signal: aiStreamAbortController.current.signal,
           });
@@ -1133,7 +1134,7 @@ FORMATTING REQUIREMENTS:
           });
         }
       }
-    } catch (err: any) {
+      } catch (err: any) {
       if (err.name === 'AbortError') {
         setMessages((prev) => [
           ...prev,
@@ -1145,9 +1146,9 @@ FORMATTING REQUIREMENTS:
           { role: "assistant" as const, content: "Error: " + (err?.message || String(err)), imageUrls: uploadedImageUrls },
         ]);
       }
-    } finally {
+      } finally {
       setIsAiResponding(false);
-      setLoading(false);
+        setLoading(false);
       aiStreamAbortController.current = null;
     }
   }
@@ -1296,8 +1297,8 @@ FORMATTING REQUIREMENTS:
                               ) : step.status === 'active' ? (
                                 <div className="w-5 h-5 rounded-full border-2 border-cyan-400 flex items-center justify-center animate-pulse">
                                   <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full"></div>
-                </div>
-              ) : (
+              </div>
+            ) : (
                                 <div className="w-5 h-5 rounded-full border border-neutral-700 flex items-center justify-center">
                                 </div>
                               )}
@@ -1328,7 +1329,7 @@ FORMATTING REQUIREMENTS:
                             <div className="flex items-center gap-2 text-neutral-500">
                               <div className="w-2.5 h-2.5 bg-neutral-700 rounded-full animate-pulse"></div>
                               <span>Thinking...</span>
-                            </div>
+                </div>
                           )}
                         </motion.div>
                       ) : (
@@ -1356,11 +1357,11 @@ FORMATTING REQUIREMENTS:
                     />
                   ))}
                   <div>{msg.content}</div>
-                </div>
+        </div>
               );
             }
           })}
-        </div>
+      </div>
       </div>
 
       {/* Fixed Input Bar at Bottom */}
@@ -1415,9 +1416,9 @@ FORMATTING REQUIREMENTS:
                   <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                     <circle cx="11" cy="11" r="7"/>
                     <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                  </svg>
+              </svg>
                   <span className="text-xs font-medium">Search</span>
-                </button>
+            </button>
                 {/* Deep Research button with Atom icon */}
                 <button
                   type="button"
@@ -1462,7 +1463,7 @@ FORMATTING REQUIREMENTS:
                     // Stop icon (square in round button)
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <rect x="7" y="7" width="10" height="10" rx="2" fill="#374151" /> {/* Darker gray for stop icon */}
-                    </svg>
+              </svg>
                   ) : (
                     // Up arrow icon
                     <svg width="16" height="16" fill="none" stroke="#374151" strokeWidth="2.5" viewBox="0 0 24 24">
