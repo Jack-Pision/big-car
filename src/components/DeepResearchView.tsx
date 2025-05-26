@@ -139,7 +139,7 @@ const DeepResearchView: React.FC<DeepResearchViewProps> = ({
   };
 
   return (
-    <div className="flex h-[calc(100vh-32px)] w-full" style={{ minHeight: '400px' }}>
+    <div className="flex max-w-6xl h-[75vh] w-full mx-auto" style={{ minHeight: '350px' }}>
       {/* Left Panel - Step List */}
       <div className="w-80 min-w-[220px] max-w-xs flex-shrink-0 border-r border-neutral-800 bg-neutral-950 p-6">
         <h2 className="text-xl font-semibold text-neutral-200 mb-6">Deep Research Process</h2>
@@ -175,7 +175,7 @@ const DeepResearchView: React.FC<DeepResearchViewProps> = ({
       </div>
 
       {/* Right Panel - Step Content (Scrollable) */}
-      <div className="flex-1 h-full max-h-[calc(100vh-32px)] overflow-y-auto p-8 bg-neutral-900">
+      <div className="flex-1 h-full max-h-[75vh] overflow-y-auto p-8 bg-neutral-900">
         <div className="space-y-6">
           {steps.map((step) => (
             <motion.div
