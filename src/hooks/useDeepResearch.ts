@@ -250,8 +250,57 @@ export const useDeepResearch = (isActive: boolean, query: string = '') => {
   const processSynthesisStep = async (query: string, analysis: string, webData: WebData) => {
     try {
       setActiveStepId('synthesize');
-      updateStepStatus('synthesize', 'active', 'Creating your comprehensive response...');
+      updateStepStatus('synthesize', 'active', 'Summarizing what will be provided...');
 
+      // Step 3a: Get a summary/preview from the AI
+      let summaryContent = '';
+      {
+        const summaryResponse = await fetch('/api/nvidia', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: [
+              { role: 'system', content: 'You are a Deep Research AI assistant. Given the following query, research plan, and web data, provide a short summary (2-4 sentences) of what you understood and what you will provide in the final output. Do not write the full answer yet.' },
+              { role: 'user', content: `Query: ${query}\n\nAnalysis: ${analysis}\n\nWeb Data: ${JSON.stringify(webData)}` }
+            ],
+            temperature: 0.2
+          })
+        });
+        if (summaryResponse.body && summaryResponse.headers.get('content-type')?.includes('text/event-stream')) {
+          const reader = summaryResponse.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+          let done = false;
+          while (!done) {
+            const { value, done: doneReading } = await reader.read();
+            done = doneReading;
+            if (value) {
+              buffer += decoder.decode(value, { stream: true });
+              let lines = buffer.split('\n');
+              buffer = lines.pop() || '';
+              for (let line of lines) {
+                if (line.startsWith('data:')) {
+                  const data = line.replace('data:', '').trim();
+                  if (data === '[DONE]') continue;
+                  try {
+                    const parsed = JSON.parse(data);
+                    const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.message?.content || parsed.choices?.[0]?.text || parsed.content || '';
+                    if (delta) summaryContent += delta;
+                  } catch (err) {
+                    // Ignore parse errors for incomplete lines
+                  }
+                }
+              }
+            }
+          }
+        } else {
+          const data = await summaryResponse.json();
+          summaryContent = data.content || data.choices?.[0]?.message?.content || data.generated_text || '';
+        }
+      }
+      updateStepStatus('synthesize', 'active', summaryContent, summaryContent);
+
+      // Step 3b: Get the full answer from the AI
       const response = await fetch('/api/nvidia', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -266,7 +315,6 @@ export const useDeepResearch = (isActive: boolean, query: string = '') => {
 
       let aiContent = '';
       if (response.body && response.headers.get('content-type')?.includes('text/event-stream')) {
-        // Handle streaming response
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
@@ -294,7 +342,6 @@ export const useDeepResearch = (isActive: boolean, query: string = '') => {
           }
         }
       } else {
-        // Handle regular JSON response
         const data = await response.json();
         aiContent = data.content || data.choices?.[0]?.message?.content || data.generated_text || '';
       }
