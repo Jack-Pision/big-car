@@ -826,7 +826,7 @@ FORMATTING REQUIREMENTS:
     <div className="min-h-screen flex flex-col" style={{ background: '#232323' }}>
       <GlobalStyles />
       {/* Hamburger menu and sidebar */}
-      <div className="fixed top-6 left-6 z-50 md:static md:z-10">
+      <div className="fixed top-6 left-6 z-50">
         <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
       </div>
       <Sidebar
