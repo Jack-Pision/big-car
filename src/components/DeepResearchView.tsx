@@ -44,9 +44,6 @@ const DeepResearchView: React.FC<DeepResearchViewProps> = ({
     stepRefs.current[stepId] = el;
   };
 
-  // Get the current active step
-  const activeStep = steps.find(step => step.id === activeStepId);
-
   // Helper to render step-specific content
   const renderStepContent = (step: ThinkingStep) => {
     if (step.status === 'pending') {
@@ -142,10 +139,10 @@ const DeepResearchView: React.FC<DeepResearchViewProps> = ({
   };
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="flex h-full min-h-[400px] w-full" style={{ minHeight: '400px' }}>
       {/* Left Panel - Step List */}
-      <div className="w-full p-4 border-b border-neutral-800">
-        <h2 className="text-xl font-semibold text-neutral-200 mb-4">Deep Research Process</h2>
+      <div className="w-80 min-w-[220px] max-w-xs flex-shrink-0 border-r border-neutral-800 bg-neutral-950 p-6">
+        <h2 className="text-xl font-semibold text-neutral-200 mb-6">Deep Research Process</h2>
         <div className="space-y-2">
           {steps.map((step) => (
             <motion.div
@@ -177,8 +174,8 @@ const DeepResearchView: React.FC<DeepResearchViewProps> = ({
         </div>
       </div>
 
-      {/* Right Panel - Full Content */}
-      <div className="flex-1 overflow-y-auto p-4">
+      {/* Right Panel - Step Content (Scrollable) */}
+      <div className="flex-1 h-full overflow-y-auto p-8 bg-neutral-900">
         <div className="space-y-6">
           {steps.map((step) => (
             <motion.div
@@ -192,7 +189,6 @@ const DeepResearchView: React.FC<DeepResearchViewProps> = ({
             </motion.div>
           ))}
         </div>
-
         {error && (
           <div className="mt-4 p-4 bg-red-900/20 border border-red-900/50 rounded-lg text-red-400">
             {error}
