@@ -19,6 +19,78 @@ interface DeepResearchViewProps {
   webData: any | null;
 }
 
+// Helper function to convert markdown to plain text with bullet points
+const convertToPlainText = (markdownText: string): JSX.Element => {
+  if (!markdownText) return <></>;
+  
+  // Split the text into paragraphs
+  const paragraphs = markdownText.split(/\n\s*\n/);
+  
+  return (
+    <>
+      {paragraphs.map((paragraph, idx) => {
+        // Check if this is a bullet list
+        if (paragraph.trim().match(/^[-*•]\s/m)) {
+          // Split into bullet points
+          const bullets = paragraph
+            .split(/\n/)
+            .filter(line => line.trim().match(/^[-*•]\s/))
+            .map(line => line.replace(/^[-*•]\s/, '').trim());
+          
+          return (
+            <div key={idx} className="mb-4">
+              <ul className="list-disc pl-5 space-y-2">
+                {bullets.map((bullet, bulletIdx) => (
+                  <li key={bulletIdx} className="text-neutral-300">{bullet}</li>
+                ))}
+              </ul>
+            </div>
+          );
+        } 
+        // Check if this is a numbered list
+        else if (paragraph.trim().match(/^\d+\.\s/m)) {
+          // Convert numbered list to bullet points
+          const bullets = paragraph
+            .split(/\n/)
+            .filter(line => line.trim().match(/^\d+\.\s/))
+            .map(line => line.replace(/^\d+\.\s/, '').trim());
+          
+          return (
+            <div key={idx} className="mb-4">
+              <ul className="list-disc pl-5 space-y-2">
+                {bullets.map((bullet, bulletIdx) => (
+                  <li key={bulletIdx} className="text-neutral-300">{bullet}</li>
+                ))}
+              </ul>
+            </div>
+          );
+        }
+        // Regular paragraph
+        else {
+          // Remove any markdown formatting
+          const plainText = paragraph
+            .replace(/#{1,6}\s/g, '') // Remove headings
+            .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold
+            .replace(/\*(.*?)\*/g, '$1') // Remove italics
+            .replace(/__(.*?)__/g, '$1') // Remove underline
+            .replace(/~~(.*?)~~/g, '$1') // Remove strikethrough
+            .replace(/```([\s\S]*?)```/g, '$1') // Remove code blocks (multi-line safe)
+            .replace(/`(.*?)`/g, '$1') // Remove inline code
+            .trim();
+            
+          if (plainText.length === 0) return null;
+          
+          return (
+            <p key={idx} className="text-neutral-300 mb-4">
+              {plainText}
+            </p>
+          );
+        }
+      }).filter(Boolean)}
+    </>
+  );
+};
+
 const DeepResearchView: React.FC<DeepResearchViewProps> = ({
   steps,
   activeStepId,
@@ -72,12 +144,9 @@ const DeepResearchView: React.FC<DeepResearchViewProps> = ({
             <div className="text-neutral-400 text-xs mb-4">
               Here's my analysis of your question and research plan:
             </div>
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              className="text-neutral-300 text-sm leading-relaxed"
-            >
-              {step.output || step.content}
-            </ReactMarkdown>
+            <div className="text-neutral-300 text-sm leading-relaxed">
+              {convertToPlainText(step.output || step.content)}
+            </div>
           </div>
         );
 
