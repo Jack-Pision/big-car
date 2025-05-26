@@ -143,33 +143,32 @@ const DeepResearchView: React.FC<DeepResearchViewProps> = ({
       {/* Left Panel - Step List */}
       <div className="w-80 min-w-[220px] max-w-xs flex-shrink-0 border-r border-neutral-800 bg-neutral-950 p-6">
         <h2 className="text-xl font-semibold text-neutral-200 mb-6">Deep Research Process</h2>
-        <div className="space-y-2">
-          {steps.map((step) => (
-            <motion.div
-              key={step.id}
-              className={`p-3 rounded-lg cursor-pointer transition-colors ${
-                step.id === activeStepId
-                  ? 'bg-cyan-500/10 text-cyan-400'
-                  : 'hover:bg-neutral-800/50 text-neutral-400'
-              }`}
-              initial={false}
-              animate={{
-                backgroundColor:
-                  step.id === activeStepId ? 'rgba(6, 182, 212, 0.1)' : 'transparent',
-              }}
-              onClick={() => handleStepClick(step.id)}
-            >
-              <div className="flex items-center gap-2">
-                {step.status === 'completed' ? (
-                  <span className="text-green-500">✓</span>
-                ) : step.status === 'active' ? (
-                  <span className="animate-spin">⚡</span>
-                ) : (
-                  <span className="opacity-50">○</span>
+        <div className="flex flex-col relative">
+          {steps.map((step, idx) => (
+            <div key={step.id} className="flex items-start relative min-h-[48px]">
+              {/* Vertical line (except last step) */}
+              {idx < steps.length - 1 && (
+                <span className="absolute left-4 top-6 w-px h-full bg-neutral-700 z-0" style={{ height: '100%' }}></span>
+              )}
+              {/* Step circle with check if completed */}
+              <span className="relative z-10 flex items-center justify-center w-6 h-6 mt-0.5 mr-3">
+                <span className={`block w-6 h-6 rounded-full border-2 ${step.status === 'completed' ? 'border-white bg-neutral-800' : 'border-neutral-500 bg-neutral-900'}`}></span>
+                {step.status === 'completed' && (
+                  <svg className="absolute w-4 h-4 text-white" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M6 10.5l3 3 5-5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
                 )}
-                <span>{step.title}</span>
-              </div>
-            </motion.div>
+              </span>
+              {/* Step label */}
+              <button
+                type="button"
+                className={`text-left focus:outline-none bg-transparent border-none p-0 m-0 shadow-none transition-none ${step.id === activeStepId ? 'font-bold text-white' : 'text-neutral-400'}`}
+                style={{ fontSize: step.id === activeStepId ? '1.08rem' : '1rem', background: 'none' }}
+                onClick={() => handleStepClick(step.id)}
+              >
+                {step.title}
+              </button>
+            </div>
           ))}
         </div>
       </div>
