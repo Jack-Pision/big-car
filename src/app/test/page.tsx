@@ -13,7 +13,7 @@ import { motion } from 'framer-motion';
 import PulsingDot from '@/components/PulsingDot';
 import TextReveal from '@/components/TextReveal';
 import ThinkingIndicator from '@/components/ThinkingIndicator';
-import DeepResearchView from '@/components/DeepResearchView';
+import AdvanceSearch from '@/components/AdvanceSearch';
 import { useDeepResearch } from '@/hooks/useDeepResearch';
 import { WebSource } from '@/utils/source-utils';
 
@@ -372,8 +372,7 @@ export default function TestChat() {
 
   const aiStreamAbortController = useRef<AbortController | null>(null);
 
-  const [deepResearchActive, setDeepResearchActive] = useState(false);
-  const [showDeepResearchView, setShowDeepResearchView] = useState(false);
+  const [showAdvanceSearch, setShowAdvanceSearch] = useState(false);
   const [currentQuery, setCurrentQuery] = useState('');
   
   // Deep Research hook
@@ -384,7 +383,7 @@ export default function TestChat() {
     isInProgress,
     error,
     webData
-  } = useDeepResearch(deepResearchActive, currentQuery);
+  } = useDeepResearch(showAdvanceSearch, currentQuery);
 
   // Helper to show the image in chat
   const showImageMsg = (content: string, imgSrc: string) => {
@@ -421,13 +420,13 @@ export default function TestChat() {
   useEffect(() => {
     if (isComplete && !isAiResponding) {
       // Only hide the research view when both research is complete and AI has responded
-      setShowDeepResearchView(false);
+      setShowAdvanceSearch(false);
     }
   }, [isComplete, isAiResponding]);
 
   // When deep research completes, automatically start the AI request
   useEffect(() => {
-    if (isComplete && deepResearchActive && !isAiResponding && currentQuery) {
+    if (isComplete && showAdvanceSearch && !isAiResponding && currentQuery) {
       // Get the final synthesized response from the steps
       const synthesisStep = steps.find(step => step.id === 'synthesize');
       if (synthesisStep?.output) {
@@ -443,7 +442,7 @@ export default function TestChat() {
         setLoading(false);
       }
     }
-  }, [isComplete, deepResearchActive, isAiResponding, steps]);
+  }, [isComplete, showAdvanceSearch, isAiResponding, steps]);
 
   async function handleSend(e?: React.FormEvent) {
     if (e) e.preventDefault();
@@ -456,8 +455,8 @@ export default function TestChat() {
     setCurrentQuery(currentInput);
     
     // If Deep Research is active, show the view inline in the chat
-    if (deepResearchActive) {
-      setShowDeepResearchView(true);
+    if (showAdvanceSearch) {
+      setShowAdvanceSearch(true);
       
       // Add a special message for Deep Research view
       setMessages(prev => [
@@ -468,7 +467,7 @@ export default function TestChat() {
         },
         { 
           role: "deep-research" as any, 
-          content: "deep-research-view" 
+          content: "advance-search-view" 
         }
       ]);
 
@@ -567,7 +566,7 @@ export default function TestChat() {
       }
       
       // Prepend citation instructions ONLY for Deep Research
-      if (deepResearchActive && webData) {
+      if (showAdvanceSearch && webData) {
         // Format Wikipedia and NewsData.io articles for the prompt
         let wikiSection = '';
         if (webData.wikipediaArticles && webData.wikipediaArticles.length > 0) {
@@ -905,7 +904,7 @@ FORMATTING REQUIREMENTS:
                   className="w-full rounded-xl border border-neutral-800 overflow-hidden mb-2 mt-2 bg-neutral-900"
                   style={{ minHeight: "300px", maxHeight: "500px" }}
                 >
-                  <DeepResearchView
+                  <AdvanceSearch
                     steps={steps}
                     activeStepId={activeStepId}
                     error={error}
@@ -994,10 +993,10 @@ FORMATTING REQUIREMENTS:
                 {/* Deep Research button with Atom icon */}
                 <button
                   type="button"
-                  className={`flex items-center gap-1.5 rounded-full bg-gray-800 hover:bg-gray-700 transition px-3 py-1.5 flex-shrink-0 ${deepResearchActive ? 'text-cyan-400' : 'text-gray-400'}`}
+                  className={`flex items-center gap-1.5 rounded-full bg-gray-800 hover:bg-gray-700 transition px-3 py-1.5 flex-shrink-0 ${showAdvanceSearch ? 'text-cyan-400' : 'text-gray-400'}`}
                   style={{ height: "36px" }}
                   tabIndex={0}
-                  onClick={() => setDeepResearchActive(a => !a)}
+                  onClick={() => setShowAdvanceSearch(a => !a)}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="12" cy="12" r="1" fill="currentColor"/>

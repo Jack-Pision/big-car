@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ThinkingStep } from '@/components/DeepResearchView';
+import { ThinkingStep } from '@/components/AdvanceSearch';
 import { extractRedditUsername } from '@/utils/reddit-api';
 
 // Default thinking steps that will be used for every query
