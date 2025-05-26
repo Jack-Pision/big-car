@@ -98,9 +98,10 @@ const DeepResearchView: React.FC<DeepResearchViewProps> = ({
         );
 
       case 'synthesize':
+        // Only show the summary/preview (step.output) in the Deep Research UI, not the full answer
         return (
           <div className="space-y-4">
-            <h3 className="text-lg font-medium text-neutral-200">Final Response</h3>
+            <h3 className="text-lg font-medium text-neutral-200">Summary of What Will Be Provided</h3>
             <ReactMarkdown 
               remarkPlugins={[remarkGfm]}
               className="text-neutral-300 text-sm leading-relaxed"
