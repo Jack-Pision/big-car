@@ -449,7 +449,10 @@ const DeepResearchView: React.FC<DeepResearchViewProps> = ({
             <div key={step.id} className="flex items-start relative min-h-[48px]">
               {/* Vertical line (except last step) */}
               {idx < steps.length - 1 && (
-                <span className="absolute left-4 top-6 w-px h-full bg-neutral-700 z-0" style={{ height: '100%' }}></span>
+                <span
+                  className="absolute left-1/2 -translate-x-1/2 top-6 w-px h-full bg-neutral-700 z-0"
+                  style={{ height: '100%' }}
+                ></span>
               )}
               {/* Step circle with check if completed */}
               <span className="relative z-10 flex items-center justify-center w-6 h-6 mt-0.5 mr-3">
@@ -463,7 +466,7 @@ const DeepResearchView: React.FC<DeepResearchViewProps> = ({
               {/* Step label */}
               <button
                 type="button"
-                className={`text-left focus:outline-none bg-transparent border-none p-0 m-0 shadow-none transition-none ${step.id === activeStepId ? 'font-bold text-white' : 'text-neutral-400'}`}
+                className={`text-left focus:outline-none bg-transparent border-none p-0 m-0 shadow-none transition-none ${step.id === activeStepId ? 'font-bold text-white' : 'text-neutral-400'} ${activeStepId && step.id !== activeStepId ? 'opacity-60' : ''}`}
                 style={{ fontSize: step.id === activeStepId ? '1.08rem' : '1rem', background: 'none' }}
                 onClick={() => handleStepClick(step.id)}
               >
