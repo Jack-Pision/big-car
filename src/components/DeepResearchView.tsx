@@ -228,22 +228,17 @@ const DeepResearchView: React.FC<DeepResearchViewProps> = ({
                           rel="noopener noreferrer"
                           className="flex items-center gap-2 p-2 rounded-lg hover:bg-neutral-800/50 transition-colors"
                         >
-                          {/* Icon */}
+                          {/* Icon: Always try favicon, fallback to globe only if missing or fails */}
                           <div className="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-neutral-800 rounded-full overflow-hidden">
-                            {article.favicon ? (
+                            {article.favicon || article.icon ? (
                               <img 
                                 src={article.favicon || article.icon} 
                                 alt="" 
                                 className="w-4 h-4 object-contain"
                                 onError={(e) => {
-                                  // If favicon fails, show a default globe icon
                                   (e.target as HTMLImageElement).style.display = 'none';
                                   (e.target as HTMLImageElement).parentElement!.innerHTML = `
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400">
-                                      <circle cx="12" cy="12" r="10"></circle>
-                                      <line x1="2" y1="12" x2="22" y2="12"></line>
-                                      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
-                                    </svg>
+                                    <svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"text-blue-400\">\n                                      <circle cx=\"12\" cy=\"12\" r=\"10\"></circle>\n                                      <line x1=\"2\" y1=\"12\" x2=\"22\" y2=\"12\"></line>\n                                      <path d=\"M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z\"></path>\n                                    </svg>
                                   `;
                                 }}
                               />
@@ -297,44 +292,6 @@ const DeepResearchView: React.FC<DeepResearchViewProps> = ({
                               {article.title}
                             </div>
                             <div className="text-xs text-neutral-500 truncate">Wikipedia</div>
-                          </div>
-                        </a>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                
-                {/* NewsData Articles */}
-                {webData.newsdataArticles?.length > 0 && (
-                  <div className="mb-4">
-                    <div className="text-xs text-neutral-400 mb-2">News Articles:</div>
-                    <div className="space-y-2">
-                      {webData.newsdataArticles.slice(0, 5).map((article: any, i: number) => (
-                        <a 
-                          key={i} 
-                          href={article.url} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2 p-2 rounded-lg hover:bg-neutral-800/50 transition-colors"
-                        >
-                          {/* News Icon */}
-                          <div className="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-neutral-800 rounded-full overflow-hidden">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-orange-400">
-                              <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"></path>
-                              <path d="M18 14h-8"></path>
-                              <path d="M15 18h-5"></path>
-                              <path d="M10 6h8v4h-8V6Z"></path>
-                            </svg>
-                          </div>
-                          
-                          {/* Title and Source */}
-                          <div className="flex-1 overflow-hidden">
-                            <div className="text-sm text-cyan-400 truncate hover:underline">
-                              {article.title}
-                            </div>
-                            <div className="text-xs text-neutral-500 truncate">
-                              {article.source_id || article.source || (article.url || '').replace(/https?:\/\/(www\.)?/, '').split('/')[0]}
-                            </div>
                           </div>
                         </a>
                       ))}
