@@ -823,13 +823,12 @@ FORMATTING REQUIREMENTS:
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#232323]">
+    <div className="min-h-screen flex flex-col" style={{ background: '#232323' }}>
       <GlobalStyles />
-      {/* Fixed Hamburger Menu */}
-      <div className="fixed top-4 left-4 z-50">
+      {/* Hamburger menu and sidebar */}
+      <div className="fixed top-6 left-6 z-50 md:static md:z-10">
         <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
       </div>
-      {/* Sidebar */}
       <Sidebar
         open={sidebarOpen}
         chats={chats}
@@ -843,9 +842,13 @@ FORMATTING REQUIREMENTS:
         onOpenSearch={() => {}}
         onNavigateBoard={() => router.push('/board')}
       />
-
-      {/* Main chat area (scrollable) */}
-      <div className="flex-1 flex flex-col items-center justify-center relative overflow-y-auto" style={{ paddingBottom: `${inputBarHeight + EXTRA_GAP}px` }}>
+      
+      {/* Conversation area (scrollable) */}
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto w-full flex flex-col items-center justify-center relative"
+        style={{ paddingBottom: `${inputBarHeight + EXTRA_GAP}px` }}
+      >
         <div
           className={`absolute left-0 right-0 flex flex-col items-center transition-opacity duration-700 ${
             showHeading && messages.length === 0 ? "opacity-100" : "opacity-0 pointer-events-none"
@@ -933,16 +936,16 @@ FORMATTING REQUIREMENTS:
         </div>
       </div>
 
-      {/* Fixed input bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-40">
+      {/* Fixed Input Bar at Bottom */}
+      <div ref={inputBarRef} className="fixed left-1/2 -translate-x-1/2 bottom-0 w-full max-w-3xl flex justify-center z-50" style={{ pointerEvents: 'auto' }}>
         <form
-          className="w-full max-w-3xl flex flex-col gap-2 rounded-2xl shadow-lg px-3 py-2 mx-4 mb-3"
+          className="w-full flex flex-col gap-2 rounded-2xl shadow-lg px-3 py-2 mx-4 mb-3"
           style={{ background: '#232323', border: '2px solid rgba(255,255,255,0.18)', boxShadow: '0 4px 32px 0 rgba(0,0,0,0.32)' }}
           onSubmit={handleSend}
         >
           {/* Image previews above textarea */}
           {imagePreviewUrls.length > 0 && (
-            <div className="flex flex-row gap-2 mb-2">
+            <div className="flex flex-row gap-2 mb-2 justify-center">
               {imagePreviewUrls.map((url, idx) => (
                 <div key={idx} className="relative">
                   <img src={url} alt={`Preview ${idx + 1}`} className="w-16 h-16 object-cover rounded-lg" />
@@ -958,17 +961,17 @@ FORMATTING REQUIREMENTS:
             </div>
           )}
           {/* Input area: textarea on top, actions below */}
-          <div className="flex flex-col w-full gap-2">
+          <div className="flex flex-col w-full gap-2 items-center">
             {/* Textarea row */}
             <div className="w-full">
-          <textarea
-            ref={textareaRef}
-            value={input}
-            onChange={e => setInput(e.target.value)}
+              <textarea
+                ref={textareaRef}
+                value={input}
+                onChange={e => setInput(e.target.value)}
                 className="w-full border-none outline-none bg-transparent px-2 py-1 text-gray-200 text-sm placeholder-gray-500 resize-none overflow-auto self-center rounded-lg"
                 placeholder="Ask anything..."
-            disabled={loading}
-            rows={1}
+                disabled={loading}
+                rows={1}
                 style={{ maxHeight: '96px', minHeight: '40px', lineHeight: '1.5' }}
               />
             </div>
