@@ -60,64 +60,40 @@ const DeepResearchView: React.FC<DeepResearchViewProps> = ({
 
       case 'research':
         if (!webData) return null;
+        // Helper to render a list of articles with icons and links
+        const renderArticleList = (articles: any[], icon: string, domainKey: string = 'url') => (
+          <ul className="space-y-2">
+            {articles.slice(0, 10).map((article: any, i: number) => (
+              <li key={i} className="flex items-center gap-2 text-xs text-neutral-300">
+                {article.icon && (
+                  <img src={article.icon} alt="icon" className="w-4 h-4 inline-block" />
+                )}
+                <a href={article.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                  {article.title || article.url}
+                </a>
+                <span className="text-neutral-500 ml-2">{(article.url || '').replace(/https?:\/\/(www\.)?/, '').split('/')[0]}</span>
+              </li>
+            ))}
+          </ul>
+        );
         return (
           <div className="space-y-4">
-            <h3 className="text-lg font-medium text-neutral-200">Found Sources</h3>
-            <div className="grid grid-cols-1 gap-3">
-              {webData.serperArticles.length > 0 && (
-                <div className="p-3 bg-neutral-800/50 rounded-lg">
-                  <h4 className="text-sm font-medium text-neutral-300 mb-2">Web Articles</h4>
-                  <ul className="space-y-2">
-                    {webData.serperArticles.slice(0, 3).map((article: any, i: number) => (
-                      <li key={i} className="text-xs text-neutral-400">
-                        {article.title}
-                      </li>
-                    ))}
-                    {webData.serperArticles.length > 3 && (
-                      <li className="text-xs text-neutral-500">
-                        + {webData.serperArticles.length - 3} more articles
-                      </li>
-                    )}
-                  </ul>
-                </div>
-              )}
-              
-              {webData.wikipediaArticles.length > 0 && (
-                <div className="p-3 bg-neutral-800/50 rounded-lg">
-                  <h4 className="text-sm font-medium text-neutral-300 mb-2">Wikipedia Articles</h4>
-                  <ul className="space-y-2">
-                    {webData.wikipediaArticles.slice(0, 3).map((article: any, i: number) => (
-                      <li key={i} className="text-xs text-neutral-400">
-                        {article.title}
-                      </li>
-                    ))}
-                    {webData.wikipediaArticles.length > 3 && (
-                      <li className="text-xs text-neutral-500">
-                        + {webData.wikipediaArticles.length - 3} more articles
-                      </li>
-                    )}
-                  </ul>
-                </div>
-              )}
-              
-              {webData.newsdataArticles.length > 0 && (
-                <div className="p-3 bg-neutral-800/50 rounded-lg">
-                  <h4 className="text-sm font-medium text-neutral-300 mb-2">News Articles</h4>
-                  <ul className="space-y-2">
-                    {webData.newsdataArticles.slice(0, 3).map((article: any, i: number) => (
-                      <li key={i} className="text-xs text-neutral-400">
-                        {article.title}
-                      </li>
-                    ))}
-                    {webData.newsdataArticles.length > 3 && (
-                      <li className="text-xs text-neutral-500">
-                        + {webData.newsdataArticles.length - 3} more articles
-                      </li>
-                    )}
-                  </ul>
-                </div>
-              )}
-            </div>
+            <h3 className="text-lg font-medium text-neutral-200">Related Web Sources</h3>
+            {webData.serperArticles.length > 0 && (
+              <div className="mb-4">
+                {renderArticleList(webData.serperArticles, '/icons/web-icon.svg')}
+              </div>
+            )}
+            {webData.wikipediaArticles.length > 0 && (
+              <div className="mb-4">
+                {renderArticleList(webData.wikipediaArticles, '/icons/wikipedia-icon.svg')}
+              </div>
+            )}
+            {webData.newsdataArticles.length > 0 && (
+              <div className="mb-4">
+                {renderArticleList(webData.newsdataArticles, '/icons/newsdata-icon.svg')}
+              </div>
+            )}
           </div>
         );
 
