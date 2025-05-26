@@ -142,9 +142,9 @@ const DeepResearchView: React.FC<DeepResearchViewProps> = ({
   };
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-row">
       {/* Left Panel - Step List */}
-      <div className="w-full p-4 border-b border-neutral-800">
+      <div className="w-72 min-w-[250px] max-w-xs h-full p-4 border-r border-neutral-800 bg-black/80">
         <h2 className="text-xl font-semibold text-neutral-200 mb-4">Deep Research Process</h2>
         <div className="space-y-2">
           {steps.map((step) => (
@@ -178,7 +178,7 @@ const DeepResearchView: React.FC<DeepResearchViewProps> = ({
       </div>
 
       {/* Right Panel - Full Content */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 h-full overflow-y-auto p-4">
         <div className="space-y-6">
           {steps.map((step) => (
             <motion.div
@@ -192,7 +192,6 @@ const DeepResearchView: React.FC<DeepResearchViewProps> = ({
             </motion.div>
           ))}
         </div>
-
         {error && (
           <div className="mt-4 p-4 bg-red-900/20 border border-red-900/50 rounded-lg text-red-400">
             {error}
