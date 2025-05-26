@@ -444,13 +444,15 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
       {/* Left Panel - Step List */}
       <div className="w-80 min-w-[220px] max-w-xs flex-shrink-0 border-r border-neutral-800 bg-neutral-950 p-6">
         <div className="flex items-center gap-2 mb-6">
-          {/* Chip icon with regular stroke */}
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-400"><rect x="4" y="7" width="16" height="10" rx="5"/><path d="M8 7V5m8 2V5M8 19v-2m8 2v-2"/></svg>
+          {/* Better chip icon with regular stroke */}
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-400"><rect x="7" y="7" width="10" height="10" rx="5"/><rect x="2" y="9" width="2" height="6" rx="1"/><rect x="20" y="9" width="2" height="6" rx="1"/><rect x="9" y="2" width="6" height="2" rx="1"/><rect x="9" y="20" width="6" height="2" rx="1"/></svg>
           <span className="text-xl text-neutral-200 font-normal">Advance Search</span>
         </div>
         <div className="relative flex flex-col">
-          {/* Vertical line for all steps except last, behind the circles */}
-          <div className="absolute left-6 top-7 bottom-7 w-px bg-neutral-700 z-0" style={{left: 24}}></div>
+          {/* Vertical line for all steps except last, perfectly centered behind the circles */}
+          <div className="absolute top-7 bottom-7 left-0 flex justify-center w-6 z-0">
+            <div className="mx-auto w-px h-full bg-neutral-700"></div>
+          </div>
           {steps.map((step, idx) => {
             const isActive = step.id === activeStepId;
             return (
