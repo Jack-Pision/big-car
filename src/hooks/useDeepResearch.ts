@@ -141,7 +141,7 @@ export const useDeepResearch = (isActive: boolean, query: string = '') => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: [
-            { role: 'system', content: 'You are a research planning assistant. Analyze the query and create a detailed research plan. What information is needed? What are the key concepts? What sources should be prioritized?' },
+            { role: 'system', content: 'You are a research planning assistant. Analyze the query and create a detailed, advanced research plan. Break down the query into as many specific, nuanced, and insightful bullet points as possible (aim for at least 7-10 if possible). Each bullet should cover a unique angle, sub-question, ambiguity, or research strategy. Consider all relevant information needs, possible interpretations, and research approaches. Do not repeat or rephrase the same point. What information is needed? What are the key concepts? What sources should be prioritized? Be exhaustive and creative.' },
             { role: 'user', content: query }
           ],
           temperature: 0.2
