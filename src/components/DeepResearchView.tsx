@@ -140,13 +140,100 @@ const DeepResearchView: React.FC<DeepResearchViewProps> = ({
       case 'understand':
         return (
           <div className="space-y-4 p-4 rounded-lg bg-neutral-900/50">
-            <h3 className="text-lg font-medium text-neutral-200">Understanding the Query</h3>
             <div className="text-neutral-400 text-xs mb-4">
               Here's my analysis of your question and research plan:
             </div>
-            <div className="text-neutral-300 text-sm leading-relaxed">
-              {convertToPlainText(step.output || step.content)}
-            </div>
+            {step.output && (
+              <div className="space-y-4">
+                {/* Extract and display the summary paragraph */}
+                <div className="text-neutral-300 text-sm leading-relaxed">
+                  {(() => {
+                    const contentString = typeof step.output === 'string' 
+                      ? step.output 
+                      : typeof step.content === 'string'
+                        ? step.content
+                        : '';
+                    // Find the first paragraph that's not a bullet point
+                    const paragraphs = contentString.split(/\n\s*\n/);
+                    const summaryParagraph = paragraphs.find(p => 
+                      !p.trim().startsWith('-') && 
+                      !p.trim().startsWith('*') && 
+                      !p.trim().startsWith('#') &&
+                      p.trim().length > 30
+                    ) || 'I have analyzed your question and research plan.';
+                    // Remove any markdown formatting
+                    return summaryParagraph
+                      .replace(/#{1,6}\s/g, '') // Remove headings
+                      .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold
+                      .replace(/\*(.*?)\*/g, '$1') // Remove italics
+                      .replace(/__(.*?)__/g, '$1') // Remove underline
+                      .replace(/~~(.*?)~~/g, '$1') // Remove strikethrough
+                      .replace(/```([\s\S]*?)```/g, '$1') // Remove code blocks
+                      .replace(/`(.*?)`/g, '$1') // Remove inline code
+                      .trim();
+                  })()}
+                </div>
+                {/* Key points as bullet points */}
+                <div className="mt-6 pt-4 border-t border-neutral-800">
+                  <div className="text-neutral-300 text-sm mb-2">Key information needed:</div>
+                  <ul className="list-disc pl-5 space-y-2 text-neutral-300 text-sm">
+                    {(() => {
+                      const contentString = typeof step.output === 'string' 
+                        ? step.output 
+                        : typeof step.content === 'string'
+                          ? step.content
+                          : '';
+                      let bulletPoints: string[] = [];
+                      // First look for existing bullet points
+                      const bulletRegex = /[-*•]\s+([^\n]+)/g;
+                      let bulletMatch;
+                      while ((bulletMatch = bulletRegex.exec(contentString)) !== null) {
+                        const point = bulletMatch[1]
+                          .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold
+                          .replace(/\*(.*?)\*/g, '$1') // Remove italics
+                          .replace(/__(.*?)__/g, '$1') // Remove underline
+                          .replace(/~~(.*?)~~/g, '$1') // Remove strikethrough
+                          .replace(/```([\s\S]*?)```/g, '$1') // Remove code blocks
+                          .replace(/`(.*?)`/g, '$1') // Remove inline code
+                          .trim();
+                        if (point && !bulletPoints.includes(point)) {
+                          bulletPoints.push(point);
+                        }
+                      }
+                      // If no bullet points found, try to extract key sentences
+                      if (bulletPoints.length === 0) {
+                        const sentences = contentString
+                          .replace(/\n/g, ' ')
+                          .split(/\.\s+/)
+                          .filter(s => 
+                            s.trim().length > 30 && 
+                            s.trim().length < 150 &&
+                            !s.includes('http') &&
+                            !s.toLowerCase().includes('in conclusion') &&
+                            !s.toLowerCase().includes('to summarize')
+                          )
+                          .map(s => s.trim())
+                          .slice(1, 6); // Take up to 5 key sentences
+                        bulletPoints = sentences;
+                      }
+                      // Limit to 5 bullet points max
+                      bulletPoints = bulletPoints.slice(0, 5);
+                      if (bulletPoints.length === 0) {
+                        bulletPoints = ['Key information has been identified for your research plan.'];
+                      }
+                      return bulletPoints.map((point, i) => (
+                        <li key={i} className="text-neutral-300">{point}</li>
+                      ));
+                    })()}
+                  </ul>
+                </div>
+              </div>
+            )}
+            {!step.output && (
+              <div className="text-neutral-300 text-sm">
+                Analyzing your question and research plan...
+              </div>
+            )}
           </div>
         );
 
