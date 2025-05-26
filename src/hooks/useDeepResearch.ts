@@ -260,7 +260,7 @@ export const useDeepResearch = (isActive: boolean, query: string = '') => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             messages: [
-              { role: 'system', content: 'You are a Deep Research AI assistant. Given the following query, research plan, and web data, provide a short summary (2-4 sentences) of what you understood and what you will provide in the final output. Do not write the full answer yet.' },
+              { role: 'system', content: 'You are a Deep Research AI assistant. Based on the query, research plan, and web data, create a detailed thinking process summary (NOT the final answer) that includes: 1) A short paragraph at the top summarizing what you understood from the research, 2) A bulleted list of key points you will cover in the final answer, and 3) A brief outline of how you will structure the final response. This is your reasoning process, not the final answer.' },
               { role: 'user', content: `Query: ${query}\n\nAnalysis: ${analysis}\n\nWeb Data: ${JSON.stringify(webData)}` }
             ],
             temperature: 0.2
