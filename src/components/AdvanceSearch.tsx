@@ -448,36 +448,34 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-400"><rect x="4" y="7" width="16" height="10" rx="5"/><path d="M8 7V5m8 2V5M8 19v-2m8 2v-2"/></svg>
           <span className="text-xl text-neutral-200 font-normal">Advance Search</span>
         </div>
-        <div className="flex flex-col relative">
-          {steps.map((step, idx) => (
-            <div key={step.id} className="flex items-start relative min-h-[48px]">
-              {/* Vertical line (except last step) */}
-              {idx < steps.length - 1 && (
-                <span
-                  className="absolute left-1/2 -translate-x-1/2 top-6 w-px h-full bg-neutral-700 z-0"
-                  style={{ height: '100%' }}
-                ></span>
-              )}
-              {/* Step circle with check if completed */}
-              <span className="relative z-10 flex items-center justify-center w-6 h-6 mt-0.5 mr-3">
-                <span className={`block w-6 h-6 rounded-full border-2 ${step.status === 'completed' ? 'border-white bg-neutral-800' : 'border-neutral-500 bg-neutral-900'}`}></span>
-                {step.status === 'completed' && (
-                  <svg className="absolute w-4 h-4 text-white" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <path d="M6 10.5l3 3 5-5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                )}
-              </span>
-              {/* Step label */}
-              <button
-                type="button"
-                className={`text-left focus:outline-none bg-transparent border-none p-0 m-0 shadow-none transition-none text-neutral-400 ${activeStepId && step.id !== activeStepId ? 'opacity-60' : ''}`}
-                style={{ fontSize: step.id === activeStepId ? '1.08rem' : '1rem', background: 'none', fontWeight: 400 }}
-                onClick={() => handleStepClick(step.id)}
-              >
-                {step.title}
-              </button>
-            </div>
-          ))}
+        <div className="relative flex flex-col">
+          {/* Vertical line for all steps except last, behind the circles */}
+          <div className="absolute left-6 top-7 bottom-7 w-px bg-neutral-700 z-0" style={{left: 24}}></div>
+          {steps.map((step, idx) => {
+            const isActive = step.id === activeStepId;
+            return (
+              <div key={step.id} className="flex items-start relative min-h-[48px] z-10">
+                {/* Step circle with check if completed */}
+                <span className="relative flex items-center justify-center w-6 h-6 mt-0.5 mr-3 z-10">
+                  <span className={`block w-6 h-6 rounded-full border-2 ${step.status === 'completed' ? 'border-white bg-neutral-800' : 'border-neutral-500 bg-neutral-900'}`}></span>
+                  {step.status === 'completed' && (
+                    <svg className="absolute w-4 h-4 text-white" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <path d="M6 10.5l3 3 5-5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </span>
+                {/* Step label */}
+                <button
+                  type="button"
+                  className={`text-left focus:outline-none bg-transparent border-none p-0 m-0 shadow-none transition-none text-neutral-400 ${isActive ? 'text-cyan-300' : ''} ${activeStepId && !isActive ? 'opacity-40' : ''}`}
+                  style={{ fontSize: isActive ? '1.08rem' : '1rem', background: 'none', fontWeight: 400 }}
+                  onClick={() => handleStepClick(step.id)}
+                >
+                  {step.title}
+                </button>
+              </div>
+            );
+          })}
         </div>
       </div>
 
