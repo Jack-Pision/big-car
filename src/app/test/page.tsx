@@ -823,12 +823,13 @@ FORMATTING REQUIREMENTS:
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: '#232323' }}>
+    <div className="min-h-screen flex flex-col bg-[#232323]">
       <GlobalStyles />
-      {/* Hamburger menu and sidebar */}
-      <div className="fixed top-6 left-6 z-50">
+      {/* Fixed Hamburger Menu */}
+      <div className="fixed top-4 left-4 z-50">
         <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
       </div>
+      {/* Sidebar */}
       <Sidebar
         open={sidebarOpen}
         chats={chats}
@@ -842,13 +843,9 @@ FORMATTING REQUIREMENTS:
         onOpenSearch={() => {}}
         onNavigateBoard={() => router.push('/board')}
       />
-      
-      {/* Conversation area (scrollable) */}
-      <div
-        ref={scrollRef}
-        className="flex-1 overflow-y-auto w-full flex flex-col items-center justify-center relative"
-        style={{ paddingBottom: `${inputBarHeight + EXTRA_GAP}px` }}
-      >
+
+      {/* Main chat area (scrollable) */}
+      <div className="flex-1 flex flex-col items-center justify-center relative overflow-y-auto" style={{ paddingBottom: `${inputBarHeight + EXTRA_GAP}px` }}>
         <div
           className={`absolute left-0 right-0 flex flex-col items-center transition-opacity duration-700 ${
             showHeading && messages.length === 0 ? "opacity-100" : "opacity-0 pointer-events-none"
@@ -888,7 +885,7 @@ FORMATTING REQUIREMENTS:
                             markdownComponents={markdownComponents}
                             webSources={(msg as any).webSources || []}
                           />
-                        </div>
+              </div>
                       )}
                     </>
                   )}
@@ -933,11 +930,11 @@ FORMATTING REQUIREMENTS:
               );
             }
           })}
-      </div>
+        </div>
       </div>
 
-      {/* Fixed Input Bar at Bottom */}
-      <div ref={inputBarRef} className="fixed left-0 right-0 bottom-0 w-full flex justify-center z-50" style={{ pointerEvents: 'auto' }}>
+      {/* Fixed input bar */}
+      <div className="fixed bottom-0 left-0 right-0 z-40">
         <form
           className="w-full max-w-3xl flex flex-col gap-2 rounded-2xl shadow-lg px-3 py-2 mx-4 mb-3"
           style={{ background: '#232323', border: '2px solid rgba(255,255,255,0.18)', boxShadow: '0 4px 32px 0 rgba(0,0,0,0.32)' }}
