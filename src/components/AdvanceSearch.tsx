@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -479,27 +479,67 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
         </div>
       </div>
 
-      {/* Right Panel - Step Content (Scrollable) */}
-      <div className="flex-1 h-full max-h-[75vh] overflow-y-auto p-8 bg-neutral-900">
-        <div className="space-y-6">
-          {steps.map((step) => (
-            <motion.div
-              key={step.id}
-              ref={setStepRef(step.id)}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              {renderStepContent(step)}
-            </motion.div>
-          ))}
-        </div>
+      {/* Right Panel - Streaming Output (Scrollable) */}
+      <div className="flex-1 h-full max-h-[75vh] overflow-y-auto p-8 bg-neutral-900" id="advance-search-stream-panel">
+        <StreamingResearchOutput steps={steps} />
         {error && (
           <div className="mt-4 p-4 bg-red-900/20 border border-red-900/50 rounded-lg text-red-400">
             {error}
           </div>
         )}
       </div>
+    </div>
+  );
+};
+
+const StreamingResearchOutput: React.FC<{ steps: ThinkingStep[] }> = ({ steps }) => {
+  // Combine all step outputs into a single streaming text (simulate streaming for demo)
+  const [paragraphs, setParagraphs] = useState<string[]>([]);
+  const [streamingIndex, setStreamingIndex] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Combine all completed step outputs into one string
+  const allText = steps
+    .filter((step) => step.status === 'completed' && step.output)
+    .map((step) => (typeof step.output === 'string' ? step.output : ''))
+    .join('\n\n');
+
+  // Split into paragraphs (by double newlines or by period)
+  const allParagraphs = allText
+    .split(/\n\s*\n|(?<=\.)\s+(?=[A-Z])/)
+    .map((p) => p.trim())
+    .filter((p) => p.length > 0);
+
+  // Streaming effect: reveal one paragraph at a time
+  useEffect(() => {
+    if (streamingIndex < allParagraphs.length) {
+      const timeout = setTimeout(() => {
+        setParagraphs((prev) => [...prev, allParagraphs[streamingIndex]]);
+        setStreamingIndex((prev) => prev + 1);
+      }, 700); // Adjust speed as needed
+      return () => clearTimeout(timeout);
+    }
+  }, [streamingIndex, allParagraphs.length]);
+
+  // Auto-scroll to bottom as new paragraphs appear
+  useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.scrollTo({ top: containerRef.current.scrollHeight, behavior: 'smooth' });
+    }
+  }, [paragraphs]);
+
+  return (
+    <div ref={containerRef} className="w-full h-full overflow-y-auto space-y-6">
+      {paragraphs.map((para, idx) => (
+        <motion.div
+          key={idx}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: idx * 0.1 }}
+        >
+          <p className="text-neutral-200 text-base leading-relaxed mb-2">{para}</p>
+        </motion.div>
+      ))}
     </div>
   );
 };
