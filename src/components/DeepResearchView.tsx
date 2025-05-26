@@ -163,20 +163,138 @@ const DeepResearchView: React.FC<DeepResearchViewProps> = ({
             >
               {step.output || step.content}
             </ReactMarkdown>
+            
+            {/* Display detailed web sources with icons and clickable links */}
             {webData && (
-              <div className="mt-4 pt-4 border-t border-neutral-800">
-                <h4 className="text-sm font-medium text-neutral-300 mb-2">Sources Found:</h4>
-                <ul className="text-xs text-neutral-400 space-y-1">
-                  {webData.serperArticles?.length > 0 && (
-                    <li>• {webData.serperArticles.length} web articles</li>
-                  )}
-                  {webData.wikipediaArticles?.length > 0 && (
-                    <li>• {webData.wikipediaArticles.length} Wikipedia entries</li>
-                  )}
-                  {webData.newsdataArticles?.length > 0 && (
-                    <li>• {webData.newsdataArticles.length} news articles</li>
-                  )}
-                </ul>
+              <div className="mt-6 pt-4 border-t border-neutral-800">
+                <h4 className="text-sm font-medium text-neutral-300 mb-3">Sources:</h4>
+                
+                {/* Serper (Google) Articles */}
+                {webData.serperArticles?.length > 0 && (
+                  <div className="mb-4">
+                    <div className="text-xs text-neutral-400 mb-2">Web Articles:</div>
+                    <div className="space-y-2">
+                      {webData.serperArticles.slice(0, 10).map((article: any, i: number) => (
+                        <a 
+                          key={i} 
+                          href={article.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 p-2 rounded-lg hover:bg-neutral-800/50 transition-colors"
+                        >
+                          {/* Icon */}
+                          <div className="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-neutral-800 rounded-full overflow-hidden">
+                            {article.favicon ? (
+                              <img 
+                                src={article.favicon || article.icon} 
+                                alt="" 
+                                className="w-4 h-4 object-contain"
+                                onError={(e) => {
+                                  // If favicon fails, show a default globe icon
+                                  (e.target as HTMLImageElement).style.display = 'none';
+                                  (e.target as HTMLImageElement).parentElement!.innerHTML = `
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400">
+                                      <circle cx="12" cy="12" r="10"></circle>
+                                      <line x1="2" y1="12" x2="22" y2="12"></line>
+                                      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                                    </svg>
+                                  `;
+                                }}
+                              />
+                            ) : (
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-400">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="2" y1="12" x2="22" y2="12"></line>
+                                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                              </svg>
+                            )}
+                          </div>
+                          
+                          {/* Title and Source */}
+                          <div className="flex-1 overflow-hidden">
+                            <div className="text-sm text-cyan-400 truncate hover:underline">
+                              {article.title || article.url}
+                            </div>
+                            <div className="text-xs text-neutral-500 truncate">
+                              {(article.url || '').replace(/https?:\/\/(www\.)?/, '').split('/')[0]}
+                            </div>
+                          </div>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Wikipedia Articles */}
+                {webData.wikipediaArticles?.length > 0 && (
+                  <div className="mb-4">
+                    <div className="text-xs text-neutral-400 mb-2">Wikipedia:</div>
+                    <div className="space-y-2">
+                      {webData.wikipediaArticles.slice(0, 5).map((article: any, i: number) => (
+                        <a 
+                          key={i} 
+                          href={article.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 p-2 rounded-lg hover:bg-neutral-800/50 transition-colors"
+                        >
+                          {/* Wikipedia Icon */}
+                          <div className="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-neutral-800 rounded-full overflow-hidden">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                              <path d="M12.09 13.119C14.679 10.439 17.269 7.76 19.848 5.069C19.934 4.98 20.019 4.881 20.101 4.79C20.268 4.57 20.415 4.33 20.526 4.071C20.637 3.811 20.71 3.534 20.741 3.25C20.771 2.965 20.759 2.676 20.705 2.396C20.651 2.115 20.556 1.846 20.422 1.598C20.289 1.35 20.12 1.127 19.922 0.937C19.724 0.747 19.5 0.594 19.257 0.486C19.014 0.377 18.756 0.314 18.493 0.3C18.231 0.285 17.967 0.319 17.714 0.4C17.198 0.51 16.723 0.77 16.349 1.144C13.981 3.638 11.609 6.129 9.233 8.618C7.854 10.101 6.475 11.584 5.096 13.067C5.096 13.067 4.847 13.357 4.854 13.357C4.861 13.357 5.109 13.066 5.109 13.066C4.699 13.502 4.284 13.935 3.873 14.371C3.88 14.371 4.127 14.081 4.127 14.081C4.122 14.081 3.876 14.371 3.876 14.371C1.661 16.754 -0.541 19.134 -2.729 21.521C-3.242 22.146 -3.759 22.776 -4.275 23.406C-4.347 23.493 -4.422 23.592 -4.496 23.682C-4.663 23.902 -4.81 24.142 -4.921 24.402C-5.032 24.661 -5.105 24.938 -5.136 25.223C-5.166 25.507 -5.154 25.797 -5.1 26.077C-5.046 26.357 -4.951 26.627 -4.817 26.875C-4.684 27.123 -4.515 27.346 -4.317 27.536C-4.119 27.726 -3.895 27.879 -3.652 27.987C-3.409 28.096 -3.151 28.159 -2.888 28.173C-2.626 28.188 -2.362 28.154 -2.109 28.073C-1.593 27.963 -1.119 27.704 -0.744 27.329C-0.741 27.325 -0.738 27.322 -0.735 27.319C1.633 24.824 4.001 22.33 6.372 19.835C7.755 18.35 9.138 16.866 10.52 15.382C10.52 15.382 10.27 15.672 10.277 15.672C10.284 15.672 10.531 15.381 10.531 15.381C10.939 14.943 11.346 14.505 11.762 14.069C11.756 14.069 11.511 14.36 11.511 14.36C11.514 14.36 11.756 14.069 11.759 14.069C11.869 13.947 11.979 13.825 12.09 13.703V13.119Z" fill="#fff"/>
+                            </svg>
+                          </div>
+                          
+                          {/* Title */}
+                          <div className="flex-1 overflow-hidden">
+                            <div className="text-sm text-cyan-400 truncate hover:underline">
+                              {article.title}
+                            </div>
+                            <div className="text-xs text-neutral-500 truncate">Wikipedia</div>
+                          </div>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {/* NewsData Articles */}
+                {webData.newsdataArticles?.length > 0 && (
+                  <div className="mb-4">
+                    <div className="text-xs text-neutral-400 mb-2">News Articles:</div>
+                    <div className="space-y-2">
+                      {webData.newsdataArticles.slice(0, 5).map((article: any, i: number) => (
+                        <a 
+                          key={i} 
+                          href={article.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 p-2 rounded-lg hover:bg-neutral-800/50 transition-colors"
+                        >
+                          {/* News Icon */}
+                          <div className="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-neutral-800 rounded-full overflow-hidden">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-orange-400">
+                              <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"></path>
+                              <path d="M18 14h-8"></path>
+                              <path d="M15 18h-5"></path>
+                              <path d="M10 6h8v4h-8V6Z"></path>
+                            </svg>
+                          </div>
+                          
+                          {/* Title and Source */}
+                          <div className="flex-1 overflow-hidden">
+                            <div className="text-sm text-cyan-400 truncate hover:underline">
+                              {article.title}
+                            </div>
+                            <div className="text-xs text-neutral-500 truncate">
+                              {article.source_id || article.source || (article.url || '').replace(/https?:\/\/(www\.)?/, '').split('/')[0]}
+                            </div>
+                          </div>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
