@@ -919,7 +919,7 @@ FORMATTING REQUIREMENTS:
         {/* Fixed Footer Bar Behind Input */}
         <div
           className="fixed left-0 right-0 bottom-0 z-40"
-          style={{ height: `${inputBarHeight + 24}px`, background: '#232323', boxShadow: '0 -2px 16px 0 rgba(0,0,0,0.18)' }}
+          style={{ height: `${inputBarHeight}px`, background: '#161618', boxShadow: '0 -2px 16px 0 rgba(0,0,0,0.18)' }}
           aria-hidden="true"
         />
         {/* Fixed Input Bar at Bottom */}
