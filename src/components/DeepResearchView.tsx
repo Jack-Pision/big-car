@@ -315,110 +315,84 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
       case 'synthesize':
         return (
           <div className="space-y-4 p-4 rounded-lg bg-neutral-900/50">
-            <h3 className="text-lg font-medium text-neutral-200">Synthesizing Information</h3>
-            <div className="text-neutral-400 text-xs mb-4">
-              Here's what I understood from the research:
-            </div>
-            
-            {/* Plain text paragraph of what the AI understood */}
             {step.output && (
               <div className="space-y-4">
-                {/* Extract and display the summary paragraph */}
-                <div className="text-neutral-300 text-sm leading-relaxed">
+                <ul className="list-disc pl-5 space-y-2 text-neutral-300 text-sm">
                   {(() => {
-                    // Try to extract the first paragraph for the summary
                     const contentString = typeof step.output === 'string' 
                       ? step.output 
                       : typeof step.content === 'string'
                         ? step.content
                         : '';
                     
-                    // Find the first paragraph that's not a bullet point
-                    const paragraphs = contentString.split(/\n\s*\n/);
-                    const summaryParagraph = paragraphs.find(p => 
-                      !p.trim().startsWith('-') && 
-                      !p.trim().startsWith('*') && 
-                      !p.trim().startsWith('#') &&
-                      p.trim().length > 30
-                    ) || 'I have synthesized the research findings to answer your question.';
+                    // Process the content to extract meaningful sentences
+                    let sentences: string[] = [];
                     
-                    // Remove any markdown formatting
-                    return summaryParagraph
-                      .replace(/#{1,6}\s/g, '') // Remove headings
+                    // First, strip all markdown formatting
+                    const plainText = contentString
+                      .replace(/#{1,6}\s[^\n]+/g, '') // Remove headings
                       .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold
                       .replace(/\*(.*?)\*/g, '$1') // Remove italics
                       .replace(/__(.*?)__/g, '$1') // Remove underline
                       .replace(/~~(.*?)~~/g, '$1') // Remove strikethrough
-                      .replace(/```([\s\S]*?)```/g, '$1') // Remove code blocks
+                      .replace(/```([\s\S]*?)```/g, '') // Remove code blocks
                       .replace(/`(.*?)`/g, '$1') // Remove inline code
+                      .replace(/\[[^\]]+\]\([^)]+\)/g, '') // Remove links
+                      .replace(/!\[[^\]]+\]\([^)]+\)/g, '') // Remove images
+                      .replace(/\n\s*[-*•]\s+/g, '\n') // Remove bullet markers
+                      .replace(/\n\s*\d+\.\s+/g, '\n') // Remove numbered list markers
                       .trim();
-                  })()}
-                </div>
-                
-                {/* Key points as bullet points */}
-                <div className="mt-6 pt-4 border-t border-neutral-800">
-                  <div className="text-neutral-300 text-sm mb-2">Key information highlights:</div>
-                  <ul className="list-disc pl-5 space-y-2 text-neutral-300 text-sm">
-                    {(() => {
-                      const contentString = typeof step.output === 'string' 
-                        ? step.output 
-                        : typeof step.content === 'string'
-                          ? step.content
-                          : '';
+                    
+                    // Split into paragraphs
+                    const paragraphs = plainText.split(/\n\s*\n/);
+                    
+                    // Extract meaningful sentences from each paragraph
+                    paragraphs.forEach(paragraph => {
+                      // Split into sentences (handling various end punctuation)
+                      const paragraphSentences = paragraph
+                        .replace(/\n/g, ' ')
+                        .replace(/\s+/g, ' ')
+                        .split(/(?<=[.!?])\s+/)
+                        .filter(s => s.trim().length > 0);
                       
-                      // Try to extract bullet points or create them from key sentences
-                      let bulletPoints: string[] = [];
-                      
-                      // First look for existing bullet points
-                      const bulletRegex = /[-*•]\s+([^\n]+)/g;
-                      let bulletMatch;
-                      while ((bulletMatch = bulletRegex.exec(contentString)) !== null) {
-                        const point = bulletMatch[1]
-                          .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold
-                          .replace(/\*(.*?)\*/g, '$1') // Remove italics
-                          .replace(/__(.*?)__/g, '$1') // Remove underline
-                          .replace(/~~(.*?)~~/g, '$1') // Remove strikethrough
-                          .replace(/```([\s\S]*?)```/g, '$1') // Remove code blocks
-                          .replace(/`(.*?)`/g, '$1') // Remove inline code
-                          .trim();
-                        
-                        if (point && !bulletPoints.includes(point)) {
-                          bulletPoints.push(point);
+                      // Filter out sentences that are too short, meta-language, or labels
+                      paragraphSentences.forEach(sentence => {
+                        const trimmed = sentence.trim();
+                        if (
+                          trimmed.length > 15 && 
+                          trimmed.length < 150 &&
+                          !trimmed.match(/^(key points|in summary|to summarize|in conclusion|key findings|overview)/i) &&
+                          !trimmed.includes('http') &&
+                          !trimmed.match(/^(objective|literature review|case study|comparative analysis|expert interviews|scenario planning|information needed|key information|technological advancements|sustainability|vehicle models|\d+\.|-|•)/)
+                        ) {
+                          // Clean up any remaining artifacts and ensure sentence ends with punctuation
+                          let cleaned = trimmed;
+                          if (!cleaned.match(/[.!?]$/)) {
+                            cleaned += '.';
+                          }
+                          
+                          // Avoid duplicates
+                          if (!sentences.includes(cleaned)) {
+                            sentences.push(cleaned);
+                          }
                         }
-                      }
-                      
-                      // If no bullet points found, try to extract key sentences
-                      if (bulletPoints.length === 0) {
-                        const sentences = contentString
-                          .replace(/\n/g, ' ')
-                          .split(/\.\s+/)
-                          .filter(s => 
-                            s.trim().length > 30 && 
-                            s.trim().length < 150 &&
-                            !s.includes('http') &&
-                            !s.toLowerCase().includes('in conclusion') &&
-                            !s.toLowerCase().includes('to summarize')
-                          )
-                          .map(s => s.trim())
-                          .slice(1, 6); // Take up to 5 key sentences
-                        
-                        bulletPoints = sentences;
-                      }
-                      
-                      // Limit to 5 bullet points max
-                      bulletPoints = bulletPoints.slice(0, 5);
-                      
-                      // If still no points, add a default
-                      if (bulletPoints.length === 0) {
-                        bulletPoints = ['Information has been synthesized based on the research findings.'];
-                      }
-                      
-                      return bulletPoints.map((point, i) => (
-                        <li key={i} className="text-neutral-300">{point}</li>
-                      ));
-                    })()}
-                  </ul>
-                </div>
+                      });
+                    });
+                    
+                    // If no good sentences found, provide a default
+                    if (sentences.length === 0) {
+                      sentences = ['The information has been synthesized based on the research findings.'];
+                    }
+                    
+                    // Limit to a reasonable number of bullet points (max 8)
+                    sentences = sentences.slice(0, 8);
+                    
+                    // Return the bullet points
+                    return sentences.map((sentence, i) => (
+                      <li key={i} className="text-neutral-300">{sentence}</li>
+                    ));
+                  })()}
+                </ul>
               </div>
             )}
             
