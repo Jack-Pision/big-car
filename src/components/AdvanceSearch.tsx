@@ -480,8 +480,12 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
       {/* Left Panel - Step List */}
       <div className="w-80 min-w-[220px] max-w-xs flex-shrink-0 border-r border-neutral-800 bg-neutral-950 p-6 h-full">
         <div className="flex items-center gap-2 mb-6">
-          {/* Chip icon with regular stroke */}
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-400"><rect x="4" y="7" width="16" height="10" rx="5"/><path d="M8 7V5m8 2V5M8 19v-2m8 2v-2"/></svg>
+          {/* New microchip icon with cyan color */}
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-400">
+            <rect x="7" y="7" width="10" height="10" rx="2"/>
+            <rect x="9.5" y="9.5" width="5" height="5" rx="1"/>
+            <path d="M2 9h3M2 15h3M19 9h3M19 15h3M9 2v3M15 2v3M9 19v3M15 19v3"/>
+          </svg>
           <span className="text-xl text-neutral-200 font-normal">Advance Search</span>
         </div>
         <div className="relative flex flex-col items-center">

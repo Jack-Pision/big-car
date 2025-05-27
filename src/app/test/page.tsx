@@ -928,7 +928,7 @@ FORMATTING REQUIREMENTS:
                     />
                   ))}
                   <div>{msg.content}</div>
-        </div>
+                </div>
               );
             }
           })}
@@ -963,14 +963,14 @@ FORMATTING REQUIREMENTS:
           <div className="flex flex-col w-full gap-2 items-center">
             {/* Textarea row */}
             <div className="w-full">
-              <textarea
-                ref={textareaRef}
-                value={input}
-                onChange={e => setInput(e.target.value)}
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={e => setInput(e.target.value)}
                 className="w-full border-none outline-none bg-transparent px-2 py-1 text-gray-200 text-sm placeholder-gray-500 resize-none overflow-auto self-center rounded-lg"
                 placeholder="Ask anything..."
-                disabled={loading}
-                rows={1}
+            disabled={loading}
+            rows={1}
                 style={{ maxHeight: '96px', minHeight: '40px', lineHeight: '1.5' }}
               />
             </div>

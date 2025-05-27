@@ -12,7 +12,7 @@ export interface ThinkingStep {
   output: any;
 }
 
-interface DeepResearchViewProps {
+interface AdvanceSearchProps {
   steps: ThinkingStep[];
   activeStepId: string | null;
   error: string | null;
@@ -91,7 +91,7 @@ const convertToPlainText = (markdownText: string): JSX.Element => {
   );
 };
 
-const DeepResearchView: React.FC<DeepResearchViewProps> = ({
+const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
   steps,
   activeStepId,
   error,
@@ -443,7 +443,11 @@ const DeepResearchView: React.FC<DeepResearchViewProps> = ({
     <div className="flex max-w-6xl h-[75vh] w-full mx-auto" style={{ minHeight: '350px' }}>
       {/* Left Panel - Step List */}
       <div className="w-80 min-w-[220px] max-w-xs flex-shrink-0 border-r border-neutral-800 bg-neutral-950 p-6">
-        <h2 className="text-xl font-semibold text-neutral-200 mb-6">Deep Research Process</h2>
+        <div className="flex items-center gap-2 mb-6">
+          {/* Chip icon with regular stroke */}
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-400"><rect x="4" y="7" width="16" height="10" rx="5"/><path d="M8 7V5m8 2V5M8 19v-2m8 2v-2"/></svg>
+          <span className="text-xl text-neutral-200 font-normal">Advance Search</span>
+        </div>
         <div className="flex flex-col relative">
           {steps.map((step, idx) => (
             <div key={step.id} className="flex items-start relative min-h-[48px]">
@@ -466,8 +470,8 @@ const DeepResearchView: React.FC<DeepResearchViewProps> = ({
               {/* Step label */}
               <button
                 type="button"
-                className={`text-left focus:outline-none bg-transparent border-none p-0 m-0 shadow-none transition-none ${step.id === activeStepId ? 'font-bold text-white' : 'text-neutral-400'} ${activeStepId && step.id !== activeStepId ? 'opacity-60' : ''}`}
-                style={{ fontSize: step.id === activeStepId ? '1.08rem' : '1rem', background: 'none' }}
+                className={`text-left focus:outline-none bg-transparent border-none p-0 m-0 shadow-none transition-none text-neutral-400 ${activeStepId && step.id !== activeStepId ? 'opacity-60' : ''}`}
+                style={{ fontSize: step.id === activeStepId ? '1.08rem' : '1rem', background: 'none', fontWeight: 400 }}
                 onClick={() => handleStepClick(step.id)}
               >
                 {step.title}
@@ -502,4 +506,4 @@ const DeepResearchView: React.FC<DeepResearchViewProps> = ({
   );
 };
 
-export default DeepResearchView;
+export default AdvanceSearch;
