@@ -467,6 +467,14 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
     }
   };
 
+  // Add this effect inside AdvanceSearch component:
+  useEffect(() => {
+    const synthStep = steps.find(s => s.id === 'synthesize');
+    if (synthStep && synthStep.output) {
+      setStreamedContent(synthStep.output);
+    }
+  }, [steps]);
+
   return (
     <div className="flex max-w-6xl h-[75vh] w-full mx-auto" style={{ minHeight: '350px' }}>
       {/* Left Panel - Step List */}
