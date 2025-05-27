@@ -1031,6 +1031,18 @@ FORMATTING REQUIREMENTS:
                   </svg>
                       )}
                 </button>
+                {/* Write button */}
+                <button
+                  type="button"
+                  className="rounded-full bg-gray-800 text-amber-400 hover:bg-gray-700 transition flex items-center justify-center gap-1.5 px-3 py-1.5 flex-shrink-0"
+                  style={{ height: "36px" }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#fbbf24' }}>
+                    <path d="M12 20h9" />
+                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19.5 3 21l1.5-4L16.5 3.5z" />
+                  </svg>
+                  <span className="text-xs font-medium">Write</span>
+                </button>
                 </div>
               </div>
             </div>
