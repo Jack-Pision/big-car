@@ -184,30 +184,53 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
                 ? step.content
                 : '';
 
-            // Remove markdown formatting and meta-labels
+            // Process the content to extract only plain, natural sentences
             let plainText = contentString
-              .replace(/#{1,6}\s/g, '') // Remove headings
+              .replace(/#{1,6}\s.*/g, '') // Remove all headings
               .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold
               .replace(/\*(.*?)\*/g, '$1') // Remove italics
               .replace(/__(.*?)__/g, '$1') // Remove underline
               .replace(/~~(.*?)~~/g, '$1') // Remove strikethrough
-              .replace(/```([\s\S]*?)```/g, '$1') // Remove code blocks
-              .replace(/`(.*?)`/g, '$1'); // Remove inline code
-
-            // Remove category/meta labels (e.g., 'Information Needed:', 'Research Approach:', etc.)
-            plainText = plainText.replace(/^[\d]+\.|^[A-Za-z ]+:|\*\s*/gm, '').replace(/\n+/g, '\n');
-
-            // Extract bullet points (lines starting with - or *)
-            let bulletPoints = plainText.split(/\n|[-*•]\s+/)
+              .replace(/```([\s\S]*?)```/g, '') // Remove code blocks entirely
+              .replace(/`(.*?)`/g, '$1') // Remove inline code
+              .replace(/\[[^\]]+\]\([^)]+\)/g, '') // Remove links
+              .replace(/!\[[^\]]+\]\([^)]+\)/g, ''); // Remove images
+              
+            // Split by newlines or bullet markers
+            let lines = plainText.split(/\n|[-*•]\s+/)
               .map(line => line.trim())
-              .filter(line => line.length > 0 && line.length < 300 && /[a-zA-Z0-9]/.test(line));
+              .filter(line => line.length > 0);
+              
+            // Process each line to remove meta-labels and special formatting
+            let bulletPoints = lines.map(line => {
+              // Remove any meta-labels at start of line (Sub-question:, Research Strategy:, etc.)
+              return line.replace(/^([A-Za-z\s]+[:_-]|_[^_]+_|^\d+\.\s*)/i, '').trim();
+            })
+            .filter(line => {
+              // Keep only lines that look like natural sentences
+              return line.length > 10 && // Not too short
+                     line.length < 200 && // Not too long
+                     /[A-Z]/.test(line.charAt(0)) && // Starts with capital letter
+                     /[a-zA-Z0-9]/.test(line) && // Contains alphanumeric characters
+                     !line.match(/^(Sub-question|Research Strategy|Key Concepts|Information Needed|Objective|Literature Review|Case Study|Comparative Analysis|Expert Interviews|Scenario Planning|Technological Advancements|Sustainability|Note|Example)/i) && // Not a meta-label
+                     !line.includes("e.g.,") && // Not an example
+                     !line.match(/^_.*_$/) && // Not italic text
+                     !line.includes("://"); // Not a URL
+            });
 
             // If no bullet points found, try to split by sentences
             if (bulletPoints.length === 0) {
               bulletPoints = plainText
                 .split(/(?<=[.!?])\s+/)
                 .map(s => s.trim())
-                .filter(s => s.length > 30 && s.length < 200);
+                .filter(s => 
+                  s.length > 30 && 
+                  s.length < 200 && 
+                  /[A-Z]/.test(s.charAt(0)) && // Starts with capital letter
+                  !s.match(/^(Sub-question|Research Strategy|Key Concepts|Information Needed|Objective|Literature Review|Case Study|Comparative Analysis|Expert Interviews|Scenario Planning|Technological Advancements|Sustainability|Note|Example)/i) && // Not a meta-label
+                  !s.includes("e.g.,") && // Not an example
+                  !s.match(/^_.*_$/) // Not italic text
+                );
             }
 
             // If still no points, create default ones
@@ -220,9 +243,21 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
               ];
             }
 
-            // Ensure at least 7-8 bullet points
-            while (bulletPoints.length < 7 && bulletPoints.length > 0) {
-              bulletPoints.push(...bulletPoints.slice(0, Math.min(3, bulletPoints.length)));
+            // Add periods to the end of sentences if they don't have ending punctuation
+            bulletPoints = bulletPoints.map(point => {
+              if (!point.match(/[.!?]$/)) {
+                return point + '.';
+              }
+              return point;
+            });
+            
+            // Remove duplicates
+            bulletPoints = Array.from(new Set(bulletPoints));
+            
+            // Ensure we have enough bullet points (but don't duplicate unnecessarily)
+            if (bulletPoints.length < 5 && bulletPoints.length > 0) {
+              // Only duplicate if we really need to
+              bulletPoints.push(...bulletPoints.slice(0, Math.min(2, bulletPoints.length)));
             }
 
             return bulletPoints.slice(0, 10).map((point, i) => (
@@ -472,7 +507,7 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
                 
                 bulletPoints = sentences.slice(0, 8); // Take up to 8 key sentences
               }
-              
+
               // If still no points, add default ones
               if (bulletPoints.length === 0) {
                 bulletPoints = [
