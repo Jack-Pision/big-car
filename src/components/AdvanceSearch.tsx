@@ -476,9 +476,9 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
   }, [steps]);
 
   return (
-    <div className="flex max-w-6xl h-[75vh] w-full mx-auto" style={{ minHeight: '350px' }}>
+    <div className="flex max-w-6xl w-full mx-auto rounded-2xl border border-gray-200 bg-neutral-900" style={{ height: '550px', minHeight: '550px' }}>
       {/* Left Panel - Step List */}
-      <div className="w-80 min-w-[220px] max-w-xs flex-shrink-0 border-r border-neutral-800 bg-neutral-950 p-6">
+      <div className="w-80 min-w-[220px] max-w-xs flex-shrink-0 border-r border-neutral-800 bg-neutral-950 p-6 h-full">
         <div className="flex items-center gap-2 mb-6">
           {/* Chip icon with regular stroke */}
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-400"><rect x="4" y="7" width="16" height="10" rx="5"/><path d="M8 7V5m8 2V5M8 19v-2m8 2v-2"/></svg>
@@ -528,7 +528,7 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
       </div>
 
       {/* Right Panel - Streaming Output (Scrollable) */}
-      <div ref={rightPanelRef} className="flex-1 h-full max-h-[75vh] overflow-y-auto p-8 bg-neutral-900">
+      <div ref={rightPanelRef} className="flex-1 h-full overflow-y-auto p-8 bg-neutral-900">
         {/* Streaming output area */}
         <div className="space-y-6">
           {displayedParagraphs.map((para, idx) => (
