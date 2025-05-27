@@ -476,9 +476,9 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
   }, [steps]);
 
   return (
-    <div className="flex max-w-6xl w-full mx-auto rounded-2xl border border-gray-200 bg-neutral-900" style={{ height: '550px', minHeight: '550px' }}>
+    <div className="flex max-w-6xl w-full mx-auto rounded-2xl border border-gray-200 shadow-lg bg-neutral-900" style={{ height: '550px', minHeight: '550px' }}>
       {/* Left Panel - Step List */}
-      <div className="w-80 min-w-[220px] max-w-xs flex-shrink-0 border-r border-neutral-800 bg-neutral-950 p-6 h-full">
+      <div className="w-80 min-w-[220px] max-w-xs flex-shrink-0 bg-neutral-950 p-6 h-full rounded-l-2xl">
         <div className="flex items-center gap-2 mb-6">
           {/* New microchip icon with cyan color */}
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-400">
@@ -488,39 +488,31 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
           </svg>
           <span className="text-xl text-neutral-200 font-normal">Advance Search</span>
         </div>
-        <div className="relative flex flex-col items-center">
-          {/* Vertical line: perfectly centered, starts/ends at center of first/last circle */}
-          {steps.length > 1 && (
-            <div
-              className="absolute z-0 bg-neutral-700"
-              style={{
-                left: '50%',
-                top: 'calc(1.5rem)', // half of circle height (w-6 = 1.5rem)
-                bottom: 'calc(1.5rem)',
-                width: '2px',
-                transform: 'translateX(-50%)',
-                height: `calc(100% - 1.5rem)` // leave space for first/last circle
-              }}
-            />
-          )}
+        <div className="flex flex-col relative">
           {steps.map((step, idx) => {
             const isActive = step.id === activeStepId;
             return (
-              <div key={step.id} className="flex items-start relative min-h-[48px] z-10">
-                {/* Step circle with check if completed */}
-                <span className="relative flex items-center justify-center w-6 h-6 mt-0.5 mr-3 z-10">
-                  <span className={`block w-6 h-6 rounded-full border-2 ${step.status === 'completed' ? 'border-white bg-neutral-800' : 'border-neutral-500 bg-neutral-900'}`}></span>
-                  {step.status === 'completed' && (
-                    <svg className="absolute w-4 h-4 text-white" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <path d="M6 10.5l3 3 5-5" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
+              <div key={step.id} className="relative min-h-[48px] z-10 flex flex-row items-center">
+                {/* Timeline column: vertical line and circle */}
+                <div className="flex flex-col items-center justify-start" style={{ width: 24, position: 'relative' }}>
+                  {/* Vertical line: continuous, except for last step */}
+                  {idx < steps.length - 1 && (
+                    <span className="absolute left-1/2 top-6 w-px" style={{ height: 'calc(100% - 1.5rem)', background: '#374151', transform: 'translateX(-50%)' }}></span>
                   )}
-                </span>
-                {/* Step label */}
+                  <span className="relative flex items-center justify-center w-6 h-6 mt-0.5">
+                    <span className={`block w-6 h-6 rounded-full border-2 ${step.status === 'completed' ? 'border-white bg-neutral-800' : 'border-neutral-500 bg-neutral-900'}`}></span>
+                    {step.status === 'completed' && (
+                      <svg className="absolute w-4 h-4 text-white" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <path d="M6 10.5l3 3 5-5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                  </span>
+                </div>
+                {/* Step label, perfectly left-aligned */}
                 <button
                   type="button"
                   className={`text-left focus:outline-none bg-transparent border-none p-0 m-0 shadow-none transition-none text-neutral-400 ${isActive ? 'text-cyan-300' : ''} ${activeStepId && !isActive ? 'opacity-40' : ''}`}
-                  style={{ fontSize: isActive ? '1.08rem' : '1rem', background: 'none', fontWeight: 400 }}
+                  style={{ fontSize: isActive ? '1.08rem' : '1rem', background: 'none', fontWeight: 400, alignSelf: 'center' }}
                   onClick={() => handleStepClick(step.id)}
                 >
                   {step.title}
@@ -532,7 +524,7 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
       </div>
 
       {/* Right Panel - Streaming Output (Scrollable) */}
-      <div ref={rightPanelRef} className="flex-1 h-full overflow-y-auto p-8 bg-neutral-900">
+      <div ref={rightPanelRef} className="flex-1 h-full overflow-y-auto p-8 bg-neutral-900 rounded-r-2xl">
         {/* Streaming output area */}
         <div className="space-y-6">
           {displayedParagraphs.map((para, idx) => (
