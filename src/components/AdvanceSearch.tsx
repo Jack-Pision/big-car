@@ -309,13 +309,12 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
                 <div className="text-neutral-300 text-base mb-2">Web Articles:</div>
                 <div className="space-y-2">
                   {webData.serperArticles.slice(0, 12).map((article: any, i: number) => {
-                    // Extract domain for favicon fallback
                     let domain = '';
                     try {
                       domain = new URL(article.url).hostname;
                     } catch {}
-                    // Use favicon from data, or fallback to DuckDuckGo service
-                    const faviconUrl = article.favicon || article.icon || (domain ? `https://icons.duckduckgo.com/ip3/${domain}.ico` : undefined);
+                    // Always use DuckDuckGo favicon service for consistency
+                    const faviconUrl = domain ? `https://icons.duckduckgo.com/ip3/${domain}.ico` : undefined;
                     return (
                       <a 
                         key={i} 
@@ -334,7 +333,7 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
                               onError={(e) => {
                                 (e.target as HTMLImageElement).style.display = 'none';
                                 (e.target as HTMLImageElement).parentElement!.innerHTML = `
-                                  <svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"text-blue-400\">\n                                        <circle cx=\"12\" cy=\"12\" r=\"10\"></circle>\n                                        <line x1=\"2\" y1=\"12\" x2=\"22\" y2=\"12\"></line>\n                                        <path d=\"M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z\"></path>\n                                      </svg>
+                                  <svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"text-blue-400\">\n<circle cx=\"12\" cy=\"12\" r=\"10\"></circle>\n<line x1=\"2\" y1=\"12\" x2=\"22\" y2=\"12\"></line>\n<path d=\"M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z\"></path>\n</svg>
                                 `;
                               }}
                             />
