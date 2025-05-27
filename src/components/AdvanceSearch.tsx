@@ -17,6 +17,8 @@ interface AdvanceSearchProps {
   activeStepId: string | null;
   error: string | null;
   webData: any | null;
+  onManualStepClick?: (stepId: string) => void;
+  manualNavigationEnabled?: boolean;
 }
 
 // Helper function to convert markdown to plain text with bullet points
@@ -95,7 +97,9 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
   steps,
   activeStepId,
   error,
-  webData
+  webData,
+  onManualStepClick,
+  manualNavigationEnabled = false
 }) => {
   // Create refs for each step section
   const stepRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
@@ -133,6 +137,9 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
 
   // Function to handle step click and scroll
   const handleStepClick = (stepId: string) => {
+    if (manualNavigationEnabled && onManualStepClick) {
+      onManualStepClick(stepId);
+    }
     const element = stepRefs.current[stepId];
     if (element) {
       element.scrollIntoView({

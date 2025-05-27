@@ -385,6 +385,9 @@ export default function TestChat() {
     webData
   } = useDeepResearch(showAdvanceSearch, currentQuery);
 
+  const [manualStepId, setManualStepId] = useState<string | null>(null);
+  const isFinalStepComplete = steps[steps.length - 1]?.status === 'completed';
+
   // Helper to show the image in chat
   const showImageMsg = (content: string, imgSrc: string) => {
     setMessages((prev) => [
@@ -906,7 +909,9 @@ FORMATTING REQUIREMENTS:
                 >
                   <AdvanceSearch
                     steps={steps}
-                    activeStepId={activeStepId}
+                    activeStepId={isFinalStepComplete ? manualStepId || activeStepId : activeStepId}
+                    onManualStepClick={isFinalStepComplete ? setManualStepId : undefined}
+                    manualNavigationEnabled={isFinalStepComplete}
                     error={error}
                     webData={webData}
                   />
