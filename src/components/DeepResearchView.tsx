@@ -444,7 +444,7 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
               {/* Step label */}
               <button
                 type="button"
-                className={`text-left focus:outline-none bg-transparent border-none p-0 m-0 shadow-none transition-none text-neutral-400 ${activeStepId && step.id !== activeStepId ? 'opacity-60' : ''}`}
+                className={`text-left focus:outline-none bg-transparent border-none p-0 m-0 shadow-none transition-none ${step.id === activeStepId ? 'text-white' : 'text-neutral-400 opacity-70'}`}
                 style={{ fontSize: step.id === activeStepId ? '0.98rem' : '0.88rem', background: 'none', fontWeight: 400, lineHeight: 1.1 }}
                 onClick={() => handleStepClick(step.id)}
               >
