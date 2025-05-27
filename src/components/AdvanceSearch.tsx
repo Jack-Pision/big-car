@@ -3,14 +3,7 @@ import { motion } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import 'katex/dist/katex.min.css';
-
-export interface ThinkingStep {
-  id: string;
-  title: string;
-  content: string;
-  status: 'pending' | 'active' | 'completed';
-  output: any;
-}
+import { ThinkingStep } from '@/hooks/useDeepResearch';
 
 interface AdvanceSearchProps {
   steps: ThinkingStep[];
@@ -105,6 +98,7 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
   const stepRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const [displayingSteps, setDisplayingSteps] = useState<string[]>([]);
   const rightPanelRef = useRef<HTMLDivElement>(null);
+  const [expandedSteps, setExpandedSteps] = useState<string[]>([]);
 
   // Track which steps are being displayed with animation
   useEffect(() => {
@@ -154,6 +148,16 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
     stepRefs.current[stepId] = el;
   };
 
+  // Toggle step expansion
+  const toggleStep = (stepId: string) => {
+    setExpandedSteps((prevSteps: string[]) => {
+      if (prevSteps.includes(stepId)) {
+        return prevSteps.filter(id => id !== stepId);
+      }
+      return [...prevSteps, stepId];
+    });
+  };
+
   // Helper to render the understand step content
   const renderUnderstandContent = (step: ThinkingStep) => {
     if (step.status === 'pending') {
@@ -166,9 +170,27 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
 
     if (step.status === 'active') {
       return (
-        <div className="flex items-center gap-2 text-cyan-400 p-4">
-          <div className="animate-spin w-4 h-4">⚡</div>
-          <span>Analyzing your query...</span>
+        <div className="space-y-4">
+          <ul className="list-disc pl-5 space-y-2 text-neutral-300 text-base">
+            {step.streamedContent?.map((point: string, i: number) => (
+              <motion.li
+                key={i}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                {point}
+              </motion.li>
+            ))}
+            <motion.li
+              initial={{ opacity: 0 }}
+              animate={{ opacity: [0, 1, 0] }}
+              transition={{ duration: 1.5, repeat: Infinity }}
+              className="text-cyan-400"
+            >
+              Analyzing your query...
+            </motion.li>
+          </ul>
         </div>
       );
     }
@@ -198,15 +220,15 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
               
             // Split by newlines or bullet markers
             let lines = plainText.split(/\n|[-*•]\s+/)
-              .map(line => line.trim())
-              .filter(line => line.length > 0);
+              .map((line: string) => line.trim())
+              .filter((line: string) => line.length > 0);
               
             // Process each line to remove meta-labels and special formatting
-            let bulletPoints = lines.map(line => {
+            let bulletPoints = lines.map((line: string) => {
               // Remove any meta-labels at start of line (Sub-question:, Research Strategy:, etc.)
               return line.replace(/^([A-Za-z\s]+[:_-]|_[^_]+_|^\d+\.\s*)/i, '').trim();
             })
-            .filter(line => {
+            .filter((line: string) => {
               // Keep only lines that look like natural sentences
               return line.length > 10 && // Not too short
                      line.length < 200 && // Not too long
@@ -222,8 +244,8 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
             if (bulletPoints.length === 0) {
               bulletPoints = plainText
                 .split(/(?<=[.!?])\s+/)
-                .map(s => s.trim())
-                .filter(s => 
+                .map((s: string) => s.trim())
+                .filter((s: string) => 
                   s.length > 30 && 
                   s.length < 200 && 
                   /[A-Z]/.test(s.charAt(0)) && // Starts with capital letter
@@ -244,7 +266,7 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
             }
 
             // Add periods to the end of sentences if they don't have ending punctuation
-            bulletPoints = bulletPoints.map(point => {
+            bulletPoints = bulletPoints.map((point: string) => {
               if (!point.match(/[.!?]$/)) {
                 return point + '.';
               }
@@ -260,7 +282,7 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
               bulletPoints.push(...bulletPoints.slice(0, Math.min(2, bulletPoints.length)));
             }
 
-            return bulletPoints.slice(0, 10).map((point, i) => (
+            return bulletPoints.slice(0, 10).map((point: string, i: number) => (
               <li key={i}>{point}</li>
             ));
           })()}

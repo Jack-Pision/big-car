@@ -1,6 +1,14 @@
 import { useState, useEffect } from 'react';
-import { ThinkingStep } from '@/components/AdvanceSearch';
 import { extractRedditUsername } from '@/utils/reddit-api';
+
+export interface ThinkingStep {
+  id: string;
+  title: string;
+  content: string;
+  status: 'pending' | 'active' | 'completed';
+  output: any;
+  streamedContent?: string[];
+}
 
 // Default thinking steps that will be used for every query
 const DEFAULT_THINKING_STEPS: ThinkingStep[] = [
@@ -134,7 +142,7 @@ export const useDeepResearch = (isActive: boolean, query: string = '') => {
   const processUnderstandStep = async (query: string) => {
     try {
       setActiveStepId('understand');
-      updateStepStatus('understand', 'active', 'Analyzing your query...');
+      updateStepStatus('understand', 'active', 'Analyzing your query...', null, []);
 
       const response = await fetch('/api/nvidia', {
         method: 'POST',
@@ -149,6 +157,9 @@ export const useDeepResearch = (isActive: boolean, query: string = '') => {
       });
 
       let aiContent = '';
+      let currentBulletPoint = '';
+      let bulletPoints: string[] = [];
+
       if (response.body && response.headers.get('content-type')?.includes('text/event-stream')) {
         // Handle streaming response
         const reader = response.body.getReader();
@@ -169,7 +180,21 @@ export const useDeepResearch = (isActive: boolean, query: string = '') => {
                 try {
                   const parsed = JSON.parse(data);
                   const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.message?.content || parsed.choices?.[0]?.text || parsed.content || '';
-                  if (delta) aiContent += delta;
+                  if (delta) {
+                    aiContent += delta;
+                    currentBulletPoint += delta;
+                    
+                    // Check if we've completed a sentence
+                    if (delta.match(/[.!?](\s|$)/) && currentBulletPoint.trim().length > 0) {
+                      const point = currentBulletPoint.trim();
+                      if (point.length > 10 && /^[A-Z]/.test(point)) {
+                        bulletPoints.push(point);
+                        // Update the step with the new bullet point
+                        updateStepStatus('understand', 'active', aiContent, null, bulletPoints);
+                      }
+                      currentBulletPoint = '';
+                    }
+                  }
                 } catch (err) {
                   // Ignore parse errors for incomplete lines
                 }
@@ -182,9 +207,22 @@ export const useDeepResearch = (isActive: boolean, query: string = '') => {
         const data = await response.json();
         aiContent = data.content || data.choices?.[0]?.message?.content || data.generated_text || '';
       }
-      updateStepStatus('understand', 'completed', aiContent, aiContent);
+
+      // Process the final content to ensure it's properly formatted
+      const processedContent = aiContent
+        .replace(/#{1,6}\s.*/g, '') // Remove all headings
+        .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold
+        .replace(/\*(.*?)\*/g, '$1') // Remove italics
+        .replace(/__(.*?)__/g, '$1') // Remove underline
+        .replace(/~~(.*?)~~/g, '$1') // Remove strikethrough
+        .replace(/```([\s\S]*?)```/g, '') // Remove code blocks entirely
+        .replace(/`(.*?)`/g, '$1') // Remove inline code
+        .replace(/\[[^\]]+\]\([^)]+\)/g, '') // Remove links
+        .replace(/!\[[^\]]+\]\([^)]+\)/g, ''); // Remove images
+
+      updateStepStatus('understand', 'completed', processedContent, processedContent);
       // Move to research step
-      processResearchStep(query, aiContent);
+      processResearchStep(query, processedContent);
     } catch (err: any) {
       handleError('understand', err.message);
     }
@@ -358,13 +396,21 @@ export const useDeepResearch = (isActive: boolean, query: string = '') => {
     stepId: string,
     status: 'pending' | 'active' | 'completed',
     content: string,
-    output: any = null
+    output: any = null,
+    streamedContent: string[] = []
   ) => {
-    setSteps(prev => prev.map(step =>
-      step.id === stepId
-        ? { ...step, status, content, output }
-        : step
-    ));
+    setSteps(prevSteps => prevSteps.map(step => {
+      if (step.id === stepId) {
+        return {
+          ...step,
+          status,
+          content,
+          output,
+          streamedContent
+        };
+      }
+      return step;
+    }));
   };
 
   // Helper to handle errors
