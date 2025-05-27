@@ -985,14 +985,13 @@ FORMATTING REQUIREMENTS:
                     tabIndex={0}
                     onClick={() => setShowAdvanceSearch(a => !a)}
                   >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="12" r="1" fill="currentColor"/>
-                      <ellipse cx="12" cy="12" rx="9" ry="3.5" />
-                      <ellipse cx="12" cy="12" rx="3.5" ry="9" transform="rotate(60 12 12)" />
-                      <ellipse cx="12" cy="12" rx="3.5" ry="9" transform="rotate(-60 12 12)" />
-                </svg>
-                    <span className="whitespace-nowrap text-xs font-medium">Deep Research</span>
-                </button>
+                    <img
+                      src={require('@/assets/advance-search-icon.png').default}
+                      alt="Advance Search Icon"
+                      style={{ width: 16, height: 16, filter: showAdvanceSearch ? 'invert(56%) sepia(98%) saturate(747%) hue-rotate(140deg) brightness(98%) contrast(97%)' : 'invert(60%) sepia(0%) saturate(0%) hue-rotate(180deg) brightness(80%) contrast(90%)' }}
+                    />
+                    <span className="whitespace-nowrap text-xs font-medium">Advance Search</span>
+                  </button>
                 </div>
                 {/* Right group: Plus, Send */}
                 <div className="flex flex-row gap-2 items-center">
