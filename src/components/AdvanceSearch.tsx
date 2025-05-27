@@ -508,10 +508,10 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
                     )}
                   </span>
                 </div>
-                {/* Step label, perfectly left-aligned */}
+                {/* Step label, perfectly left-aligned with more space from icon */}
                 <button
                   type="button"
-                  className={`text-left focus:outline-none bg-transparent border-none p-0 m-0 shadow-none transition-none text-neutral-400 ${isActive ? 'text-cyan-300' : ''} ${activeStepId && !isActive ? 'opacity-40' : ''}`}
+                  className={`ml-4 text-left focus:outline-none bg-transparent border-none p-0 m-0 shadow-none transition-none text-neutral-400 ${isActive ? 'text-cyan-300' : ''} ${activeStepId && !isActive ? 'opacity-40' : ''}`}
                   style={{ fontSize: isActive ? '1.08rem' : '1rem', background: 'none', fontWeight: 400, alignSelf: 'center' }}
                   onClick={() => handleStepClick(step.id)}
                 >
