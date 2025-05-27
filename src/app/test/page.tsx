@@ -16,6 +16,7 @@ import ThinkingIndicator from '@/components/ThinkingIndicator';
 import AdvanceSearch from '@/components/AdvanceSearch';
 import { useDeepResearch } from '@/hooks/useDeepResearch';
 import { WebSource } from '@/utils/source-utils';
+import { v4 as uuidv4 } from 'uuid';
 
 const SYSTEM_PROMPT = `You are a helpful, knowledgeable, and friendly AI assistant. Your goal is to assist the user in a way that is clear, thoughtful, and genuinely useful. Follow these guidelines:
 
@@ -340,6 +341,7 @@ interface Message {
   content: string;
   imageUrls?: string[];
   webSources?: WebSource[];
+  researchId?: string;
 }
 
 export default function TestChat() {
@@ -460,24 +462,16 @@ export default function TestChat() {
     // If Deep Research is active, show the view inline in the chat
     if (showAdvanceSearch) {
       setShowAdvanceSearch(true);
-      
-      // Add a special message for Deep Research view
+      const researchId = uuidv4();
       setMessages(prev => [
         ...prev,
-        { 
-          role: "user", 
-          content: currentInput 
-        },
-        { 
-          role: "deep-research" as any, 
-          content: "advance-search-view" 
-        }
+        { role: "user", content: currentInput },
+        { role: "deep-research", content: currentInput, researchId }
       ]);
-
       setInput("");
       setImagePreviewUrls([]);
       setSelectedFilesForUpload([]);
-      return; // Let the Deep Research process handle everything
+      return;
     }
 
     // This is the existing AI request code which we'll now only run when deep research is not active
@@ -897,25 +891,8 @@ FORMATTING REQUIREMENTS:
                 </motion.div>
               );
             } else if (msg.role === "deep-research") {
-              // Deep Research view embedded in chat
               return (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, ease: "easeOut" }}
-                  className="w-full rounded-xl border border-neutral-800 overflow-hidden mb-2 mt-2 bg-neutral-900"
-                  style={{ minHeight: "300px", maxHeight: "500px" }}
-                >
-                  <AdvanceSearch
-                    steps={steps}
-                    activeStepId={isFinalStepComplete ? manualStepId || activeStepId : activeStepId}
-                    onManualStepClick={isFinalStepComplete ? setManualStepId : undefined}
-                    manualNavigationEnabled={isFinalStepComplete}
-                    error={error}
-                    webData={webData}
-                  />
-                </motion.div>
+                <DeepResearchBlock key={msg.researchId} query={msg.content} />
               );
             } else { // User message
               return (
@@ -1063,5 +1040,36 @@ FORMATTING REQUIREMENTS:
         multiple
       />
     </div>
+  );
+}
+
+function DeepResearchBlock({ query }: { query: string }) {
+  const {
+    steps,
+    activeStepId,
+    isComplete,
+    isInProgress,
+    error,
+    webData
+  } = useDeepResearch(true, query);
+  const [manualStepId, setManualStepId] = useState<string | null>(null);
+  const isFinalStepComplete = steps[steps.length - 1]?.status === 'completed';
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
+      className="w-full rounded-xl border border-neutral-800 overflow-hidden mb-2 mt-2 bg-neutral-900"
+      style={{ minHeight: "300px", maxHeight: "500px" }}
+    >
+      <AdvanceSearch
+        steps={steps}
+        activeStepId={isFinalStepComplete ? manualStepId || activeStepId : activeStepId}
+        onManualStepClick={isFinalStepComplete ? setManualStepId : undefined}
+        manualNavigationEnabled={isFinalStepComplete}
+        error={error}
+        webData={webData}
+      />
+    </motion.div>
   );
 } 
