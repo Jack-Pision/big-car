@@ -419,24 +419,24 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
       <div className="w-80 min-w-[220px] max-w-xs flex-shrink-0 border-r border-neutral-800 bg-neutral-950 p-6">
         <div className="flex items-center gap-2 mb-6">
           {/* Chip icon with regular stroke */}
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-400"><rect x="4" y="7" width="16" height="10" rx="5"/><path d="M8 7V5m8 2V5M8 19v-2m8 2v-2"/></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-400"><rect x="4" y="7" width="16" height="10" rx="5"/><path d="M8 7V5m8 2V5M8 19v-2m8 2v-2"/></svg>
           <span className="text-xl text-neutral-200 font-normal">Advance Search</span>
         </div>
         <div className="flex flex-col relative">
           {steps.map((step, idx) => (
-            <div key={step.id} className="flex items-start relative min-h-[48px]">
+            <div key={step.id} className="flex items-start relative min-h-[40px]">
               {/* Vertical line (except last step) */}
               {idx < steps.length - 1 && (
                 <span
-                  className="absolute left-1/2 -translate-x-1/2 top-6 w-px h-full bg-neutral-700 z-0"
+                  className="absolute left-1/2 -translate-x-1/2 top-5 w-px h-full bg-neutral-700 z-0"
                   style={{ height: '100%' }}
                 ></span>
               )}
               {/* Step circle with check if completed */}
-              <span className="relative z-10 flex items-center justify-center w-6 h-6 mt-0.5 mr-3">
-                <span className={`block w-6 h-6 rounded-full border-2 ${step.status === 'completed' ? 'border-white bg-neutral-800' : 'border-neutral-500 bg-neutral-900'}`}></span>
+              <span className="relative z-10 flex items-center justify-center w-4 h-4 mt-0.5 mr-2">
+                <span className={`block w-4 h-4 rounded-full border-2 ${step.status === 'completed' ? 'border-white bg-neutral-800' : 'border-neutral-500 bg-neutral-900'}`}></span>
                 {step.status === 'completed' && (
-                  <svg className="absolute w-4 h-4 text-white" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <svg className="absolute w-3 h-3 text-white" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M6 10.5l3 3 5-5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 )}
@@ -445,7 +445,7 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
               <button
                 type="button"
                 className={`text-left focus:outline-none bg-transparent border-none p-0 m-0 shadow-none transition-none text-neutral-400 ${activeStepId && step.id !== activeStepId ? 'opacity-60' : ''}`}
-                style={{ fontSize: step.id === activeStepId ? '1.08rem' : '1rem', background: 'none', fontWeight: 400 }}
+                style={{ fontSize: step.id === activeStepId ? '0.98rem' : '0.88rem', background: 'none', fontWeight: 400, lineHeight: 1.1 }}
                 onClick={() => handleStepClick(step.id)}
               >
                 {step.title}
@@ -456,7 +456,7 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
       </div>
 
       {/* Right Panel - Step Content (Scrollable) */}
-      <div className="flex-1 h-full max-h-[75vh] overflow-y-auto p-8 bg-neutral-900">
+      <div className="flex-1 h-full max-h-[75vh] overflow-y-auto p-8 bg-neutral-900 hide-scrollbar">
         <div className="space-y-6">
           {steps.map((step) => (
             <motion.div
