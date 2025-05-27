@@ -985,11 +985,14 @@ FORMATTING REQUIREMENTS:
                     tabIndex={0}
                     onClick={() => setShowAdvanceSearch(a => !a)}
                   >
-                    <img
-                      src={require('@/assets/advance-search-icon.png').default}
-                      alt="Advance Search Icon"
-                      style={{ width: 16, height: 16, filter: showAdvanceSearch ? 'invert(56%) sepia(98%) saturate(747%) hue-rotate(140deg) brightness(98%) contrast(97%)' : 'invert(60%) sepia(0%) saturate(0%) hue-rotate(180deg) brightness(80%) contrast(90%)' }}
-                    />
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: showAdvanceSearch ? '#22d3ee' : '#a3a3a3' }}>
+                      <circle cx="12" cy="12" r="3" />
+                      <circle cx="19" cy="5" r="2" />
+                      <circle cx="5" cy="19" r="2" />
+                      <line x1="14.15" y1="14.15" x2="17" y2="17" />
+                      <line x1="6.85" y1="17.15" x2="10.15" y2="13.85" />
+                      <line x1="13.85" y1="10.15" x2="17.15" y2="6.85" />
+                    </svg>
                     <span className="whitespace-nowrap text-xs font-medium">Advance Search</span>
                   </button>
                 </div>
