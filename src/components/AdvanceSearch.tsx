@@ -484,9 +484,21 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-400"><rect x="4" y="7" width="16" height="10" rx="5"/><path d="M8 7V5m8 2V5M8 19v-2m8 2v-2"/></svg>
           <span className="text-xl text-neutral-200 font-normal">Advance Search</span>
         </div>
-        <div className="relative flex flex-col">
-          {/* Vertical line for all steps except last, behind the circles */}
-          <div className="absolute left-6 top-7 bottom-7 w-px bg-neutral-700 z-0" style={{left: 24}}></div>
+        <div className="relative flex flex-col items-center">
+          {/* Vertical line: perfectly centered, starts/ends at center of first/last circle */}
+          {steps.length > 1 && (
+            <div
+              className="absolute z-0 bg-neutral-700"
+              style={{
+                left: '50%',
+                top: 'calc(1.5rem)', // half of circle height (w-6 = 1.5rem)
+                bottom: 'calc(1.5rem)',
+                width: '2px',
+                transform: 'translateX(-50%)',
+                height: `calc(100% - 1.5rem)` // leave space for first/last circle
+              }}
+            />
+          )}
           {steps.map((step, idx) => {
             const isActive = step.id === activeStepId;
             return (
