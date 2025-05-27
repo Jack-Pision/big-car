@@ -588,7 +588,7 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
       </div>
 
       {/* Right Panel - All Steps Content (Scrollable) */}
-      <div ref={rightPanelRef} className="flex-1 h-full overflow-y-auto p-8 bg-neutral-900 rounded-r-2xl">
+      <div ref={rightPanelRef} className="flex-1 h-full overflow-y-auto p-8 bg-neutral-900 rounded-r-2xl hide-scrollbar">
         {/* All steps in sequence */}
         <div className="space-y-10">
           {steps.map((step) => {
