@@ -491,6 +491,7 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
         <div className="flex flex-col relative">
           {steps.map((step, idx) => {
             const isActive = step.id === activeStepId;
+            const isInactive = activeStepId && !isActive;
             return (
               <div key={step.id} className="relative min-h-[48px] z-10 flex flex-row items-center">
                 {/* Timeline column: vertical line and circle */}
@@ -499,10 +500,10 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
                   {idx < steps.length - 1 && (
                     <span className="absolute left-1/2 top-6 w-px" style={{ height: 'calc(100% - 1.5rem)', background: '#374151', transform: 'translateX(-50%)' }}></span>
                   )}
-                  <span className="relative flex items-center justify-center w-6 h-6 mt-0.5">
-                    <span className={`block w-6 h-6 rounded-full border-2 ${step.status === 'completed' ? 'border-white bg-neutral-800' : 'border-neutral-500 bg-neutral-900'}`}></span>
+                  <span className={`relative flex items-center justify-center w-6 h-6 mt-0.5 ${isActive ? '' : isInactive ? 'opacity-40' : ''}`}>
+                    <span className={`block w-6 h-6 rounded-full border-2 ${isActive ? 'border-white bg-neutral-800' : 'border-neutral-500 bg-neutral-900'} ${isInactive ? 'opacity-40' : ''}`}></span>
                     {step.status === 'completed' && (
-                      <svg className="absolute w-4 h-4 text-white" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <svg className={`absolute w-4 h-4 ${isActive ? 'text-white' : 'text-neutral-400'} ${isInactive ? 'opacity-40' : ''}`} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.5">
                         <path d="M6 10.5l3 3 5-5" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                     )}
@@ -511,7 +512,7 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
                 {/* Step label, perfectly left-aligned with more space from icon */}
                 <button
                   type="button"
-                  className={`ml-4 text-left focus:outline-none bg-transparent border-none p-0 m-0 shadow-none transition-none text-neutral-400 ${isActive ? 'text-cyan-300' : ''} ${activeStepId && !isActive ? 'opacity-40' : ''}`}
+                  className={`ml-4 text-left focus:outline-none bg-transparent border-none p-0 m-0 shadow-none transition-none ${isActive ? 'text-white' : 'text-neutral-400'} ${isInactive ? 'opacity-40' : ''}`}
                   style={{ fontSize: isActive ? '1.08rem' : '1rem', background: 'none', fontWeight: 400, alignSelf: 'center' }}
                   onClick={() => handleStepClick(step.id)}
                 >
