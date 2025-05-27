@@ -262,6 +262,7 @@ body {
   overflow: hidden;
   color: #f3f4f6;
   box-shadow: 0 2px 12px 0 rgba(0,0,0,0.08);
+  border: none;
 }
 .markdown-body th, .markdown-body td {
   border: none;
@@ -288,15 +289,12 @@ body {
 .markdown-body tr:hover td {
   background: #23242a;
 }
-.markdown-body table {
-  margin-top: 1.5em;
-  margin-bottom: 1.5em;
-}
 .markdown-body td, .markdown-body th {
   vertical-align: middle;
 }
 .markdown-body table, .markdown-body th, .markdown-body td {
   box-shadow: none;
+  border: none;
 }
 .markdown-body img {
   max-width: 100%;
