@@ -161,18 +161,18 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
   // Helper to render the understand step content
   const renderUnderstandContent = (step: ThinkingStep) => {
     if (step.status === 'pending') {
-      return (
-        <div className="text-neutral-500 p-4">
-          Waiting to analyze your query...
-        </div>
-      );
+      return null;
     }
 
     if (step.status === 'active') {
+      if (!step.streamedContent?.length) {
+        return null;
+      }
+      
       return (
         <div className="space-y-4">
           <ul className="list-disc pl-5 space-y-2 text-neutral-300 text-base">
-            {step.streamedContent?.map((point: string, i: number) => (
+            {step.streamedContent.map((point: string, i: number) => (
               <motion.li
                 key={i}
                 initial={{ opacity: 0, y: 10 }}
@@ -182,14 +182,6 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
                 {point}
               </motion.li>
             ))}
-            <motion.li
-              initial={{ opacity: 0 }}
-              animate={{ opacity: [0, 1, 0] }}
-              transition={{ duration: 1.5, repeat: Infinity }}
-              className="text-cyan-400"
-            >
-              Analyzing your query...
-            </motion.li>
           </ul>
         </div>
       );
@@ -294,20 +286,11 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
   // Helper to render the research step content
   const renderResearchContent = (step: ThinkingStep) => {
     if (step.status === 'pending') {
-      return (
-        <div className="text-neutral-500 p-4">
-          Waiting to gather research...
-        </div>
-      );
+      return null;
     }
 
     if (step.status === 'active') {
-      return (
-        <div className="flex items-center gap-2 text-cyan-400 p-4">
-          <div className="animate-spin w-4 h-4">⚡</div>
-          <span>Gathering information from multiple sources...</span>
-        </div>
-      );
+      return null;
     }
 
     // For completed research step, focus on showing the web sources
@@ -427,20 +410,11 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
   // Helper to render the synthesize step content
   const renderSynthesizeContent = (step: ThinkingStep) => {
     if (step.status === 'pending') {
-      return (
-        <div className="text-neutral-500 p-4">
-          Waiting to synthesize information...
-        </div>
-      );
+      return null;
     }
 
     if (step.status === 'active') {
-      return (
-        <div className="flex items-center gap-2 text-cyan-400 p-4">
-          <div className="animate-spin w-4 h-4">⚡</div>
-          <span>Synthesizing information from research findings...</span>
-        </div>
-      );
+      return null;
     }
 
     // For completed synthesize step, show understanding paragraphs and bullet points
