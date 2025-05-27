@@ -169,7 +169,7 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
     // For completed understand step
     return (
       <div className="space-y-4">
-        <div className="text-neutral-300 text-base leading-relaxed">
+        <ul className="list-disc pl-5 space-y-2 text-neutral-300 text-base">
           {(() => {
             const contentString = typeof step.output === 'string' 
               ? step.output 
@@ -177,8 +177,8 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
                 ? step.content
                 : '';
 
-            // Remove markdown formatting
-            const plainText = contentString
+            // Remove markdown formatting and meta-labels
+            let plainText = contentString
               .replace(/#{1,6}\s/g, '') // Remove headings
               .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold
               .replace(/\*(.*?)\*/g, '$1') // Remove italics
@@ -186,92 +186,43 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
               .replace(/~~(.*?)~~/g, '$1') // Remove strikethrough
               .replace(/```([\s\S]*?)```/g, '$1') // Remove code blocks
               .replace(/`(.*?)`/g, '$1'); // Remove inline code
-            
-            // Get paragraphs that aren't bullet points
-            const paragraphs = plainText.split(/\n\s*\n/)
-              .filter(p => !p.trim().match(/^[-*•]\s/m))
-              .map(p => p.trim())
-              .filter(p => p.length > 0);
-            
-            // If we have paragraphs, show the first 1-2
-            if (paragraphs.length > 0) {
-              return paragraphs.slice(0, 2).map((para, i) => (
-                <p key={i} className="mb-4">{para}</p>
-              ));
+
+            // Remove category/meta labels (e.g., 'Information Needed:', 'Research Approach:', etc.)
+            plainText = plainText.replace(/^[\d]+\.|^[A-Za-z ]+:|\*\s*/gm, '').replace(/\n+/g, '\n');
+
+            // Extract bullet points (lines starting with - or *)
+            let bulletPoints = plainText.split(/\n|[-*•]\s+/)
+              .map(line => line.trim())
+              .filter(line => line.length > 0 && line.length < 300 && /[a-zA-Z0-9]/.test(line));
+
+            // If no bullet points found, try to split by sentences
+            if (bulletPoints.length === 0) {
+              bulletPoints = plainText
+                .split(/(?<=[.!?])\s+/)
+                .map(s => s.trim())
+                .filter(s => s.length > 30 && s.length < 200);
             }
-            
-            return <p>I'm analyzing your query to understand what you're looking for.</p>;
+
+            // If still no points, create default ones
+            if (bulletPoints.length === 0) {
+              bulletPoints = [
+                'Analyzing the key components of your query.',
+                'Identifying the main topics and subtopics to research.',
+                'Determining the most relevant sources to consult.',
+                'Planning a comprehensive search strategy.'
+              ];
+            }
+
+            // Ensure at least 7-8 bullet points
+            while (bulletPoints.length < 7 && bulletPoints.length > 0) {
+              bulletPoints.push(...bulletPoints.slice(0, Math.min(3, bulletPoints.length)));
+            }
+
+            return bulletPoints.slice(0, 10).map((point, i) => (
+              <li key={i}>{point}</li>
+            ));
           })()}
-        </div>
-        
-        {/* Show bullet points of AI thinking */}
-        <div className="mt-4">
-          <ul className="list-disc pl-5 space-y-2 text-neutral-300 text-base">
-            {(() => {
-              const contentString = typeof step.output === 'string' 
-                ? step.output 
-                : typeof step.content === 'string'
-                  ? step.content
-                  : '';
-              
-              // Extract bullet points
-              let bulletPoints: string[] = [];
-              
-              // Look for bullet patterns in the text
-              const bulletRegex = /[-*•]\s+([^\n]+)/g;
-              let bulletMatch;
-              while ((bulletMatch = bulletRegex.exec(contentString)) !== null) {
-                const point = bulletMatch[1]
-                  .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold
-                  .replace(/\*(.*?)\*/g, '$1') // Remove italics
-                  .replace(/__(.*?)__/g, '$1') // Remove underline
-                  .replace(/~~(.*?)~~/g, '$1') // Remove strikethrough
-                  .replace(/```([\s\S]*?)```/g, '$1') // Remove code blocks
-                  .replace(/`(.*?)`/g, '$1') // Remove inline code
-                  .trim();
-                
-                if (point && !bulletPoints.includes(point)) {
-                  bulletPoints.push(point);
-                }
-              }
-              
-              // If no bullet points found, try to extract key sentences
-              if (bulletPoints.length === 0) {
-                const sentences = contentString
-                  .replace(/\n/g, ' ')
-                  .split(/(?<=[.!?])\s+/)
-                  .filter(s => 
-                    s.trim().length > 30 && 
-                    s.trim().length < 200 &&
-                    !s.includes('http')
-                  )
-                  .map(s => s.trim());
-                
-                bulletPoints = sentences.slice(0, 7); // Take up to 7 sentences as bullet points
-              }
-              
-              // If still no points, create default ones
-              if (bulletPoints.length === 0) {
-                bulletPoints = [
-                  'Analyzing the key components of your query',
-                  'Identifying the main topics and subtopics to research',
-                  'Determining the most relevant sources to consult',
-                  'Planning a comprehensive search strategy'
-                ];
-              }
-              
-              // Return at least 7-8 bullet points if possible
-              while (bulletPoints.length < 7 && bulletPoints.length > 0) {
-                // Duplicate some existing points if needed to reach target count
-                bulletPoints.push(...bulletPoints.slice(0, Math.min(3, bulletPoints.length)));
-              }
-              
-              return bulletPoints.slice(0, 10).map((point, i) => (
-                <li key={i}>{point}</li>
-              ));
-            })()}
-          </ul>
-        </div>
+        </ul>
       </div>
     );
   };
