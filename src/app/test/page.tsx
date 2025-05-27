@@ -819,7 +819,7 @@ FORMATTING REQUIREMENTS:
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: '#232323' }}>
+    <div className="min-h-screen flex flex-col" style={{ background: '#161618' }}>
       <GlobalStyles />
       {/* Hamburger menu and sidebar */}
       <div className="fixed top-6 left-6 z-50 md:static md:z-10">
