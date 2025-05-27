@@ -535,7 +535,7 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
   };
 
   return (
-    <div className="flex max-w-6xl w-full mx-auto rounded-2xl border border-gray-200 shadow-lg bg-neutral-900" style={{ height: '440px', minHeight: '440px' }}>
+    <div className="flex max-w-6xl w-full mx-auto rounded-2xl border border-black/5 shadow-lg bg-neutral-900" style={{ height: '440px', minHeight: '440px' }}>
       {/* Left Panel - Step List */}
       <div className="w-80 min-w-[220px] max-w-xs flex-shrink-0 bg-neutral-950 p-6 h-full rounded-l-2xl">
         <div className="flex items-center gap-2 mb-6">
