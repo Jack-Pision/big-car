@@ -849,8 +849,9 @@ FORMATTING REQUIREMENTS:
             className={`absolute left-0 right-0 flex flex-col items-center transition-opacity duration-700 ${
               showHeading && messages.length === 0 ? "opacity-100" : "opacity-0 pointer-events-none"
             }`}
+            style={{ transitionDuration: '0.35s' }}
           >
-            <h1 className="text-4xl font-semibold text-gray-200 text-center">
+            <h1 className="text-[3.2rem] font-normal text-gray-200 text-center">
               Seek and You'll find
             </h1>
           </div>
