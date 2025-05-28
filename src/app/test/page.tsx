@@ -18,6 +18,7 @@ import { useDeepResearch } from '@/hooks/useDeepResearch';
 import { WebSource } from '@/utils/source-utils';
 import { v4 as uuidv4 } from 'uuid';
 import EmptyBox from '@/components/EmptyBox';
+import WebSourcesCarousel from '../../components/WebSourcesCarousel';
 
 const SYSTEM_PROMPT = `You are a helpful, knowledgeable, and friendly AI assistant. Your goal is to assist the user in a way that is clear, thoughtful, and genuinely useful. Follow these guidelines:
 
@@ -470,7 +471,9 @@ export default function TestChat() {
             ...prev.filter(m => m.role !== 'assistant'),
             { 
               role: 'assistant',
-              content: cleanedOutput
+              content: cleanedOutput,
+              // Pass the web sources to the assistant message for the carousel
+              webSources: webData?.sources || []
             }
           ]);
         }
@@ -910,6 +913,11 @@ FORMATTING REQUIREMENTS:
                       <PulsingDot isVisible={true} />
                     ) : (
                       <>
+                        {/* Show the sources carousel at the top of assistant message if sources exist */}
+                        {(msg as any).webSources && (msg as any).webSources.length > 0 && (
+                          <WebSourcesCarousel sources={(msg as any).webSources} />
+                        )}
+                      
                         {thinkingTime && <ThinkingIndicator duration={thinkingTime} />}
                         {isStoppedMsg ? (
                           <span className="text-sm text-white italic font-light mb-2">[Response stopped by user]</span>
