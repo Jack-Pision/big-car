@@ -282,19 +282,39 @@ const TextReveal: React.FC<TextRevealProps> = ({
         .markdown-body li {
           margin-bottom: 0.5rem;
         }
+        /* Table styles for summary tables */
         .markdown-body table {
           border-collapse: collapse;
           width: 100%;
+          max-width: 42rem;
           margin: 1rem 0;
+          font-size: 0.95rem;
+          background: #18181b;
+          color: #e5e7eb;
+          border-radius: 0.5rem;
+          overflow: hidden;
+          box-shadow: 0 2px 8px 0 #00000022;
         }
         .markdown-body th,
         .markdown-body td {
-          border: 1px solid #444;
-          padding: 8px 12px;
+          border: none;
+          border-bottom: 1px solid #27272a;
+          padding: 8px 14px;
+          text-align: left;
+          font-size: 0.95rem;
+          font-weight: 400;
         }
         .markdown-body th {
-          background-color: #222;
+          background-color: #232323;
           font-weight: 600;
+          font-size: 1rem;
+          color: #fafafa;
+        }
+        .markdown-body tr:last-child td {
+          border-bottom: none;
+        }
+        .markdown-body tr {
+          background: none;
         }
       `}</style>
     </div>
