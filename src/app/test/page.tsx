@@ -511,6 +511,19 @@ CITATION INSTRUCTIONS:
         const decoder = new TextDecoder();
         let buffer = '';
         let done = false;
+        
+        // Create a new assistant message right away so we can stream to it
+        const aiMsg: Message = { 
+          role: "assistant" as const,
+          content: "",
+          webSources: webData.serperArticles?.map((article: any, i: number) => ({
+            title: article.title,
+            url: article.url,
+            snippet: article.snippet
+          })) || []
+        };
+        setMessages(prev => [...prev, aiMsg]);
+        
         while (!done) {
           const { value, done: doneReading } = await reader.read();
           done = doneReading;
@@ -525,7 +538,22 @@ CITATION INSTRUCTIONS:
                 try {
                   const parsed = JSON.parse(data);
                   const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.message?.content || parsed.choices?.[0]?.text || parsed.content || '';
-                  if (delta) aiContent += delta;
+                  if (delta) {
+                    aiContent += delta;
+                    aiMsg.content += delta;
+                    setMessages(prev => {
+                      const updatedMessages = [...prev];
+                      const lastMsgIndex = updatedMessages.length - 1;
+                      if (updatedMessages[lastMsgIndex] && updatedMessages[lastMsgIndex].role === 'assistant') {
+                        updatedMessages[lastMsgIndex] = { 
+                          ...updatedMessages[lastMsgIndex], 
+                          content: aiContent,
+                          webSources: updatedMessages[lastMsgIndex].webSources
+                        };
+                      }
+                      return updatedMessages;
+                    });
+                  }
                 } catch (err) {
                   // Ignore parse errors for incomplete lines
                 }
@@ -536,16 +564,21 @@ CITATION INSTRUCTIONS:
       } else {
         const data = await response.json();
         aiContent = data.content || data.choices?.[0]?.message?.content || data.generated_text || '';
+        
+        // Add the research paper to the messages
+        setMessages(prev => [
+          ...prev,
+          { 
+            role: 'assistant',
+            content: aiContent,
+            webSources: webData.serperArticles?.map((article: any, i: number) => ({
+              title: article.title,
+              url: article.url,
+              snippet: article.snippet
+            })) || []
+          }
+        ]);
       }
-
-      // Update the main chat with the detailed research paper
-      setMessages(prev => [
-        ...prev.filter(m => m.role !== 'assistant'), // Remove any pending assistant message
-        { 
-          role: 'assistant',
-          content: aiContent
-        }
-      ]);
       
       setIsAiResponding(false);
       setLoading(false);
