@@ -102,10 +102,10 @@ const getRandomTime = (min: number, max: number): number => {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 };
 
-// Update WebData interface to remove Wikipedia and NewsData.io
 interface WebData {
   serperArticles: any[];
-  totalWebResults: number; // Add counter for total web results
+  wikipediaArticles: any[];
+  newsdataArticles: any[];
   sources: any[];
   webCitations: string;
 }
@@ -234,61 +234,28 @@ export const useDeepResearch = (isActive: boolean, query: string = '') => {
       setActiveStepId('research');
       updateStepStatus('research', 'active', 'Gathering information from multiple sources...');
 
-      // Make exactly 2 Serper Dev API calls, with 10 results each
-      // First call - main query
-      const firstSerperRes = await fetch('/api/serper/search', {
+      // Fetch from all sources in parallel
+      const serperRes = await fetch('/api/serper/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, limit: 10 })
+        body: JSON.stringify({ query, limit: 20 })
       });
 
-      const firstSerperData = await firstSerperRes.json();
-
-      // Second call - use a slightly modified query to get different results
-      const enhancedQuery = `${query} ${analysis.split(' ').slice(0, 3).join(' ')}`;
-      const secondSerperRes = await fetch('/api/serper/search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: enhancedQuery, limit: 10 })
-      });
-
-      const secondSerperData = await secondSerperRes.json();
-
-      // Combine results from both calls, removing duplicates by URL
-      const allArticles = [
-        ...(firstSerperData.articles || []),
-        ...(secondSerperData.articles || [])
-      ];
-
-      // Remove duplicates using URL as the unique identifier
-      const uniqueUrls = new Set();
-      const uniqueArticles = allArticles.filter(article => {
-        if (uniqueUrls.has(article.url)) {
-          return false;
-        }
-        uniqueUrls.add(article.url);
-        return true;
-      });
+      const serperData = await serperRes.json();
 
       const newWebData: WebData = {
-        serperArticles: uniqueArticles,
-        totalWebResults: uniqueArticles.length,
-        sources: [
-          ...(firstSerperData.sources || []),
-          ...(secondSerperData.sources || [])
-        ].filter((source, index, self) => 
-          index === self.findIndex(s => s.url === source.url)
-        ),
-        webCitations: [
-          firstSerperData.summary || '',
-          secondSerperData.summary || ''
-        ].filter(Boolean).join('\n\n')
+        serperArticles: serperData.articles || [],
+        wikipediaArticles: [],
+        newsdataArticles: [],
+        sources: [...(serperData.sources || [])],
+        webCitations: serperData.summary || ''
       };
 
       setWebData(newWebData);
       
       // Create a summary of found data
-      const dataSummary = `Found ${newWebData.totalWebResults} web articles from 2 API calls`;
+      const dataSummary = `Found:
+- ${newWebData.serperArticles.length} web articles`;
 
       updateStepStatus('research', 'completed', dataSummary, newWebData);
       
@@ -303,16 +270,38 @@ export const useDeepResearch = (isActive: boolean, query: string = '') => {
   const processSynthesisStep = async (query: string, analysis: string, webData: WebData) => {
     try {
       setActiveStepId('synthesize');
-      updateStepStatus('synthesize', 'active', 'Synthesizing a concise research summary...');
+      updateStepStatus('synthesize', 'active', 'Synthesizing a detailed research report...');
 
-      // Step 3b: Get a concise, highlight-style answer from the AI
+      // Step 3b: Get the full research-paper style answer from the AI
       const response = await fetch('/api/nvidia', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          mode: 'concise',
           messages: [
-            { role: 'system', content: `You are a Deep Research AI assistant. Using ONLY the provided web data, generate a concise summary of the most important findings.\n\nRESPONSE FORMAT:\n- Write 5 to 6 bullet points.\n- Each bullet point should be a highlight or actionable insight, 1–2 sentences only.\n- Focus on the most relevant, interesting, or surprising information.\n- Do NOT write long paragraphs.\n- Do NOT include a conclusion or summary section.\n- Do NOT use headings.\n- Do NOT include a references section.\n- For citations, use ONLY numbered references in square brackets [1], [2] at the end of each bullet.\n- Do NOT invent any web links or sources.\n- Do NOT repeat the query.\n- Do NOT use markdown formatting except for the bullet points themselves.\n\nEXAMPLE:\n* The global AI market is projected to reach $500 billion by 2025 [1].\n* Recent breakthroughs in deep learning have enabled more accurate language models [2].` },
+            { role: 'system', content: `You are a Deep Research AI assistant. Use the provided web data to create a comprehensive, well-structured response.
+
+IMPORTANT: Your answer MUST be at least 750 words. Do not stop before you reach this length. If you finish early, add more details, examples, or analysis until you reach the required length.
+
+BULLET POINT DETAIL REQUIREMENT:
+For each bullet point, write a detailed, self-contained summary (**7–8 sentences**) that explains the topic, provides context, and includes key facts or findings. Do not use single-sentence or headline-style bullets. Each bullet should be a mini-paragraph of 7–8 sentences.
+
+CONCLUSION REQUIREMENT:
+The conclusion section must be a detailed, thoughtful paragraph of at least **7–8 sentences**, thoroughly summarizing the findings and providing additional insights or implications.
+
+FORMATTING REQUIREMENTS:
+1. Your response MUST follow a professional, well-structured format like a research document or report.
+2. Start with a clear main title using # heading (e.g., "# Latest Developments in AI, 2025").
+3. Divide content into logical sections with ## headings.
+4. Use bullet points (*) for all key details and findings, with each bullet point being a 7–8 sentence paragraph.
+5. End with a "## Conclusion" section that is a detailed 7–8 sentence paragraph.
+6. Include a "## Summary Table" if the information can be presented in tabular form.
+7. For citations, use ONLY numbered references in square brackets [1], [2] at the end of sentences/bullets.
+
+CITATION INSTRUCTIONS:
+- Use ONLY the provided search results as your web sources.
+- Do NOT use or invent any other web links.
+- When citing, use numbered references like [1], [2], etc. at the end of sentences or bullet points.
+- Do not include a 'References' section at the end - only use in-text citations.` },
             { role: 'user', content: `Query: ${query}\n\nAnalysis: ${analysis}\n\nWeb Data: ${JSON.stringify(webData)}` }
           ],
           temperature: 0.2
