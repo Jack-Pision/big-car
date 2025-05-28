@@ -435,16 +435,45 @@ export default function TestChat() {
   // When deep research completes, automatically start the AI request for the main chat
   useEffect(() => {
     if (isComplete && showAdvanceSearch && !isAiResponding && currentQuery && webData) {
-      console.log("[DEBUG] Deep research complete, generating detailed research paper", { isComplete, showAdvanceSearch, isAiResponding });
-      // Instead of directly using synthesisStep output, generate a detailed research paper
-      generateDetailedResearchPaper(currentQuery, webData);
+      console.log("[DEBUG] Deep research complete, attempting to generate detailed research paper", { 
+        isComplete, 
+        showAdvanceSearch, 
+        isAiResponding,
+        currentQueryLength: currentQuery?.length || 0,
+        webDataExists: !!webData,
+        webDataArticles: webData?.serperArticles?.length || 0
+      });
+      
+      // Use setTimeout to ensure state updates have been processed
+      setTimeout(() => {
+        console.log("[DEBUG] Triggering research paper generation");
+        triggerDetailedResearchPaper();
+      }, 500);
     }
   }, [isComplete, showAdvanceSearch, isAiResponding, currentQuery, webData]);
 
-  // New function to generate a detailed research paper for the main chat
+  // Separate function to trigger the detailed research paper generation
+  // This helps avoid any issues with state updates or conditions
+  const triggerDetailedResearchPaper = () => {
+    if (!currentQuery || !webData) {
+      console.error("[ERROR] Cannot generate research paper: missing query or web data");
+      return;
+    }
+    
+    console.log("[DEBUG] Triggering generateDetailedResearchPaper with query:", 
+      currentQuery.substring(0, 30) + "...");
+    
+    // Generate the detailed research paper with the current query and web data
+    generateDetailedResearchPaper(currentQuery, webData);
+  };
+
+  // Function to generate a detailed research paper for the main chat
   const generateDetailedResearchPaper = async (query: string, webData: any) => {
     try {
-      console.log("[DEBUG] generateDetailedResearchPaper called with query:", query.substring(0, 30) + "...");
+      console.log("[DEBUG] generateDetailedResearchPaper executing with query:", 
+        query.substring(0, 30) + "...");
+      
+      // Set states immediately to prevent multiple calls
       setIsAiResponding(true);
       setLoading(true);
       
@@ -493,8 +522,28 @@ CITATION INSTRUCTIONS:
       // Combine all instructions
       const systemPrompt = `${serperSection}\n${combinedInstruction}\n\n${formattingInstructions}`;
 
-      console.log("[DEBUG] Making API call to Nvidia for detailed research paper");
-      // Make API call to Nvidia for the detailed research paper
+      console.log("[DEBUG] Making dedicated API call to Nvidia for detailed research paper");
+      console.log("[DEBUG] System prompt length:", systemPrompt.length);
+      
+      // Create a new message right away so we have something to update during streaming
+      const newMessage: Message = { 
+        role: "assistant" as const,
+        content: "Generating detailed research paper...",
+        webSources: webData.serperArticles?.map((article: any, i: number) => ({
+          title: article.title,
+          url: article.url,
+          snippet: article.snippet
+        })) || []
+      };
+
+      // Add the message to state immediately
+      setMessages(prev => [...prev, newMessage]);
+      console.log("[DEBUG] Added initial message to state");
+      
+      // Make separate variable to store the final content
+      let finalContent = '';
+      
+      // Make dedicated API call to Nvidia for the detailed research paper
       const response = await fetch('/api/nvidia', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -507,31 +556,15 @@ CITATION INSTRUCTIONS:
         })
       });
       
-      console.log("[DEBUG] API response received, status:", response.status, "content-type:", response.headers.get('content-type'));
+      console.log("[DEBUG] API response received, status:", response.status);
 
       if (!response.ok) {
-        console.error("[DEBUG] API call failed with status:", response.status);
+        const errorText = await response.text();
+        console.error("[ERROR] API call failed with status:", response.status, errorText);
         throw new Error(`API call failed with status: ${response.status}`);
       }
 
-      // Create a new message right away so we have something to update during streaming
-      const newMessage: Message = { 
-        role: "assistant" as const,
-        content: "",
-        webSources: webData.serperArticles?.map((article: any, i: number) => ({
-          title: article.title,
-          url: article.url,
-          snippet: article.snippet
-        })) || []
-      };
-
-      // Add the message to state immediately
-      setMessages(prev => [...prev, newMessage]);
-      console.log("[DEBUG] Added initial empty message to state");
-
       // Process the response
-      let aiContent = '';
-      
       if (response.body && response.headers.get('content-type')?.includes('text/event-stream')) {
         console.log("[DEBUG] Processing streaming response");
         const reader = response.body.getReader();
@@ -552,18 +585,21 @@ CITATION INSTRUCTIONS:
                 if (data === '[DONE]') continue;
                 try {
                   const parsed = JSON.parse(data);
-                  const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.message?.content || parsed.choices?.[0]?.text || parsed.content || '';
+                  const delta = parsed.choices?.[0]?.delta?.content || 
+                               parsed.choices?.[0]?.message?.content || 
+                               parsed.choices?.[0]?.text || 
+                               parsed.content || '';
                   if (delta) {
-                    aiContent += delta;
+                    finalContent += delta;
                     
-                    // Update the message content directly in state
+                    // Update message content in state
                     setMessages(prev => {
                       const lastIndex = prev.length - 1;
                       if (lastIndex >= 0 && prev[lastIndex].role === 'assistant') {
                         const updatedMessages = [...prev];
                         updatedMessages[lastIndex] = { 
                           ...updatedMessages[lastIndex], 
-                          content: aiContent
+                          content: finalContent
                         };
                         return updatedMessages;
                       }
@@ -571,70 +607,55 @@ CITATION INSTRUCTIONS:
                     });
                   }
                 } catch (err) {
-                  console.error("[DEBUG] Error parsing stream data:", err);
+                  console.error("[DEBUG] Error parsing stream data:", err, "Line:", line);
                 }
               }
             }
           }
         }
-        console.log("[DEBUG] Streaming complete, final content length:", aiContent.length);
+        console.log("[DEBUG] Streaming complete, final content length:", finalContent.length);
       } else {
         console.log("[DEBUG] Processing non-streaming response");
         const data = await response.json();
-        aiContent = data.content || data.choices?.[0]?.message?.content || data.generated_text || '';
-        console.log("[DEBUG] Non-streaming content received, length:", aiContent.length);
+        finalContent = data.content || data.choices?.[0]?.message?.content || data.generated_text || '';
+        console.log("[DEBUG] Non-streaming content received, length:", finalContent.length);
         
-        // Update the message with content
+        // Update message with content
         setMessages(prev => {
           const lastIndex = prev.length - 1;
           if (lastIndex >= 0 && prev[lastIndex].role === 'assistant') {
             const updatedMessages = [...prev];
             updatedMessages[lastIndex] = { 
               ...updatedMessages[lastIndex], 
-              content: aiContent
+              content: finalContent
             };
             return updatedMessages;
-          } else {
-            // If we don't have a message yet (unlikely), add one
-            return [...prev, { 
-              role: 'assistant',
-              content: aiContent,
-              webSources: webData.serperArticles?.map((article: any, i: number) => ({
-                title: article.title,
-                url: article.url,
-                snippet: article.snippet
-              })) || []
-            }];
           }
+          return prev;
         });
       }
       
-      // Make sure UI updates with final message state
-      console.log("[DEBUG] Final message state:", messages.length, "messages");
-      console.log("[DEBUG] Final message content length:", aiContent.length > 100 ? 
-        aiContent.substring(0, 100) + "..." : aiContent);
+      // Ensure UI updates with final content
+      console.log("[DEBUG] Final message update, content length:", finalContent.length);
       
-      setTimeout(() => {
-        // Force a state update to ensure the UI reflects the changes
-        setMessages(prev => [...prev]);
-        console.log("[DEBUG] Forced message state update");
-      }, 100);
-      
+      // Update final states
       setIsAiResponding(false);
       setLoading(false);
       
     } catch (error) {
       console.error('[ERROR] Error generating detailed research paper:', error);
-      setIsAiResponding(false);
-      setLoading(false);
-      // Show error message in chat
+      
+      // Add error message to chat
       setMessages(prev => [
-        ...prev,
+        ...prev, 
         { 
-          role: 'assistant',
-          content: 'I apologize, but I encountered an error while generating the detailed research report. Please try again.'
+          role: 'assistant', 
+          content: 'Sorry, I encountered an error while generating the research paper. Please try again.' 
         }
       ]);
+      
+      setIsAiResponding(false);
+      setLoading(false);
     }
   };
 
