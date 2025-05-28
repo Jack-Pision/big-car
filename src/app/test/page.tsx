@@ -434,23 +434,25 @@ export default function TestChat() {
 
   // When deep research completes, automatically start the AI request
   useEffect(() => {
-    if (isComplete && showAdvanceSearch && !isAiResponding && currentQuery) {
-      // Get the final synthesized response from the steps
+    if (isComplete && currentQuery) {
       const synthesisStep = steps.find(step => step.id === 'synthesize');
       if (synthesisStep?.output) {
-        // Update messages with the final response
-        setMessages(prev => [
-          ...prev.filter(m => m.role !== 'assistant'), // Remove any pending assistant message
-          { 
-            role: 'assistant',
-            content: synthesisStep.output
-          }
-        ]);
+        // Only add if not already present in messages
+        const alreadyPresent = messages.some(m => m.role === 'assistant' && m.content === synthesisStep.output);
+        if (!alreadyPresent) {
+          setMessages(prev => [
+            ...prev.filter(m => m.role !== 'assistant'),
+            { 
+              role: 'assistant',
+              content: synthesisStep.output
+            }
+          ]);
+        }
         setIsAiResponding(false);
         setLoading(false);
       }
     }
-  }, [isComplete, showAdvanceSearch, isAiResponding, steps]);
+  }, [isComplete, steps, currentQuery]);
 
   async function handleSend(e?: React.FormEvent) {
     if (e) e.preventDefault();
