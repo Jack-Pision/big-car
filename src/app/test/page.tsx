@@ -462,15 +462,10 @@ export default function TestChat() {
       setMainChatGenerationComplete(true);
       return;
     }
-    
-    console.log("[DEBUG] *** MAIN CHAT OUTPUT *** Generating detailed research paper with query:", 
-      queryToUse.substring(0, 30) + "...");
-    
     // Set states immediately to prevent multiple calls
     setIsAiResponding(true);
     setLoading(true);
-    
-    // Create a new message right away so we have something to update during streaming
+    // Add the message to state immediately BEFORE starting the API call
     const newMessage: Message = { 
       role: "assistant" as const,
       content: "Generating detailed research paper...",
@@ -482,8 +477,6 @@ export default function TestChat() {
         type: 'web' // Default type is web
       })) || []
     };
-
-    // Add the message to state immediately
     setMessages(prev => [...prev, newMessage]);
     console.log("[DEBUG] Added initial message to main chat");
     
