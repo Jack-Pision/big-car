@@ -278,10 +278,29 @@ export const useDeepResearch = (isActive: boolean, query: string = '') => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: [
-            { role: 'system', content: `You are an expert research assistant. Your task is to summarize what you have understood from the provided web data and highlight the most important findings.\n\nINSTRUCTIONS:\n- Write in plain, natural language.\n- Use bullet points and small paragraphs.\n- Do NOT use any markdown, headers, bold, italics, or special formatting.\n- Do NOT include citations, references, or links.\n- Do NOT use numbered lists.\n- Focus on clarity and conciseness.\n- Only include what is most important and relevant.\n- Do NOT repeat the question or analysis.\n- Do NOT include a summary table.\n- Do NOT use phrases like 'According to the web data' or 'Based on the research'.\n- Just present the main points and highlights as if explaining to a peer.\n` },
+            { role: 'system', content: `You are an expert research assistant. Summarize what you've understood from the web data as a list of simple bullet points.
+
+STRICT BULLET POINT INSTRUCTIONS:
+- Output MUST be a list of bullet points only.
+- Each bullet point should be a single, clear, direct sentence.
+- Start each bullet point with "• " (bullet character followed by a space).
+- Do NOT use markdown formatting of any kind.
+- Do NOT use bold, italics, or any text formatting.
+- Do NOT use headers or section titles.
+- Do NOT include citations or references.
+- Do NOT include a title or introduction.
+- Do NOT include a summary or conclusion.
+- NEVER start with phrases like "Here are the main points" or "Based on the web data".
+- Just present the bullet points directly.
+- Focus ONLY on the most important factual findings.
+- Each bullet point should be standalone and complete.
+- Use clear, simple language.
+- Keep each bullet point under 50 words if possible.
+- Make sure the bullet points cover the most important aspects of the topic.
+- Start with the most important points.` },
             { role: 'user', content: `Query: ${query}\n\nAnalysis: ${analysis}\n\nWeb Data: ${JSON.stringify(webData)}` }
           ],
-          temperature: 0.2
+          temperature: 0.1
         })
       });
 
