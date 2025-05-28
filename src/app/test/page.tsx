@@ -387,13 +387,14 @@ export default function TestChat() {
     error,
     webData
   } = useDeepResearch(showAdvanceSearch, currentQuery, (query, webData) => {
-    // Trigger the main chat output as soon as synthesis is complete and webData is ready
-    if (query && webData && Array.isArray(webData.serperArticles) && webData.serperArticles.length > 0) {
-      console.log('[SYNTHESIS CALLBACK] Triggering generateMainChatResearchPaper with:', { query, webData });
-      generateMainChatResearchPaper(query, webData);
-    } else {
-      console.log('[SYNTHESIS CALLBACK] Not triggering: missing query or webData', { query, webData });
-    }
+    setTimeout(() => {
+      if (query && webData && Array.isArray(webData.serperArticles) && webData.serperArticles.length > 0) {
+        console.log('[SYNTHESIS CALLBACK - 4s DELAYED] Triggering generateMainChatResearchPaper with:', { query, webData });
+        generateMainChatResearchPaper(query, webData);
+      } else {
+        console.log('[SYNTHESIS CALLBACK - 4s DELAYED] Not triggering: missing query or webData', { query, webData });
+      }
+    }, 4000); // 4 seconds delay
   });
 
   const [manualStepId, setManualStepId] = useState<string | null>(null);
