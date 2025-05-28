@@ -432,25 +432,138 @@ export default function TestChat() {
     }
   }, [isComplete, isAiResponding]);
 
-  // When deep research completes, automatically start the AI request
+  // When deep research completes, automatically start the AI request for the main chat
   useEffect(() => {
-    if (isComplete && showAdvanceSearch && !isAiResponding && currentQuery) {
-      // Get the final synthesized response from the steps
-      const synthesisStep = steps.find(step => step.id === 'synthesize');
-      if (synthesisStep?.output) {
-        // Update messages with the final response
-        setMessages(prev => [
-          ...prev.filter(m => m.role !== 'assistant'), // Remove any pending assistant message
-          { 
-            role: 'assistant',
-            content: synthesisStep.output
-          }
-        ]);
-        setIsAiResponding(false);
-        setLoading(false);
-      }
+    if (isComplete && showAdvanceSearch && !isAiResponding && currentQuery && webData) {
+      // Instead of directly using synthesisStep output, generate a detailed research paper
+      generateDetailedResearchPaper(currentQuery, webData);
     }
-  }, [isComplete, showAdvanceSearch, isAiResponding, steps]);
+  }, [isComplete, showAdvanceSearch, isAiResponding, steps, webData]);
+
+  // New function to generate a detailed research paper for the main chat
+  const generateDetailedResearchPaper = async (query: string, webData: any) => {
+    try {
+      setIsAiResponding(true);
+      setLoading(true);
+      
+      // Format web search data for the prompt
+      let serperSection = '';
+      if (webData.serperArticles && webData.serperArticles.length > 0) {
+        serperSection += '===SERPER (GOOGLE) SEARCH RESULTS===\n';
+        webData.serperArticles.forEach((article: any, i: number) => {
+          serperSection += `[${i + 1}] Title: "${article.title}" (${article.url})\n`;
+          if (article.snippet) {
+            const excerpt = article.snippet.length > 200 ? article.snippet.slice(0, 200) + '...' : article.snippet;
+            serperSection += `Excerpt: ${excerpt}\n`;
+          }
+        });
+        serperSection += '===END SERPER SEARCH RESULTS===\n';
+      }
+
+      // Strong explicit instruction for citing sources
+      const combinedInstruction = 'IMPORTANT: You MUST use only the above search results as your web sources. Do NOT use or invent any other web links. When citing, use numbered references [1], [2], etc. at the end of sentences or bullet points that use information from sources.';
+      
+      // Professional formatting instructions for detailed research paper
+      const formattingInstructions = `
+IMPORTANT: Your answer MUST be at least 750 words. Do not stop before you reach this length. If you finish early, add more details, examples, or analysis until you reach the required length.
+
+BULLET POINT DETAIL REQUIREMENT:
+For each bullet point, write a detailed, self-contained summary (**7–8 sentences**) that explains the topic, provides context, and includes key facts or findings. Do not use single-sentence or headline-style bullets. Each bullet should be a mini-paragraph of 7–8 sentences.
+
+CONCLUSION REQUIREMENT:
+The conclusion section must be a detailed, thoughtful paragraph of at least **7–8 sentences**, thoroughly summarizing the findings and providing additional insights or implications.
+
+FORMATTING REQUIREMENTS:
+1. Your response MUST follow a professional, well-structured format like a research document or report.
+2. Start with a clear main title using # heading (e.g., "# Latest Developments in AI, 2025").
+3. Divide content into logical sections with ## headings.
+4. Use bullet points (*) for all key details and findings, with each bullet point being a 7–8 sentence paragraph.
+5. End with a "## Conclusion" section that is a detailed 7–8 sentence paragraph.
+6. Include a "## Summary Table" if the information can be presented in tabular form.
+7. For citations, use ONLY numbered references in square brackets [1], [2] at the end of sentences/bullets.
+
+CITATION INSTRUCTIONS:
+- Use ONLY the provided search results as your web sources.
+- Do NOT use or invent any other web links.
+- When citing, use numbered references like [1], [2], etc. at the end of sentences or bullet points.
+- Do not include a 'References' section at the end - only use in-text citations.`;
+
+      // Combine all instructions
+      const systemPrompt = `${serperSection}\n${combinedInstruction}\n\n${formattingInstructions}`;
+
+      // Make API call to Nvidia for the detailed research paper
+      const response = await fetch('/api/nvidia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: query }
+          ],
+          temperature: 0.2
+        })
+      });
+
+      // Process the response
+      let aiContent = '';
+      if (response.body && response.headers.get('content-type')?.includes('text/event-stream')) {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let done = false;
+        while (!done) {
+          const { value, done: doneReading } = await reader.read();
+          done = doneReading;
+          if (value) {
+            buffer += decoder.decode(value, { stream: true });
+            let lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+            for (let line of lines) {
+              if (line.startsWith('data:')) {
+                const data = line.replace('data:', '').trim();
+                if (data === '[DONE]') continue;
+                try {
+                  const parsed = JSON.parse(data);
+                  const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.message?.content || parsed.choices?.[0]?.text || parsed.content || '';
+                  if (delta) aiContent += delta;
+                } catch (err) {
+                  // Ignore parse errors for incomplete lines
+                }
+              }
+            }
+          }
+        }
+      } else {
+        const data = await response.json();
+        aiContent = data.content || data.choices?.[0]?.message?.content || data.generated_text || '';
+      }
+
+      // Update the main chat with the detailed research paper
+      setMessages(prev => [
+        ...prev.filter(m => m.role !== 'assistant'), // Remove any pending assistant message
+        { 
+          role: 'assistant',
+          content: aiContent
+        }
+      ]);
+      
+      setIsAiResponding(false);
+      setLoading(false);
+      
+    } catch (error) {
+      console.error('Error generating detailed research paper:', error);
+      setIsAiResponding(false);
+      setLoading(false);
+      // Show error message in chat
+      setMessages(prev => [
+        ...prev,
+        { 
+          role: 'assistant',
+          content: 'I apologize, but I encountered an error while generating the detailed research report. Please try again.'
+        }
+      ]);
+    }
+  };
 
   async function handleSend(e?: React.FormEvent) {
     if (e) e.preventDefault();
