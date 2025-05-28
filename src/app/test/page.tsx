@@ -387,8 +387,13 @@ export default function TestChat() {
     error,
     webData
   } = useDeepResearch(showAdvanceSearch, currentQuery, (query, webData) => {
-    // Trigger the main chat output as soon as synthesis is complete
-    generateMainChatResearchPaper(query, webData);
+    // Trigger the main chat output as soon as synthesis is complete and webData is ready
+    if (query && webData && Array.isArray(webData.serperArticles) && webData.serperArticles.length > 0) {
+      console.log('[SYNTHESIS CALLBACK] Triggering generateMainChatResearchPaper with:', { query, webData });
+      generateMainChatResearchPaper(query, webData);
+    } else {
+      console.log('[SYNTHESIS CALLBACK] Not triggering: missing query or webData', { query, webData });
+    }
   });
 
   const [manualStepId, setManualStepId] = useState<string | null>(null);
@@ -398,40 +403,6 @@ export default function TestChat() {
 
   // Track whether the main chat research paper generation has completed
   const [mainChatGenerationComplete, setMainChatGenerationComplete] = useState(false);
-
-  // Automatically generate the main chat research paper when all data is ready, with stricter checks and a short delay
-  useEffect(() => {
-    const isWebDataReady = webData && Array.isArray(webData.serperArticles) && webData.serperArticles.length > 0;
-    if (
-      isComplete &&
-      isWebDataReady &&
-      currentQuery &&
-      !mainChatGenerationComplete &&
-      !isAiResponding
-    ) {
-      console.log('[AUTO-TRIGGER] All conditions met. Triggering generateMainChatResearchPaper with:', { currentQuery, webData });
-      setTimeout(() => {
-        generateMainChatResearchPaper(currentQuery, webData);
-      }, 100); // 100ms delay
-    } else {
-      console.log('[AUTO-TRIGGER] Conditions not met:', {
-        isComplete,
-        isWebDataReady,
-        currentQuery,
-        mainChatGenerationComplete,
-        isAiResponding,
-        webData
-      });
-    }
-  }, [isComplete, webData, currentQuery, mainChatGenerationComplete, isAiResponding]);
-
-  // Helper to show the image in chat
-  const showImageMsg = (content: string, imgSrc: string) => {
-    setMessages((prev) => [
-      ...prev,
-      { role: "user" as const, content: `${content} <img src=\"${imgSrc}\" />` },
-    ]);
-  };
 
   // Auto-resize textarea
   useLayoutEffect(() => {
@@ -466,6 +437,37 @@ export default function TestChat() {
       setMainChatGenerationComplete(false);
     }
   }, [isComplete, isAiResponding, mainChatGenerationComplete]);
+
+  // Helper to show the image in chat
+  const showImageMsg = (content: string, imgSrc: string) => {
+    setMessages((prev) => [
+      ...prev,
+      { role: "user" as const, content: `${content} <img src=\"${imgSrc}\" />` },
+    ]);
+  };
+
+  // Auto-resize textarea
+  useLayoutEffect(() => {
+    const ta = textareaRef.current;
+    if (ta) {
+      ta.style.height = 'auto';
+      ta.style.height = Math.min(ta.scrollHeight, MAX_HEIGHT) + 'px';
+    }
+  }, [input]);
+
+  // Measure input bar height dynamically
+  useLayoutEffect(() => {
+    if (inputBarRef.current) {
+      setInputBarHeight(inputBarRef.current.offsetHeight);
+    }
+  }, [input]);
+
+  // Auto-scroll to bottom on new message
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
 
   // DEDICATED function specifically for generating the main chat's detailed research paper
   // This is separate from the Advance Search panel's third step
@@ -1056,15 +1058,6 @@ FORMATTING REQUIREMENTS:
   const handleRemoveBox = (boxId: string) => {
     setEmptyBoxes(prev => prev.filter(id => id !== boxId));
   };
-
-  useEffect(() => {
-    // @ts-ignore
-    window.generateMainChatResearchPaper = generateMainChatResearchPaper;
-    return () => {
-      // @ts-ignore
-      delete window.generateMainChatResearchPaper;
-    };
-  }, []);
 
   return (
     <>
