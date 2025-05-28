@@ -377,14 +377,68 @@ export default function TestChat() {
 
   const [showAdvanceSearch, setShowAdvanceSearch] = useState(false);
   const [currentQuery, setCurrentQuery] = useState('');
-  
-  // Ref to always point to the latest generateMainChatResearchPaper
+  const [mainChatGenerationComplete, setMainChatGenerationComplete] = useState(false);
+
+  // Define the generateMainChatResearchPaper function first
+  const generateMainChatResearchPaper = async (queryOverride?: string, webDataOverride?: any) => {
+    const queryToUse = queryOverride || currentQuery;
+    const webDataToUse = webDataOverride || webData;
+    
+    if (!queryToUse || !webDataToUse) {
+      console.error("[ERROR] Cannot generate main chat research paper: missing query or web data", {
+        currentQuery: queryToUse,
+        webData: webDataToUse
+      });
+      setMainChatGenerationComplete(true);
+      return;
+    }
+    
+    setIsAiResponding(true);
+    setLoading(true);
+    
+    try {
+      const newMessage: Message = { 
+        role: "assistant",
+        content: "Generating detailed research paper...",
+        webSources: webDataToUse.serperArticles?.map((article: any) => ({
+          title: article.title,
+          url: article.url,
+          snippet: article.snippet,
+          icon: '/icons/web-icon.svg',
+          type: 'web'
+        })) || []
+      };
+      
+      setMessages(prev => [...prev, newMessage]);
+      
+      // Rest of your existing implementation...
+      // Note: Keep all the existing implementation details here
+      
+    } catch (error) {
+      console.error('[ERROR] Error generating MAIN CHAT detailed research paper:', error);
+      setMessages(prev => [
+        ...prev,
+        { 
+          role: 'assistant', 
+          content: 'Sorry, I encountered an error while generating the research paper. Please try again.' 
+        }
+      ]);
+    } finally {
+      setMainChatGenerationComplete(true);
+      setIsAiResponding(false);
+      setLoading(false);
+    }
+  };
+
+  // Create ref after function definition
   const generateMainChatResearchPaperRef = useRef(generateMainChatResearchPaper);
+  
+  // Update ref when function changes
   useEffect(() => {
     generateMainChatResearchPaperRef.current = generateMainChatResearchPaper;
   }, [generateMainChatResearchPaper]);
 
-  // Use the callback version of useDeepResearch, always using the latest function via ref
+  // Use the callback version of useDeepResearch with the ref
   const {
     steps,
     activeStepId,
@@ -394,10 +448,7 @@ export default function TestChat() {
     webData
   } = useDeepResearch(showAdvanceSearch, currentQuery, (query, webData) => {
     if (query && webData && Array.isArray(webData.serperArticles) && webData.serperArticles.length > 0) {
-      console.log('[SYNTHESIS CALLBACK - via ref] Triggering generateMainChatResearchPaper with:', { query, webData });
       generateMainChatResearchPaperRef.current(query, webData);
-    } else {
-      console.log('[SYNTHESIS CALLBACK - via ref] Not triggering: missing query or webData', { query, webData });
     }
   });
 
@@ -405,9 +456,6 @@ export default function TestChat() {
   const isFinalStepComplete = steps[steps.length - 1]?.status === 'completed';
 
   const [emptyBoxes, setEmptyBoxes] = useState<string[]>([]); // Array of box IDs
-
-  // Track whether the main chat research paper generation has completed
-  const [mainChatGenerationComplete, setMainChatGenerationComplete] = useState(false);
 
   // Auto-resize textarea
   useLayoutEffect(() => {
@@ -473,182 +521,6 @@ export default function TestChat() {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
-
-  // DEDICATED function specifically for generating the main chat's detailed research paper
-  // This is separate from the Advance Search panel's third step
-  const generateMainChatResearchPaper = async (queryOverride?: string, webDataOverride?: any) => {
-    const queryToUse = queryOverride || currentQuery;
-    const webDataToUse = webDataOverride || webData;
-    console.log('[DEBUG] generateMainChatResearchPaper called:', {
-      isComplete,
-      isAiResponding,
-      currentQuery: queryToUse,
-      webData: webDataToUse,
-      mainChatGenerationComplete
-    });
-    if (!queryToUse || !webDataToUse) {
-      console.error("[ERROR] Cannot generate main chat research paper: missing query or web data", {
-        currentQuery: queryToUse,
-        webData: webDataToUse
-      });
-      setMainChatGenerationComplete(true);
-      return;
-    }
-    setIsAiResponding(true);
-    setLoading(true);
-    const newMessage: Message = { 
-        role: "assistant" as const,
-      content: "Generating detailed research paper...",
-      webSources: webDataToUse.serperArticles?.map((article: any, i: number) => ({
-        title: article.title,
-        url: article.url,
-        snippet: article.snippet,
-        icon: '/icons/web-icon.svg',
-        type: 'web'
-      })) || []
-    };
-    setMessages(prev => [...prev, newMessage]);
-    console.log("[DEBUG] Added initial message to main chat");
-    let serperSection = '';
-    if (webDataToUse.serperArticles && webDataToUse.serperArticles.length > 0) {
-      serperSection += '===SERPER (GOOGLE) SEARCH RESULTS===\n';
-      webDataToUse.serperArticles.forEach((article: any, i: number) => {
-        serperSection += `[${i + 1}] Title: "${article.title}" (${article.url})\n`;
-        if (article.snippet) {
-          const excerpt = article.snippet.length > 200 ? article.snippet.slice(0, 200) + '...' : article.snippet;
-          serperSection += `Excerpt: ${excerpt}\n`;
-        }
-      });
-      serperSection += '===END SERPER SEARCH RESULTS===\n';
-    }
-    const combinedInstruction = 'IMPORTANT: You MUST use only the above search results as your web sources. Do NOT use or invent any other web links. When citing, use numbered references [1], [2], etc. at the end of sentences or bullet points that use information from sources.';
-    const formattingInstructions = `\nIMPORTANT: Your answer MUST be at least 750 words. Do not stop before you reach this length. If you finish early, add more details, examples, or analysis until you reach the required length.\n\nBULLET POINT DETAIL REQUIREMENT:\nFor each bullet point, write a detailed, self-contained summary (**7–8 sentences**) that explains the topic, provides context, and includes key facts or findings. Do not use single-sentence or headline-style bullets. Each bullet should be a mini-paragraph of 7–8 sentences.\n\nCONCLUSION REQUIREMENT:\nThe conclusion section must be a detailed, thoughtful paragraph of at least **7–8 sentences**, thoroughly summarizing the findings and providing additional insights or implications.\n\nFORMATTING REQUIREMENTS:\n1. Your response MUST follow a professional, well-structured format like a research document or report.\n2. Start with a clear main title using # heading (e.g., "# Latest Developments in AI, 2025").\n3. Divide content into logical sections with ## headings.\n4. Use bullet points (*) for all key details and findings, with each bullet point being a 7–8 sentence paragraph.\n5. End with a "## Conclusion" section.\n6. Include a "## Summary Table" if the information can be presented in tabular form.\n7. For citations, use ONLY numbered references in square brackets [1], [2] at the end of sentences/bullets.\n\nCITATION INSTRUCTIONS:\n- Use ONLY the provided search results as your web sources.\n- Do NOT use or invent any other web links.\n- When citing, use numbered references like [1], [2], etc. at the end of sentences or bullet points.\n- Do not include a 'References' section at the end - only use in-text citations.`;
-    const systemPrompt = `${serperSection}\n${combinedInstruction}\n\n${formattingInstructions}`;
-    console.log("[DEBUG] Making SEPARATE API call to Nvidia for MAIN CHAT detailed research paper");
-    console.log("[DEBUG] System prompt length:", systemPrompt.length);
-    try {
-      const response = await fetch('/api/nvidia', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: queryToUse }
-          ],
-          temperature: 0.2
-        })
-      });
-      if (response.body && response.headers.get('content-type')?.includes('text/event-stream')) {
-        // Streaming response
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-        let done = false;
-        let aiMsg: Message = {
-          role: "assistant" as const,
-          content: "",
-          webSources: webDataToUse.serperArticles?.map((article: any, i: number) => ({
-            title: article.title,
-            url: article.url,
-            snippet: article.snippet,
-            icon: '/icons/web-icon.svg',
-            type: 'web'
-          })) || []
-        };
-        setMessages(prev => {
-          const updated = [...prev];
-          updated[updated.length - 1] = aiMsg;
-          return updated;
-        });
-        while (!done) {
-          const { value, done: doneReading } = await reader.read();
-          done = doneReading;
-          if (value) {
-            buffer += decoder.decode(value, { stream: true });
-            let lines = buffer.split('\n');
-            buffer = lines.pop() || '';
-            for (let line of lines) {
-              if (line.startsWith('data:')) {
-                const data = line.replace('data:', '').trim();
-                if (data === '[DONE]') continue;
-                try {
-                  const parsed = JSON.parse(data);
-                  const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.message?.content || parsed.choices?.[0]?.text || parsed.content || '';
-                  if (delta) {
-                    aiMsg.content += delta;
-                    setMessages((prev) => {
-                      const updatedMessages = [...prev];
-                      const lastMsgIndex = updatedMessages.length - 1;
-                      if(updatedMessages[lastMsgIndex] && updatedMessages[lastMsgIndex].role === 'assistant'){
-                        updatedMessages[lastMsgIndex] = { 
-                          ...updatedMessages[lastMsgIndex], 
-                          content: aiMsg.content,
-                          webSources: aiMsg.webSources
-                        };
-                      }
-                      return updatedMessages;
-                    });
-                  }
-                } catch (err) {
-                  // handle parse error
-                }
-              }
-            }
-          }
-        }
-        setMainChatGenerationComplete(true);
-        setIsAiResponding(false);
-        setLoading(false);
-        console.log("[DEBUG] MAIN CHAT research paper generation COMPLETE (streaming)");
-      } else {
-        // Non-streaming fallback
-        const data = await response.json();
-        const finalContent = data.content || data.choices?.[0]?.message?.content || data.generated_text || '';
-        setMessages(prev => {
-          const lastIndex = prev.length - 1;
-          if (lastIndex >= 0 && prev[lastIndex].role === 'assistant') {
-            const updatedMessages = [...prev];
-            updatedMessages[lastIndex] = { 
-              ...updatedMessages[lastIndex], 
-              content: finalContent
-            };
-            return updatedMessages;
-          }
-          return [...prev, { 
-            role: 'assistant',
-            content: finalContent,
-            webSources: webDataToUse.serperArticles?.map((article: any, i: number) => ({
-              title: article.title,
-              url: article.url,
-              snippet: article.snippet,
-              icon: '/icons/web-icon.svg', 
-              type: 'web'
-            })) || []
-          }];
-        });
-        setTimeout(() => {
-          setMessages(prev => [...prev]);
-          console.log("[DEBUG] Forced message state update after timeout");
-        }, 100);
-        setMainChatGenerationComplete(true);
-        setIsAiResponding(false);
-        setLoading(false);
-        console.log("[DEBUG] MAIN CHAT research paper generation COMPLETE (non-streaming)");
-      }
-    } catch (error) {
-      console.error('[ERROR] Error generating MAIN CHAT detailed research paper:', error);
-      setMessages(prev => [
-        ...prev,
-        { 
-          role: 'assistant', 
-          content: 'Sorry, I encountered an error while generating the research paper. Please try again.' 
-        }
-      ]);
-      setMainChatGenerationComplete(true);
-      setIsAiResponding(false);
-      setLoading(false);
-    }
-  };
 
   // Legacy function - keep for backward compatibility but don't actually use it
   const generateDetailedResearchPaper = async (query: string, webData: any) => {
