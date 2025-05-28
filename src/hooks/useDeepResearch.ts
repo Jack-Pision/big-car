@@ -283,6 +283,11 @@ STRICT RELEVANCE REQUIREMENT:
 - Do NOT include any information, facts, or content that is not present in the web data or directly relevant to the user's query.
 - Be concise and avoid unnecessary elaboration or unrelated content.
 
+STRICT FORMATTING AND CONTENT REQUIREMENTS:
+- Do NOT include a 'References' section or any list of references at the end. Only use in-text citations ([1], [2], etc.) after relevant sentences or bullet points.
+- The conclusion must only summarize the findings from the web data and user topic. Do NOT introduce new topics, opinions, or generic statements. Do not add any extra commentary or meta-discussion.
+- If you include a section titled 'References' or any content after the conclusion, your answer will be considered incorrect.
+
 BULLET POINT DETAIL REQUIREMENT:
 For each bullet point, write a detailed, self-contained summary (**7–8 sentences**) that explains the topic, provides context, and includes key facts or findings. Do not use single-sentence or headline-style bullets. Each bullet should be a mini-paragraph of 7–8 sentences.
 

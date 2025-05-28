@@ -432,19 +432,45 @@ export default function TestChat() {
     }
   }, [isComplete, isAiResponding]);
 
+  // Function to clean AI output by removing any References section and unwanted content after conclusion
+  const cleanAIOutput = (output: string): string => {
+    if (!output) return output;
+    
+    // First, check if there's a References section and remove it
+    const referencesMatch = output.match(/(?:^|\n)#+\s*References?.*?$/im);
+    if (referencesMatch) {
+      output = output.substring(0, referencesMatch.index);
+    }
+    
+    // Next, find the Conclusion section and ensure nothing follows it
+    const conclusionMatch = output.match(/(?:^|\n)#+\s*Conclusion.*?(?:$|\n#+)/im);
+    if (conclusionMatch) {
+      const conclusionEnd = conclusionMatch.index! + conclusionMatch[0].length;
+      // If the match ends with a new heading, exclude that heading
+      const nextHeadingMatch = conclusionMatch[0].match(/\n#+\s*\w+/);
+      const adjustment = nextHeadingMatch ? nextHeadingMatch[0].length : 0;
+      output = output.substring(0, conclusionEnd - adjustment);
+    }
+    
+    return output.trim();
+  };
+
   // When deep research completes, automatically start the AI request
   useEffect(() => {
     if (isComplete && currentQuery) {
       const synthesisStep = steps.find(step => step.id === 'synthesize');
       if (synthesisStep?.output) {
+        // Process the output to remove unwanted content
+        const cleanedOutput = cleanAIOutput(synthesisStep.output);
+        
         // Only add if not already present in messages
-        const alreadyPresent = messages.some(m => m.role === 'assistant' && m.content === synthesisStep.output);
+        const alreadyPresent = messages.some(m => m.role === 'assistant' && m.content === cleanedOutput);
         if (!alreadyPresent) {
           setMessages(prev => [
             ...prev.filter(m => m.role !== 'assistant'),
             { 
               role: 'assistant',
-              content: synthesisStep.output
+              content: cleanedOutput
             }
           ]);
         }
@@ -452,7 +478,7 @@ export default function TestChat() {
         setLoading(false);
       }
     }
-  }, [isComplete, steps, currentQuery]);
+  }, [isComplete, steps, currentQuery, messages]);
 
   async function handleSend(e?: React.FormEvent) {
     if (e) e.preventDefault();
