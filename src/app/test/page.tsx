@@ -1287,6 +1287,15 @@ FORMATTING REQUIREMENTS:
   );
 }
 
+// Add the renderSynthesizeContent function before the DeepResearchBlock component
+function renderSynthesizeContent(step: any) {
+  return (
+    <div className="text-neutral-300 whitespace-pre-line text-sm">
+      {step.content}
+    </div>
+  );
+}
+
 function DeepResearchBlock({ query, researchId }: { query: string, researchId?: string }) {
   const {
     steps,
@@ -1356,10 +1365,19 @@ function DeepResearchBlock({ query, researchId }: { query: string, researchId?: 
               
               {step.id === 'understand' && (
                 <AdvanceSearch
-                  step={step}
-                  isActive={activeStepId === step.id}
-                  manualStepId={manualStepId}
-                  setManualStepId={setManualStepId}
+                  steps={steps}
+                  activeStepId={activeStepId}
+                  error={error}
+                  webData={webData}
+                  manualNavigationEnabled={true}
+                  onManualStepClick={(stepId) => {
+                    setManualStepId(stepId);
+                    // Scroll to the step
+                    const element = document.getElementById(`step-${stepId}`);
+                    if (element) {
+                      element.scrollIntoView({ behavior: 'smooth' });
+                    }
+                  }}
                 />
               )}
 
