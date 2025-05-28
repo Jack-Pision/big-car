@@ -596,6 +596,12 @@ export default function TestChat() {
         // Strong explicit instruction
         const combinedInstruction = 'IMPORTANT: You MUST use only the above Wikipedia and NewsData.io articles as your web sources. Do NOT use or invent any other web links. When citing, use numbered references [1], [2], etc. at the end of sentences or bullet points that use information from sources.';
         
+        // We don't need to add formattingInstructions here anymore since they'll be handled by useDeepResearch hook with its own concise format
+        
+        enhancedSystemPrompt = `${wikiSection}\n${newsSection}\n${combinedInstruction}\n\n${CITATION_INSTRUCTIONS}\n\n${enhancedSystemPrompt}`;
+      }
+      else {
+        // Only add detailed formatting instructions to main chat (when NOT in Advance Search mode)
         // Professional formatting instructions
         const formattingInstructions = `
 IMPORTANT: Your answer MUST be at least 750 words. Do not stop before you reach this length. If you finish early, add more details, examples, or analysis until you reach the required length.
@@ -611,8 +617,8 @@ FORMATTING REQUIREMENTS:
 5. End with a "## Conclusion" section.
 6. Include a "## Summary Table" if the information can be presented in tabular form.
 7. For citations, use ONLY numbered references in square brackets [1], [2] at the end of sentences/bullets.`;
-        
-        enhancedSystemPrompt = `${wikiSection}\n${newsSection}\n${combinedInstruction}\n\n${formattingInstructions}\n\n${CITATION_INSTRUCTIONS}\n\n${enhancedSystemPrompt}`;
+
+        enhancedSystemPrompt = `${enhancedSystemPrompt}\n\n${formattingInstructions}`;
       }
       
       const systemPrompt = imageContextPrompt 
