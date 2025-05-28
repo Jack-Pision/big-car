@@ -102,10 +102,10 @@ const getRandomTime = (min: number, max: number): number => {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 };
 
+// Update WebData interface to remove Wikipedia and NewsData.io
 interface WebData {
   serperArticles: any[];
-  wikipediaArticles: any[];
-  newsdataArticles: any[];
+  totalWebResults: number; // Add counter for total web results
   sources: any[];
   webCitations: string;
 }
@@ -234,28 +234,61 @@ export const useDeepResearch = (isActive: boolean, query: string = '') => {
       setActiveStepId('research');
       updateStepStatus('research', 'active', 'Gathering information from multiple sources...');
 
-      // Fetch from all sources in parallel
-      const serperRes = await fetch('/api/serper/search', {
+      // Make exactly 2 Serper Dev API calls, with 10 results each
+      // First call - main query
+      const firstSerperRes = await fetch('/api/serper/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, limit: 20 })
+        body: JSON.stringify({ query, limit: 10 })
       });
 
-      const serperData = await serperRes.json();
+      const firstSerperData = await firstSerperRes.json();
+
+      // Second call - use a slightly modified query to get different results
+      const enhancedQuery = `${query} ${analysis.split(' ').slice(0, 3).join(' ')}`;
+      const secondSerperRes = await fetch('/api/serper/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: enhancedQuery, limit: 10 })
+      });
+
+      const secondSerperData = await secondSerperRes.json();
+
+      // Combine results from both calls, removing duplicates by URL
+      const allArticles = [
+        ...(firstSerperData.articles || []),
+        ...(secondSerperData.articles || [])
+      ];
+
+      // Remove duplicates using URL as the unique identifier
+      const uniqueUrls = new Set();
+      const uniqueArticles = allArticles.filter(article => {
+        if (uniqueUrls.has(article.url)) {
+          return false;
+        }
+        uniqueUrls.add(article.url);
+        return true;
+      });
 
       const newWebData: WebData = {
-        serperArticles: serperData.articles || [],
-        wikipediaArticles: [],
-        newsdataArticles: [],
-        sources: [...(serperData.sources || [])],
-        webCitations: serperData.summary || ''
+        serperArticles: uniqueArticles,
+        totalWebResults: uniqueArticles.length,
+        sources: [
+          ...(firstSerperData.sources || []),
+          ...(secondSerperData.sources || [])
+        ].filter((source, index, self) => 
+          index === self.findIndex(s => s.url === source.url)
+        ),
+        webCitations: [
+          firstSerperData.summary || '',
+          secondSerperData.summary || ''
+        ].filter(Boolean).join('\n\n')
       };
 
       setWebData(newWebData);
       
       // Create a summary of found data
-      const dataSummary = `Found:
-- ${newWebData.serperArticles.length} web articles`;
+      const dataSummary = `Found ${newWebData.totalWebResults} web articles from 2 API calls`;
 
       updateStepStatus('research', 'completed', dataSummary, newWebData);
       

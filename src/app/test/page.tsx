@@ -594,7 +594,7 @@ export default function TestChat() {
         }
         
         // Strong explicit instruction
-        const combinedInstruction = 'IMPORTANT: You MUST use only the above Wikipedia and NewsData.io articles as your web sources. Do NOT use or invent any other web links. When citing, use numbered references [1], [2], etc. at the end of sentences or bullet points that use information from sources.';
+        const combinedInstruction = 'IMPORTANT: You MUST use only the provided web search data as your sources. Do NOT use or invent any other web links. When citing, use numbered references [1], [2], etc. at the end of sentences or bullet points that use information from sources.';
         
         // We don't need to add formattingInstructions here anymore since they'll be handled by useDeepResearch hook with its own concise format
         

@@ -29,16 +29,12 @@ async function searchSerperPage(query: string, page: number = 1) {
   }));
 }
 
-async function searchSerper(query: string, limit: number = 20) {
-  // Make two parallel API calls for page 1 and 2
-  const [page1Results, page2Results] = await Promise.all([
-    searchSerperPage(query, 1),
-    searchSerperPage(query, 2)
-  ]);
-
-  // Combine and limit results
-  const combinedResults = [...page1Results, ...page2Results];
-  return combinedResults.slice(0, limit);
+async function searchSerper(query: string, limit: number = 10) {
+  // Make a single API call for the requested page (default to page 1)
+  const results = await searchSerperPage(query, 1);
+  
+  // Limit results to the requested number
+  return results.slice(0, limit);
 }
 
 export async function POST(req: NextRequest) {

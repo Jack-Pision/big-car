@@ -213,14 +213,20 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
             {/* Display detailed web sources with icons and clickable links */}
             {webData && (
               <div className="mt-6 pt-4 border-t border-neutral-800">
-                <h4 className="text-sm font-medium text-neutral-300 mb-3">Sources:</h4>
+                <div className="flex justify-between items-center mb-3">
+                  <h4 className="text-sm font-medium text-neutral-300">Sources:</h4>
+                  {/* Web Results Counter */}
+                  <span className="text-xs bg-neutral-800 text-neutral-300 px-2 py-1 rounded-full">
+                    {webData.totalWebResults || webData.serperArticles?.length || 0} results
+                  </span>
+                </div>
                 
                 {/* Serper (Google) Articles */}
                 {webData.serperArticles?.length > 0 && (
                   <div className="mb-4">
                     <div className="text-xs text-neutral-400 mb-2">Web Articles:</div>
                     <div className="space-y-2">
-                      {webData.serperArticles.slice(0, 20).map((article: any, i: number) => {
+                      {webData.serperArticles.map((article: any, i: number) => {
                         // Extract domain for favicon fallback
                         let domain = '';
                         try {
