@@ -443,7 +443,7 @@ export default function TestChat() {
 
   // DEDICATED function specifically for generating the main chat's detailed research paper
   // This is separate from the Advance Search panel's third step
-  const generateMainChatResearchPaper = (queryOverride?: string, webDataOverride?: any) => {
+  const generateMainChatResearchPaper = async (queryOverride?: string, webDataOverride?: any) => {
     const queryToUse = queryOverride || currentQuery;
     const webDataToUse = webDataOverride || webData;
     console.log('[DEBUG] generateMainChatResearchPaper called:', {
@@ -458,30 +458,24 @@ export default function TestChat() {
         currentQuery: queryToUse,
         webData: webDataToUse
       });
-      // Even if we can't generate, mark as complete to avoid blocking the UI
       setMainChatGenerationComplete(true);
       return;
     }
-    // Set states immediately to prevent multiple calls
     setIsAiResponding(true);
     setLoading(true);
-    
-    // Add the message to state immediately BEFORE starting the API call
     const newMessage: Message = { 
-      role: "assistant" as const,
+        role: "assistant" as const,
       content: "Generating detailed research paper...",
       webSources: webDataToUse.serperArticles?.map((article: any, i: number) => ({
         title: article.title,
         url: article.url,
         snippet: article.snippet,
-        icon: '/icons/web-icon.svg', // Default web icon
-        type: 'web' // Default type is web
+        icon: '/icons/web-icon.svg',
+        type: 'web'
       })) || []
     };
     setMessages(prev => [...prev, newMessage]);
     console.log("[DEBUG] Added initial message to main chat");
-    
-    // Format web search data for the prompt
     let serperSection = '';
     if (webDataToUse.serperArticles && webDataToUse.serperArticles.length > 0) {
       serperSection += '===SERPER (GOOGLE) SEARCH RESULTS===\n';
@@ -494,125 +488,133 @@ export default function TestChat() {
       });
       serperSection += '===END SERPER SEARCH RESULTS===\n';
     }
-
-    // Strong explicit instruction for citing sources
     const combinedInstruction = 'IMPORTANT: You MUST use only the above search results as your web sources. Do NOT use or invent any other web links. When citing, use numbered references [1], [2], etc. at the end of sentences or bullet points that use information from sources.';
-    
-    // Professional formatting instructions for detailed research paper
-    const formattingInstructions = `
-IMPORTANT: Your answer MUST be at least 750 words. Do not stop before you reach this length. If you finish early, add more details, examples, or analysis until you reach the required length.
-
-BULLET POINT DETAIL REQUIREMENT:
-For each bullet point, write a detailed, self-contained summary (**7–8 sentences**) that explains the topic, provides context, and includes key facts or findings. Do not use single-sentence or headline-style bullets. Each bullet should be a mini-paragraph of 7–8 sentences.
-
-CONCLUSION REQUIREMENT:
-The conclusion section must be a detailed, thoughtful paragraph of at least **7–8 sentences**, thoroughly summarizing the findings and providing additional insights or implications.
-
-FORMATTING REQUIREMENTS:
-1. Your response MUST follow a professional, well-structured format like a research document or report.
-2. Start with a clear main title using # heading (e.g., "# Latest Developments in AI, 2025").
-3. Divide content into logical sections with ## headings.
-4. Use bullet points (*) for all key details and findings, with each bullet point being a 7–8 sentence paragraph.
-5. End with a "## Conclusion" section.
-6. Include a "## Summary Table" if the information can be presented in tabular form.
-7. For citations, use ONLY numbered references in square brackets [1], [2] at the end of sentences/bullets.
-
-CITATION INSTRUCTIONS:
-- Use ONLY the provided search results as your web sources.
-- Do NOT use or invent any other web links.
-- When citing, use numbered references like [1], [2], etc. at the end of sentences or bullet points.
-- Do not include a 'References' section at the end - only use in-text citations.`;
-
-    // Combine all instructions
+    const formattingInstructions = `\nIMPORTANT: Your answer MUST be at least 750 words. Do not stop before you reach this length. If you finish early, add more details, examples, or analysis until you reach the required length.\n\nBULLET POINT DETAIL REQUIREMENT:\nFor each bullet point, write a detailed, self-contained summary (**7–8 sentences**) that explains the topic, provides context, and includes key facts or findings. Do not use single-sentence or headline-style bullets. Each bullet should be a mini-paragraph of 7–8 sentences.\n\nCONCLUSION REQUIREMENT:\nThe conclusion section must be a detailed, thoughtful paragraph of at least **7–8 sentences**, thoroughly summarizing the findings and providing additional insights or implications.\n\nFORMATTING REQUIREMENTS:\n1. Your response MUST follow a professional, well-structured format like a research document or report.\n2. Start with a clear main title using # heading (e.g., "# Latest Developments in AI, 2025").\n3. Divide content into logical sections with ## headings.\n4. Use bullet points (*) for all key details and findings, with each bullet point being a 7–8 sentence paragraph.\n5. End with a "## Conclusion" section.\n6. Include a "## Summary Table" if the information can be presented in tabular form.\n7. For citations, use ONLY numbered references in square brackets [1], [2] at the end of sentences/bullets.\n\nCITATION INSTRUCTIONS:\n- Use ONLY the provided search results as your web sources.\n- Do NOT use or invent any other web links.\n- When citing, use numbered references like [1], [2], etc. at the end of sentences or bullet points.\n- Do not include a 'References' section at the end - only use in-text citations.`;
     const systemPrompt = `${serperSection}\n${combinedInstruction}\n\n${formattingInstructions}`;
-
     console.log("[DEBUG] Making SEPARATE API call to Nvidia for MAIN CHAT detailed research paper");
     console.log("[DEBUG] System prompt length:", systemPrompt.length);
-    
-    // SIMPLIFIED NON-STREAMING APPROACH
-    // Make a completely separate and dedicated API call to Nvidia
-    fetch('/api/nvidia', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: queryToUse }
-        ],
-        temperature: 0.2
-      })
-    })
-    .then(response => {
-      console.log("[DEBUG] MAIN CHAT API response received, status:", response.status);
-
-      if (!response.ok) {
-        throw new Error(`API call failed with status: ${response.status}`);
-      }
-      
-      // Process the entire response at once, not streaming
-      return response.json();
-    })
-    .then(data => {
-      console.log("[DEBUG] MAIN CHAT response fully received, processing now");
-      
-      // Extract the final content
-      const finalContent = data.content || data.choices?.[0]?.message?.content || data.generated_text || '';
-      console.log("[DEBUG] Final content length:", finalContent.length);
-      
-      // Force an immediate state update with the final content
-      setMessages(prev => {
-        const lastIndex = prev.length - 1;
-        if (lastIndex >= 0 && prev[lastIndex].role === 'assistant') {
-          const updatedMessages = [...prev];
-          updatedMessages[lastIndex] = { 
-            ...updatedMessages[lastIndex], 
-            content: finalContent
-          };
-          return updatedMessages;
-        }
-        // If we don't have a message yet (unlikely), add one
-        return [...prev, { 
-          role: 'assistant',
-          content: finalContent,
+    try {
+      const response = await fetch('/api/nvidia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: queryToUse }
+          ],
+          temperature: 0.2
+        })
+      });
+      if (response.body && response.headers.get('content-type')?.includes('text/event-stream')) {
+        // Streaming response
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let done = false;
+        let aiMsg: Message = {
+          role: "assistant" as const,
+          content: "",
           webSources: webDataToUse.serperArticles?.map((article: any, i: number) => ({
             title: article.title,
             url: article.url,
             snippet: article.snippet,
-            icon: '/icons/web-icon.svg', 
+            icon: '/icons/web-icon.svg',
             type: 'web'
           })) || []
-        }];
-      });
-      
-      // Force a re-render after a brief delay to ensure UI updates
-      setTimeout(() => {
-        setMessages(prev => [...prev]);
-        console.log("[DEBUG] Forced message state update after timeout");
-      }, 100);
-      
-      // Mark main chat generation as complete
-      setMainChatGenerationComplete(true);
-      setIsAiResponding(false);
-      setLoading(false);
-      console.log("[DEBUG] MAIN CHAT research paper generation COMPLETE");
-    })
-    .catch(error => {
+        };
+        setMessages(prev => {
+          const updated = [...prev];
+          updated[updated.length - 1] = aiMsg;
+          return updated;
+        });
+        while (!done) {
+          const { value, done: doneReading } = await reader.read();
+          done = doneReading;
+          if (value) {
+            buffer += decoder.decode(value, { stream: true });
+            let lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+            for (let line of lines) {
+              if (line.startsWith('data:')) {
+                const data = line.replace('data:', '').trim();
+                if (data === '[DONE]') continue;
+                try {
+                  const parsed = JSON.parse(data);
+                  const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.message?.content || parsed.choices?.[0]?.text || parsed.content || '';
+                  if (delta) {
+                    aiMsg.content += delta;
+                    setMessages((prev) => {
+                      const updatedMessages = [...prev];
+                      const lastMsgIndex = updatedMessages.length - 1;
+                      if(updatedMessages[lastMsgIndex] && updatedMessages[lastMsgIndex].role === 'assistant'){
+                        updatedMessages[lastMsgIndex] = { 
+                          ...updatedMessages[lastMsgIndex], 
+                          content: aiMsg.content,
+                          webSources: aiMsg.webSources
+                        };
+                      }
+                      return updatedMessages;
+                    });
+                  }
+                } catch (err) {
+                  // handle parse error
+                }
+              }
+            }
+          }
+        }
+        setMainChatGenerationComplete(true);
+        setIsAiResponding(false);
+        setLoading(false);
+        console.log("[DEBUG] MAIN CHAT research paper generation COMPLETE (streaming)");
+      } else {
+        // Non-streaming fallback
+        const data = await response.json();
+        const finalContent = data.content || data.choices?.[0]?.message?.content || data.generated_text || '';
+        setMessages(prev => {
+          const lastIndex = prev.length - 1;
+          if (lastIndex >= 0 && prev[lastIndex].role === 'assistant') {
+            const updatedMessages = [...prev];
+            updatedMessages[lastIndex] = { 
+              ...updatedMessages[lastIndex], 
+              content: finalContent
+            };
+            return updatedMessages;
+          }
+          return [...prev, { 
+            role: 'assistant',
+            content: finalContent,
+            webSources: webDataToUse.serperArticles?.map((article: any, i: number) => ({
+              title: article.title,
+              url: article.url,
+              snippet: article.snippet,
+              icon: '/icons/web-icon.svg', 
+              type: 'web'
+            })) || []
+          }];
+        });
+        setTimeout(() => {
+          setMessages(prev => [...prev]);
+          console.log("[DEBUG] Forced message state update after timeout");
+        }, 100);
+        setMainChatGenerationComplete(true);
+        setIsAiResponding(false);
+        setLoading(false);
+        console.log("[DEBUG] MAIN CHAT research paper generation COMPLETE (non-streaming)");
+      }
+    } catch (error) {
       console.error('[ERROR] Error generating MAIN CHAT detailed research paper:', error);
-      
-      // Add error message to chat
       setMessages(prev => [
-        ...prev, 
+        ...prev,
         { 
           role: 'assistant', 
           content: 'Sorry, I encountered an error while generating the research paper. Please try again.' 
         }
       ]);
-      
-      // Mark main chat generation as complete even on error
       setMainChatGenerationComplete(true);
       setIsAiResponding(false);
       setLoading(false);
-    });
+    }
   };
 
   // Legacy function - keep for backward compatibility but don't actually use it
