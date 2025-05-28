@@ -1029,6 +1029,15 @@ FORMATTING REQUIREMENTS:
     setEmptyBoxes(prev => prev.filter(id => id !== boxId));
   };
 
+  useEffect(() => {
+    // @ts-ignore
+    window.generateMainChatResearchPaper = generateMainChatResearchPaper;
+    return () => {
+      // @ts-ignore
+      delete window.generateMainChatResearchPaper;
+    };
+  }, []);
+
   return (
     <>
       <div className="min-h-screen flex flex-col" style={{ background: '#161618' }}>
@@ -1434,14 +1443,4 @@ function DeepResearchBlock({ query, researchId }: { query: string, researchId?: 
       </div>
     </motion.div>
   );
-}
-
-// Expose the function to the global window object for the manual trigger button
-useEffect(() => {
-  // @ts-ignore
-  window.generateMainChatResearchPaper = generateMainChatResearchPaper;
-  return () => {
-    // @ts-ignore
-    delete window.generateMainChatResearchPaper;
-  };
-}, []); 
+} 
