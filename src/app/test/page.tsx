@@ -480,6 +480,19 @@ export default function TestChat() {
     }
   }, [isComplete, steps, currentQuery, messages]);
 
+  // Helper to make citations clickable in AI output
+  const makeCitationsClickable = (content: string, sources: any[] = []) => {
+    if (!content) return content;
+    // Replace [1], [2], ... with anchor tags
+    return content.replace(/\[(\d+)\]/g, (match, num) => {
+      const idx = parseInt(num, 10) - 1;
+      if (sources[idx] && sources[idx].url) {
+        return `<a href="${sources[idx].url}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center px-1 py-0.5 rounded bg-blue-900/30 text-blue-400 text-xs hover:bg-blue-800/40 transition-colors">[${num}]</a>`;
+      }
+      return match;
+    });
+  };
+
   async function handleSend(e?: React.FormEvent) {
     if (e) e.preventDefault();
     const currentInput = input.trim();
@@ -881,6 +894,8 @@ FORMATTING REQUIREMENTS:
                 const { content, thinkingTime } = cleanAIResponse(msg.content);
                 const cleanContent = content.replace(/<thinking-indicator.*?\/>/g, '');
                 const isStoppedMsg = cleanContent.trim() === '[Response stopped by user]';
+                // Make citations clickable using webData.sources
+                const processedContent = makeCitationsClickable(cleanContent, webData?.sources || []);
                 return (
                   <motion.div
                   key={i}
@@ -890,7 +905,8 @@ FORMATTING REQUIREMENTS:
                     className="w-full markdown-body text-left flex flex-col items-start ai-response-text"
                     style={{ color: '#fff', maxWidth: '100%', overflowWrap: 'break-word' }}
                   >
-                    {i === messages.length - 1 && isAiResponding ? (
+                    {/* PulsingDot: Only show if isAiResponding and no assistant message has started rendering */}
+                    {i === messages.length - 1 && isAiResponding && !cleanContent.trim() ? (
                       <PulsingDot isVisible={true} />
                     ) : (
                       <>
@@ -900,11 +916,11 @@ FORMATTING REQUIREMENTS:
                         ) : (
                           <div className="w-full max-w-full overflow-hidden">
                             <TextReveal 
-                              text={cleanContent}
+                              text={processedContent}
                               markdownComponents={markdownComponents}
                               webSources={(msg as any).webSources || []}
-                  />
-                </div>
+                            />
+                          </div>
                         )}
                       </>
                     )}
