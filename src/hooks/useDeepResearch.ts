@@ -114,7 +114,7 @@ interface WebData {
   webCitations: string;
 }
 
-export const useDeepResearch = (isActive: boolean, query: string = '') => {
+export const useDeepResearch = (isActive: boolean, query: string = '', onSynthesisComplete?: (query: string, webData: WebData) => void) => {
   const [steps, setSteps] = useState<ThinkingStep[]>([...DEFAULT_THINKING_STEPS]);
   const [activeStepId, setActiveStepId] = useState<string | null>(null);
   const [isComplete, setIsComplete] = useState(false);
@@ -369,6 +369,11 @@ STRICT BULLET POINT INSTRUCTIONS:
       // Release the query when the process completes
       const normalizedQuery = query.trim().toLowerCase();
       activeQueries.delete(normalizedQuery);
+      
+      // Call the callback if provided
+      if (onSynthesisComplete) {
+        onSynthesisComplete(query, webData);
+      }
       
     } catch (err: any) {
       handleError('synthesize', err.message);

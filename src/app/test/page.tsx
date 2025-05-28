@@ -378,7 +378,7 @@ export default function TestChat() {
   const [showAdvanceSearch, setShowAdvanceSearch] = useState(false);
   const [currentQuery, setCurrentQuery] = useState('');
   
-  // Deep Research hook
+  // Use the callback version of useDeepResearch
   const {
     steps,
     activeStepId,
@@ -386,7 +386,10 @@ export default function TestChat() {
     isInProgress,
     error,
     webData
-  } = useDeepResearch(showAdvanceSearch, currentQuery);
+  } = useDeepResearch(showAdvanceSearch, currentQuery, (query, webData) => {
+    // Trigger the main chat output as soon as synthesis is complete
+    generateMainChatResearchPaper(query, webData);
+  });
 
   const [manualStepId, setManualStepId] = useState<string | null>(null);
   const isFinalStepComplete = steps[steps.length - 1]?.status === 'completed';
@@ -438,48 +441,22 @@ export default function TestChat() {
     }
   }, [isComplete, isAiResponding, mainChatGenerationComplete]);
 
-  // When deep research completes, automatically start the AI request for the main chat
-  useEffect(() => {
-    console.log('[DEBUG] useEffect (main chat trigger) fired:', {
-      isComplete,
-      isAiResponding,
-      currentQuery,
-      webData,
-      mainChatGenerationComplete
-    });
-    if (isComplete && !isAiResponding && currentQuery && webData) {
-      console.log("[DEBUG] Deep research complete, attempting to generate detailed research paper", { 
-        isComplete, 
-        isAiResponding,
-        currentQueryLength: currentQuery?.length || 0,
-        webDataExists: !!webData,
-        webDataArticles: webData?.serperArticles?.length || 0,
-        mainChatGenerationComplete
-      });
-      
-      // Use setTimeout to ensure state updates have been processed
-      setTimeout(() => {
-        console.log("[DEBUG] Triggering DEDICATED research paper generation");
-        // Call the dedicated function for the main chat output
-        generateMainChatResearchPaper();
-      }, 500);
-    }
-  }, [isComplete, isAiResponding, currentQuery, webData]);
-
   // DEDICATED function specifically for generating the main chat's detailed research paper
   // This is separate from the Advance Search panel's third step
-  const generateMainChatResearchPaper = () => {
+  const generateMainChatResearchPaper = (queryOverride?: string, webDataOverride?: any) => {
+    const queryToUse = queryOverride || currentQuery;
+    const webDataToUse = webDataOverride || webData;
     console.log('[DEBUG] generateMainChatResearchPaper called:', {
       isComplete,
       isAiResponding,
-      currentQuery,
-      webData,
+      currentQuery: queryToUse,
+      webData: webDataToUse,
       mainChatGenerationComplete
     });
-    if (!currentQuery || !webData) {
+    if (!queryToUse || !webDataToUse) {
       console.error("[ERROR] Cannot generate main chat research paper: missing query or web data", {
-        currentQuery,
-        webData
+        currentQuery: queryToUse,
+        webData: webDataToUse
       });
       // Even if we can't generate, mark as complete to avoid blocking the UI
       setMainChatGenerationComplete(true);
@@ -487,7 +464,7 @@ export default function TestChat() {
     }
     
     console.log("[DEBUG] *** MAIN CHAT OUTPUT *** Generating detailed research paper with query:", 
-      currentQuery.substring(0, 30) + "...");
+      queryToUse.substring(0, 30) + "...");
     
     // Set states immediately to prevent multiple calls
     setIsAiResponding(true);
@@ -497,7 +474,7 @@ export default function TestChat() {
     const newMessage: Message = { 
       role: "assistant" as const,
       content: "Generating detailed research paper...",
-      webSources: webData.serperArticles?.map((article: any, i: number) => ({
+      webSources: webDataToUse.serperArticles?.map((article: any, i: number) => ({
         title: article.title,
         url: article.url,
         snippet: article.snippet,
@@ -512,9 +489,9 @@ export default function TestChat() {
     
     // Format web search data for the prompt
     let serperSection = '';
-    if (webData.serperArticles && webData.serperArticles.length > 0) {
+    if (webDataToUse.serperArticles && webDataToUse.serperArticles.length > 0) {
       serperSection += '===SERPER (GOOGLE) SEARCH RESULTS===\n';
-      webData.serperArticles.forEach((article: any, i: number) => {
+      webDataToUse.serperArticles.forEach((article: any, i: number) => {
         serperSection += `[${i + 1}] Title: "${article.title}" (${article.url})\n`;
         if (article.snippet) {
           const excerpt = article.snippet.length > 200 ? article.snippet.slice(0, 200) + '...' : article.snippet;
@@ -568,7 +545,7 @@ CITATION INSTRUCTIONS:
       body: JSON.stringify({
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: currentQuery }
+          { role: 'user', content: queryToUse }
         ],
         temperature: 0.2
       })
