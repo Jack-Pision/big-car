@@ -378,7 +378,13 @@ export default function TestChat() {
   const [showAdvanceSearch, setShowAdvanceSearch] = useState(false);
   const [currentQuery, setCurrentQuery] = useState('');
   
-  // Use the callback version of useDeepResearch
+  // Ref to always point to the latest generateMainChatResearchPaper
+  const generateMainChatResearchPaperRef = useRef(generateMainChatResearchPaper);
+  useEffect(() => {
+    generateMainChatResearchPaperRef.current = generateMainChatResearchPaper;
+  }, [generateMainChatResearchPaper]);
+
+  // Use the callback version of useDeepResearch, always using the latest function via ref
   const {
     steps,
     activeStepId,
@@ -387,14 +393,12 @@ export default function TestChat() {
     error,
     webData
   } = useDeepResearch(showAdvanceSearch, currentQuery, (query, webData) => {
-    setTimeout(() => {
-      if (query && webData && Array.isArray(webData.serperArticles) && webData.serperArticles.length > 0) {
-        console.log('[SYNTHESIS CALLBACK - 4s DELAYED] Triggering generateMainChatResearchPaper with:', { query, webData });
-        generateMainChatResearchPaper(query, webData);
-      } else {
-        console.log('[SYNTHESIS CALLBACK - 4s DELAYED] Not triggering: missing query or webData', { query, webData });
-      }
-    }, 4000); // 4 seconds delay
+    if (query && webData && Array.isArray(webData.serperArticles) && webData.serperArticles.length > 0) {
+      console.log('[SYNTHESIS CALLBACK - via ref] Triggering generateMainChatResearchPaper with:', { query, webData });
+      generateMainChatResearchPaperRef.current(query, webData);
+    } else {
+      console.log('[SYNTHESIS CALLBACK - via ref] Not triggering: missing query or webData', { query, webData });
+    }
   });
 
   const [manualStepId, setManualStepId] = useState<string | null>(null);
