@@ -435,10 +435,11 @@ export default function TestChat() {
   // When deep research completes, automatically start the AI request for the main chat
   useEffect(() => {
     if (isComplete && showAdvanceSearch && !isAiResponding && currentQuery && webData) {
+      console.log("[DEBUG] Deep research complete, generating detailed research paper", { isComplete, showAdvanceSearch, isAiResponding });
       // Instead of directly using synthesisStep output, generate a detailed research paper
       generateDetailedResearchPaper(currentQuery, webData);
     }
-  }, [isComplete, showAdvanceSearch, isAiResponding, steps, webData]);
+  }, [isComplete, showAdvanceSearch, isAiResponding, currentQuery, webData]);
 
   // New function to generate a detailed research paper for the main chat
   const generateDetailedResearchPaper = async (query: string, webData: any) => {
@@ -508,26 +509,35 @@ CITATION INSTRUCTIONS:
       
       console.log("[DEBUG] API response received, status:", response.status, "content-type:", response.headers.get('content-type'));
 
+      if (!response.ok) {
+        console.error("[DEBUG] API call failed with status:", response.status);
+        throw new Error(`API call failed with status: ${response.status}`);
+      }
+
+      // Create a new message right away so we have something to update during streaming
+      const newMessage: Message = { 
+        role: "assistant" as const,
+        content: "",
+        webSources: webData.serperArticles?.map((article: any, i: number) => ({
+          title: article.title,
+          url: article.url,
+          snippet: article.snippet
+        })) || []
+      };
+
+      // Add the message to state immediately
+      setMessages(prev => [...prev, newMessage]);
+      console.log("[DEBUG] Added initial empty message to state");
+
       // Process the response
       let aiContent = '';
+      
       if (response.body && response.headers.get('content-type')?.includes('text/event-stream')) {
         console.log("[DEBUG] Processing streaming response");
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
         let done = false;
-        
-        // Create a new assistant message right away so we can stream to it
-        const aiMsg: Message = { 
-          role: "assistant" as const,
-          content: "",
-          webSources: webData.serperArticles?.map((article: any, i: number) => ({
-            title: article.title,
-            url: article.url,
-            snippet: article.snippet
-          })) || []
-        };
-        setMessages(prev => [...prev, aiMsg]);
         
         while (!done) {
           const { value, done: doneReading } = await reader.read();
@@ -545,23 +555,23 @@ CITATION INSTRUCTIONS:
                   const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.message?.content || parsed.choices?.[0]?.text || parsed.content || '';
                   if (delta) {
                     aiContent += delta;
-                    aiMsg.content += delta;
+                    
+                    // Update the message content directly in state
                     setMessages(prev => {
-                      const updatedMessages = [...prev];
-                      const lastMsgIndex = updatedMessages.length - 1;
-                      if (updatedMessages[lastMsgIndex] && updatedMessages[lastMsgIndex].role === 'assistant') {
-                        updatedMessages[lastMsgIndex] = { 
-                          ...updatedMessages[lastMsgIndex], 
-                          content: aiContent,
-                          webSources: updatedMessages[lastMsgIndex].webSources
+                      const lastIndex = prev.length - 1;
+                      if (lastIndex >= 0 && prev[lastIndex].role === 'assistant') {
+                        const updatedMessages = [...prev];
+                        updatedMessages[lastIndex] = { 
+                          ...updatedMessages[lastIndex], 
+                          content: aiContent
                         };
+                        return updatedMessages;
                       }
-                      return updatedMessages;
+                      return prev;
                     });
                   }
                 } catch (err) {
                   console.error("[DEBUG] Error parsing stream data:", err);
-                  // Ignore parse errors for incomplete lines
                 }
               }
             }
@@ -574,27 +584,47 @@ CITATION INSTRUCTIONS:
         aiContent = data.content || data.choices?.[0]?.message?.content || data.generated_text || '';
         console.log("[DEBUG] Non-streaming content received, length:", aiContent.length);
         
-        // Add the research paper to the messages
-        setMessages(prev => [
-          ...prev,
-          { 
-            role: 'assistant',
-            content: aiContent,
-            webSources: webData.serperArticles?.map((article: any, i: number) => ({
-              title: article.title,
-              url: article.url,
-              snippet: article.snippet
-            })) || []
+        // Update the message with content
+        setMessages(prev => {
+          const lastIndex = prev.length - 1;
+          if (lastIndex >= 0 && prev[lastIndex].role === 'assistant') {
+            const updatedMessages = [...prev];
+            updatedMessages[lastIndex] = { 
+              ...updatedMessages[lastIndex], 
+              content: aiContent
+            };
+            return updatedMessages;
+          } else {
+            // If we don't have a message yet (unlikely), add one
+            return [...prev, { 
+              role: 'assistant',
+              content: aiContent,
+              webSources: webData.serperArticles?.map((article: any, i: number) => ({
+                title: article.title,
+                url: article.url,
+                snippet: article.snippet
+              })) || []
+            }];
           }
-        ]);
+        });
       }
       
-      console.log("[DEBUG] Final message state after update:", messages.length, "messages");
+      // Make sure UI updates with final message state
+      console.log("[DEBUG] Final message state:", messages.length, "messages");
+      console.log("[DEBUG] Final message content length:", aiContent.length > 100 ? 
+        aiContent.substring(0, 100) + "..." : aiContent);
+      
+      setTimeout(() => {
+        // Force a state update to ensure the UI reflects the changes
+        setMessages(prev => [...prev]);
+        console.log("[DEBUG] Forced message state update");
+      }, 100);
+      
       setIsAiResponding(false);
       setLoading(false);
       
     } catch (error) {
-      console.error('Error generating detailed research paper:', error);
+      console.error('[ERROR] Error generating detailed research paper:', error);
       setIsAiResponding(false);
       setLoading(false);
       // Show error message in chat
