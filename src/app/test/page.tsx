@@ -387,19 +387,30 @@ export default function TestChat() {
       isComplete,
       isAiResponding,
       currentQuery: queryToUse,
-      webData: webDataToUse,
+      webDataExists: !!webDataToUse,
+      serperArticlesCount: webDataToUse?.serperArticles?.length || 0,
       mainChatGenerationComplete
     });
     
-    if (!queryToUse || !webDataToUse) {
-      console.error("[ERROR] Cannot generate main chat research paper: missing query or web data", {
-        currentQuery: queryToUse,
-        webData: webDataToUse
+    if (!queryToUse) {
+      console.error("[ERROR] Cannot generate main chat research paper: missing query", {
+        currentQuery: queryToUse
       });
       setMainChatGenerationComplete(true);
       return;
     }
     
+    if (!webDataToUse || !webDataToUse.serperArticles || !Array.isArray(webDataToUse.serperArticles)) {
+      console.error("[ERROR] Cannot generate main chat research paper: missing or invalid webData", {
+        webData: webDataToUse,
+        serperArticlesExists: !!webDataToUse?.serperArticles,
+        isArray: Array.isArray(webDataToUse?.serperArticles)
+      });
+      setMainChatGenerationComplete(true);
+      return;
+    }
+    
+    // Continue with the rest of the function
     setIsAiResponding(true);
     setLoading(true);
     
@@ -473,6 +484,13 @@ CITATION INSTRUCTIONS:
           temperature: 0.2
         })
       });
+      
+      console.log("[DEBUG] Nvidia API response status:", response.status, response.statusText);
+      console.log("[DEBUG] Response content type:", response.headers.get('content-type'));
+
+      if (!response.ok) {
+        throw new Error(`Nvidia API returned error status: ${response.status} ${response.statusText}`);
+      }
 
       if (response.body && response.headers.get('content-type')?.includes('text/event-stream')) {
         // Streaming response
@@ -614,9 +632,16 @@ CITATION INSTRUCTIONS:
     error,
     webData
   } = useDeepResearch(showAdvanceSearch, currentQuery, (query, webData) => {
-    if (query && webData && Array.isArray(webData.serperArticles) && webData.serperArticles.length > 0) {
-      generateMainChatResearchPaperRef.current(query, webData);
-    }
+    console.log("[DEBUG] useDeepResearch onSynthesisComplete callback fired", {
+      query,
+      webDataExists: !!webData,
+      serperArticlesExists: webData?.serperArticles?.length > 0
+    });
+    
+    // Always call generateMainChatResearchPaper without conditions
+    generateMainChatResearchPaperRef.current(query, webData);
+    
+    console.log("[DEBUG] Called generateMainChatResearchPaperRef.current from the synthesis callback");
   });
 
   const [manualStepId, setManualStepId] = useState<string | null>(null);
@@ -1381,6 +1406,17 @@ function DeepResearchBlock({ query, researchId }: { query: string, researchId?: 
   } = useDeepResearch(true, query);
   const [manualStepId, setManualStepId] = useState<string | null>(null);
   const isFinalStepComplete = steps[steps.length - 1]?.status === 'completed';
+  
+  // Add debugging for synthesis step completion
+  useEffect(() => {
+    if (isFinalStepComplete) {
+      console.log("[DEBUG] DeepResearchBlock - synthesis step completed", {
+        query,
+        webDataExists: !!webData,
+        serperArticlesCount: webData?.serperArticles?.length || 0
+      });
+    }
+  }, [isFinalStepComplete, query, webData]);
   
   return (
     <motion.div
