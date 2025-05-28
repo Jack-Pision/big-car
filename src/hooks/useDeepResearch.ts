@@ -48,14 +48,14 @@ const THINKING_CONTENT = {
     "Planning the research approach to gather the most relevant information."
   ],
   research: [
-    "Searching through Serper, Wikipedia, and NewsData.io for authoritative sources.",
+    "Searching the web for authoritative sources.",
     "Gathering and filtering the most relevant information from trusted sources.",
     "Cross-referencing information across multiple sources for accuracy."
   ],
   synthesize: [
-    "Organizing the research into a clear, structured response.",
-    "Creating detailed, informative sections with proper citations.",
-    "Ensuring comprehensive coverage of all aspects of your query."
+    "Organizing the research into a concise, direct response.",
+    "Creating a focused answer with inline web citations.",
+    "Ensuring the answer directly addresses your specific question."
   ]
 };
 
@@ -235,34 +235,18 @@ export const useDeepResearch = (isActive: boolean, query: string = '') => {
       updateStepStatus('research', 'active', 'Gathering information from multiple sources...');
 
       // Fetch from all sources in parallel
-      const [serperRes, wikiRes, newsRes] = await Promise.all([
-        fetch('/api/serper/search', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query, limit: 10 })
-        }),
-        fetch('/api/wikipedia/search', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query, limit: 8 })
-        }),
-        fetch('/api/newsdata/search', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query, limit: 8 })
-        })
-      ]);
+      const serperRes = await fetch('/api/serper/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, limit: 20 })
+      });
 
-      const [serperData, wikiData, newsData] = await Promise.all([
-        serperRes.json(),
-        wikiRes.json(),
-        newsRes.json()
-      ]);
+      const serperData = await serperRes.json();
 
       const newWebData: WebData = {
         serperArticles: serperData.articles || [],
-        wikipediaArticles: wikiData.articles || [],
-        newsdataArticles: newsData.articles || [],
+        wikipediaArticles: [],
+        newsdataArticles: [],
         sources: [...(serperData.sources || [])],
         webCitations: serperData.summary || ''
       };
@@ -271,9 +255,7 @@ export const useDeepResearch = (isActive: boolean, query: string = '') => {
       
       // Create a summary of found data
       const dataSummary = `Found:
-- ${newWebData.serperArticles.length} web articles
-- ${newWebData.wikipediaArticles.length} Wikipedia entries
-- ${newWebData.newsdataArticles.length} news articles`;
+- ${newWebData.serperArticles.length} web articles`;
 
       updateStepStatus('research', 'completed', dataSummary, newWebData);
       
@@ -288,83 +270,35 @@ export const useDeepResearch = (isActive: boolean, query: string = '') => {
   const processSynthesisStep = async (query: string, analysis: string, webData: WebData) => {
     try {
       setActiveStepId('synthesize');
-      updateStepStatus('synthesize', 'active', 'Summarizing what will be provided...');
+      updateStepStatus('synthesize', 'active', 'Creating a direct, concise response...');
 
-      // Step 3a: Get a summary/preview from the AI
-      let summaryContent = '';
-      {
-        const summaryResponse = await fetch('/api/nvidia', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            messages: [
-              { role: 'system', content: 'You are a Deep Research AI assistant. Based on the query, research plan, and web data, create a detailed thinking process summary (NOT the final answer) that includes: 1) A short paragraph at the top summarizing what you understood from the research, 2) A bulleted list of key points you will cover in the final answer, and 3) A brief outline of how you will structure the final response. This is your reasoning process, not the final answer.' },
-              { role: 'user', content: `Query: ${query}\n\nAnalysis: ${analysis}\n\nWeb Data: ${JSON.stringify(webData)}` }
-            ],
-            temperature: 0.2
-          })
-        });
-        if (summaryResponse.body && summaryResponse.headers.get('content-type')?.includes('text/event-stream')) {
-          const reader = summaryResponse.body.getReader();
-          const decoder = new TextDecoder();
-          let buffer = '';
-          let done = false;
-          while (!done) {
-            const { value, done: doneReading } = await reader.read();
-            done = doneReading;
-            if (value) {
-              buffer += decoder.decode(value, { stream: true });
-              let lines = buffer.split('\n');
-              buffer = lines.pop() || '';
-              for (let line of lines) {
-                if (line.startsWith('data:')) {
-                  const data = line.replace('data:', '').trim();
-                  if (data === '[DONE]') continue;
-                  try {
-                    const parsed = JSON.parse(data);
-                    const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.message?.content || parsed.choices?.[0]?.text || parsed.content || '';
-                    if (delta) summaryContent += delta;
-                  } catch (err) {
-                    // Ignore parse errors for incomplete lines
-                  }
-                }
-              }
-            }
-          }
-        } else {
-          const data = await summaryResponse.json();
-          summaryContent = data.content || data.choices?.[0]?.message?.content || data.generated_text || '';
-        }
-      }
-      updateStepStatus('synthesize', 'active', summaryContent, summaryContent);
-
-      // Step 3b: Get the full answer from the AI
+      // Step 3b: Get the direct answer from the AI
       const response = await fetch('/api/nvidia', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: [
-            { role: 'system', content: `You are a Deep Research AI assistant. Use the provided web data to create a comprehensive, well-structured response.
+            { role: 'system', content: `You are a helpful AI assistant that provides concise, direct answers to user queries, similar to Perplexity.ai. Use the provided web data to create a focused, to-the-point response.
 
-IMPORTANT: Your answer MUST be at least 750 words. Do not stop before you reach this length. If you finish early, add more details, examples, or analysis until you reach the required length.
-
-BULLET POINT DETAIL REQUIREMENT:
-For each bullet point, write a detailed, self-contained summary (5–8 sentences) that explains the topic, provides context, and includes key facts or findings. Do not use single-sentence or headline-style bullets. Each bullet should be a mini-paragraph.
-
-FORMATTING REQUIREMENTS:
-1. Your response MUST follow a professional, well-structured format like a research document or report.
-2. Start with a clear main title using # heading (e.g., "# Latest Developments in AI, 2025").
-3. Divide content into logical sections with ## headings.
-4. Use bullet points (*) for all key details and findings.
-5. End with a "## Conclusion" section.
-6. Include a "## Summary Table" if the information can be presented in tabular form.
-7. For citations, use ONLY numbered references in square brackets [1], [2] at the end of sentences/bullets.
+IMPORTANT RESPONSE STYLE:
+- Provide a direct, concise answer to the user's specific question
+- Focus only on what the user asked, avoiding lengthy explanations unless specifically requested
+- Keep your response under 300 words when possible
+- Use a conversational tone that sounds natural and helpful
+- Don't include unnecessary information that wasn't requested
+- Don't start with "Based on the search results..." or similar phrases
 
 CITATION INSTRUCTIONS:
-- Use ONLY the provided search results as your web sources.
-- Do NOT use or invent any other web links.
-- When citing, use numbered references like [1], [2], etc. at the end of sentences or bullet points.
-- Do not include a 'References' section at the end - only use in-text citations.` },
+- Use inline citations in the format [@Web](URL) immediately after the information being cited
+- Example: "The display property can hide elements with 'none' value [@Web](https://www.w3schools.com/jsref/prop_style_display.asp)"
+- Cite multiple sources when appropriate
+- Only cite the provided web sources, don't invent or make up sources
+- Don't include a separate references section
+
+FORMATTING:
+- Use clean, minimal formatting - avoid unnecessary headings, sections, or complex structures
+- Only use formatting elements (lists, headings, etc.) when they genuinely improve readability
+- Don't use numbering [1], [2] style citations` },
             { role: 'user', content: `Query: ${query}\n\nAnalysis: ${analysis}\n\nWeb Data: ${JSON.stringify(webData)}` }
           ],
           temperature: 0.2
