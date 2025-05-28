@@ -221,12 +221,10 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
                     <div className="text-xs text-neutral-400 mb-2">Web Articles:</div>
                     <div className="space-y-2">
                       {webData.serperArticles.slice(0, 20).map((article: any, i: number) => {
-                        // Extract domain for favicon fallback
                         let domain = '';
                         try {
                           domain = new URL(article.url).hostname;
                         } catch {}
-                        // Use favicon from data, or fallback to DuckDuckGo service
                         const faviconUrl = article.favicon || article.icon || (domain ? `https://icons.duckduckgo.com/ip3/${domain}.ico` : undefined);
                         return (
                           <a 
@@ -236,7 +234,6 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
                             rel="noopener noreferrer"
                             className="flex items-center gap-2 p-2 rounded-lg hover:bg-neutral-800/50 transition-colors"
                           >
-                            {/* Icon: Always try favicon, fallback to globe only if missing or fails */}
                             <div className="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-neutral-800 rounded-full overflow-hidden">
                               {faviconUrl ? (
                                 <img 
@@ -251,15 +248,9 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
                                   }}
                                 />
                               ) : (
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-400">
-                                  <circle cx="12" cy="12" r="10"></circle>
-                                  <line x1="2" y1="12" x2="22" y2="12"></line>
-                                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
-                                </svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-400"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
                               )}
                             </div>
-                            
-                            {/* Title and Source */}
                             <div className="flex-1 overflow-hidden">
                               <div className="text-sm text-cyan-400 truncate hover:underline">
                                 {article.title || article.url}

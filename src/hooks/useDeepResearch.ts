@@ -104,8 +104,6 @@ const getRandomTime = (min: number, max: number): number => {
 
 interface WebData {
   serperArticles: any[];
-  wikipediaArticles: any[];
-  newsdataArticles: any[];
   sources: any[];
   webCitations: string;
 }
@@ -245,8 +243,6 @@ export const useDeepResearch = (isActive: boolean, query: string = '') => {
 
       const newWebData: WebData = {
         serperArticles: serperData.articles || [],
-        wikipediaArticles: [],
-        newsdataArticles: [],
         sources: [...(serperData.sources || [])],
         webCitations: serperData.summary || ''
       };

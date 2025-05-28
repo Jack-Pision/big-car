@@ -541,8 +541,6 @@ export default function TestChat() {
       // After file upload logic and before prompt construction
       let webData = {
         serperArticles: null as any,
-        wikipediaArticles: null as any,
-        newsdataArticles: null as any,
         sources: [] as any[],
         webCitations: '' as string
       };
@@ -567,35 +565,6 @@ export default function TestChat() {
       
       // Prepend citation instructions ONLY for Deep Research
       if (showAdvanceSearch && webData) {
-        // Format Wikipedia and NewsData.io articles for the prompt
-        let wikiSection = '';
-        if (webData.wikipediaArticles && webData.wikipediaArticles.length > 0) {
-          wikiSection += '===WIKIPEDIA SEARCH RESULTS===\n';
-          webData.wikipediaArticles.forEach((article: any, i: number) => {
-            wikiSection += `[${i + 1}] Title: "${article.title}" (${article.url})\n`;
-            if (article.summary) {
-              const excerpt = article.summary.length > 200 ? article.summary.slice(0, 200) + '...' : article.summary;
-              wikiSection += `Excerpt: ${excerpt}\n`;
-            }
-          });
-          wikiSection += '===END WIKIPEDIA SEARCH RESULTS===\n';
-        }
-        let newsSection = '';
-        if (webData.newsdataArticles && webData.newsdataArticles.length > 0) {
-          newsSection += '===NEWSDATA.IO SEARCH RESULTS===\n';
-          webData.newsdataArticles.forEach((article: any, i: number) => {
-            newsSection += `[${i + 1}] Title: "${article.title}" (${article.url})\n`;
-            if (article.description) {
-              const excerpt = article.description.length > 200 ? article.description.slice(0, 200) + '...' : article.description;
-              newsSection += `Excerpt: ${excerpt}\n`;
-            }
-          });
-          newsSection += '===END NEWSDATA.IO SEARCH RESULTS===\n';
-        }
-        
-        // Strong explicit instruction
-        const combinedInstruction = 'IMPORTANT: You MUST use only the above Wikipedia and NewsData.io articles as your web sources. Do NOT use or invent any other web links. When citing, use numbered references [1], [2], etc. at the end of sentences or bullet points that use information from sources.';
-        
         // Professional formatting instructions
         const formattingInstructions = `
 IMPORTANT: Your answer MUST be at least 750 words. Do not stop before you reach this length. If you finish early, add more details, examples, or analysis until you reach the required length.
@@ -612,7 +581,7 @@ FORMATTING REQUIREMENTS:
 6. Include a "## Summary Table" if the information can be presented in tabular form.
 7. For citations, use ONLY numbered references in square brackets [1], [2] at the end of sentences/bullets.`;
         
-        enhancedSystemPrompt = `${wikiSection}\n${newsSection}\n${combinedInstruction}\n\n${formattingInstructions}\n\n${CITATION_INSTRUCTIONS}\n\n${enhancedSystemPrompt}`;
+        enhancedSystemPrompt = `${formattingInstructions}\n\n${CITATION_INSTRUCTIONS}\n\n${enhancedSystemPrompt}`;
       }
       
       const systemPrompt = imageContextPrompt 
