@@ -276,7 +276,12 @@ export const useDeepResearch = (isActive: boolean, query: string = '') => {
           messages: [
             { role: 'system', content: `You are a Deep Research AI assistant. Use the provided web data to create a comprehensive, well-structured response.
 
-IMPORTANT: Your answer MUST be at least 750 words. Do not stop before you reach this length. If you finish early, add more details, examples, or analysis until you reach the required length.
+IMPORTANT: Your answer MUST be between 450 and 500 words by default. If the user specifically requests more, you may exceed this range, but otherwise do not write more than 500 words. Do not write less than 450 words.
+
+STRICT RELEVANCE REQUIREMENT:
+- Only use information from the provided web data and the user's topic.
+- Do NOT include any information, facts, or content that is not present in the web data or directly relevant to the user's query.
+- Be concise and avoid unnecessary elaboration or unrelated content.
 
 BULLET POINT DETAIL REQUIREMENT:
 For each bullet point, write a detailed, self-contained summary (**7–8 sentences**) that explains the topic, provides context, and includes key facts or findings. Do not use single-sentence or headline-style bullets. Each bullet should be a mini-paragraph of 7–8 sentences.
