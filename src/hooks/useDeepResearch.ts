@@ -283,14 +283,17 @@ export const useDeepResearch = (isActive: boolean, query: string = '') => {
 IMPORTANT: Your answer MUST be at least 750 words. Do not stop before you reach this length. If you finish early, add more details, examples, or analysis until you reach the required length.
 
 BULLET POINT DETAIL REQUIREMENT:
-For each bullet point, write a detailed, self-contained summary (5–8 sentences) that explains the topic, provides context, and includes key facts or findings. Do not use single-sentence or headline-style bullets. Each bullet should be a mini-paragraph.
+For each bullet point, write a detailed, self-contained summary (**7–8 sentences**) that explains the topic, provides context, and includes key facts or findings. Do not use single-sentence or headline-style bullets. Each bullet should be a mini-paragraph of 7–8 sentences.
+
+CONCLUSION REQUIREMENT:
+The conclusion section must be a detailed, thoughtful paragraph of at least **7–8 sentences**, thoroughly summarizing the findings and providing additional insights or implications.
 
 FORMATTING REQUIREMENTS:
 1. Your response MUST follow a professional, well-structured format like a research document or report.
 2. Start with a clear main title using # heading (e.g., "# Latest Developments in AI, 2025").
 3. Divide content into logical sections with ## headings.
-4. Use bullet points (*) for all key details and findings.
-5. End with a "## Conclusion" section.
+4. Use bullet points (*) for all key details and findings, with each bullet point being a 7–8 sentence paragraph.
+5. End with a "## Conclusion" section that is a detailed 7–8 sentence paragraph.
 6. Include a "## Summary Table" if the information can be presented in tabular form.
 7. For citations, use ONLY numbered references in square brackets [1], [2] at the end of sentences/bullets.
 
