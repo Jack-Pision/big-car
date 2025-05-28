@@ -69,7 +69,7 @@ export default function Sidebar({
             animate={{ x: 0 }}
             exit={{ x: '-100%' }}
             transition={{ duration: 0.12, ease: [0.4, 0, 0.2, 1] }}
-            className="fixed inset-y-0 left-0 z-40 w-72 max-w-full bg-white shadow-xl flex flex-col border-r border-gray-200 h-full transition-all"
+            className="fixed inset-y-0 left-0 z-40 w-72 max-w-full bg-[#232323] shadow-xl flex flex-col border-r border-gray-800 h-full transition-all"
             aria-label="Sidebar navigation"
           >
             <div className="flex flex-col h-full relative z-40">
@@ -88,47 +88,46 @@ export default function Sidebar({
                 aria-label="Search chats"
                 tabIndex={0}
               >
-                <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <svg width="20" height="20" fill="none" stroke="#e5e7eb" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
               </button>
               {/* Board Navigation Button */}
               <button
-                className="mx-4 mb-2 flex items-center gap-2 px-3 py-2 rounded-lg text-[#6B7280] hover:bg-[#F5F5F5] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/10"
+                className="mx-4 mb-2 flex items-center gap-2 px-3 py-2 rounded-lg text-[#e5e7eb] hover:bg-[#232323]/80 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/10"
                 onClick={onNavigateBoard}
                 aria-label="Go to Board"
                 tabIndex={0}
               >
-                <svg width="20" height="20" fill="none" stroke="#6B7280" strokeWidth="2" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/></svg>
+                <svg width="20" height="20" fill="none" stroke="#e5e7eb" strokeWidth="2" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/></svg>
                 <span className="font-medium">Board</span>
               </button>
               {/* Streaming Chat Navigation Button */}
               <button
-                className="mx-4 mb-2 flex items-center gap-2 px-3 py-2 rounded-lg text-[#6B7280] hover:bg-[#F5F5F5] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/10"
+                className="mx-4 mb-2 flex items-center gap-2 px-3 py-2 rounded-lg text-[#e5e7eb] hover:bg-[#232323]/80 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/10"
                 onClick={() => router.push('/streaming-chat')}
                 aria-label="Go to Streaming Chat"
                 tabIndex={0}
               >
-                <svg width="20" height="20" fill="none" stroke="#6B7280" strokeWidth="2" viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M8 8h8v8H8z"/></svg>
+                <svg width="20" height="20" fill="none" stroke="#e5e7eb" strokeWidth="2" viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M8 8h8v8H8z"/></svg>
                 <span className="font-medium">Streaming Chat</span>
               </button>
               {/* Test Navigation Button */}
               <button
-                className="mx-4 mb-2 flex items-center gap-2 px-3 py-2 rounded-lg text-[#6B7280] hover:bg-[#F5F5F5] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/10"
+                className="mx-4 mb-2 flex items-center gap-2 px-3 py-2 rounded-lg text-[#e5e7eb] hover:bg-[#232323]/80 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/10"
                 onClick={() => router.push('/test')}
                 aria-label="Go to Test Page"
                 tabIndex={0}
               >
-                <svg width="20" height="20" fill="none" stroke="#6B7280" strokeWidth="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                <svg width="20" height="20" fill="none" stroke="#e5e7eb" strokeWidth="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 <span className="font-medium">Test</span>
               </button>
               {/* Mind Flow Navigation Button */}
               <button
-                className="mx-4 mb-2 flex items-center gap-2 px-3 py-2 rounded-lg text-[#6B7280] hover:bg-[#F5F5F5] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/10"
+                className="mx-4 mb-2 flex items-center gap-2 px-3 py-2 rounded-lg text-[#e5e7eb] hover:bg-[#232323]/80 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/10"
                 onClick={() => router.push('/mind-flow')}
                 aria-label="Go to Mind Flow"
                 tabIndex={0}
               >
-                {/* Minimalist brain icon */}
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e5e7eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M8 8C8 5.8 9.8 4 12 4s4 1.8 4 4c0 1.1-.9 2-2 2h-4c-1.1 0-2-.9-2-2z"/>
                   <path d="M12 4v16"/>
                   <path d="M8 16c0 2.2 1.8 4 4 4s4-1.8 4-4c0-1.1-.9-2-2-2h-4c-1.1 0-2 .9-2 2z"/>
@@ -137,13 +136,12 @@ export default function Sidebar({
               </button>
               {/* Visual Learning Navigation Button */}
               <button
-                className="mx-4 mb-2 flex items-center gap-2 px-3 py-2 rounded-lg text-[#6B7280] hover:bg-[#F5F5F5] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/10"
+                className="mx-4 mb-2 flex items-center gap-2 px-3 py-2 rounded-lg text-[#e5e7eb] hover:bg-[#232323]/80 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/10"
                 onClick={() => router.push('/visual-learning')}
                 aria-label="Go to Visual Learning"
                 tabIndex={0}
               >
-                {/* Modern eye icon */}
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e5e7eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" />
                   <circle cx="12" cy="12" r="3" />
                 </svg>
@@ -151,25 +149,24 @@ export default function Sidebar({
               </button>
               {/* Help Navigation Button */}
               <button
-                className="mx-4 mb-2 flex items-center gap-2 px-3 py-2 rounded-lg text-[#6B7280] hover:bg-[#F5F5F5] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/10"
+                className="mx-4 mb-2 flex items-center gap-2 px-3 py-2 rounded-lg text-[#e5e7eb] hover:bg-[#232323]/80 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/10"
                 onClick={() => router.push('/help')}
                 aria-label="Go to Help"
                 tabIndex={0}
               >
-                {/* Question mark icon */}
-                <svg width="20" height="20" fill="none" stroke="#6B7280" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 1 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12" y2="17"/></svg>
+                <svg width="20" height="20" fill="none" stroke="#e5e7eb" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 1 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12" y2="17"/></svg>
                 <span className="font-medium">Help</span>
               </button>
               {/* Search Bar Below Visual Learning */}
-              <div className="mx-4 mb-4 flex items-center gap-2 bg-gray-100 rounded-lg px-2 py-1">
-                <svg width="18" height="18" fill="none" stroke="#6B7280" strokeWidth="2" viewBox="0 0 24 24">
+              <div className="mx-4 mb-4 flex items-center gap-2 bg-[#232323] rounded-lg px-2 py-1 border border-gray-800">
+                <svg width="18" height="18" fill="none" stroke="#e5e7eb" strokeWidth="2" viewBox="0 0 24 24">
                   <circle cx="11" cy="11" r="7"/>
                   <line x1="21" y1="21" x2="16.65" y2="16.65"/>
                 </svg>
                 <input
                   type="text"
                   placeholder="Search chats..."
-                  className="flex-1 bg-transparent outline-none text-sm text-gray-700"
+                  className="flex-1 bg-transparent outline-none text-sm text-[#e5e7eb] placeholder-gray-400"
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
                   aria-label="Search chats"
