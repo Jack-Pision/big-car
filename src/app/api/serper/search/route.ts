@@ -4,7 +4,7 @@ export const runtime = 'edge';
 
 const SERPER_API_KEY = "2ae2160086988d4517b81c0dade49cbd98bcb772";
 
-async function searchSerper(query: string, limit: number = 10) {
+async function searchSerperPage(query: string, page: number = 1) {
   const url = "https://google.serper.dev/search";
   const res = await fetch(url, {
     method: "POST",
@@ -12,18 +12,33 @@ async function searchSerper(query: string, limit: number = 10) {
       "X-API-KEY": SERPER_API_KEY,
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({ q: query })
+    body: JSON.stringify({ 
+      q: query,
+      page: page 
+    })
   });
   if (!res.ok) return [];
   const data = await res.json();
   if (!data.organic) return [];
-  return data.organic.slice(0, limit).map((item: any) => ({
+  return data.organic.map((item: any) => ({
     title: item.title,
     description: item.snippet,
     url: item.link,
-    icon: '/icons/web-icon.svg', // Use a custom icon if you add one
+    icon: '/icons/web-icon.svg',
     type: 'serper'
   }));
+}
+
+async function searchSerper(query: string, limit: number = 20) {
+  // Make two parallel API calls for page 1 and 2
+  const [page1Results, page2Results] = await Promise.all([
+    searchSerperPage(query, 1),
+    searchSerperPage(query, 2)
+  ]);
+
+  // Combine and limit results
+  const combinedResults = [...page1Results, ...page2Results];
+  return combinedResults.slice(0, limit);
 }
 
 export async function POST(req: NextRequest) {
@@ -33,7 +48,7 @@ export async function POST(req: NextRequest) {
     if (!query) {
       return new Response(JSON.stringify({ error: 'No query provided' }), { status: 400 });
     }
-    const results = await searchSerper(query, limit || 10);
+    const results = await searchSerper(query, limit || 20);
     if (!results.length) {
       return new Response(JSON.stringify({
         articles: [],

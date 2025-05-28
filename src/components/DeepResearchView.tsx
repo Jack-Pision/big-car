@@ -220,7 +220,7 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
                   <div className="mb-4">
                     <div className="text-xs text-neutral-400 mb-2">Web Articles:</div>
                     <div className="space-y-2">
-                      {webData.serperArticles.slice(0, 10).map((article: any, i: number) => {
+                      {webData.serperArticles.slice(0, 20).map((article: any, i: number) => {
                         // Extract domain for favicon fallback
                         let domain = '';
                         try {
