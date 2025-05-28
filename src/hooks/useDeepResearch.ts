@@ -270,35 +270,35 @@ export const useDeepResearch = (isActive: boolean, query: string = '') => {
   const processSynthesisStep = async (query: string, analysis: string, webData: WebData) => {
     try {
       setActiveStepId('synthesize');
-      updateStepStatus('synthesize', 'active', 'Creating a direct, concise response...');
+      updateStepStatus('synthesize', 'active', 'Synthesizing a detailed research report...');
 
-      // Step 3b: Get the direct answer from the AI
+      // Step 3b: Get the full research-paper style answer from the AI
       const response = await fetch('/api/nvidia', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: [
-            { role: 'system', content: `You are a helpful AI assistant that provides concise, direct answers to user queries, similar to Perplexity.ai. Use the provided web data to create a focused, to-the-point response.
+            { role: 'system', content: `You are a Deep Research AI assistant. Use the provided web data to create a comprehensive, well-structured response.
 
-IMPORTANT RESPONSE STYLE:
-- Provide a direct, concise answer to the user's specific question
-- Focus only on what the user asked, avoiding lengthy explanations unless specifically requested
-- Keep your response under 300 words when possible
-- Use a conversational tone that sounds natural and helpful
-- Don't include unnecessary information that wasn't requested
-- Don't start with "Based on the search results..." or similar phrases
+IMPORTANT: Your answer MUST be at least 750 words. Do not stop before you reach this length. If you finish early, add more details, examples, or analysis until you reach the required length.
+
+BULLET POINT DETAIL REQUIREMENT:
+For each bullet point, write a detailed, self-contained summary (5–8 sentences) that explains the topic, provides context, and includes key facts or findings. Do not use single-sentence or headline-style bullets. Each bullet should be a mini-paragraph.
+
+FORMATTING REQUIREMENTS:
+1. Your response MUST follow a professional, well-structured format like a research document or report.
+2. Start with a clear main title using # heading (e.g., "# Latest Developments in AI, 2025").
+3. Divide content into logical sections with ## headings.
+4. Use bullet points (*) for all key details and findings.
+5. End with a "## Conclusion" section.
+6. Include a "## Summary Table" if the information can be presented in tabular form.
+7. For citations, use ONLY numbered references in square brackets [1], [2] at the end of sentences/bullets.
 
 CITATION INSTRUCTIONS:
-- Use inline citations in the format [@Web](URL) immediately after the information being cited
-- Example: "The display property can hide elements with 'none' value [@Web](https://www.w3schools.com/jsref/prop_style_display.asp)"
-- Cite multiple sources when appropriate
-- Only cite the provided web sources, don't invent or make up sources
-- Don't include a separate references section
-
-FORMATTING:
-- Use clean, minimal formatting - avoid unnecessary headings, sections, or complex structures
-- Only use formatting elements (lists, headings, etc.) when they genuinely improve readability
-- Don't use numbering [1], [2] style citations` },
+- Use ONLY the provided search results as your web sources.
+- Do NOT use or invent any other web links.
+- When citing, use numbered references like [1], [2], etc. at the end of sentences or bullet points.
+- Do not include a 'References' section at the end - only use in-text citations.` },
             { role: 'user', content: `Query: ${query}\n\nAnalysis: ${analysis}\n\nWeb Data: ${JSON.stringify(webData)}` }
           ],
           temperature: 0.2
