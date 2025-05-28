@@ -399,16 +399,29 @@ export default function TestChat() {
   // Track whether the main chat research paper generation has completed
   const [mainChatGenerationComplete, setMainChatGenerationComplete] = useState(false);
 
-  // Automatically generate the main chat research paper when all data is ready
+  // Automatically generate the main chat research paper when all data is ready, with stricter checks and a short delay
   useEffect(() => {
+    const isWebDataReady = webData && Array.isArray(webData.serperArticles) && webData.serperArticles.length > 0;
     if (
       isComplete &&
-      webData && Object.keys(webData).length > 0 &&
+      isWebDataReady &&
       currentQuery &&
       !mainChatGenerationComplete &&
       !isAiResponding
     ) {
-      generateMainChatResearchPaper(currentQuery, webData);
+      console.log('[AUTO-TRIGGER] All conditions met. Triggering generateMainChatResearchPaper with:', { currentQuery, webData });
+      setTimeout(() => {
+        generateMainChatResearchPaper(currentQuery, webData);
+      }, 100); // 100ms delay
+    } else {
+      console.log('[AUTO-TRIGGER] Conditions not met:', {
+        isComplete,
+        isWebDataReady,
+        currentQuery,
+        mainChatGenerationComplete,
+        isAiResponding,
+        webData
+      });
     }
   }, [isComplete, webData, currentQuery, mainChatGenerationComplete, isAiResponding]);
 
