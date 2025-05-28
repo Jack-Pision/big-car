@@ -465,6 +465,7 @@ export default function TestChat() {
     // Set states immediately to prevent multiple calls
     setIsAiResponding(true);
     setLoading(true);
+    
     // Add the message to state immediately BEFORE starting the API call
     const newMessage: Message = { 
       role: "assistant" as const,
@@ -528,9 +529,7 @@ CITATION INSTRUCTIONS:
     console.log("[DEBUG] Making SEPARATE API call to Nvidia for MAIN CHAT detailed research paper");
     console.log("[DEBUG] System prompt length:", systemPrompt.length);
     
-    // Make separate variable to store the final content
-    let finalContent = '';
-    
+    // SIMPLIFIED NON-STREAMING APPROACH
     // Make a completely separate and dedicated API call to Nvidia
     fetch('/api/nvidia', {
       method: 'POST',
@@ -547,102 +546,52 @@ CITATION INSTRUCTIONS:
       console.log("[DEBUG] MAIN CHAT API response received, status:", response.status);
 
       if (!response.ok) {
-        response.text().then(errorText => {
-          console.error("[ERROR] MAIN CHAT API call failed:", response.status, errorText);
-          throw new Error(`API call failed with status: ${response.status}`);
-        });
-        return null;
+        throw new Error(`API call failed with status: ${response.status}`);
       }
       
-      return response;
+      // Process the entire response at once, not streaming
+      return response.json();
     })
-    .then(async (response) => {
-      if (!response) {
-        // Mark as complete even if there was an error, to avoid blocking the UI
-        setMainChatGenerationComplete(true);
-        setIsAiResponding(false);
-        setLoading(false);
-        return;
-      }
+    .then(data => {
+      console.log("[DEBUG] MAIN CHAT response fully received, processing now");
       
-      // Process the response
-      if (response.body && response.headers.get('content-type')?.includes('text/event-stream')) {
-        console.log("[DEBUG] Processing MAIN CHAT streaming response");
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-        let done = false;
-        
-        while (!done) {
-          const { value, done: doneReading } = await reader.read();
-          done = doneReading;
-          if (value) {
-            buffer += decoder.decode(value, { stream: true });
-            let lines = buffer.split('\n');
-            buffer = lines.pop() || '';
-            for (let line of lines) {
-              if (line.startsWith('data:')) {
-                const data = line.replace('data:', '').trim();
-                if (data === '[DONE]') continue;
-                try {
-                  const parsed = JSON.parse(data);
-                  const delta = parsed.choices?.[0]?.delta?.content || 
-                               parsed.choices?.[0]?.message?.content || 
-                               parsed.choices?.[0]?.text || 
-                               parsed.content || '';
-                  if (delta) {
-                    finalContent += delta;
-                    
-                    // Update message content in state
-                    setMessages(prev => {
-                      const lastIndex = prev.length - 1;
-                      if (lastIndex >= 0 && prev[lastIndex].role === 'assistant') {
-                        const updatedMessages = [...prev];
-                        updatedMessages[lastIndex] = { 
-                          ...updatedMessages[lastIndex], 
-                          content: finalContent
-                        };
-                        return updatedMessages;
-                      }
-                      return prev;
-                    });
-                  }
-                } catch (err) {
-                  console.error("[DEBUG] Error parsing MAIN CHAT stream data:", err, "Line:", line);
-                }
-              }
-            }
-          }
+      // Extract the final content
+      const finalContent = data.content || data.choices?.[0]?.message?.content || data.generated_text || '';
+      console.log("[DEBUG] Final content length:", finalContent.length);
+      
+      // Force an immediate state update with the final content
+      setMessages(prev => {
+        const lastIndex = prev.length - 1;
+        if (lastIndex >= 0 && prev[lastIndex].role === 'assistant') {
+          const updatedMessages = [...prev];
+          updatedMessages[lastIndex] = { 
+            ...updatedMessages[lastIndex], 
+            content: finalContent
+          };
+          return updatedMessages;
         }
-        console.log("[DEBUG] MAIN CHAT streaming complete, final content length:", finalContent.length);
-      } else {
-        console.log("[DEBUG] Processing MAIN CHAT non-streaming response");
-        const data = await response.json();
-        finalContent = data.content || data.choices?.[0]?.message?.content || data.generated_text || '';
-        console.log("[DEBUG] MAIN CHAT non-streaming content received, length:", finalContent.length);
-        
-        // Update message with content
-        setMessages(prev => {
-          const lastIndex = prev.length - 1;
-          if (lastIndex >= 0 && prev[lastIndex].role === 'assistant') {
-            const updatedMessages = [...prev];
-            updatedMessages[lastIndex] = { 
-              ...updatedMessages[lastIndex], 
-              content: finalContent
-            };
-            return updatedMessages;
-          }
-          return prev;
-        });
-      }
+        // If we don't have a message yet (unlikely), add one
+        return [...prev, { 
+          role: 'assistant',
+          content: finalContent,
+          webSources: webDataToUse.serperArticles?.map((article: any, i: number) => ({
+            title: article.title,
+            url: article.url,
+            snippet: article.snippet,
+            icon: '/icons/web-icon.svg', 
+            type: 'web'
+          })) || []
+        }];
+      });
       
-      // Force an immediate state update to ensure the UI renders the new message
-      setMessages(prev => [...prev]);
+      // Force a re-render after a brief delay to ensure UI updates
+      setTimeout(() => {
+        setMessages(prev => [...prev]);
+        console.log("[DEBUG] Forced message state update after timeout");
+      }, 100);
       
       // Mark main chat generation as complete
       setMainChatGenerationComplete(true);
-      
-      // Update final states
       setIsAiResponding(false);
       setLoading(false);
       console.log("[DEBUG] MAIN CHAT research paper generation COMPLETE");
@@ -1349,6 +1298,20 @@ function DeepResearchBlock({ query, researchId }: { query: string, researchId?: 
   } = useDeepResearch(true, query);
   const [manualStepId, setManualStepId] = useState<string | null>(null);
   const isFinalStepComplete = steps[steps.length - 1]?.status === 'completed';
+  
+  // Add function to manually trigger the main chat output
+  const handleManualTrigger = () => {
+    console.log("[DEBUG] Manual trigger button clicked for query:", query);
+    if (webData) {
+      console.log("[DEBUG] Calling generateMainChatResearchPaper manually with webData");
+      // Access the parent component's function through the global window object
+      // @ts-ignore
+      window.generateMainChatResearchPaper?.(query, webData);
+    } else {
+      console.error("[ERROR] Cannot generate research paper - webData is missing");
+    }
+  };
+  
   return (
     <motion.div
       id={researchId ? `research-${researchId}` : undefined}
@@ -1358,14 +1321,109 @@ function DeepResearchBlock({ query, researchId }: { query: string, researchId?: 
       className="w-full rounded-xl border border-neutral-800 overflow-hidden mb-2 mt-2 bg-neutral-900"
       style={{ minHeight: "300px", maxHeight: "500px" }}
     >
-      <AdvanceSearch
-        steps={steps}
-        activeStepId={isFinalStepComplete ? manualStepId || activeStepId : activeStepId}
-        onManualStepClick={isFinalStepComplete ? setManualStepId : undefined}
-        manualNavigationEnabled={isFinalStepComplete}
-        error={error}
-        webData={webData}
-      />
+      <div className="p-4 flex items-center gap-2 border-b border-neutral-800">
+        <span className="text-cyan-500 flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 2a9.96 9.96 0 0 0-7.071 2.929"/>
+            <path d="M16.929 7.071A9.969 9.969 0 0 0 12 5"/>
+          </svg>
+          Advance Search
+        </span>
+      </div>
+      <div className="p-4 space-y-2">
+        {steps.map((step) => (
+          <div key={step.id} className="flex items-start gap-2 mb-2">
+            <div className="pt-0.5">
+              {step.status === 'completed' ? (
+                <div className="w-6 h-6 rounded-full border border-green-500 flex items-center justify-center text-green-500">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                </div>
+              ) : step.status === 'active' ? (
+                <div className="w-6 h-6 rounded-full border border-cyan-500 flex items-center justify-center">
+                  <div className="w-2 h-2 bg-cyan-500 rounded-full animate-pulse"></div>
+                </div>
+              ) : (
+                <div className="w-6 h-6 rounded-full border border-neutral-600 flex items-center justify-center"></div>
+              )}
+            </div>
+            <div className="flex-1">
+              <div className={`text-sm font-medium ${step.status === 'completed' ? 'text-green-500' : step.status === 'active' ? 'text-cyan-500' : 'text-neutral-400'}`}>
+                {step.title}
+              </div>
+              
+              {step.id === 'understand' && (
+                <AdvanceSearch
+                  step={step}
+                  isActive={activeStepId === step.id}
+                  manualStepId={manualStepId}
+                  setManualStepId={setManualStepId}
+                />
+              )}
+
+              {step.id === 'research' && (
+                <div className="mt-2">
+                  {step.status === 'completed' && (
+                    <div className="text-neutral-300 whitespace-pre-line text-sm">
+                      {step.content}
+                    </div>
+                  )}
+                  
+                  {step.status === 'active' && (
+                    <div className="flex items-center text-sm text-neutral-400 mt-1">
+                      <div className="w-4 h-4 mr-2 relative">
+                        <div className="absolute animate-ping w-4 h-4 rounded-full bg-cyan-500 opacity-75"></div>
+                        <div className="absolute w-4 h-4 rounded-full bg-cyan-500"></div>
+                      </div>
+                      Searching the web...
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {step.id === 'synthesize' && (
+                <div className="mt-2">
+                  {step.status === 'completed' && renderSynthesizeContent(step)}
+                  
+                  {step.status === 'active' && (
+                    <div className="flex items-center text-sm text-neutral-400 mt-1">
+                      <div className="w-4 h-4 mr-2 relative">
+                        <div className="absolute animate-ping w-4 h-4 rounded-full bg-cyan-500 opacity-75"></div>
+                        <div className="absolute w-4 h-4 rounded-full bg-cyan-500"></div>
+                      </div>
+                      Synthesizing findings...
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+        
+        {/* Add manual trigger button that appears when synthesis is complete */}
+        {isFinalStepComplete && (
+          <div className="mt-4 flex justify-center">
+            <button
+              onClick={handleManualTrigger}
+              className="bg-cyan-600 hover:bg-cyan-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+            >
+              Generate Final Output in Main Chat
+            </button>
+          </div>
+        )}
+      </div>
     </motion.div>
   );
-} 
+}
+
+// Expose the function to the global window object for the manual trigger button
+useEffect(() => {
+  // @ts-ignore
+  window.generateMainChatResearchPaper = generateMainChatResearchPaper;
+  return () => {
+    // @ts-ignore
+    delete window.generateMainChatResearchPaper;
+  };
+}, []); 
