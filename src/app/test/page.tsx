@@ -870,7 +870,7 @@ FORMATTING REQUIREMENTS:
             </h1>
           </div>
           {/* Empty boxes */}
-          {emptyBoxes.map(boxId => (
+          {messages.length === 0 && emptyBoxes.map(boxId => (
             <EmptyBox key={boxId} onClose={() => handleRemoveBox(boxId)} />
           ))}
           {/* Conversation */}
@@ -934,6 +934,10 @@ FORMATTING REQUIREMENTS:
               }
             })}
           </div>
+          {/* If there are messages, show EmptyBox after the last message */}
+          {messages.length > 0 && emptyBoxes.map(boxId => (
+            <EmptyBox key={boxId} onClose={() => handleRemoveBox(boxId)} />
+          ))}
         </div>
         {/* Fixed Footer Bar Behind Input */}
         <div
