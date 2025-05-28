@@ -446,56 +446,64 @@ export default function TestChat() {
       
       // Use setTimeout to ensure state updates have been processed
       setTimeout(() => {
-        console.log("[DEBUG] Triggering research paper generation");
-        triggerDetailedResearchPaper();
+        console.log("[DEBUG] Triggering DEDICATED research paper generation");
+        // Call the dedicated function for the main chat output
+        generateMainChatResearchPaper();
       }, 500);
     }
   }, [isComplete, showAdvanceSearch, isAiResponding, currentQuery, webData]);
 
-  // Separate function to trigger the detailed research paper generation
-  // This helps avoid any issues with state updates or conditions
-  const triggerDetailedResearchPaper = () => {
+  // DEDICATED function specifically for generating the main chat's detailed research paper
+  // This is separate from the Advance Search panel's third step
+  const generateMainChatResearchPaper = () => {
     if (!currentQuery || !webData) {
-      console.error("[ERROR] Cannot generate research paper: missing query or web data");
+      console.error("[ERROR] Cannot generate main chat research paper: missing query or web data");
       return;
     }
     
-    console.log("[DEBUG] Triggering generateDetailedResearchPaper with query:", 
+    console.log("[DEBUG] *** MAIN CHAT OUTPUT *** Generating detailed research paper with query:", 
       currentQuery.substring(0, 30) + "...");
     
-    // Generate the detailed research paper with the current query and web data
-    generateDetailedResearchPaper(currentQuery, webData);
-  };
+    // Set states immediately to prevent multiple calls
+    setIsAiResponding(true);
+    setLoading(true);
+    
+    // Create a new message right away so we have something to update during streaming
+    const newMessage: Message = { 
+      role: "assistant" as const,
+      content: "Generating detailed research paper...",
+      webSources: webData.serperArticles?.map((article: any, i: number) => ({
+        title: article.title,
+        url: article.url,
+        snippet: article.snippet,
+        icon: '/icons/web-icon.svg', // Default web icon
+        type: 'web' // Default type is web
+      })) || []
+    };
 
-  // Function to generate a detailed research paper for the main chat
-  const generateDetailedResearchPaper = async (query: string, webData: any) => {
-    try {
-      console.log("[DEBUG] generateDetailedResearchPaper executing with query:", 
-        query.substring(0, 30) + "...");
-      
-      // Set states immediately to prevent multiple calls
-      setIsAiResponding(true);
-      setLoading(true);
-      
-      // Format web search data for the prompt
-      let serperSection = '';
-      if (webData.serperArticles && webData.serperArticles.length > 0) {
-        serperSection += '===SERPER (GOOGLE) SEARCH RESULTS===\n';
-        webData.serperArticles.forEach((article: any, i: number) => {
-          serperSection += `[${i + 1}] Title: "${article.title}" (${article.url})\n`;
-          if (article.snippet) {
-            const excerpt = article.snippet.length > 200 ? article.snippet.slice(0, 200) + '...' : article.snippet;
-            serperSection += `Excerpt: ${excerpt}\n`;
-          }
-        });
-        serperSection += '===END SERPER SEARCH RESULTS===\n';
-      }
+    // Add the message to state immediately
+    setMessages(prev => [...prev, newMessage]);
+    console.log("[DEBUG] Added initial message to main chat");
+    
+    // Format web search data for the prompt
+    let serperSection = '';
+    if (webData.serperArticles && webData.serperArticles.length > 0) {
+      serperSection += '===SERPER (GOOGLE) SEARCH RESULTS===\n';
+      webData.serperArticles.forEach((article: any, i: number) => {
+        serperSection += `[${i + 1}] Title: "${article.title}" (${article.url})\n`;
+        if (article.snippet) {
+          const excerpt = article.snippet.length > 200 ? article.snippet.slice(0, 200) + '...' : article.snippet;
+          serperSection += `Excerpt: ${excerpt}\n`;
+        }
+      });
+      serperSection += '===END SERPER SEARCH RESULTS===\n';
+    }
 
-      // Strong explicit instruction for citing sources
-      const combinedInstruction = 'IMPORTANT: You MUST use only the above search results as your web sources. Do NOT use or invent any other web links. When citing, use numbered references [1], [2], etc. at the end of sentences or bullet points that use information from sources.';
-      
-      // Professional formatting instructions for detailed research paper
-      const formattingInstructions = `
+    // Strong explicit instruction for citing sources
+    const combinedInstruction = 'IMPORTANT: You MUST use only the above search results as your web sources. Do NOT use or invent any other web links. When citing, use numbered references [1], [2], etc. at the end of sentences or bullet points that use information from sources.';
+    
+    // Professional formatting instructions for detailed research paper
+    const formattingInstructions = `
 IMPORTANT: Your answer MUST be at least 750 words. Do not stop before you reach this length. If you finish early, add more details, examples, or analysis until you reach the required length.
 
 BULLET POINT DETAIL REQUIREMENT:
@@ -519,54 +527,46 @@ CITATION INSTRUCTIONS:
 - When citing, use numbered references like [1], [2], etc. at the end of sentences or bullet points.
 - Do not include a 'References' section at the end - only use in-text citations.`;
 
-      // Combine all instructions
-      const systemPrompt = `${serperSection}\n${combinedInstruction}\n\n${formattingInstructions}`;
+    // Combine all instructions
+    const systemPrompt = `${serperSection}\n${combinedInstruction}\n\n${formattingInstructions}`;
 
-      console.log("[DEBUG] Making dedicated API call to Nvidia for detailed research paper");
-      console.log("[DEBUG] System prompt length:", systemPrompt.length);
-      
-      // Create a new message right away so we have something to update during streaming
-      const newMessage: Message = { 
-        role: "assistant" as const,
-        content: "Generating detailed research paper...",
-        webSources: webData.serperArticles?.map((article: any, i: number) => ({
-          title: article.title,
-          url: article.url,
-          snippet: article.snippet
-        })) || []
-      };
-
-      // Add the message to state immediately
-      setMessages(prev => [...prev, newMessage]);
-      console.log("[DEBUG] Added initial message to state");
-      
-      // Make separate variable to store the final content
-      let finalContent = '';
-      
-      // Make dedicated API call to Nvidia for the detailed research paper
-      const response = await fetch('/api/nvidia', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: query }
-          ],
-          temperature: 0.2
-        })
-      });
-      
-      console.log("[DEBUG] API response received, status:", response.status);
+    console.log("[DEBUG] Making SEPARATE API call to Nvidia for MAIN CHAT detailed research paper");
+    console.log("[DEBUG] System prompt length:", systemPrompt.length);
+    
+    // Make separate variable to store the final content
+    let finalContent = '';
+    
+    // Make a completely separate and dedicated API call to Nvidia
+    fetch('/api/nvidia', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: currentQuery }
+        ],
+        temperature: 0.2
+      })
+    })
+    .then(response => {
+      console.log("[DEBUG] MAIN CHAT API response received, status:", response.status);
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error("[ERROR] API call failed with status:", response.status, errorText);
-        throw new Error(`API call failed with status: ${response.status}`);
+        response.text().then(errorText => {
+          console.error("[ERROR] MAIN CHAT API call failed:", response.status, errorText);
+          throw new Error(`API call failed with status: ${response.status}`);
+        });
+        return null;
       }
-
+      
+      return response;
+    })
+    .then(async (response) => {
+      if (!response) return;
+      
       // Process the response
       if (response.body && response.headers.get('content-type')?.includes('text/event-stream')) {
-        console.log("[DEBUG] Processing streaming response");
+        console.log("[DEBUG] Processing MAIN CHAT streaming response");
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
@@ -607,18 +607,18 @@ CITATION INSTRUCTIONS:
                     });
                   }
                 } catch (err) {
-                  console.error("[DEBUG] Error parsing stream data:", err, "Line:", line);
+                  console.error("[DEBUG] Error parsing MAIN CHAT stream data:", err, "Line:", line);
                 }
               }
             }
           }
         }
-        console.log("[DEBUG] Streaming complete, final content length:", finalContent.length);
+        console.log("[DEBUG] MAIN CHAT streaming complete, final content length:", finalContent.length);
       } else {
-        console.log("[DEBUG] Processing non-streaming response");
+        console.log("[DEBUG] Processing MAIN CHAT non-streaming response");
         const data = await response.json();
         finalContent = data.content || data.choices?.[0]?.message?.content || data.generated_text || '';
-        console.log("[DEBUG] Non-streaming content received, length:", finalContent.length);
+        console.log("[DEBUG] MAIN CHAT non-streaming content received, length:", finalContent.length);
         
         // Update message with content
         setMessages(prev => {
@@ -635,15 +635,16 @@ CITATION INSTRUCTIONS:
         });
       }
       
-      // Ensure UI updates with final content
-      console.log("[DEBUG] Final message update, content length:", finalContent.length);
+      // Force an immediate state update to ensure the UI renders the new message
+      setMessages(prev => [...prev]);
       
       // Update final states
       setIsAiResponding(false);
       setLoading(false);
-      
-    } catch (error) {
-      console.error('[ERROR] Error generating detailed research paper:', error);
+      console.log("[DEBUG] MAIN CHAT research paper generation COMPLETE");
+    })
+    .catch(error => {
+      console.error('[ERROR] Error generating MAIN CHAT detailed research paper:', error);
       
       // Add error message to chat
       setMessages(prev => [
@@ -656,7 +657,13 @@ CITATION INSTRUCTIONS:
       
       setIsAiResponding(false);
       setLoading(false);
-    }
+    });
+  };
+
+  // Legacy function - keep for backward compatibility but don't actually use it
+  const generateDetailedResearchPaper = async (query: string, webData: any) => {
+    console.log("[DEBUG] Legacy generateDetailedResearchPaper called but skipped - using dedicated function instead");
+    // This function is no longer used - we now use generateMainChatResearchPaper
   };
 
   async function handleSend(e?: React.FormEvent) {
