@@ -443,6 +443,7 @@ export default function TestChat() {
   // New function to generate a detailed research paper for the main chat
   const generateDetailedResearchPaper = async (query: string, webData: any) => {
     try {
+      console.log("[DEBUG] generateDetailedResearchPaper called with query:", query.substring(0, 30) + "...");
       setIsAiResponding(true);
       setLoading(true);
       
@@ -491,6 +492,7 @@ CITATION INSTRUCTIONS:
       // Combine all instructions
       const systemPrompt = `${serperSection}\n${combinedInstruction}\n\n${formattingInstructions}`;
 
+      console.log("[DEBUG] Making API call to Nvidia for detailed research paper");
       // Make API call to Nvidia for the detailed research paper
       const response = await fetch('/api/nvidia', {
         method: 'POST',
@@ -503,10 +505,13 @@ CITATION INSTRUCTIONS:
           temperature: 0.2
         })
       });
+      
+      console.log("[DEBUG] API response received, status:", response.status, "content-type:", response.headers.get('content-type'));
 
       // Process the response
       let aiContent = '';
       if (response.body && response.headers.get('content-type')?.includes('text/event-stream')) {
+        console.log("[DEBUG] Processing streaming response");
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
@@ -555,15 +560,19 @@ CITATION INSTRUCTIONS:
                     });
                   }
                 } catch (err) {
+                  console.error("[DEBUG] Error parsing stream data:", err);
                   // Ignore parse errors for incomplete lines
                 }
               }
             }
           }
         }
+        console.log("[DEBUG] Streaming complete, final content length:", aiContent.length);
       } else {
+        console.log("[DEBUG] Processing non-streaming response");
         const data = await response.json();
         aiContent = data.content || data.choices?.[0]?.message?.content || data.generated_text || '';
+        console.log("[DEBUG] Non-streaming content received, length:", aiContent.length);
         
         // Add the research paper to the messages
         setMessages(prev => [
@@ -580,6 +589,7 @@ CITATION INSTRUCTIONS:
         ]);
       }
       
+      console.log("[DEBUG] Final message state after update:", messages.length, "messages");
       setIsAiResponding(false);
       setLoading(false);
       
