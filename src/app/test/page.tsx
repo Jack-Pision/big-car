@@ -399,6 +399,19 @@ export default function TestChat() {
   // Track whether the main chat research paper generation has completed
   const [mainChatGenerationComplete, setMainChatGenerationComplete] = useState(false);
 
+  // Automatically generate the main chat research paper when all data is ready
+  useEffect(() => {
+    if (
+      isComplete &&
+      webData && Object.keys(webData).length > 0 &&
+      currentQuery &&
+      !mainChatGenerationComplete &&
+      !isAiResponding
+    ) {
+      generateMainChatResearchPaper(currentQuery, webData);
+    }
+  }, [isComplete, webData, currentQuery, mainChatGenerationComplete, isAiResponding]);
+
   // Helper to show the image in chat
   const showImageMsg = (content: string, imgSrc: string) => {
     setMessages((prev) => [
@@ -1319,19 +1332,6 @@ function DeepResearchBlock({ query, researchId }: { query: string, researchId?: 
   const [manualStepId, setManualStepId] = useState<string | null>(null);
   const isFinalStepComplete = steps[steps.length - 1]?.status === 'completed';
   
-  // Add function to manually trigger the main chat output
-  const handleManualTrigger = () => {
-    console.log("[DEBUG] Manual trigger button clicked for query:", query);
-    if (webData) {
-      console.log("[DEBUG] Calling generateMainChatResearchPaper manually with webData");
-      // Access the parent component's function through the global window object
-      // @ts-ignore
-      window.generateMainChatResearchPaper?.(query, webData);
-    } else {
-      console.error("[ERROR] Cannot generate research paper - webData is missing");
-    }
-  };
-  
   return (
     <motion.div
       id={researchId ? `research-${researchId}` : undefined}
@@ -1430,18 +1430,6 @@ function DeepResearchBlock({ query, researchId }: { query: string, researchId?: 
             </div>
           </div>
         ))}
-        
-        {/* Add manual trigger button that appears when synthesis is complete */}
-        {isFinalStepComplete && (
-          <div className="mt-4 flex justify-center">
-            <button
-              onClick={handleManualTrigger}
-              className="bg-cyan-600 hover:bg-cyan-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
-            >
-              Generate Final Output in Main Chat
-            </button>
-          </div>
-        )}
       </div>
     </motion.div>
   );
