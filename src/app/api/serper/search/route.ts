@@ -30,15 +30,9 @@ async function searchSerperPage(query: string, page: number = 1) {
 }
 
 async function searchSerper(query: string, limit: number = 20) {
-  // Make two parallel API calls for page 1 and 2
-  const [page1Results, page2Results] = await Promise.all([
-    searchSerperPage(query, 1),
-    searchSerperPage(query, 2)
-  ]);
-
-  // Combine and limit results
-  const combinedResults = [...page1Results, ...page2Results];
-  return combinedResults.slice(0, limit);
+  // Make only one API call for page 1
+  const page1Results = await searchSerperPage(query, 1);
+  return page1Results.slice(0, limit);
 }
 
 export async function POST(req: NextRequest) {
