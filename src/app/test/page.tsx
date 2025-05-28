@@ -377,253 +377,8 @@ export default function TestChat() {
 
   const [showAdvanceSearch, setShowAdvanceSearch] = useState(false);
   const [currentQuery, setCurrentQuery] = useState('');
-  const [mainChatGenerationComplete, setMainChatGenerationComplete] = useState(false);
-
-  // Define the generateMainChatResearchPaper function first
-  const generateMainChatResearchPaper = async (queryOverride?: string, webDataOverride?: any) => {
-    const queryToUse = queryOverride || currentQuery;
-    const webDataToUse = webDataOverride || webData;
-    console.log('[DEBUG] generateMainChatResearchPaper called:', {
-      isComplete,
-      isAiResponding,
-      currentQuery: queryToUse,
-      webDataExists: !!webDataToUse,
-      serperArticlesCount: webDataToUse?.serperArticles?.length || 0,
-      mainChatGenerationComplete
-    });
-    
-    if (!queryToUse) {
-      console.error("[ERROR] Cannot generate main chat research paper: missing query", {
-        currentQuery: queryToUse
-      });
-      setMainChatGenerationComplete(true);
-      return;
-    }
-    
-    if (!webDataToUse || !webDataToUse.serperArticles || !Array.isArray(webDataToUse.serperArticles)) {
-      console.error("[ERROR] Cannot generate main chat research paper: missing or invalid webData", {
-        webData: webDataToUse,
-        serperArticlesExists: !!webDataToUse?.serperArticles,
-        isArray: Array.isArray(webDataToUse?.serperArticles)
-      });
-      setMainChatGenerationComplete(true);
-      return;
-    }
-    
-    // Continue with the rest of the function
-    setIsAiResponding(true);
-    setLoading(true);
-    
-    try {
-      const newMessage: Message = { 
-        role: "assistant",
-        content: "Generating detailed research paper...",
-        webSources: webDataToUse.serperArticles?.map((article: any) => ({
-          title: article.title,
-          url: article.url,
-          snippet: article.snippet,
-          icon: '/icons/web-icon.svg',
-          type: 'web'
-        })) || []
-      };
-      
-      setMessages(prev => [...prev, newMessage]);
-      console.log("[DEBUG] Added initial message to main chat");
-
-      // Build the search results section for the prompt
-      let serperSection = '';
-      if (webDataToUse.serperArticles && webDataToUse.serperArticles.length > 0) {
-        serperSection += '===SERPER (GOOGLE) SEARCH RESULTS===\n';
-        webDataToUse.serperArticles.forEach((article: any, i: number) => {
-          serperSection += `[${i + 1}] Title: "${article.title}" (${article.url})\n`;
-          if (article.snippet) {
-            const excerpt = article.snippet.length > 200 ? article.snippet.slice(0, 200) + '...' : article.snippet;
-            serperSection += `Excerpt: ${excerpt}\n`;
-          }
-        });
-        serperSection += '===END SERPER SEARCH RESULTS===\n';
-      }
-
-      const combinedInstruction = 'IMPORTANT: You MUST use only the above search results as your web sources. Do NOT use or invent any other web links. When citing, use numbered references [1], [2], etc. at the end of sentences or bullet points that use information from sources.';
-      
-      const formattingInstructions = `\nIMPORTANT: Your answer MUST be at least 750 words. Do not stop before you reach this length. If you finish early, add more details, examples, or analysis until you reach the required length.
-
-BULLET POINT DETAIL REQUIREMENT:
-For each bullet point, write a detailed, self-contained summary (**7–8 sentences**) that explains the topic, provides context, and includes key facts or findings. Do not use single-sentence or headline-style bullets. Each bullet should be a mini-paragraph of 7–8 sentences.
-
-CONCLUSION REQUIREMENT:
-The conclusion section must be a detailed, thoughtful paragraph of at least **7–8 sentences**, thoroughly summarizing the findings and providing additional insights or implications.
-
-FORMATTING REQUIREMENTS:
-1. Your response MUST follow a professional, well-structured format like a research document or report.
-2. Start with a clear main title using # heading (e.g., "# Latest Developments in AI, 2025").
-3. Divide content into logical sections with ## headings.
-4. Use bullet points (*) for all key details and findings, with each bullet point being a 7–8 sentence paragraph.
-5. End with a "## Conclusion" section.
-6. Include a "## Summary Table" if the information can be presented in tabular form.
-7. For citations, use ONLY numbered references in square brackets [1], [2] at the end of sentences/bullets.
-
-CITATION INSTRUCTIONS:
-- Use ONLY the provided search results as your web sources.
-- Do NOT use or invent any other web links.
-- When citing, use numbered references like [1], [2], etc. at the end of sentences or bullet points.
-- Do not include a 'References' section at the end - only use in-text citations.`;
-
-      const systemPrompt = `${serperSection}\n${combinedInstruction}\n\n${formattingInstructions}`;
-      console.log("[DEBUG] Making SEPARATE API call to Nvidia for MAIN CHAT detailed research paper");
-      console.log("[DEBUG] System prompt length:", systemPrompt.length);
-
-      const response = await fetch('/api/nvidia', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: queryToUse }
-          ],
-          temperature: 0.2
-        })
-      });
-      
-      console.log("[DEBUG] Nvidia API response status:", response.status, response.statusText);
-      console.log("[DEBUG] Response content type:", response.headers.get('content-type'));
-
-      if (!response.ok) {
-        throw new Error(`Nvidia API returned error status: ${response.status} ${response.statusText}`);
-      }
-
-      if (response.body && response.headers.get('content-type')?.includes('text/event-stream')) {
-        // Streaming response
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-        let done = false;
-        let aiMsg: Message = {
-          role: "assistant",
-          content: "",
-          webSources: webDataToUse.serperArticles?.map((article: any) => ({
-            title: article.title,
-            url: article.url,
-            snippet: article.snippet,
-            icon: '/icons/web-icon.svg',
-            type: 'web'
-          })) || []
-        };
-
-        setMessages(prev => {
-          const updated = [...prev];
-          updated[updated.length - 1] = aiMsg;
-          return updated;
-        });
-
-        while (!done) {
-          const { value, done: doneReading } = await reader.read();
-          done = doneReading;
-          if (value) {
-            buffer += decoder.decode(value, { stream: true });
-            let lines = buffer.split('\n');
-            buffer = lines.pop() || '';
-            
-            for (let line of lines) {
-              if (line.startsWith('data:')) {
-                const data = line.replace('data:', '').trim();
-                if (data === '[DONE]') continue;
-                
-                try {
-                  const parsed = JSON.parse(data);
-                  const delta = parsed.choices?.[0]?.delta?.content || 
-                              parsed.choices?.[0]?.message?.content || 
-                              parsed.choices?.[0]?.text || 
-                              parsed.content || '';
-                  
-                  if (delta) {
-                    aiMsg.content += delta;
-                    setMessages((prev) => {
-                      const updatedMessages = [...prev];
-                      const lastMsgIndex = updatedMessages.length - 1;
-                      if(updatedMessages[lastMsgIndex] && updatedMessages[lastMsgIndex].role === 'assistant'){
-                        updatedMessages[lastMsgIndex] = { 
-                          ...updatedMessages[lastMsgIndex], 
-                          content: aiMsg.content,
-                          webSources: aiMsg.webSources
-                        };
-                      }
-                      return updatedMessages;
-                    });
-                  }
-                } catch (err) {
-                  console.error("Error parsing stream data:", err);
-                }
-              }
-            }
-          }
-        }
-        
-        console.log("[DEBUG] MAIN CHAT research paper generation COMPLETE (streaming)");
-      } else {
-        // Non-streaming fallback
-        const data = await response.json();
-        const finalContent = data.content ||
-          data.choices?.[0]?.message?.content ||
-          data.generated_text || '';
-        
-        setMessages(prev => {
-          const lastIndex = prev.length - 1;
-          if (lastIndex >= 0 && prev[lastIndex].role === 'assistant') {
-            const updatedMessages = [...prev];
-            updatedMessages[lastIndex] = { 
-              ...updatedMessages[lastIndex], 
-              content: finalContent,
-              webSources: webDataToUse.serperArticles?.map((article: any) => ({
-                title: article.title,
-                url: article.url,
-                snippet: article.snippet,
-                icon: '/icons/web-icon.svg',
-                type: 'web'
-              })) || []
-            };
-            return updatedMessages;
-          }
-          return [...prev, { 
-            role: 'assistant',
-            content: finalContent,
-            webSources: webDataToUse.serperArticles?.map((article: any) => ({
-              title: article.title,
-              url: article.url,
-              snippet: article.snippet,
-              icon: '/icons/web-icon.svg',
-              type: 'web'
-            })) || []
-          }];
-        });
-        
-        console.log("[DEBUG] MAIN CHAT research paper generation COMPLETE (non-streaming)");
-      }
-    } catch (error) {
-      console.error('[ERROR] Error generating MAIN CHAT detailed research paper:', error);
-      setMessages(prev => [
-        ...prev,
-        { 
-          role: 'assistant', 
-          content: 'Sorry, I encountered an error while generating the research paper. Please try again.' 
-        }
-      ]);
-    } finally {
-      setMainChatGenerationComplete(true);
-      setIsAiResponding(false);
-      setLoading(false);
-    }
-  };
-
-  // Create ref after function definition
-  const generateMainChatResearchPaperRef = useRef(generateMainChatResearchPaper);
   
-  // Update ref when function changes
-  useEffect(() => {
-    generateMainChatResearchPaperRef.current = generateMainChatResearchPaper;
-  }, [generateMainChatResearchPaper]);
-
-  // Use the callback version of useDeepResearch with the ref
+  // Deep Research hook
   const {
     steps,
     activeStepId,
@@ -631,57 +386,12 @@ CITATION INSTRUCTIONS:
     isInProgress,
     error,
     webData
-  } = useDeepResearch(showAdvanceSearch, currentQuery, (query, webData) => {
-    console.log("[DEBUG] useDeepResearch onSynthesisComplete callback fired", {
-      query,
-      webDataExists: !!webData,
-      serperArticlesExists: webData?.serperArticles?.length > 0
-    });
-    
-    // Always call generateMainChatResearchPaper without conditions
-    generateMainChatResearchPaperRef.current(query, webData);
-    
-    console.log("[DEBUG] Called generateMainChatResearchPaperRef.current from the synthesis callback");
-  });
+  } = useDeepResearch(showAdvanceSearch, currentQuery);
 
   const [manualStepId, setManualStepId] = useState<string | null>(null);
   const isFinalStepComplete = steps[steps.length - 1]?.status === 'completed';
 
   const [emptyBoxes, setEmptyBoxes] = useState<string[]>([]); // Array of box IDs
-
-  // Auto-resize textarea
-  useLayoutEffect(() => {
-    const ta = textareaRef.current;
-    if (ta) {
-      ta.style.height = 'auto';
-      ta.style.height = Math.min(ta.scrollHeight, MAX_HEIGHT) + 'px';
-    }
-  }, [input]);
-
-  // Measure input bar height dynamically
-  useLayoutEffect(() => {
-    if (inputBarRef.current) {
-      setInputBarHeight(inputBarRef.current.offsetHeight);
-    }
-  }, [input]);
-
-  // Auto-scroll to bottom on new message
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages]);
-
-  // Hide the Deep Research view when research completes, AI responds, AND main chat generation is complete
-  useEffect(() => {
-    if (isComplete && !isAiResponding && mainChatGenerationComplete) {
-      console.log("[DEBUG] All conditions met - hiding Advance Search panel");
-      // Only hide the research view when ALL processing is complete
-      setShowAdvanceSearch(false);
-      // Reset the completion flag for next time
-      setMainChatGenerationComplete(false);
-    }
-  }, [isComplete, isAiResponding, mainChatGenerationComplete]);
 
   // Helper to show the image in chat
   const showImageMsg = (content: string, imgSrc: string) => {
@@ -714,11 +424,33 @@ CITATION INSTRUCTIONS:
     }
   }, [messages]);
 
-  // Legacy function - keep for backward compatibility but don't actually use it
-  const generateDetailedResearchPaper = async (query: string, webData: any) => {
-    console.log("[DEBUG] Legacy generateDetailedResearchPaper called but skipped - using dedicated function instead");
-    // This function is no longer used - we now use generateMainChatResearchPaper
-  };
+  // Hide the Deep Research view when research completes and AI responds
+  useEffect(() => {
+    if (isComplete && !isAiResponding) {
+      // Only hide the research view when both research is complete and AI has responded
+      setShowAdvanceSearch(false);
+    }
+  }, [isComplete, isAiResponding]);
+
+  // When deep research completes, automatically start the AI request
+  useEffect(() => {
+    if (isComplete && showAdvanceSearch && !isAiResponding && currentQuery) {
+      // Get the final synthesized response from the steps
+      const synthesisStep = steps.find(step => step.id === 'synthesize');
+      if (synthesisStep?.output) {
+        // Update messages with the final response
+        setMessages(prev => [
+          ...prev.filter(m => m.role !== 'assistant'), // Remove any pending assistant message
+          { 
+            role: 'assistant',
+            content: synthesisStep.output
+          }
+        ]);
+        setIsAiResponding(false);
+        setLoading(false);
+      }
+    }
+  }, [isComplete, showAdvanceSearch, isAiResponding, steps]);
 
   async function handleSend(e?: React.FormEvent) {
     if (e) e.preventDefault();
@@ -733,40 +465,12 @@ CITATION INSTRUCTIONS:
     // If Deep Research is active, show the view inline in the chat
     if (showAdvanceSearch) {
       setShowAdvanceSearch(true);
-      
-      // Check if there's already a research message with this query
-      const normalizedInput = currentInput.trim().toLowerCase();
-      const existingResearchMessage = messages.find(
-        msg => msg.role === "deep-research" && msg.content.trim().toLowerCase() === normalizedInput
-      );
-      
-      // Only add a new research message if this query doesn't already have one
-      if (!existingResearchMessage) {
-        const researchId = uuidv4();
-        setMessages(prev => [
-          ...prev,
-          { role: "user", content: currentInput },
-          { role: "deep-research", content: currentInput, researchId }
-        ]);
-      } else {
-        // Just add the user message, don't duplicate the research block
-        setMessages(prev => [
-          ...prev,
-          { role: "user", content: currentInput }
-        ]);
-        
-        // Scroll to the existing research block
-        const existingResearchId = existingResearchMessage.researchId;
-        if (existingResearchId) {
-          setTimeout(() => {
-            const element = document.getElementById(`research-${existingResearchId}`);
-            if (element) {
-              element.scrollIntoView({ behavior: 'smooth' });
-            }
-          }, 100);
-        }
-      }
-      
+      const researchId = uuidv4();
+      setMessages(prev => [
+        ...prev,
+        { role: "user", content: currentInput },
+        { role: "deep-research", content: currentInput, researchId }
+      ]);
       setInput("");
       setImagePreviewUrls([]);
       setSelectedFilesForUpload([]);
@@ -1132,48 +836,48 @@ FORMATTING REQUIREMENTS:
     <>
       <div className="min-h-screen flex flex-col" style={{ background: '#161618' }}>
         <GlobalStyles />
-        {/* Hamburger menu and sidebar */}
+      {/* Hamburger menu and sidebar */}
         <div className="fixed top-4 left-4 z-50">
-          <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
-        </div>
+        <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
+      </div>
         {/* Overlay for sidebar, covers everything including footer */}
         {sidebarOpen && (
           <div className="fixed inset-0 bg-black/20 z-40" aria-hidden="true" />
         )}
-        <Sidebar
-          open={sidebarOpen}
-          chats={chats}
-          activeChatId={activeChatId}
-          onClose={() => setSidebarOpen(false)}
-          onNewChat={() => {}}
-          onSelectChat={() => {}}
-          onEditChat={() => {}}
-          onDeleteChat={() => {}}
-          onClearAll={() => {}}
-          onOpenSearch={() => {}}
-          onNavigateBoard={() => router.push('/board')}
-        />
-        {/* Conversation area (scrollable) */}
+      <Sidebar
+        open={sidebarOpen}
+        chats={chats}
+        activeChatId={activeChatId}
+        onClose={() => setSidebarOpen(false)}
+        onNewChat={() => {}}
+        onSelectChat={() => {}}
+        onEditChat={() => {}}
+        onDeleteChat={() => {}}
+        onClearAll={() => {}}
+        onOpenSearch={() => {}}
+        onNavigateBoard={() => router.push('/board')}
+      />
+      {/* Conversation area (scrollable) */}
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto w-full flex flex-col items-center justify-center relative"
+        style={{ paddingBottom: `${inputBarHeight + EXTRA_GAP}px` }}
+      >
         <div
-          ref={scrollRef}
-          className="flex-1 overflow-y-auto w-full flex flex-col items-center justify-center relative"
-          style={{ paddingBottom: `${inputBarHeight + EXTRA_GAP}px` }}
-        >
-          <div
-            className={`absolute left-0 right-0 flex flex-col items-center transition-opacity duration-700 ${
-              showHeading && messages.length === 0 ? "opacity-100" : "opacity-0 pointer-events-none"
-            }`}
+          className={`absolute left-0 right-0 flex flex-col items-center transition-opacity duration-700 ${
+            showHeading && messages.length === 0 ? "opacity-100" : "opacity-0 pointer-events-none"
+          }`}
             style={{ transitionDuration: '0.35s' }}
-          >
+        >
             <h1 className="text-[3.2rem] font-normal text-gray-200 text-center">
-              Seek and You'll find
-            </h1>
-          </div>
+            Seek and You'll find
+          </h1>
+        </div>
           {/* Empty boxes */}
           {messages.length === 0 && emptyBoxes.map(boxId => (
             <EmptyBox key={boxId} onClose={() => handleRemoveBox(boxId)} />
           ))}
-          {/* Conversation */}
+        {/* Conversation */}
           <div className="w-full max-w-3xl mx-auto flex flex-col gap-4 items-center justify-center z-10 pt-12 pb-4">
             {messages.map((msg, i) => {
               if (msg.role === "assistant") {
@@ -1202,8 +906,8 @@ FORMATTING REQUIREMENTS:
                               text={cleanContent}
                               markdownComponents={markdownComponents}
                               webSources={(msg as any).webSources || []}
-                            />
-                  </div>
+                  />
+                </div>
                         )}
                       </>
                     )}
@@ -1211,15 +915,15 @@ FORMATTING REQUIREMENTS:
                 );
               } else if (msg.role === "deep-research") {
                 return (
-                  <DeepResearchBlock key={msg.researchId} query={msg.content} researchId={msg.researchId} />
+                  <DeepResearchBlock key={msg.researchId} query={msg.content} />
                 );
               } else { // User message
                 return (
-                  <div
-                    key={i}
+                <div
+                  key={i}
                     className="px-5 py-3 rounded-2xl shadow bg-gray-800 text-white self-end max-w-full text-lg flex flex-col items-end"
-                    style={{ wordBreak: "break-word" }}
-                  >
+                  style={{ wordBreak: "break-word" }}
+                >
                     {msg.imageUrls && msg.imageUrls.map((url, index) => (
                       <img 
                         key={index}
@@ -1233,7 +937,7 @@ FORMATTING REQUIREMENTS:
                 );
               }
             })}
-          </div>
+                </div>
           {/* If there are messages, show EmptyBox after the last message */}
           {messages.length > 0 && emptyBoxes.map(boxId => (
             <EmptyBox key={boxId} onClose={() => handleRemoveBox(boxId)} />
@@ -1245,13 +949,13 @@ FORMATTING REQUIREMENTS:
           style={{ height: `${inputBarHeight}px`, background: '#161618' }}
           aria-hidden="true"
         />
-        {/* Fixed Input Bar at Bottom */}
+      {/* Fixed Input Bar at Bottom */}
         <div ref={inputBarRef} className="fixed left-1/2 -translate-x-1/2 bottom-0 w-full max-w-3xl flex justify-center z-50" style={{ pointerEvents: 'auto' }}>
-          <form
+        <form
             className="w-full flex flex-col gap-2 rounded-2xl shadow-lg px-3 py-2 mx-4 mb-3"
             style={{ background: '#232323', border: '2px solid rgba(255,255,255,0.18)', boxShadow: '0 4px 32px 0 rgba(0,0,0,0.32)' }}
-            onSubmit={handleSend}
-          >
+          onSubmit={handleSend}
+        >
             {/* Image previews above textarea */}
             {imagePreviewUrls.length > 0 && (
               <div className="flex flex-row gap-2 mb-2 justify-center">
@@ -1273,14 +977,14 @@ FORMATTING REQUIREMENTS:
             <div className="flex flex-col w-full gap-2 items-center">
               {/* Textarea row */}
               <div className="w-full">
-            <textarea
-              ref={textareaRef}
-              value={input}
-              onChange={e => setInput(e.target.value)}
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={e => setInput(e.target.value)}
                   className="w-full border-none outline-none bg-transparent px-2 py-1 text-gray-200 text-sm placeholder-gray-500 resize-none overflow-auto self-center rounded-lg"
                   placeholder="Ask anything..."
-              disabled={loading}
-              rows={1}
+            disabled={loading}
+            rows={1}
                   style={{ maxHeight: '96px', minHeight: '40px', lineHeight: '1.5' }}
                 />
               </div>
@@ -1328,9 +1032,9 @@ FORMATTING REQUIREMENTS:
                       <line x1="14.15" y1="14.15" x2="17" y2="17" />
                       <line x1="6.85" y1="17.15" x2="10.15" y2="13.85" />
                       <line x1="13.85" y1="10.15" x2="17.15" y2="6.85" />
-                    </svg>
+              </svg>
                     <span className="whitespace-nowrap text-xs font-medium">Advance Search</span>
-                  </button>
+            </button>
                 </div>
                 {/* Right group: Plus, Send */}
                 <div className="flex flex-row gap-2 items-center">
@@ -1342,12 +1046,12 @@ FORMATTING REQUIREMENTS:
                     onClick={handleFirstPlusClick}
                   >
                     <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                  <line x1="12" y1="5" x2="12" y2="19" />
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
-                </button>
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+            </button>
                   {/* Send/Stop button */}
-                <button
+            <button
                       type={isAiResponding ? "button" : "submit"}
                       className="rounded-full bg-gray-200 hover:bg-white transition flex items-center justify-center flex-shrink-0"
                       style={{ width: "36px", height: "36px", pointerEvents: loading && !isAiResponding ? 'none' : 'auto' }}
@@ -1364,13 +1068,13 @@ FORMATTING REQUIREMENTS:
                         // Up arrow icon
                         <svg width="16" height="16" fill="none" stroke="#374151" strokeWidth="2.5" viewBox="0 0 24 24">
                           <path d="M12 19V5M5 12l7-7 7 7" />
-                  </svg>
+              </svg>
                       )}
-                </button>
+            </button>
                 </div>
               </div>
-            </div>
-          </form>
+          </div>
+        </form>
         </div>
         {/* Hidden file input */}
         <input 
@@ -1386,16 +1090,7 @@ FORMATTING REQUIREMENTS:
   );
 }
 
-// Add the renderSynthesizeContent function before the DeepResearchBlock component
-function renderSynthesizeContent(step: any) {
-  return (
-    <div className="text-neutral-300 whitespace-pre-line text-sm">
-      {step.content}
-    </div>
-  );
-}
-
-function DeepResearchBlock({ query, researchId }: { query: string, researchId?: string }) {
+function DeepResearchBlock({ query }: { query: string }) {
   const {
     steps,
     activeStepId,
@@ -1406,117 +1101,22 @@ function DeepResearchBlock({ query, researchId }: { query: string, researchId?: 
   } = useDeepResearch(true, query);
   const [manualStepId, setManualStepId] = useState<string | null>(null);
   const isFinalStepComplete = steps[steps.length - 1]?.status === 'completed';
-  
-  // Add debugging for synthesis step completion
-  useEffect(() => {
-    if (isFinalStepComplete) {
-      console.log("[DEBUG] DeepResearchBlock - synthesis step completed", {
-        query,
-        webDataExists: !!webData,
-        serperArticlesCount: webData?.serperArticles?.length || 0
-      });
-    }
-  }, [isFinalStepComplete, query, webData]);
-  
   return (
     <motion.div
-      id={researchId ? `research-${researchId}` : undefined}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
       className="w-full rounded-xl border border-neutral-800 overflow-hidden mb-2 mt-2 bg-neutral-900"
       style={{ minHeight: "300px", maxHeight: "500px" }}
     >
-      <div className="p-4 flex items-center gap-2 border-b border-neutral-800">
-        <span className="text-cyan-500 flex items-center gap-2">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10"/>
-            <path d="M12 2a9.96 9.96 0 0 0-7.071 2.929"/>
-            <path d="M16.929 7.071A9.969 9.969 0 0 0 12 5"/>
-          </svg>
-          Advance Search
-        </span>
-      </div>
-      <div className="p-4 space-y-2">
-        {steps.map((step) => (
-          <div key={step.id} className="flex items-start gap-2 mb-2">
-            <div className="pt-0.5">
-              {step.status === 'completed' ? (
-                <div className="w-6 h-6 rounded-full border border-green-500 flex items-center justify-center text-green-500">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 6 9 17 4 12"/>
-                  </svg>
-                </div>
-              ) : step.status === 'active' ? (
-                <div className="w-6 h-6 rounded-full border border-cyan-500 flex items-center justify-center">
-                  <div className="w-2 h-2 bg-cyan-500 rounded-full animate-pulse"></div>
-                </div>
-              ) : (
-                <div className="w-6 h-6 rounded-full border border-neutral-600 flex items-center justify-center"></div>
-              )}
-            </div>
-            <div className="flex-1">
-              <div className={`text-sm font-medium ${step.status === 'completed' ? 'text-green-500' : step.status === 'active' ? 'text-cyan-500' : 'text-neutral-400'}`}>
-                {step.title}
-              </div>
-              
-              {step.id === 'understand' && (
-                <AdvanceSearch
-                  steps={steps}
-                  activeStepId={activeStepId}
-                  error={error}
-                  webData={webData}
-                  manualNavigationEnabled={true}
-                  onManualStepClick={(stepId) => {
-                    setManualStepId(stepId);
-                    // Scroll to the step
-                    const element = document.getElementById(`step-${stepId}`);
-                    if (element) {
-                      element.scrollIntoView({ behavior: 'smooth' });
-                    }
-                  }}
-                />
-              )}
-
-              {step.id === 'research' && (
-                <div className="mt-2">
-                  {step.status === 'completed' && (
-                    <div className="text-neutral-300 whitespace-pre-line text-sm">
-                      {step.content}
-                    </div>
-                  )}
-                  
-                  {step.status === 'active' && (
-                    <div className="flex items-center text-sm text-neutral-400 mt-1">
-                      <div className="w-4 h-4 mr-2 relative">
-                        <div className="absolute animate-ping w-4 h-4 rounded-full bg-cyan-500 opacity-75"></div>
-                        <div className="absolute w-4 h-4 rounded-full bg-cyan-500"></div>
-                      </div>
-                      Searching the web...
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {step.id === 'synthesize' && (
-                <div className="mt-2">
-                  {step.status === 'completed' && renderSynthesizeContent(step)}
-                  
-                  {step.status === 'active' && (
-                    <div className="flex items-center text-sm text-neutral-400 mt-1">
-                      <div className="w-4 h-4 mr-2 relative">
-                        <div className="absolute animate-ping w-4 h-4 rounded-full bg-cyan-500 opacity-75"></div>
-                        <div className="absolute w-4 h-4 rounded-full bg-cyan-500"></div>
-                      </div>
-                      Synthesizing findings...
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
+      <AdvanceSearch
+        steps={steps}
+        activeStepId={isFinalStepComplete ? manualStepId || activeStepId : activeStepId}
+        onManualStepClick={isFinalStepComplete ? setManualStepId : undefined}
+        manualNavigationEnabled={isFinalStepComplete}
+        error={error}
+        webData={webData}
+      />
     </motion.div>
   );
 } 

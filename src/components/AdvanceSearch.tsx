@@ -383,11 +383,11 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
       return null;
     }
 
-    // For completed synthesize step, display direct response as simple bullet points
+    // For completed synthesize step, display direct response with web citations
     return (
       <div className="space-y-4">
-        {/* Display the concise, direct answer as simple bullet points */}
-        <div className="text-neutral-300 text-base">
+        {/* Display the concise, direct answer with inline citations */}
+        <div className="text-neutral-300 text-base leading-relaxed">
           {(() => {
             const contentString = typeof step.output === 'string' 
               ? step.output 
@@ -395,33 +395,17 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
                 ? step.content
                 : '';
             
-            // Parse the bullet points from the content
-            // Split by bullet character or newlines to get individual bullet points
-            const bulletPoints = contentString
-              .split(/(?:^|\n)•\s+/)
-              .map(point => point.trim())
-              .filter(point => point.length > 0);
-
-            // If no bullet points found, display the content as is
-            if (bulletPoints.length === 0) {
-              return (
-                <ul className="list-disc pl-5 space-y-2">
-                  {contentString.split("\n")
-                    .filter(line => line.trim().length > 0)
-                    .map((line, index) => (
-                      <li key={index}>{line.trim()}</li>
-                    ))}
-                </ul>
-              );
-            }
+            // Process the answer to make citations clickable
+            const processedContent = contentString
+              // Convert citation format: [@Web](URL) to <a href="URL" target="_blank" class="...">[@Web]</a>
+              .replace(/\[@([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="inline-flex items-center px-1 py-0.5 rounded bg-blue-900/30 text-blue-400 text-xs hover:bg-blue-800/40 transition-colors">[@$1]</a>');
             
-            // Render the bullet points as a simple list
+            // Use dangerouslySetInnerHTML to render the HTML with clickable citations
             return (
-              <ul className="list-disc pl-5 space-y-2">
-                {bulletPoints.map((point, index) => (
-                  <li key={index}>{point}</li>
-                ))}
-              </ul>
+              <div 
+                className="prose prose-invert prose-sm max-w-none"
+                dangerouslySetInnerHTML={{ __html: processedContent }}
+              />
             );
           })()}
         </div>
