@@ -277,6 +277,7 @@ export const useDeepResearch = (isActive: boolean, query: string = '') => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          mode: 'concise',
           messages: [
             { role: 'system', content: `You are a Deep Research AI assistant. Using ONLY the provided web data, generate a concise summary of the most important findings.\n\nRESPONSE FORMAT:\n- Write 5 to 6 bullet points.\n- Each bullet point should be a highlight or actionable insight, 1–2 sentences only.\n- Focus on the most relevant, interesting, or surprising information.\n- Do NOT write long paragraphs.\n- Do NOT include a conclusion or summary section.\n- Do NOT use headings.\n- Do NOT include a references section.\n- For citations, use ONLY numbered references in square brackets [1], [2] at the end of each bullet.\n- Do NOT invent any web links or sources.\n- Do NOT repeat the query.\n- Do NOT use markdown formatting except for the bullet points themselves.\n\nEXAMPLE:\n* The global AI market is projected to reach $500 billion by 2025 [1].\n* Recent breakthroughs in deep learning have enabled more accurate language models [2].` },
             { role: 'user', content: `Query: ${query}\n\nAnalysis: ${analysis}\n\nWeb Data: ${JSON.stringify(webData)}` }
