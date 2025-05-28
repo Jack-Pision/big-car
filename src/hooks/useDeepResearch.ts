@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react';
 import { extractRedditUsername } from '@/utils/reddit-api';
 
+// Static set to track active queries across all hook instances
+// This prevents duplicate research processes for the same query
+const activeQueries = new Set<string>();
+
 export interface ThinkingStep {
   id: string;
   title: string;
@@ -117,10 +121,32 @@ export const useDeepResearch = (isActive: boolean, query: string = '') => {
   const [isInProgress, setIsInProgress] = useState(false);
   const [webData, setWebData] = useState<WebData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [queryId] = useState(() => Math.random().toString(36).substring(7)); // Unique ID for this instance
+
+  // Cleanup function to remove the query from activeQueries when component unmounts or query changes
+  useEffect(() => {
+    return () => {
+      // If this instance had claimed the query, release it
+      if (query && isActive) {
+        activeQueries.delete(query.trim().toLowerCase());
+      }
+    };
+  }, [query, isActive, queryId]);
 
   // Reset everything when a new query starts
   useEffect(() => {
     if (query && isActive && !isInProgress) {
+      const normalizedQuery = query.trim().toLowerCase();
+      
+      // Check if this query is already being processed
+      if (activeQueries.has(normalizedQuery)) {
+        console.log(`Query "${normalizedQuery}" is already being processed. Skipping duplicate research.`);
+        return;
+      }
+      
+      // Claim this query
+      activeQueries.add(normalizedQuery);
+      
       setSteps([...DEFAULT_THINKING_STEPS]);
       setActiveStepId(null);
       setIsComplete(false);
@@ -339,6 +365,11 @@ STRICT BULLET POINT INSTRUCTIONS:
       updateStepStatus('synthesize', 'completed', 'Response ready!', aiContent);
       setIsComplete(true);
       setIsInProgress(false);
+      
+      // Release the query when the process completes
+      const normalizedQuery = query.trim().toLowerCase();
+      activeQueries.delete(normalizedQuery);
+      
     } catch (err: any) {
       handleError('synthesize', err.message);
     }
@@ -371,6 +402,11 @@ STRICT BULLET POINT INSTRUCTIONS:
     setError(`Error in ${stepId} step: ${errorMessage}`);
     updateStepStatus(stepId, 'pending', `Error: ${errorMessage}`);
     setIsInProgress(false);
+    
+    // Release the query when an error occurs
+    if (query) {
+      activeQueries.delete(query.trim().toLowerCase());
+    }
   };
 
   return {

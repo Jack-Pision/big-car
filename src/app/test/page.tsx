@@ -478,7 +478,7 @@ FORMATTING REQUIREMENTS:
 2. Start with a clear main title using # heading (e.g., "# Latest Developments in AI, 2025").
 3. Divide content into logical sections with ## headings.
 4. Use bullet points (*) for all key details and findings, with each bullet point being a 7–8 sentence paragraph.
-5. End with a "## Conclusion" section that is a detailed 7–8 sentence paragraph.
+5. End with a "## Conclusion" section.
 6. Include a "## Summary Table" if the information can be presented in tabular form.
 7. For citations, use ONLY numbered references in square brackets [1], [2] at the end of sentences/bullets.
 
@@ -578,12 +578,40 @@ CITATION INSTRUCTIONS:
     // If Deep Research is active, show the view inline in the chat
     if (showAdvanceSearch) {
       setShowAdvanceSearch(true);
-      const researchId = uuidv4();
-      setMessages(prev => [
-        ...prev,
-        { role: "user", content: currentInput },
-        { role: "deep-research", content: currentInput, researchId }
-      ]);
+      
+      // Check if there's already a research message with this query
+      const normalizedInput = currentInput.trim().toLowerCase();
+      const existingResearchMessage = messages.find(
+        msg => msg.role === "deep-research" && msg.content.trim().toLowerCase() === normalizedInput
+      );
+      
+      // Only add a new research message if this query doesn't already have one
+      if (!existingResearchMessage) {
+        const researchId = uuidv4();
+        setMessages(prev => [
+          ...prev,
+          { role: "user", content: currentInput },
+          { role: "deep-research", content: currentInput, researchId }
+        ]);
+      } else {
+        // Just add the user message, don't duplicate the research block
+        setMessages(prev => [
+          ...prev,
+          { role: "user", content: currentInput }
+        ]);
+        
+        // Scroll to the existing research block
+        const existingResearchId = existingResearchMessage.researchId;
+        if (existingResearchId) {
+          setTimeout(() => {
+            const element = document.getElementById(`research-${existingResearchId}`);
+            if (element) {
+              element.scrollIntoView({ behavior: 'smooth' });
+            }
+          }, 100);
+        }
+      }
+      
       setInput("");
       setImagePreviewUrls([]);
       setSelectedFilesForUpload([]);
@@ -1028,7 +1056,7 @@ FORMATTING REQUIREMENTS:
                 );
               } else if (msg.role === "deep-research") {
                 return (
-                  <DeepResearchBlock key={msg.researchId} query={msg.content} />
+                  <DeepResearchBlock key={msg.researchId} query={msg.content} researchId={msg.researchId} />
                 );
               } else { // User message
                 return (
@@ -1203,7 +1231,7 @@ FORMATTING REQUIREMENTS:
   );
 }
 
-function DeepResearchBlock({ query }: { query: string }) {
+function DeepResearchBlock({ query, researchId }: { query: string, researchId?: string }) {
   const {
     steps,
     activeStepId,
@@ -1216,6 +1244,7 @@ function DeepResearchBlock({ query }: { query: string }) {
   const isFinalStepComplete = steps[steps.length - 1]?.status === 'completed';
   return (
     <motion.div
+      id={researchId ? `research-${researchId}` : undefined}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
