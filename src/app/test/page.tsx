@@ -440,6 +440,13 @@ export default function TestChat() {
 
   // When deep research completes, automatically start the AI request for the main chat
   useEffect(() => {
+    console.log('[DEBUG] useEffect (main chat trigger) fired:', {
+      isComplete,
+      isAiResponding,
+      currentQuery,
+      webData,
+      mainChatGenerationComplete
+    });
     if (isComplete && !isAiResponding && currentQuery && webData) {
       console.log("[DEBUG] Deep research complete, attempting to generate detailed research paper", { 
         isComplete, 
@@ -462,8 +469,18 @@ export default function TestChat() {
   // DEDICATED function specifically for generating the main chat's detailed research paper
   // This is separate from the Advance Search panel's third step
   const generateMainChatResearchPaper = () => {
+    console.log('[DEBUG] generateMainChatResearchPaper called:', {
+      isComplete,
+      isAiResponding,
+      currentQuery,
+      webData,
+      mainChatGenerationComplete
+    });
     if (!currentQuery || !webData) {
-      console.error("[ERROR] Cannot generate main chat research paper: missing query or web data");
+      console.error("[ERROR] Cannot generate main chat research paper: missing query or web data", {
+        currentQuery,
+        webData
+      });
       // Even if we can't generate, mark as complete to avoid blocking the UI
       setMainChatGenerationComplete(true);
       return;
