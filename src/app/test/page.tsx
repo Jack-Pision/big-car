@@ -17,6 +17,7 @@ import AdvanceSearch from '@/components/AdvanceSearch';
 import { useDeepResearch } from '@/hooks/useDeepResearch';
 import { WebSource } from '@/utils/source-utils';
 import { v4 as uuidv4 } from 'uuid';
+import EmptyBox from '@/components/EmptyBox';
 
 const SYSTEM_PROMPT = `You are a helpful, knowledgeable, and friendly AI assistant. Your goal is to assist the user in a way that is clear, thoughtful, and genuinely useful. Follow these guidelines:
 
@@ -389,6 +390,8 @@ export default function TestChat() {
 
   const [manualStepId, setManualStepId] = useState<string | null>(null);
   const isFinalStepComplete = steps[steps.length - 1]?.status === 'completed';
+
+  const [emptyBoxes, setEmptyBoxes] = useState<string[]>([]); // Array of box IDs
 
   // Helper to show the image in chat
   const showImageMsg = (content: string, imgSrc: string) => {
@@ -818,6 +821,17 @@ FORMATTING REQUIREMENTS:
     setSelectedFilesForUpload((prevFiles) => prevFiles.filter((_, index) => index !== indexToRemove));
   }
 
+  // Add function to handle Write label click
+  const handleWriteClick = () => {
+    const newBoxId = uuidv4();
+    setEmptyBoxes(prev => [...prev, newBoxId]);
+  };
+
+  // Add function to handle box removal
+  const handleRemoveBox = (boxId: string) => {
+    setEmptyBoxes(prev => prev.filter(id => id !== boxId));
+  };
+
   return (
     <>
       <div className="min-h-screen flex flex-col" style={{ background: '#161618' }}>
@@ -855,6 +869,10 @@ FORMATTING REQUIREMENTS:
               Seek and You'll find
             </h1>
           </div>
+          {/* Empty boxes */}
+          {emptyBoxes.map(boxId => (
+            <EmptyBox key={boxId} onClose={() => handleRemoveBox(boxId)} />
+          ))}
           {/* Conversation */}
           <div className="w-full max-w-3xl mx-auto flex flex-col gap-4 items-center justify-center z-10 pt-12 pb-4">
             {messages.map((msg, i) => {
@@ -971,6 +989,7 @@ FORMATTING REQUIREMENTS:
                     type="button"
                     className={`flex items-center gap-1.5 rounded-full bg-gray-800 hover:bg-gray-700 transition px-3 py-1.5 flex-shrink-0 text-xs font-medium text-cyan-400`}
                     style={{ height: "36px" }}
+                    onClick={handleWriteClick}
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#22d3ee' }}>
                       <path d="M12 20h9" />
