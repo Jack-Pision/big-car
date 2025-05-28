@@ -393,6 +393,9 @@ export default function TestChat() {
 
   const [emptyBoxes, setEmptyBoxes] = useState<string[]>([]); // Array of box IDs
 
+  // Track whether the main chat research paper generation has completed
+  const [mainChatGenerationComplete, setMainChatGenerationComplete] = useState(false);
+
   // Helper to show the image in chat
   const showImageMsg = (content: string, imgSrc: string) => {
     setMessages((prev) => [
@@ -424,24 +427,27 @@ export default function TestChat() {
     }
   }, [messages]);
 
-  // Hide the Deep Research view when research completes and AI responds
+  // Hide the Deep Research view when research completes, AI responds, AND main chat generation is complete
   useEffect(() => {
-    if (isComplete && !isAiResponding) {
-      // Only hide the research view when both research is complete and AI has responded
+    if (isComplete && !isAiResponding && mainChatGenerationComplete) {
+      console.log("[DEBUG] All conditions met - hiding Advance Search panel");
+      // Only hide the research view when ALL processing is complete
       setShowAdvanceSearch(false);
+      // Reset the completion flag for next time
+      setMainChatGenerationComplete(false);
     }
-  }, [isComplete, isAiResponding]);
+  }, [isComplete, isAiResponding, mainChatGenerationComplete]);
 
   // When deep research completes, automatically start the AI request for the main chat
   useEffect(() => {
-    if (isComplete && showAdvanceSearch && !isAiResponding && currentQuery && webData) {
+    if (isComplete && !isAiResponding && currentQuery && webData) {
       console.log("[DEBUG] Deep research complete, attempting to generate detailed research paper", { 
         isComplete, 
-        showAdvanceSearch, 
         isAiResponding,
         currentQueryLength: currentQuery?.length || 0,
         webDataExists: !!webData,
-        webDataArticles: webData?.serperArticles?.length || 0
+        webDataArticles: webData?.serperArticles?.length || 0,
+        mainChatGenerationComplete
       });
       
       // Use setTimeout to ensure state updates have been processed
@@ -451,13 +457,15 @@ export default function TestChat() {
         generateMainChatResearchPaper();
       }, 500);
     }
-  }, [isComplete, showAdvanceSearch, isAiResponding, currentQuery, webData]);
+  }, [isComplete, isAiResponding, currentQuery, webData]);
 
   // DEDICATED function specifically for generating the main chat's detailed research paper
   // This is separate from the Advance Search panel's third step
   const generateMainChatResearchPaper = () => {
     if (!currentQuery || !webData) {
       console.error("[ERROR] Cannot generate main chat research paper: missing query or web data");
+      // Even if we can't generate, mark as complete to avoid blocking the UI
+      setMainChatGenerationComplete(true);
       return;
     }
     
@@ -562,7 +570,13 @@ CITATION INSTRUCTIONS:
       return response;
     })
     .then(async (response) => {
-      if (!response) return;
+      if (!response) {
+        // Mark as complete even if there was an error, to avoid blocking the UI
+        setMainChatGenerationComplete(true);
+        setIsAiResponding(false);
+        setLoading(false);
+        return;
+      }
       
       // Process the response
       if (response.body && response.headers.get('content-type')?.includes('text/event-stream')) {
@@ -638,6 +652,9 @@ CITATION INSTRUCTIONS:
       // Force an immediate state update to ensure the UI renders the new message
       setMessages(prev => [...prev]);
       
+      // Mark main chat generation as complete
+      setMainChatGenerationComplete(true);
+      
       // Update final states
       setIsAiResponding(false);
       setLoading(false);
@@ -655,6 +672,8 @@ CITATION INSTRUCTIONS:
         }
       ]);
       
+      // Mark main chat generation as complete even on error
+      setMainChatGenerationComplete(true);
       setIsAiResponding(false);
       setLoading(false);
     });
