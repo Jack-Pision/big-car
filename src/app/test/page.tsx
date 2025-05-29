@@ -649,7 +649,9 @@ export default function TestChat() {
 
   const aiStreamAbortController = useRef<AbortController | null>(null);
 
-  const [showAdvanceSearch, setShowAdvanceSearch] = useState(false);
+  // Separate UI state from processing state for Advance Search
+  const [showAdvanceSearchUI, setShowAdvanceSearchUI] = useState(false); // UI state for the button
+  const [isAdvanceSearchActive, setIsAdvanceSearchActive] = useState(false); // Processing state
   const [currentQuery, setCurrentQuery] = useState('');
   
   // Add state for tracking Advance Search conversation history
@@ -661,7 +663,7 @@ export default function TestChat() {
     previousResponses: []
   });
   
-  // Deep Research hook - now passing conversation history
+  // Deep Research hook - now passing processing state instead of UI state
   const {
     steps,
     activeStepId,
@@ -669,7 +671,7 @@ export default function TestChat() {
     isInProgress,
     error,
     webData
-  } = useDeepResearch(showAdvanceSearch, currentQuery, advanceSearchHistory);
+  } = useDeepResearch(isAdvanceSearchActive, currentQuery, advanceSearchHistory);
 
   const [manualStepId, setManualStepId] = useState<string | null>(null);
   const isFinalStepComplete = steps[steps.length - 1]?.status === 'completed';
@@ -718,7 +720,8 @@ export default function TestChat() {
   useEffect(() => {
     if (isComplete && !isAiResponding) {
       // Only hide the research view when both research is complete and AI has responded
-      setShowAdvanceSearch(false);
+      setIsAdvanceSearchActive(false); // Turn off the processing state
+      // But keep the UI state the same for the next query
     }
   }, [isComplete, isAiResponding]);
 
@@ -771,9 +774,9 @@ export default function TestChat() {
     // Store the current query for Deep Research
     setCurrentQuery(currentInput);
     
-    // If Deep Research is active, show the view inline in the chat
-    if (showAdvanceSearch) {
-      setShowAdvanceSearch(true);
+    // If Advance Search UI mode is active, process as Advance Search
+    if (showAdvanceSearchUI) {
+      setIsAdvanceSearchActive(true); // Activate the processing state
       const researchId = uuidv4();
       
       // Always add a new user message and research block for each query
@@ -1349,12 +1352,12 @@ export default function TestChat() {
                   {/* Deep Research button with Molecule icon */}
                   <button
                     type="button"
-                    className={`flex items-center gap-1.5 rounded-full bg-gray-800 hover:bg-gray-700 transition px-3 py-1.5 flex-shrink-0 ${showAdvanceSearch ? 'text-cyan-400' : 'text-gray-400'}`}
+                    className={`flex items-center gap-1.5 rounded-full bg-gray-800 hover:bg-gray-700 transition px-3 py-1.5 flex-shrink-0 ${showAdvanceSearchUI ? 'text-cyan-400' : 'text-gray-400'}`}
                     style={{ height: "36px" }}
                     tabIndex={0}
-                    onClick={() => setShowAdvanceSearch(a => !a)}
+                    onClick={() => setShowAdvanceSearchUI(a => !a)}
                   >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: showAdvanceSearch ? '#22d3ee' : '#a3a3a3' }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: showAdvanceSearchUI ? '#22d3ee' : '#a3a3a3' }}>
                       <circle cx="12" cy="12" r="3" />
                       <circle cx="19" cy="5" r="2" />
                       <circle cx="5" cy="19" r="2" />
@@ -1427,6 +1430,8 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory }: {
   },
   onClearHistory?: () => void
 }) {
+  // Always set the first parameter to true to ensure it processes the query
+  // regardless of the parent component's state
   const {
     steps,
     activeStepId,
@@ -1435,6 +1440,7 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory }: {
     error,
     webData
   } = useDeepResearch(true, query, conversationHistory);
+  
   const [manualStepId, setManualStepId] = useState<string | null>(null);
   const isFinalStepComplete = steps[steps.length - 1]?.status === 'completed';
   
