@@ -1,3 +1,5 @@
+import React from 'react';
+
 const SYSTEM_PROMPT = `You are a helpful, knowledgeable, and friendly AI assistant. Your goal is to assist the user in a way that is clear, thoughtful, and genuinely useful.
 
 FORMAT YOUR RESPONSES WITH THIS EXACT STRUCTURE:
@@ -21,4 +23,13 @@ Format responses with appropriate markdown:
 - Use headings for organization
 - Use bullet points for lists
 - Bold important terms
-- Use code blocks for code, commands, or technical syntax`; 
+- Use code blocks for code, commands, or technical syntax`;
+
+export default function ChatPage() {
+  return (
+    <div>
+      <h1>Chat Page</h1>
+      <p>This is a placeholder for the chat page.</p>
+    </div>
+  );
+} 
