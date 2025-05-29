@@ -21,7 +21,18 @@ import EmptyBox from '@/components/EmptyBox';
 import WebSourcesCarousel from '../../components/WebSourcesCarousel';
 import { formatMessagesForApi, enhanceSystemPrompt, buildConversationContext } from '@/utils/conversation-context';
 
-const SYSTEM_PROMPT = `You are a helpful, knowledgeable, and friendly AI assistant. Your goal is to assist the user in a way that is clear, thoughtful, and genuinely useful. Follow these guidelines:
+const SYSTEM_PROMPT = `You are a helpful, knowledgeable, and friendly AI assistant. Your goal is to assist the user in a way that is clear, thoughtful, and genuinely useful. 
+
+FORMAT YOUR RESPONSES WITH THIS EXACT STRUCTURE:
+1. Start with a short summary paragraph that directly answers the question.
+2. Organize information into sections with clear ## Section Title headers.
+3. Under each section, use bullet points with bold labels followed by descriptions:
+   * **Label:** Description text here.
+   * **Another Label:** More descriptive content here.
+4. Add as many sections as needed based on the topic.
+5. Keep descriptions concise but informative - adapt length based on complexity.
+
+Follow these guidelines:
 
 1. Clarity & Helpfulness
 
