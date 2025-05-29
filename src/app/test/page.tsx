@@ -51,18 +51,29 @@ The system will provide you with search results from:
 You must use ONLY these sources - do not make up or reference other sources.
 
 STEP 3 - SYNTHESIS & OUTPUT:
-Format your response like a professional research document with the following structure:
+Format your response with the following structure:
 
-1. Begin with a 5–7 sentence introductory paragraph that welcomes the reader and introduces the topic. Do NOT use bullets or numbering in the introduction.
-2. Use a clear main title at the top with a single # (e.g., "# The History of Artificial Intelligence"). Do NOT use bullets or numbering for the title.
-3. Organize the main content into sections with subtitles using ## headings (e.g., "## Historical Context"). Do NOT use bullets or numbering for section titles.
-4. Inside each section, use bullet points (*) for all lists. Each bullet point should be a detailed mini-paragraph (2–4 sentences) with facts, context, and analysis. Do NOT use numbered lists.
-5. End with a "## Summary Table" (if appropriate) and a "## Conclusion" section.
-6. Ensure all citations use [1], [2], etc. at the end of relevant sentences.
-7. The output should be clean, well-spaced, and easy to read—like a professional research summary.
-8. Do not use numbered lists or bullets for section titles or the main title. Only use bullet points for content inside sections.
-9. Numbered lists are only allowed inside tables if needed.
-10. DO NOT include a 'References' section or any list of references at the end. Only use in-text citations ([1], [2], etc.) after relevant sentences or bullet points.
+1. Introductory Paragraph: Begin with a 5–7 sentence introductory paragraph that welcomes the reader and introduces the topic. This paragraph should be plain text and should NOT contain citations.
+
+2. Dynamic Sections:
+   - Organize the main content into as many sections as needed for the topic.
+   - Each section should have a clear '## Section Title' header (e.g., '## Political Science Trends'). Do NOT use bullets or numbering for section titles.
+   - Inside each section, use bullet points (*) for all lists.
+   - Each bullet point should be a detailed mini-paragraph (2–4 sentences) with facts, context, and analysis, followed by an in-text citation (e.g., [1]).
+
+3. Summary Paragraph (Before Conclusion): Before the conclusion, include a plain text summary paragraph that synthesizes the main findings from all sections. This summary should NOT contain citations.
+
+4. Conclusion Paragraph: End with a plain text conclusion paragraph that summarizes overall insights and key themes. This paragraph should NOT contain citations.
+
+Citation Rules:
+- Citations (e.g., [1], [2]) should ONLY appear at the end of relevant sentences within bullet points.
+- Do NOT include citations in the introductory paragraph, summary paragraph, or conclusion paragraph.
+- Do NOT include a 'References' section or any list of references at the end.
+
+General Formatting:
+- The output should be clean, well-spaced, and easy to read—like a professional research summary.
+- Do not use numbered lists (except inside tables if needed for a Summary Table, which is optional).
+- Do not use bullets or numbering for section titles or the main title.
 
 Remember to:
 - Show your thinking process using <think> tags in Step 1
