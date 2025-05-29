@@ -112,9 +112,9 @@ const WebSourceCard: React.FC<{ source: WebSource }> = ({ source }) => {
       href={source.url}
       target="_blank"
       rel="noopener noreferrer"
-      className={`flex flex-row items-center rounded-xl overflow-hidden transition-all
-        hover:ring-2 hover:ring-neutral-500 bg-gradient-to-br ${getColorClass()}
-        min-w-[180px] w-[180px] h-[80px] shadow-md p-2`}
+      className={`flex flex-row items-center rounded-xl overflow-hidden transition-all duration-200
+        bg-gradient-to-br ${getColorClass()} min-w-[180px] w-[180px] h-[80px] shadow-md p-2
+        hover:brightness-90 hover:saturate-150`}
     >
       {imageUrl ? (
         <div className="flex-shrink-0 w-10 h-14 rounded-lg overflow-hidden bg-black/20 mr-2 flex items-center justify-center">
