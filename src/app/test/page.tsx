@@ -485,7 +485,9 @@ export default function TestChat() {
               { 
                 role: 'assistant',
                 content: cleanedOutput,
-                webSources: webData?.sources || []
+                webSources: webData?.sources || [],
+                id: uuidv4(),
+                timestamp: Date.now()
               }
             ]);
             setShowPulsingDot(false); // Hide dot as soon as output starts
