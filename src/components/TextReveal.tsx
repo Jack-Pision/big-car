@@ -273,25 +273,75 @@ const TextReveal: React.FC<TextRevealProps> = ({
           font-size: inherit;
           line-height: inherit;
         }
-        /* Styling for markdown headers and lists */
+        /* Enhanced styling for markdown headers and lists */
+        .markdown-body {
+          color: #fff;
+          line-height: 1.6;
+        }
         .markdown-body h1 {
-          font-size: 1.8rem;
+          font-size: 1.9rem;
           font-weight: 700;
-          margin-top: 1.5rem;
-          margin-bottom: 1rem;
+          margin-top: 2rem;
+          margin-bottom: 1.2rem;
+          color: #f0f0f0;
         }
         .markdown-body h2 {
-          font-size: 1.5rem;
+          font-size: 1.6rem;
           font-weight: 700;
+          margin-top: 2rem;
+          margin-bottom: 1rem;
+          border-bottom: none;
+          color: #f0f0f0;
+          padding-bottom: 0.3rem;
+        }
+        .markdown-body h3 {
+          font-size: 1.4rem;
           margin-top: 1.5rem;
           margin-bottom: 0.8rem;
-          border-bottom: none;
+          font-weight: 600;
+          color: #f0f0f0;
         }
         .markdown-body ul {
           margin-left: 1.5rem;
+          margin-bottom: 1.5rem;
+          list-style-type: disc;
+        }
+        .markdown-body ul ul {
+          margin-top: 0.5rem;
+          margin-bottom: 0.5rem;
         }
         .markdown-body li {
+          margin-bottom: 0.7rem;
+          line-height: 1.6;
+        }
+        .markdown-body li::marker {
+          color: #aaa;
+        }
+        .markdown-body li strong {
+          color: #eaeaea;
+          font-weight: 600;
+        }
+        .markdown-body p {
+          margin-bottom: 1.2rem;
+          line-height: 1.6;
+        }
+        .markdown-body p + ul {
+          margin-top: -0.5rem;
+        }
+        .markdown-body strong {
+          font-weight: 600;
+          color: #f0f0f0;
+        }
+        /* Additional spacing to match the example */
+        .markdown-body h2 + ul {
+          margin-top: 1rem;
+        }
+        .markdown-body > ul:last-child {
           margin-bottom: 0.5rem;
+        }
+        /* Ensure proper spacing between sections */
+        .markdown-body h2:not(:first-child) {
+          margin-top: 2.5rem;
         }
         /* Table styles for summary tables */
         .markdown-body table {
