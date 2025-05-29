@@ -388,6 +388,80 @@ const TextReveal: React.FC<TextRevealProps> = ({
         .markdown-body tr:hover {
           background-color: rgba(255, 255, 255, 0.05);
         }
+        
+        /* Additional styling for better general content formatting */
+        .markdown-body blockquote {
+          border-left: 4px solid #404040;
+          padding-left: 1rem;
+          margin: 1.5rem 0;
+          color: #d0d0d0;
+          font-style: italic;
+        }
+        
+        .markdown-body code {
+          background-color: rgba(110, 118, 129, 0.4);
+          border-radius: 3px;
+          font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
+          font-size: 0.9em;
+          padding: 0.2em 0.4em;
+        }
+        
+        .markdown-body pre {
+          background-color: rgba(20, 20, 20, 0.8);
+          border-radius: 6px;
+          overflow: auto;
+          padding: 16px;
+          margin: 1rem 0;
+        }
+        
+        .markdown-body pre code {
+          background-color: transparent;
+          padding: 0;
+          font-size: 0.9em;
+          line-height: 1.5;
+          display: block;
+          overflow-x: auto;
+        }
+        
+        /* Ensure important terms in text stand out */
+        .markdown-body em {
+          color: #e0e0e0;
+          font-style: italic;
+        }
+        
+        /* Improve general readability of paragraph text */
+        .markdown-body p {
+          line-height: 1.7;
+          margin-bottom: 1.2rem;
+        }
+        
+        /* Special styling for key terms in text */
+        .markdown-body strong em, 
+        .markdown-body em strong {
+          color: #f0f0f0;
+          font-style: italic;
+          font-weight: 600;
+          text-decoration: underline;
+          text-decoration-thickness: from-font;
+          text-underline-offset: 2px;
+        }
+        
+        /* Additional styles for ordered lists to match unordered lists */
+        .markdown-body ol {
+          margin-left: 1.5rem;
+          margin-bottom: 1.5rem;
+          list-style-type: decimal;
+        }
+        
+        .markdown-body ol li {
+          margin-bottom: 0.7rem;
+          line-height: 1.6;
+          padding-left: 0.5rem;
+        }
+        
+        .markdown-body ol li::marker {
+          color: #aaa;
+        }
       `}</style>
     </div>
   );

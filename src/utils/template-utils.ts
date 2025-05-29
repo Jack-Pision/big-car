@@ -47,6 +47,15 @@ export interface ContentBlocks {
  * @returns The type of template to use.
  */
 export function selectTemplate(query: string, context?: QueryContext): TemplateType {
+  // Always default to structured PROFILE format for better readability
+  // This ensures all responses use the clean, structured format with
+  // proper headings, bullet points, and labeled information
+  return TemplateType.PROFILE;
+  
+  // Note: Original template selection logic is commented out but preserved
+  // in case we need to restore specific template selection in the future
+  
+  /*
   const lowerQuery = query.toLowerCase();
 
   // Check for profile/bio related queries
@@ -72,12 +81,13 @@ export function selectTemplate(query: string, context?: QueryContext): TemplateT
     return TemplateType.COMPLEX_TASK;
   }
   if (context?.conversationLength !== undefined && context.conversationLength <= 2) {
-     // very early in conversation, or simple queries
+    // very early in conversation, or simple queries
     if (lowerQuery.length < 30) return TemplateType.BASIC_CHAT;
   }
   
   // Add more sophisticated logic here based on query analysis, intent detection, etc.
   return TemplateType.DEFAULT; // Fallback to a default/general purpose template
+  */
 }
 
 /**
@@ -192,59 +202,159 @@ function createDefaultTemplate(structuredContent: ContentBlocks, template: Templ
 }
 
 /**
- * Apply the profile template format for biographical information
+ * Apply the structured template format for all types of content
  */
 function applyProfileTemplate(content: any): string {
   if (typeof content === 'string') {
-    // If it's already a string, just return it
-    return content;
+    // If it's already a string, apply some basic structure if possible
+    try {
+      // Try to detect sections in plain text content
+      const lines = content.split('\n');
+      let structuredMarkdown = '';
+      let inList = false;
+      let lastLineWasHeading = false;
+      
+      lines.forEach((line, index) => {
+        const trimmedLine = line.trim();
+        
+        // Check if this looks like a heading
+        if (trimmedLine.match(/^([A-Z][a-z]+\s?){1,4}:?$/)) {
+          // Add proper heading markup
+          structuredMarkdown += `\n## ${trimmedLine.replace(/:$/, '')}\n\n`;
+          lastLineWasHeading = true;
+        }
+        // Check if it's a point with a label (e.g., "Name: John Smith")
+        else if (trimmedLine.match(/^([A-Z][a-z]+\s?){1,2}:\s/)) {
+          const [label, ...rest] = trimmedLine.split(':');
+          const content = rest.join(':').trim();
+          structuredMarkdown += `* **${label}:** ${content}\n`;
+          inList = true;
+          lastLineWasHeading = false;
+        }
+        // Check if it's likely a list item
+        else if (trimmedLine.startsWith('-') || trimmedLine.startsWith('*') || trimmedLine.match(/^\d+\./)) {
+          structuredMarkdown += `${trimmedLine}\n`;
+          inList = true;
+          lastLineWasHeading = false;
+        }
+        // Normal paragraph
+        else if (trimmedLine.length > 0) {
+          if (inList && !lastLineWasHeading) {
+            structuredMarkdown += '\n';
+          }
+          structuredMarkdown += `${trimmedLine}\n\n`;
+          inList = false;
+          lastLineWasHeading = false;
+        }
+      });
+      
+      return structuredMarkdown.trim();
+    } catch (e) {
+      // If any error in parsing, return the original content
+      return content;
+    }
   }
-
+  
+  // If content is structured data
   let markdown = '';
   
-  // Add title/name
-  if (content.name) {
-    markdown += `# ${content.name}\n\n`;
+  // Add title if available
+  if (content.title || content.name) {
+    markdown += `# ${content.title || content.name}\n\n`;
   }
   
   // Add introduction paragraph
-  if (content.introduction) {
-    markdown += `${content.introduction}\n\n`;
+  if (content.introduction || content.overview) {
+    markdown += `${content.introduction || content.overview}\n\n`;
   }
   
   // Add key points if available
   if (content.keyPoints) {
-    markdown += `Here are some key points about ${content.name || 'them'}:\n\n`;
+    if (content.title || content.name) {
+      markdown += `Here are some key points about ${content.title || content.name}:\n\n`;
+    } else {
+      markdown += `Key points:\n\n`;
+    }
   }
   
   // Process each section
-  for (const sectionKey in content.sections) {
-    const section = content.sections[sectionKey];
-    
-    // Add section header
-    markdown += `## ${section.title}\n\n`;
-    
-    // Add section description if it exists
-    if (section.description) {
-      markdown += `${section.description}\n\n`;
+  if (content.sections) {
+    for (const sectionKey in content.sections) {
+      const section = content.sections[sectionKey];
+      
+      // Add section header
+      markdown += `## ${section.title || section.heading || sectionKey}\n\n`;
+      
+      // Add section description if it exists
+      if (section.description) {
+        markdown += `${section.description}\n\n`;
+      }
+      
+      // Add bullet points
+      if (section.points && section.points.length > 0) {
+        section.points.forEach((point: any) => {
+          if (point.label) {
+            markdown += `* **${point.label}:** ${point.content || point.text || point.value || ''}\n`;
+          } else if (typeof point === 'string') {
+            markdown += `* ${point}\n`;
+          } else {
+            markdown += `* ${point.content || point.text || point.value || ''}\n`;
+          }
+        });
+        markdown += '\n';
+      }
+      
+      // Add subItems as bullet points if they exist
+      if (section.subItems && section.subItems.length > 0) {
+        section.subItems.forEach((item: any) => {
+          if (typeof item === 'string') {
+            markdown += `* ${item}\n`;
+          } else if (item.label) {
+            markdown += `* **${item.label}:** ${item.content || item.text || item.value || ''}\n`;
+          } else {
+            markdown += `* ${item.content || item.text || item.value || ''}\n`;
+          }
+        });
+        markdown += '\n';
+      }
+      
+      // Add paragraph content if it exists
+      if (section.content) {
+        markdown += `${section.content}\n\n`;
+      }
     }
-    
-    // Add bullet points
-    if (section.points && section.points.length > 0) {
-      section.points.forEach((point: any) => {
-        if (point.label) {
-          markdown += `* **${point.label}:** ${point.content}\n`;
-        } else {
-          markdown += `* ${point.content}\n`;
+  } else if (Array.isArray(content)) {
+    // Handle array of sections
+    content.forEach((section) => {
+      if (typeof section === 'string') {
+        markdown += `${section}\n\n`;
+      } else {
+        // Add section header
+        if (section.title || section.heading) {
+          markdown += `## ${section.title || section.heading}\n\n`;
         }
-      });
-      markdown += '\n';
-    }
-    
-    // Add paragraph content if it exists
-    if (section.content) {
-      markdown += `${section.content}\n\n`;
-    }
+        
+        // Add section content
+        if (section.content) {
+          markdown += `${section.content}\n\n`;
+        }
+        
+        // Add bullet points from array of strings or objects
+        if (section.points || section.items || section.subItems) {
+          const items = section.points || section.items || section.subItems;
+          items.forEach((item: any) => {
+            if (typeof item === 'string') {
+              markdown += `* ${item}\n`;
+            } else if (item.label) {
+              markdown += `* **${item.label}:** ${item.content || item.text || item.value || ''}\n`;
+            } else {
+              markdown += `* ${item.content || item.text || item.value || ''}\n`;
+            }
+          });
+          markdown += '\n';
+        }
+      }
+    });
   }
   
   return markdown.trim();
