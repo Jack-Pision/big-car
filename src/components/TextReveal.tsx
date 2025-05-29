@@ -8,6 +8,7 @@ import rehypeSanitize from 'rehype-sanitize';
 import parse from 'html-react-parser';
 import { processWebCitations, WebSource, WEB_CITATION_REGEX } from '@/utils/source-utils';
 import { processMarkdownWithTables } from '@/utils/markdown-table-utils';
+import { cleanMarkdown, markdownComponents as sharedMarkdownComponents } from '@/utils/markdown-utils';
 
 interface TextRevealProps {
   text: string;
@@ -35,11 +36,8 @@ const TextReveal: React.FC<TextRevealProps> = ({
     setIsRevealing(true);
     setRenderedContent(null);
 
-    // Process the text to handle multi-line markdown properly
-    const cleanedText = text
-      .trim()
-      .replace(/\n{3,}/g, '\n\n'); // Normalize multiple blank lines to just two
-
+    // Clean and normalize markdown before further processing
+    const cleanedText = cleanMarkdown(text.trim());
     // Enhance tables and remove citations from tables
     const enhancedText = processMarkdownWithTables(cleanedText);
 
@@ -117,7 +115,7 @@ const TextReveal: React.FC<TextRevealProps> = ({
       // If no citations, just render the markdown normally
       setRenderedContent(
         <ReactMarkdown
-          components={markdownComponents}
+          components={Object.keys(markdownComponents).length ? markdownComponents : sharedMarkdownComponents}
           remarkPlugins={[remarkGfm, remarkMath]}
           rehypePlugins={[rehypeKatex, rehypeSanitize]}
         >
@@ -133,7 +131,7 @@ const TextReveal: React.FC<TextRevealProps> = ({
     // Step 1: Render markdown normally first
     setRenderedContent(
       <ReactMarkdown
-        components={markdownComponents}
+        components={Object.keys(markdownComponents).length ? markdownComponents : sharedMarkdownComponents}
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[rehypeKatex, rehypeSanitize]}
       >

@@ -20,7 +20,7 @@ export function MarkdownRenderer({
   context?: QueryContext
 }) {
   // Common component overrides for consistent styling
-  const markdownComponents = {
+  export const markdownComponents = {
     h1: (props: React.ComponentProps<'h1'>) => <h1 className="markdown-body-heading markdown-body-h1" {...props} />,
     h2: (props: React.ComponentProps<'h2'>) => <h2 className="markdown-body-heading markdown-body-h2" {...props} />,
     h3: (props: React.ComponentProps<'h3'>) => <h3 className="markdown-body-heading markdown-body-h3" {...props} />,
