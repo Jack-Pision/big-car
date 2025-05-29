@@ -5,6 +5,18 @@ import rehypeKatex from 'rehype-katex';
 import React from 'react';
 import { selectTemplate, structureAIResponse, applyTemplate, TemplateType, QueryContext } from './template-utils';
 
+// Exported shared markdown components for consistent styling
+export const markdownComponents = {
+  h1: (props: React.ComponentProps<'h1'>) => <h1 className="markdown-body-heading markdown-body-h1" {...props} />,
+  h2: (props: React.ComponentProps<'h2'>) => <h2 className="markdown-body-heading markdown-body-h2" {...props} />,
+  h3: (props: React.ComponentProps<'h3'>) => <h3 className="markdown-body-heading markdown-body-h3" {...props} />,
+  hr: (props: React.ComponentProps<'hr'>) => <hr className="markdown-body-hr my-4 border-t-2 border-gray-200" {...props} />,
+  ul: (props: React.ComponentProps<'ul'>) => <ul className="markdown-body-ul ml-6 mb-2 list-disc" {...props} />,
+  ol: (props: React.ComponentProps<'ol'>) => <ol className="markdown-body-ol ml-6 mb-2 list-decimal" {...props} />,
+  li: (props: React.ComponentProps<'li'>) => <li className="markdown-body-li mb-1" {...props} />,
+  p: (props: React.ComponentProps<'p'>) => <p className="my-2" {...props} />,
+};
+
 /**
  * Standard markdown renderer with consistent styling
  */
@@ -19,18 +31,6 @@ export function MarkdownRenderer({
   userQuery?: string,
   context?: QueryContext
 }) {
-  // Common component overrides for consistent styling
-  export const markdownComponents = {
-    h1: (props: React.ComponentProps<'h1'>) => <h1 className="markdown-body-heading markdown-body-h1" {...props} />,
-    h2: (props: React.ComponentProps<'h2'>) => <h2 className="markdown-body-heading markdown-body-h2" {...props} />,
-    h3: (props: React.ComponentProps<'h3'>) => <h3 className="markdown-body-heading markdown-body-h3" {...props} />,
-    hr: (props: React.ComponentProps<'hr'>) => <hr className="markdown-body-hr my-4 border-t-2 border-gray-200" {...props} />,
-    ul: (props: React.ComponentProps<'ul'>) => <ul className="markdown-body-ul ml-6 mb-2 list-disc" {...props} />,
-    ol: (props: React.ComponentProps<'ol'>) => <ol className="markdown-body-ol ml-6 mb-2 list-decimal" {...props} />,
-    li: (props: React.ComponentProps<'li'>) => <li className="markdown-body-li mb-1" {...props} />,
-    p: (props: React.ComponentProps<'p'>) => <p className="my-2" {...props} />,
-  };
-
   // Apply templating if we have content and a user query
   const processedContent = React.useMemo(() => {
     if (!content) return '';
