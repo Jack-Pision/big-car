@@ -7,6 +7,7 @@ import rehypeKatex from 'rehype-katex';
 import rehypeSanitize from 'rehype-sanitize';
 import parse from 'html-react-parser';
 import { processWebCitations, WebSource, WEB_CITATION_REGEX } from '@/utils/source-utils';
+import { processMarkdownWithTables } from '@/utils/markdown-table-utils';
 
 interface TextRevealProps {
   text: string;
@@ -37,53 +38,63 @@ const TextReveal: React.FC<TextRevealProps> = ({
       .trim()
       .replace(/\n{3,}/g, '\n\n'); // Normalize multiple blank lines to just two
 
+    // Enhance tables and remove citations from tables
+    const enhancedText = processMarkdownWithTables(cleanedText);
+
     // Reveal text progressively
     let currentPosition = 0;
     const revealInterval = setInterval(() => {
-      if (currentPosition >= cleanedText.length) {
+      if (currentPosition >= enhancedText.length) {
         clearInterval(revealInterval);
         setIsRevealing(false);
         return;
       }
       
       // Find a good break point - end of a paragraph or list item
-      let nextPosition = cleanedText.indexOf('\n\n', currentPosition);
+      let nextPosition = enhancedText.indexOf('\n\n', currentPosition);
       
       // If no paragraph break found, look for a single line break
       if (nextPosition === -1) {
-        nextPosition = cleanedText.indexOf('\n', currentPosition);
+        nextPosition = enhancedText.indexOf('\n', currentPosition);
       }
       
       // If no line break found or we're at the end, use the entire remaining text
       if (nextPosition === -1) {
-        nextPosition = cleanedText.length;
+        nextPosition = enhancedText.length;
       } else {
         // Include the line breaks in the revealed text
         nextPosition += 2;
       }
       
-      // Ensure we don't break within a list item
-      const partialText = cleanedText.substring(0, nextPosition);
+      // Ensure we don't break within a list item or table
+      const partialText = enhancedText.substring(0, nextPosition);
       const lastNewlinePos = partialText.lastIndexOf('\n');
       
-      // Check if the last line is a list item
+      // Check if the last line is a list item or part of a table
       if (lastNewlinePos !== -1) {
         const lastLine = partialText.substring(lastNewlinePos).trim();
         const isListItem = /^(\d+\.|\*|-)\s/.test(lastLine);
+        const isTableRow = lastLine.startsWith('|') && lastLine.endsWith('|');
         
-        // If it's a list item and not followed by another list item, find the next list item
-        if (isListItem && nextPosition < cleanedText.length) {
-          const followingText = cleanedText.substring(nextPosition);
-          const nextListItemPos = followingText.search(/\n(\d+\.|\*|-)\s/);
+        // If it's a list item or table row and not followed by another similar line, find the next one
+        if ((isListItem || isTableRow) && nextPosition < enhancedText.length) {
+          const followingText = enhancedText.substring(nextPosition);
+          let nextItemPos = -1;
           
-          if (nextListItemPos !== -1) {
-            nextPosition += nextListItemPos + 1; // Include the newline
+          if (isListItem) {
+            nextItemPos = followingText.search(/\n(\d+\.|\*|-)\s/);
+          } else if (isTableRow) {
+            nextItemPos = followingText.search(/\n\|/);
+          }
+          
+          if (nextItemPos !== -1) {
+            nextPosition += nextItemPos + 1; // Include the newline
           }
         }
       }
       
       // Set the current text
-      const currentText = cleanedText.substring(0, nextPosition);
+      const currentText = enhancedText.substring(0, nextPosition);
       setProcessedText(currentText);
       
       currentPosition = nextPosition;
@@ -289,11 +300,12 @@ const TextReveal: React.FC<TextRevealProps> = ({
           max-width: 42rem;
           margin: 1rem 0;
           font-size: 0.95rem;
-          background: #18181b;
+          background: linear-gradient(to bottom, #1c1c20, #18181b);
           color: #e5e7eb;
           border-radius: 0.5rem;
           overflow: hidden;
-          box-shadow: 0 2px 8px 0 #00000022;
+          box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.3);
+          table-layout: fixed;
         }
         .markdown-body th,
         .markdown-body td {
@@ -303,18 +315,28 @@ const TextReveal: React.FC<TextRevealProps> = ({
           text-align: left;
           font-size: 0.95rem;
           font-weight: 400;
+          word-break: break-word;
+          overflow-wrap: break-word;
+          vertical-align: top;
         }
         .markdown-body th {
           background-color: #232323;
           font-weight: 600;
           font-size: 1rem;
           color: #fafafa;
+          border-bottom: 2px solid #3d3d46;
         }
         .markdown-body tr:last-child td {
           border-bottom: none;
         }
         .markdown-body tr {
           background: none;
+        }
+        .markdown-body tr:nth-child(even) {
+          background-color: rgba(255, 255, 255, 0.03);
+        }
+        .markdown-body tr:hover {
+          background-color: rgba(255, 255, 255, 0.05);
         }
       `}</style>
     </div>
