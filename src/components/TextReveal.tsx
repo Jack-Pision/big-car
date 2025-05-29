@@ -14,13 +14,15 @@ interface TextRevealProps {
   className?: string;
   markdownComponents?: any;
   webSources?: WebSource[];
+  revealIntervalMs?: number;
 }
 
 const TextReveal: React.FC<TextRevealProps> = ({ 
   text, 
   className = '', 
   markdownComponents = {},
-  webSources = []
+  webSources = [],
+  revealIntervalMs = 100
 }) => {
   const [processedText, setProcessedText] = useState<string>('');
   const [isRevealing, setIsRevealing] = useState<boolean>(true);
@@ -98,10 +100,10 @@ const TextReveal: React.FC<TextRevealProps> = ({
       setProcessedText(currentText);
       
       currentPosition = nextPosition;
-    }, 100);
+    }, revealIntervalMs);
 
     return () => clearInterval(revealInterval);
-  }, [text]);
+  }, [text, revealIntervalMs]);
 
   // Process the markdown and citations together using client-side only logic
   useEffect(() => {

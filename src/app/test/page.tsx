@@ -394,6 +394,8 @@ export default function TestChat() {
 
   const [emptyBoxes, setEmptyBoxes] = useState<string[]>([]); // Array of box IDs
 
+  const [showPulsingDot, setShowPulsingDot] = useState(false);
+
   // Helper to show the image in chat
   const showImageMsg = (content: string, imgSrc: string) => {
     setMessages((prev) => [
@@ -461,21 +463,26 @@ export default function TestChat() {
     if (isComplete && currentQuery) {
       const synthesisStep = steps.find(step => step.id === 'synthesize');
       if (synthesisStep?.output) {
+        // Show pulsing dot before output is added
+        setShowPulsingDot(true);
         // Process the output to remove unwanted content
         const cleanedOutput = cleanAIOutput(synthesisStep.output);
-        
         // Only add if not already present in messages
         const alreadyPresent = messages.some(m => m.role === 'assistant' && m.content === cleanedOutput);
         if (!alreadyPresent) {
-          setMessages(prev => [
-            ...prev.filter(m => m.role !== 'assistant'),
-            { 
-              role: 'assistant',
-              content: cleanedOutput,
-              // Pass the web sources to the assistant message for the carousel
-              webSources: webData?.sources || []
-            }
-          ]);
+          setTimeout(() => {
+            setMessages(prev => [
+              ...prev.filter(m => m.role !== 'assistant'),
+              { 
+                role: 'assistant',
+                content: cleanedOutput,
+                webSources: webData?.sources || []
+              }
+            ]);
+            setShowPulsingDot(false); // Hide dot as soon as output starts
+          }, 800); // Show dot for a short moment before output
+        } else {
+          setShowPulsingDot(false);
         }
         setIsAiResponding(false);
         setLoading(false);
@@ -899,6 +906,8 @@ FORMATTING REQUIREMENTS:
                 const isStoppedMsg = cleanContent.trim() === '[Response stopped by user]';
                 // Make citations clickable using webData.sources
                 const processedContent = makeCitationsClickable(cleanContent, webData?.sources || []);
+                // Hide pulsing dot as soon as output starts rendering
+                if (showPulsingDot) setShowPulsingDot(false);
                 return (
                   <motion.div
                   key={i}
@@ -908,8 +917,8 @@ FORMATTING REQUIREMENTS:
                     className="w-full markdown-body text-left flex flex-col items-start ai-response-text"
                     style={{ color: '#fff', maxWidth: '100%', overflowWrap: 'break-word' }}
                   >
-                    {/* PulsingDot: Only show if isAiResponding and no assistant message has started rendering */}
-                    {i === messages.length - 1 && isAiResponding && !cleanContent.trim() ? (
+                    {/* PulsingDot: Only show if showPulsingDot is true */}
+                    {i === messages.length - 1 && showPulsingDot ? (
                       <PulsingDot isVisible={true} />
                     ) : (
                       <>
@@ -930,6 +939,7 @@ FORMATTING REQUIREMENTS:
                               text={processedContent}
                               markdownComponents={markdownComponents}
                               webSources={(msg as any).webSources || []}
+                              revealIntervalMs={220}
                             />
                           </div>
                         )}
