@@ -120,168 +120,134 @@ export function applyTemplate(content: any, templateType: TemplateType): string 
  * Apply the structured section + bullet template format for all types of content
  */
 function applySectionBulletTemplate(content: any): string {
-  if (typeof content === 'string') {
-    // If it's already a string, try to structure it according to our format
-    try {
-      // Parse the content to identify sections, bullet points, etc.
-      const lines = content.split('\n');
-      let structuredContent = '';
-      let currentSection = '';
-      let inSummary = true;
-      let summaryText = '';
-      
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i].trim();
-        
-        // Skip empty lines
-        if (!line) continue;
-        
-        // Check if this is a section header (either marked with ## or all caps with colon)
-        if (line.startsWith('## ') || line.match(/^[A-Z][A-Z\s]+:$/)) {
-          // End the summary section if we were in it
-          if (inSummary && summaryText) {
-            structuredContent += summaryText + '\n\n';
-            inSummary = false;
-          }
-          
-          // Format the section header properly
-          const headerText = line.startsWith('## ') 
-            ? line.substring(3) 
-            : line.replace(/:$/, '');
-          
-          structuredContent += `## ${headerText}\n\n`;
-          currentSection = headerText;
-          continue;
-        }
-        
-        // Check if this is a bullet point with a label
-        const bulletLabelMatch = line.match(/^[\*\-]\s+(?:\*\*([^:]+):\*\*|([^:]+):)\s*(.*)$/);
-        if (bulletLabelMatch) {
-          // End summary if we were in it
-          if (inSummary) {
-            structuredContent += summaryText + '\n\n';
-            inSummary = false;
-            
-            // If no section defined yet, add a default one
-            if (!currentSection) {
-              structuredContent += `## Key Points\n\n`;
-              currentSection = 'Key Points';
-            }
-          }
-          
-          // Format the bullet point with label
-          const label = bulletLabelMatch[1] || bulletLabelMatch[2];
-          const desc = bulletLabelMatch[3];
-          structuredContent += `* **${label}:** ${desc}\n`;
-          continue;
-        }
-        
-        // Check if this is a regular bullet point
-        if (line.match(/^[\*\-]\s+/)) {
-          // End summary if we were in it
-          if (inSummary) {
-            structuredContent += summaryText + '\n\n';
-            inSummary = false;
-            
-            // If no section defined yet, add a default one
-            if (!currentSection) {
-              structuredContent += `## Key Points\n\n`;
-              currentSection = 'Key Points';
-            }
-          }
-          
-          // Keep the bullet point as is
-          structuredContent += `${line}\n`;
-          continue;
-        }
-        
-        // If we're still in summary section, add to summary
-        if (inSummary) {
-          summaryText += (summaryText ? ' ' : '') + line;
-        } else {
-          // If we have a section but no bullet points yet, this might be a paragraph
-          // Let's add a blank line after it
-          structuredContent += `${line}\n\n`;
-        }
+  // Helper to normalize bullet points
+  function formatBullet(line: string): string {
+    // Try to extract label and description
+    const match = line.match(/^[\*\-]\s*(?:\*\*([^:]+):\*\*|([^:]+):)?\s*(.*)$/);
+    if (match) {
+      const label = match[1] || match[2];
+      const desc = match[3];
+      if (label) {
+        return `* **${label}:** ${desc}`;
+      } else {
+        return `* ${desc}`;
       }
-      
-      // If we never exited summary mode, add the summary text
-      if (inSummary && summaryText) {
-        structuredContent += summaryText;
-      }
-      
-      // If we didn't generate any structured content, return the original
-      if (!structuredContent.trim()) {
-        return content;
-      }
-      
-      return structuredContent.trim();
-    } catch (e) {
-      // If any error in parsing, return the original content
-      return content;
     }
+    return `* ${line.replace(/^[\*\-]\s*/, '')}`;
   }
-  
+
+  // If content is a string, parse and normalize
+  if (typeof content === 'string') {
+    const lines = content.split('\n');
+    let output = '';
+    let summary = '';
+    let inSummary = true;
+    let currentSection = '';
+    let sectionLines: string[] = [];
+    const sections: { title: string, bullets: string[] }[] = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+      // Section header
+      if (line.startsWith('## ')) {
+        if (currentSection && sectionLines.length) {
+          sections.push({ title: currentSection, bullets: sectionLines });
+        }
+        currentSection = line.substring(3).trim();
+        sectionLines = [];
+        inSummary = false;
+        continue;
+      }
+      // All-caps with colon (legacy section header)
+      if (line.match(/^[A-Z][A-Z\s]+:$/)) {
+        if (currentSection && sectionLines.length) {
+          sections.push({ title: currentSection, bullets: sectionLines });
+        }
+        currentSection = line.replace(/:$/, '').trim();
+        sectionLines = [];
+        inSummary = false;
+        continue;
+      }
+      // Bullet point
+      if (line.match(/^[\*\-]\s+/)) {
+        inSummary = false;
+        sectionLines.push(formatBullet(line));
+        continue;
+      }
+      // Code block start/end (ignore for bullets)
+      if (line.startsWith('```')) continue;
+      // If still in summary, add to summary
+      if (inSummary) {
+        summary += (summary ? ' ' : '') + line;
+      } else {
+        // If not in summary and not a bullet, treat as a paragraph in section
+        sectionLines.push(`* ${line}`);
+      }
+    }
+    // Push last section
+    if (currentSection && sectionLines.length) {
+      sections.push({ title: currentSection, bullets: sectionLines });
+    }
+    // Build output
+    if (summary) {
+      output += summary.trim() + '\n\n';
+    }
+    for (const section of sections) {
+      output += `## ${section.title}\n\n`;
+      for (const bullet of section.bullets) {
+        output += bullet + '\n';
+      }
+      output += '\n';
+    }
+    return output.trim();
+  }
+
   // If content is structured data
   let markdown = '';
-  
-  // Add summary paragraph
   if (content.summary || content.introduction || content.overview) {
-    markdown += `${content.summary || content.introduction || content.overview}\n\n`;
+    markdown += `${content.summary || content.introduction || content.overview}`.trim() + '\n\n';
   }
-  
-  // Process sections
   if (content.sections) {
     for (const sectionKey in content.sections) {
       const section = content.sections[sectionKey];
-      
-      // Add section header
-      markdown += `## ${section.title || section.heading || sectionKey}\n\n`;
-      
-      // Add bullet points
+      const title = section.title || section.heading || sectionKey;
+      markdown += `## ${title}\n\n`;
       if (section.points && section.points.length > 0) {
         section.points.forEach((point: any) => {
           if (point.label) {
             markdown += `* **${point.label}:** ${point.description || point.content || point.text || ''}\n`;
           } else if (typeof point === 'string') {
-            markdown += `* ${point}\n`;
+            markdown += formatBullet(point) + '\n';
           } else {
             markdown += `* ${point.content || point.text || ''}\n`;
           }
         });
         markdown += '\n';
       }
-      
-      // Add paragraph content if it exists and no bullet points were added
       if (section.content && (!section.points || section.points.length === 0)) {
-        markdown += `${section.content}\n\n`;
+        markdown += `* ${section.content}\n\n`;
       }
     }
   } else if (Array.isArray(content)) {
-    // Handle array of sections
     let firstItem = true;
-    
     content.forEach((section) => {
       if (typeof section === 'string') {
-        // If it's the first item, treat it as a summary
         if (firstItem) {
-          markdown += `${section}\n\n`;
+          markdown += section.trim() + '\n\n';
           firstItem = false;
         } else {
-          markdown += `${section}\n\n`;
+          markdown += section.trim() + '\n\n';
         }
       } else {
-        // Add section header
         if (section.title || section.heading) {
           markdown += `## ${section.title || section.heading}\n\n`;
         }
-        
-        // Add bullet points from array of strings or objects
         if (section.points || section.items) {
           const items = section.points || section.items;
           items.forEach((item: any) => {
             if (typeof item === 'string') {
-              markdown += `* ${item}\n`;
+              markdown += formatBullet(item) + '\n';
             } else if (item.label) {
               markdown += `* **${item.label}:** ${item.description || item.content || item.text || ''}\n`;
             } else {
@@ -290,15 +256,12 @@ function applySectionBulletTemplate(content: any): string {
           });
           markdown += '\n';
         }
-        
-        // Add content if no points/items
         if (section.content && (!section.points && !section.items)) {
-          markdown += `${section.content}\n\n`;
+          markdown += `* ${section.content}\n\n`;
         }
       }
     });
   }
-  
   return markdown.trim();
 }
 
