@@ -272,440 +272,352 @@ function enforceAdvanceSearchStructure(output: string): string {
   let introSection = '';
   let tableSection = '';
   let conclusionSection = '';
-  let otherSections: {title: string, content: string}[] = [];
+  let contentSections: {title: string, content: string}[] = [];
   
-  // Track section we're currently in
+  // Track the current section being processed
   let currentSection = 'none';
   let currentSectionTitle = '';
   let currentSectionContent: string[] = [];
+  let inTable = false;
   
-  // Analyze the content line by line
+  // Process each line
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
     
     // Skip empty lines
     if (!line) continue;
     
-    // Check for section headers
-    if (line.match(/^#{1,2}\s+Summary(\s+Table)?$/i) || line.match(/^#{1,2}\s+Key\s+Findings$/i)) {
-      // If we were in the intro section, store it
-      if (currentSection === 'intro') {
-        introSection = processSectionText(currentSectionContent, 3, 4);
-        hasIntro = introSection.length > 10; // Ensure it's substantial
-      } else if (currentSection === 'other' && currentSectionContent.length > 0) {
-        // Save previous section content
-        otherSections.push({
-          title: currentSectionTitle,
-          content: processSectionText(currentSectionContent, 3, 4)
-        });
-      }
-      
-      // Now we're in the table section
-      currentSection = 'table';
-      currentSectionTitle = line;
-      currentSectionContent = [line];
+    // Detect headings
+    if (line.startsWith('# ')) {
+      // Main title - remove it
       continue;
-    }
-    
-    if (line.match(/^#{1,2}\s+Conclusion/i)) {
-      // If we were in the table section, store it
-      if (currentSection === 'table') {
-        tableSection = cleanupTableSection(currentSectionContent);
-        hasTable = tableSection.includes('|') || tableSection.length > 20;
-      } else if (currentSection === 'other' && currentSectionContent.length > 0) {
-        // Save previous section content if it wasn't a table
-        otherSections.push({
-          title: currentSectionTitle,
-          content: processSectionText(currentSectionContent, 3, 4)
-        });
+    } else if (line.startsWith('## ')) {
+      // Finish previous section
+      if (currentSection !== 'none' && currentSectionContent.length > 0) {
+        if (currentSection === 'intro') {
+          introSection = processIntroduction(currentSectionContent);
+          hasIntro = true;
+        } else if (currentSection === 'conclusion') {
+          conclusionSection = processConclusion(currentSectionContent);
+          hasConclusion = true;
+        } else if (currentSection === 'table') {
+          tableSection = processTableSection(currentSectionContent);
+          hasTable = true;
+        } else if (currentSection === 'content') {
+          contentSections.push({
+            title: currentSectionTitle,
+            content: processBulletPoints(currentSectionContent)
+          });
+        }
       }
       
-      // Now we're in the conclusion section
-      currentSection = 'conclusion';
-      currentSectionTitle = line;
-      currentSectionContent = [line];
-      continue;
-    }
-    
-    // Handle other section headers
-    if (line.startsWith('#') && !line.match(/^#{1,2}\s+(Summary|Conclusion|Key\s+Findings)/i)) {
-      // Store previous section content
-      if (currentSection === 'intro') {
-        introSection = processSectionText(currentSectionContent, 3, 4);
-        hasIntro = introSection.length > 10;
-      } else if (currentSection === 'table') {
-        tableSection = cleanupTableSection(currentSectionContent);
-        hasTable = tableSection.includes('|') || tableSection.length > 20;
-      } else if (currentSection === 'conclusion') {
-        conclusionSection = processSectionText(currentSectionContent, 3, 4);
-        hasConclusion = conclusionSection.length > 10;
-      } else if (currentSection === 'other' && currentSectionContent.length > 0) {
-        otherSections.push({
-          title: currentSectionTitle,
-          content: processSectionText(currentSectionContent, 3, 4)
-        });
-      }
+      // Start new section
+      currentSectionTitle = line.substring(3).trim();
+      currentSectionContent = [];
+      inTable = false;
       
-      // Start a new section
-      currentSection = 'other';
-      currentSectionTitle = line;
-      currentSectionContent = [line];
-      continue;
-    }
-    
-    // Handle intro section (content before any heading)
-    if (currentSection === 'none' && line && !line.startsWith('#')) {
-      // Skip lines that are likely part of tables
-      if (line.startsWith('|') || line.includes('---')) {
-        continue;
+      // Identify section type
+      if (currentSectionTitle.toLowerCase().includes('summary table')) {
+        currentSection = 'table';
+        inTable = true;
+      } else if (currentSectionTitle.toLowerCase().includes('conclusion')) {
+        currentSection = 'conclusion';
+      } else {
+        currentSection = 'content';
       }
-      
-      // Skip lines that look like HTML/URLs or contain code markers
-      if (line.includes('<') && line.includes('>') || 
-          line.includes('http') || 
-          line.includes('```') ||
-          line.includes('`')) {
-        continue;
+    } else {
+      // If this is the first content without a heading, it's the introduction
+      if (currentSection === 'none') {
+        currentSection = 'intro';
+        currentSectionContent.push(line);
+      } else {
+        // Add line to current section
+        currentSectionContent.push(line);
       }
-      
-      currentSection = 'intro';
-      currentSectionContent = [line];
-      continue;
     }
-    
-    // Add line to current section
-    currentSectionContent.push(line);
   }
   
   // Process the last section
-  if (currentSection === 'intro') {
-    introSection = processSectionText(currentSectionContent, 3, 4);
-    hasIntro = introSection.length > 10;
-  } else if (currentSection === 'table') {
-    tableSection = cleanupTableSection(currentSectionContent);
-    hasTable = tableSection.includes('|') || tableSection.length > 20;
-  } else if (currentSection === 'conclusion') {
-    conclusionSection = processSectionText(currentSectionContent, 3, 4);
-    hasConclusion = conclusionSection.length > 10;
-  } else if (currentSection === 'other' && currentSectionContent.length > 0) {
-    otherSections.push({
-      title: currentSectionTitle,
-      content: processSectionText(currentSectionContent, 3, 4)
-    });
+  if (currentSection !== 'none' && currentSectionContent.length > 0) {
+    if (currentSection === 'intro') {
+      introSection = processIntroduction(currentSectionContent);
+      hasIntro = true;
+    } else if (currentSection === 'conclusion') {
+      conclusionSection = processConclusion(currentSectionContent);
+      hasConclusion = true;
+    } else if (currentSection === 'table') {
+      tableSection = processTableSection(currentSectionContent);
+      hasTable = true;
+    } else if (currentSection === 'content') {
+      contentSections.push({
+        title: currentSectionTitle,
+        content: processBulletPoints(currentSectionContent)
+      });
+    }
   }
   
-  // Build the structured output
-  let structuredOutput = '';
-  
-  // Add introduction or placeholder
-  if (hasIntro) {
-    structuredOutput += introSection.trim() + '\n\n';
-  } else {
-    structuredOutput += 'This provides valuable context for understanding the topic. Further research may offer additional insights into this area. Several key factors contribute to this phenomenon. The evidence supports these conclusions.\n\n';
+  // Ensure we have required sections
+  if (!hasIntro) {
+    introSection = "The research findings provide insights into the requested topic. This introduction serves as an overview of the key points that will be discussed in detail in the following sections.";
   }
   
-  // Add the other sections
-  for (const section of otherSections) {
-    structuredOutput += section.title + '\n\n';
-    structuredOutput += formatBulletPoints(section.content.trim()) + '\n\n';
+  if (!hasTable) {
+    tableSection = "## Summary Table\n| Category | Information | Source |\n| -------- | ----------- | ------ |\n| Key Finding | Main insight from research | [1] |\n| Best Practice | Recommended approach | [2] |\n| Consideration | Important factor to note | [3] |";
   }
   
-  // Add table section or placeholder
-  if (hasTable) {
-    structuredOutput += tableSection.trim() + '\n\n';
-  } else {
-    structuredOutput += '## Summary Table\n\n';
-    structuredOutput += '| Category | Key Points |\n';
-    structuredOutput += '| -------- | ---------- |\n';
-    structuredOutput += '| Main Findings | Summary of key information |\n';
-    structuredOutput += '| Important Details | Overview of critical points |\n';
-    structuredOutput += '| Additional Context | Background information |\n\n';
+  if (!hasConclusion) {
+    conclusionSection = "## Conclusion\nIn conclusion, the research highlights several important aspects of the topic. The key findings demonstrate the significance and implications of the subject matter. Understanding these elements can help in developing a more comprehensive approach to addressing related challenges and opportunities.";
   }
   
-  // Add conclusion or placeholder
-  if (hasConclusion) {
-    structuredOutput += conclusionSection.trim();
-  } else {
-    structuredOutput += '## Conclusion\n\n';
-    structuredOutput += 'This research provides a comprehensive overview of the topic. The findings highlight important aspects that deserve attention. Further exploration may be warranted to gain deeper insights into specific areas discussed above.';
+  // Rebuild the output with proper structure
+  let formattedOutput = '';
+  
+  // Add introduction (without heading)
+  formattedOutput += introSection + '\n\n';
+  
+  // Add content sections
+  for (const section of contentSections) {
+    formattedOutput += `## ${section.title}\n${section.content}\n\n`;
   }
   
-  // Final post-processing to clean up any remaining issues
-  return cleanupFinalOutput(structuredOutput);
+  // Add summary table
+  formattedOutput += tableSection + '\n\n';
+  
+  // Add conclusion
+  formattedOutput += conclusionSection;
+  
+  return formattedOutput;
 }
 
 /**
- * Helper function to process section text by:
- * 1. Limiting to specified sentence count
- * 2. Cleaning HTML and excessive links
- * 3. Removing duplicate content
+ * Process the introduction paragraph
+ * Ensures it's a proper paragraph without citations
  */
-function processSectionText(lines: string[], minSentences: number, maxSentences: number): string {
-  // Skip the first line if it's a heading
-  const contentLines = lines[0].startsWith('#') ? lines.slice(1) : lines;
-  
+function processIntroduction(lines: string[]): string {
   // Join all non-empty lines
-  let fullText = contentLines
-    .filter(line => line.trim() && !line.startsWith('|') && !line.match(/^[-=]{3,}$/))
+  let fullText = lines
+    .filter(line => line.trim())
     .join(' ')
     .trim();
   
-  // Clean HTML tags, URLs, and strange formatting
-  fullText = cleanTextContent(fullText);
+  // Remove citations
+  fullText = fullText.replace(/\[\d+\]/g, '');
   
-  // Split into sentences
-  const sentenceRegex = /[^.!?]+[.!?]+/g;
-  const matches = fullText.match(sentenceRegex);
-  let sentences: string[] = matches ? [...matches] : [];
+  // Limit to 4-5 sentences
+  fullText = limitSentences(fullText, 4, 5);
   
-  // Remove duplicate sentences
-  sentences = Array.from(new Set(sentences));
+  // Remove any HTML tags or markdown formatting
+  fullText = cleanText(fullText);
   
-  // Clean each sentence individually
-  sentences = sentences.map(sentence => {
-    // Trim whitespace
-    let cleaned = sentence.trim();
-    
-    // Fix common formatting issues
-    cleaned = cleaned.replace(/\*\*/g, ''); // Remove bold markers
-    cleaned = cleaned.replace(/\*/g, '');   // Remove italic markers
-    cleaned = cleaned.replace(/_{1,2}/g, ''); // Remove underscore formatting
-    cleaned = cleaned.replace(/\s{2,}/g, ' '); // Replace multiple spaces with single space
-    
-    // Fix capitalization of first letter
-    if (cleaned.length > 0 && cleaned[0].match(/[a-z]/)) {
-      cleaned = cleaned[0].toUpperCase() + cleaned.slice(1);
-    }
-    
-    // Ensure sentence ends with proper punctuation
-    if (!cleaned.match(/[.!?]$/)) {
-      cleaned += '.';
-    }
-    
-    return cleaned;
-  });
-  
-  // Filter out invalid sentences
-  sentences = sentences.filter(sentence => {
-    // Skip very short sentences
-    if (sentence.length < 20) return false;
-    
-    // Skip sentences with weird patterns
-    if (sentence.includes('**e. g.**')) return false;
-    if (sentence.includes('**e. g. *')) return false;
-    if (sentence.includes('(**e.g.,')) return false;
-    if (sentence.includes('(*e.g.,')) return false;
-    
-    // Skip sentences that look like placeholders
-    if (sentence.includes('[') && sentence.includes(']')) return false;
-    
-    return true;
-  });
-  
-  // Ensure we have enough sentences
-  if (sentences.length < minSentences) {
-    // Add placeholder sentences if needed
-    const placeholders = [
-      "This provides valuable context for understanding the topic.",
-      "Further research may offer additional insights into this area.",
-      "Several key factors contribute to this phenomenon.",
-      "The evidence supports these conclusions.",
-      "Various sources confirm these findings."
-    ];
-    
-    while (sentences.length < minSentences) {
-      sentences.push(placeholders[sentences.length % placeholders.length]);
-    }
-  }
-  
-  // Limit to max sentences
-  if (sentences.length > maxSentences) {
-    sentences = sentences.slice(0, maxSentences);
-  }
-  
-  // Join sentences and format paragraphs
-  return sentences.join(' ');
+  return fullText;
 }
 
 /**
- * Helper function to format section content as bullet points if needed
+ * Process content section bullet points
+ * Ensures proper formatting of bullet points with bolded terms and citations
  */
-function formatBulletPoints(content: string): string {
-  // Check if content already has bullet points
-  if (content.includes('\n- ') || content.includes('\n* ')) {
-    return content;
+function processBulletPoints(lines: string[]): string {
+  let processedContent = '';
+  let currentBullet = '';
+  
+  for (const line of lines) {
+    // If line starts a new bullet point
+    if (line.trim().startsWith('-') || line.trim().startsWith('*')) {
+      // Process and add the previous bullet if it exists
+      if (currentBullet) {
+        processedContent += formatBulletPoint(currentBullet) + '\n';
+      }
+      // Start new bullet
+      currentBullet = line;
+    } else {
+      // Continue current bullet
+      currentBullet += ' ' + line;
+    }
   }
   
-  // Split into sentences
-  const sentences = content.split(/(?<=[.!?])\s+/);
+  // Add the last bullet
+  if (currentBullet) {
+    processedContent += formatBulletPoint(currentBullet) + '\n';
+  }
   
-  // If more than 4 sentences, create bullet points
-  if (sentences.length > 4) {
-    // Group sentences into chunks of 2-3 for each bullet point
-    const bulletPoints = [];
-    for (let i = 0; i < sentences.length; i += 3) {
-      const chunk = sentences.slice(i, Math.min(i + 3, sentences.length)).join(' ');
-      if (chunk.trim().length > 0) {
-        bulletPoints.push(`- ${chunk}`);
+  return processedContent;
+}
+
+/**
+ * Format a single bullet point with proper structure
+ */
+function formatBulletPoint(bulletText: string): string {
+  // Ensure bullet starts with - and has bold term
+  let text = bulletText.trim();
+  if (!text.startsWith('-')) {
+    text = '- ' + text;
+  }
+  
+  // Make sure there's a bolded term
+  if (!text.includes('**')) {
+    const firstColon = text.indexOf(':');
+    if (firstColon > 0) {
+      const beforeColon = text.substring(0, firstColon).replace(/^[- ]+/, '');
+      text = `- **${beforeColon}**${text.substring(firstColon)}`;
+    }
+  }
+  
+  // Ensure proper sentence count
+  const contentPart = text.replace(/^[- ]+\*\*[^*]+\*\*: ?/, '');
+  const cleanedContent = cleanText(contentPart);
+  const limitedContent = limitSentences(cleanedContent, 3, 4);
+  
+  // Extract citation if it exists
+  const citationMatch = contentPart.match(/\[(\d+)\]$/);
+  const citation = citationMatch ? ` [${citationMatch[1]}]` : '';
+  
+  // Rebuild bullet with citation at the end
+  const bulletStart = text.match(/^[- ]+\*\*[^*]+\*\*: ?/)?.[0] || '- ';
+  return `${bulletStart}${limitedContent}${citation}`;
+}
+
+/**
+ * Process the summary table section
+ * Ensures proper markdown table format
+ */
+function processTableSection(lines: string[]): string {
+  // First line is the section heading, which we already processed
+  let tableContent = '## Summary Table\n';
+  let tableLines = lines.filter(line => line.trim());
+  
+  // Check if we have proper table format
+  const hasTableHeader = tableLines.some(line => line.includes('|') && line.includes('--'));
+  
+  if (tableLines.length >= 2 && hasTableHeader) {
+    // We have a proper table, clean it up
+    for (const line of tableLines) {
+      if (line.includes('|')) {
+        tableContent += line + '\n';
       }
     }
-    return bulletPoints.join('\n');
-  }
-  
-  // Otherwise, keep as paragraph
-  return content;
-}
-
-/**
- * Helper function to clean up and format table sections properly
- */
-function cleanupTableSection(lines: string[]): string {
-  // Find table boundaries
-  let tableStart = -1;
-  let tableEnd = -1;
-  
-  for (let i = 0; i < lines.length; i++) {
-    if (lines[i].startsWith('|') && tableStart === -1) {
-      tableStart = i;
-    } else if (tableStart !== -1 && tableEnd === -1 && !lines[i].startsWith('|')) {
-      tableEnd = i - 1;
-      break;
-    }
-  }
-  
-  if (tableEnd === -1 && tableStart !== -1) {
-    tableEnd = lines.length - 1;
-  }
-  
-  let result = '';
-  
-  // Add the title
-  if (lines[0].startsWith('#')) {
-    result += '## Summary Table\n\n';
   } else {
-    result += '## Summary Table\n\n';
+    // Create a default table
+    tableContent += '| Category | Information | Source |\n';
+    tableContent += '| -------- | ----------- | ------ |\n';
+    tableContent += '| Key Finding | Main insight from research | [1] |\n';
+    tableContent += '| Best Practice | Recommended approach | [2] |\n';
+    tableContent += '| Consideration | Important factor to note | [3] |\n';
   }
   
-  // If no table found, create a default one
-  if (tableStart === -1) {
-    result += '| Category | Key Points |\n';
-    result += '| -------- | ---------- |\n';
-    result += '| Main Findings | Summary of key information |\n';
-    result += '| Important Details | Overview of critical points |\n';
-    result += '| Additional Context | Background information |\n';
-    return result;
-  }
-  
-  // Process the table - keep headers and first 5 rows max
-  const tableLines = lines.slice(tableStart, tableEnd + 1);
-  
-  // Clean up the header row
-  let headerRow = tableLines[0].replace(/\*\*/g, '').replace(/\*/g, '');
-  
-  // Find or create the separator row
-  let separatorRow = tableLines.find(line => line.includes('-')) || '';
-  if (!separatorRow || !separatorRow.includes('-')) {
-    // Count number of columns in header
-    const columnCount = (headerRow.match(/\|/g) || []).length - 1;
-    separatorRow = '|';
-    for (let i = 0; i < columnCount; i++) {
-      separatorRow += ' ------ |';
-    }
-  }
-  
-  // Add header row
-  result += headerRow + '\n';
-  result += separatorRow + '\n';
-  
-  // Clean and add data rows (up to 5)
-  const dataRows = tableLines.filter(line => 
-    line.startsWith('|') && 
-    line !== headerRow && 
-    !line.includes('---')
-  ).slice(0, 5);
-  
-  dataRows.forEach(row => {
-    // Clean up formatting in the row
-    const cleanedRow = row
-      .replace(/\*\*/g, '')  // Remove bold markers
-      .replace(/\*/g, '')    // Remove italic markers
-      .replace(/`/g, '')     // Remove code markers
-      .replace(/\[(\d+)\]/g, '') // Remove citation references
-      .replace(/\s{2,}/g, ' ') // Replace multiple spaces
-      .replace(/\|\s+/g, '| ') // Clean up spaces after pipe
-      .replace(/\s+\|/g, ' |'); // Clean up spaces before pipe
-    
-    result += cleanedRow + '\n';
-  });
-  
-  return result;
+  return tableContent;
 }
 
 /**
- * Helper to clean text content from various formatting issues
+ * Process the conclusion paragraph
+ * Ensures it's a proper paragraph without citations
  */
-function cleanTextContent(text: string): string {
-  if (!text) return '';
+function processConclusion(lines: string[]): string {
+  // Join all lines that aren't part of a table
+  let fullText = lines
+    .filter(line => line.trim() && !line.includes('|'))
+    .join(' ')
+    .trim();
   
+  // Remove citations
+  fullText = fullText.replace(/\[\d+\]/g, '');
+  
+  // Limit to 4-5 sentences
+  fullText = limitSentences(fullText, 4, 5);
+  
+  // Remove any HTML tags or markdown formatting
+  fullText = cleanText(fullText);
+  
+  return '## Conclusion\n' + fullText;
+}
+
+/**
+ * Limit text to a specific number of sentences
+ */
+function limitSentences(text: string, minSentences: number, maxSentences: number): string {
+  // Split into sentences
+  const sentenceRegex = /[.!?]+(?:\s|$)/;
+  let sentences: string[] = [];
+  let remaining = text;
+  let match;
+  
+  // Manually find sentence boundaries instead of using matchAll
+  while ((match = sentenceRegex.exec(remaining)) !== null) {
+    const endPos = match.index + match[0].length;
+    sentences.push(remaining.substring(0, endPos));
+    
+    if (sentences.length >= maxSentences) break;
+    
+    remaining = remaining.substring(endPos);
+    if (!remaining.trim()) break;
+  }
+  
+  // Add any remaining text as the last sentence if we haven't hit our max
+  if (remaining.trim() && sentences.length < maxSentences) {
+    sentences.push(remaining);
+  }
+  
+  // Join all sentences (or keep original if no sentence breaks found)
+  return sentences.length > 0 ? sentences.join('') : text;
+}
+
+/**
+ * Clean text by removing HTML, strange characters, and excess formatting
+ */
+function cleanText(text: string): string {
   let cleaned = text;
   
-  // Clean HTML tags and URLs
+  // Remove HTML tags
   cleaned = cleaned.replace(/<[^>]*>?/gm, '');
+  
+  // Remove URLs
   cleaned = cleaned.replace(/https?:\/\/[^\s]+/g, '[link]');
   
-  // Remove citation references from text paragraphs
-  cleaned = cleaned.replace(/\[\d+\]/g, '');
+  // Remove strange characters
+  cleaned = cleaned.replace(/[^\x20-\x7E\s]/g, '');
   
-  // Remove asterisks, code blocks, and other markdown
-  cleaned = cleaned.replace(/```[\s\S]*?```/g, ''); // Remove code blocks
-  cleaned = cleaned.replace(/`([^`]+)`/g, '$1');     // Remove inline code
-  cleaned = cleaned.replace(/\*\*([^*]+)\*\*/g, '$1'); // Remove bold
-  cleaned = cleaned.replace(/\*([^*]+)\*/g, '$1');     // Remove italic
-  cleaned = cleaned.replace(/~~([^~]+)~~/g, '$1');     // Remove strikethrough
-  cleaned = cleaned.replace(/(\*\*e\.\s*g\.\s*\*\*|\*e\.\s*g\.\s*\*|e\.\s*g\.,)/gi, 'for example,'); // Fix "e.g." formatting
-  cleaned = cleaned.replace(/(\*\*i\.\s*e\.\s*\*\*|\*i\.\s*e\.\s*\*|i\.\s*e\.,)/gi, 'that is,'); // Fix "i.e." formatting
-  
-  // Remove extraneous whitespace
-  cleaned = cleaned.replace(/\s{2,}/g, ' ');
-  
-  return cleaned.trim();
-}
-
-/**
- * Final cleanup of the entire output to fix any remaining issues
- */
-function cleanupFinalOutput(text: string): string {
-  if (!text) return '';
-  
-  let cleaned = text;
-  
-  // Fix section headers (ensure proper formatting)
-  cleaned = cleaned.replace(/^(#+)(?!\s)/gm, '$1 ');
-  
-  // Fix bullets (ensure proper spacing)
-  cleaned = cleaned.replace(/^([*-])(?!\s)/gm, '$1 ');
-  
-  // Remove placeholder markers
-  cleaned = cleaned.replace(/\[Introductory paragraph missing\]/g, '');
-  cleaned = cleaned.replace(/\[Summary table missing\]/g, '');
-  cleaned = cleaned.replace(/\[Conclusion paragraph missing\]/g, '');
-  
-  // Remove double line breaks and ensure single line breaks after sections
-  cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
-  
-  // Ensure blank line after headers
-  cleaned = cleaned.replace(/(^|\n)(#+[^\n]+)(\n)(?!\n)/g, '$1$2\n\n');
-  
-  // Fix any remaining strange characters and placeholder text
-  cleaned = cleaned.replace(/\*\*e\.\s*g\.\s*\*\*/gi, 'for example');
-  cleaned = cleaned.replace(/\*e\.\s*g\.\s*\*/gi, 'for example');
-  cleaned = cleaned.replace(/\(\*\*e\.g\.,/gi, '(for example,');
-  cleaned = cleaned.replace(/\(\*e\.g\.,/gi, '(for example,');
-  cleaned = cleaned.replace(/\*\*i\.\s*e\.\s*\*\*/gi, 'that is');
-  cleaned = cleaned.replace(/\*i\.\s*e\.\s*\*/gi, 'that is');
+  // Remove excess whitespace
+  cleaned = cleaned.replace(/\s+/g, ' ').trim();
   
   return cleaned;
 }
+
+// Helper to clean AI output
+function cleanAIOutput(text: string): string {
+  let cleanedText = text;
+  
+  // Remove <think> tags and their content
+  cleanedText = cleanedText.replace(/<think>[\s\S]*?<\/think>/g, '');
+  
+  // Remove content about search plans and strategy
+  cleanedText = cleanedText.replace(/I'll search for[\s\S]*?(?=\n\n)/g, '');
+  cleanedText = cleanedText.replace(/Let me search for[\s\S]*?(?=\n\n)/g, '');
+  cleanedText = cleanedText.replace(/I need to find[\s\S]*?(?=\n\n)/g, '');
+  
+  // Remove any "Based on search results" type of commentary
+  cleanedText = cleanedText.replace(/Based on (?:the|my) search results[\s\S]*?(?=\n\n)/g, '');
+  cleanedText = cleanedText.replace(/According to (?:the|my) search results[\s\S]*?(?=\n\n)/g, '');
+  
+  // Remove any step markers
+  cleanedText = cleanedText.replace(/STEP \d+[:\-].*\n/g, '');
+  
+  // Clean up extra newlines
+  cleanedText = cleanedText.replace(/\n{3,}/g, '\n\n');
+  
+  return cleanedText.trim();
+}
+
+// Helper to make citations clickable in AI output
+const makeCitationsClickable = (content: string, sources: any[] = []) => {
+  if (!content) return content;
+  // Replace [1], [2], ... with anchor tags
+  return content.replace(/\[(\d+)\]/g, (match, num) => {
+    const idx = parseInt(num, 10) - 1;
+    if (sources[idx] && sources[idx].url) {
+      return `<a href="${sources[idx].url}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center px-1 py-0.5 rounded bg-blue-900/30 text-blue-400 text-xs hover:bg-blue-800/40 transition-colors">[${num}]</a>`;
+    }
+    return match;
+  });
+};
 
 export default function TestChat() {
   const [input, setInput] = useState("");
@@ -831,44 +743,6 @@ export default function TestChat() {
       }
     }
   }, [isComplete, currentQuery, steps, messages, webData?.sources]);
-
-  // Helper to clean AI output
-  function cleanAIOutput(text: string): string {
-    let cleanedText = text;
-    
-    // Remove <think> tags and their content
-    cleanedText = cleanedText.replace(/<think>[\s\S]*?<\/think>/g, '');
-    
-    // Remove content about search plans and strategy
-    cleanedText = cleanedText.replace(/I'll search for[\s\S]*?(?=\n\n)/g, '');
-    cleanedText = cleanedText.replace(/Let me search for[\s\S]*?(?=\n\n)/g, '');
-    cleanedText = cleanedText.replace(/I need to find[\s\S]*?(?=\n\n)/g, '');
-    
-    // Remove any "Based on search results" type of commentary
-    cleanedText = cleanedText.replace(/Based on (?:the|my) search results[\s\S]*?(?=\n\n)/g, '');
-    cleanedText = cleanedText.replace(/According to (?:the|my) search results[\s\S]*?(?=\n\n)/g, '');
-    
-    // Remove any step markers
-    cleanedText = cleanedText.replace(/STEP \d+[:\-].*\n/g, '');
-    
-    // Clean up extra newlines
-    cleanedText = cleanedText.replace(/\n{3,}/g, '\n\n');
-    
-    return cleanedText.trim();
-  }
-
-  // Helper to make citations clickable in AI output
-  const makeCitationsClickable = (content: string, sources: any[] = []) => {
-    if (!content) return content;
-    // Replace [1], [2], ... with anchor tags
-    return content.replace(/\[(\d+)\]/g, (match, num) => {
-      const idx = parseInt(num, 10) - 1;
-      if (sources[idx] && sources[idx].url) {
-        return `<a href="${sources[idx].url}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center px-1 py-0.5 rounded bg-blue-900/30 text-blue-400 text-xs hover:bg-blue-800/40 transition-colors">[${num}]</a>`;
-      }
-      return match;
-    });
-  };
 
   async function handleSend(e?: React.FormEvent) {
     if (e) e.preventDefault();

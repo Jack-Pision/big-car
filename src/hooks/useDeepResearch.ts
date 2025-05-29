@@ -276,38 +276,46 @@ export const useDeepResearch = (isActive: boolean, query: string = '') => {
           messages: [
             { role: 'system', content: `You are a Deep Research AI assistant. Use the provided web data to create a comprehensive, well-structured response.
 
-IMPORTANT: Your answer MUST be between 450 and 500 words by default. If the user specifically requests more, you may exceed this range, but otherwise do not write more than 500 words. Do not write less than 450 words.
+IMPORTANT STRUCTURE REQUIREMENTS - YOUR RESPONSE MUST FOLLOW THIS EXACT FORMAT:
 
-STRICT RELEVANCE REQUIREMENT:
-- Only use information from the provided web data and the user's topic.
-- Do NOT include any information, facts, or content that is not present in the web data or directly relevant to the user's query.
-- Be concise and avoid unnecessary elaboration or unrelated content.
+1. START WITH AN INTRODUCTION (NO HEADING):
+   - Write a clear 4-5 sentence paragraph that introduces the topic.
+   - DO NOT include any citations in this introduction paragraph.
+   - DO NOT add any heading before this introduction.
+   - DO NOT repeat this introduction text later in the document.
 
-STRICT FORMATTING AND CONTENT REQUIREMENTS:
-- Do NOT include a 'References' section or any list of references at the end. Only use in-text citations ([1], [2], etc.) after relevant sentences or bullet points.
-- The conclusion must only summarize the findings from the web data and user topic. Do NOT introduce new topics, opinions, or generic statements. Do not add any extra commentary or meta-discussion.
-- If you include a section titled 'References' or any content after the conclusion, your answer will be considered incorrect.
+2. MAIN CONTENT SECTIONS:
+   - Add 2-4 sections with clear ## Section Headers.
+   - Under each section header, include 2-3 bullet points.
+   - Format each bullet point as: "- **Key Term/Concept**: Detailed explanation in 3-4 sentences [1]."
+   - Place all citations at the END of bullet points, not in the middle of sentences.
+   - Start each bullet with a bolded term or phrase.
 
-BULLET POINT DETAIL REQUIREMENT:
-For each bullet point, write a detailed, self-contained summary (**7–8 sentences**) that explains the topic, provides context, and includes key facts or findings. Do not use single-sentence or headline-style bullets. Each bullet should be a mini-paragraph of 7–8 sentences.
+3. SUMMARY TABLE:
+   - Include a "## Summary Table" section with a markdown table.
+   - Use 3-4 rows maximum with clear headers.
+   - Format: | Category | Information | Source |
+   - Keep table entries concise - no more than 10-15 words per cell.
+   - DO NOT use markdown formatting inside table cells.
 
-CONCLUSION REQUIREMENT:
-The conclusion section must be a detailed, thoughtful paragraph of at least **7–8 sentences**, thoroughly summarizing the findings and providing additional insights or implications.
-
-FORMATTING REQUIREMENTS:
-1. Your response MUST follow a professional, well-structured format like a research document or report.
-2. Start with a clear main title using # heading (e.g., "# Latest Developments in AI, 2025").
-3. Divide content into logical sections with ## headings.
-4. Use bullet points (*) for all key details and findings, with each bullet point being a 7–8 sentence paragraph.
-5. End with a "## Conclusion" section that is a detailed 7–8 sentence paragraph.
-6. Include a "## Summary Table" if the information can be presented in tabular form.
-7. For citations, use ONLY numbered references in square brackets [1], [2] at the end of sentences/bullets.
+4. CONCLUSION:
+   - End with a "## Conclusion" section.
+   - Write a concise 4-5 sentence paragraph summarizing key points.
+   - DO NOT include new information or citations in the conclusion.
 
 CITATION INSTRUCTIONS:
-- Use ONLY the provided search results as your web sources.
-- Do NOT use or invent any other web links.
-- When citing, use numbered references like [1], [2], etc. at the end of sentences or bullet points.
-- Do not include a 'References' section at the end - only use in-text citations.` },
+- Use numbered references like [1], [2], etc. at the END of bullet points only.
+- DO NOT include citations in the introduction or conclusion paragraphs.
+- DO NOT include a 'References' section at the end.
+
+FORMATTING GUIDANCE:
+- Maximum word count: 500 words.
+- Use clear, concise language without jargon.
+- Maintain consistent formatting throughout.
+- Ensure proper spacing between sections.
+- No run-on sentences or paragraphs.
+- Each bullet point should be a cohesive paragraph, not a single line.
+- Don't use any meta-language (like "According to the web search").` },
             { role: 'user', content: `Query: ${query}\n\nAnalysis: ${analysis}\n\nWeb Data: ${JSON.stringify(webData)}` }
           ],
           temperature: 0.2
