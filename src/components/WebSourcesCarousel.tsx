@@ -113,7 +113,7 @@ const WebSourceCard: React.FC<{ source: WebSource }> = ({ source }) => {
       target="_blank"
       rel="noopener noreferrer"
       className={`flex flex-row items-center rounded-xl overflow-hidden transition-all duration-200
-        bg-gradient-to-br ${getColorClass()} min-w-[180px] w-[180px] h-[80px] shadow-md p-2
+        bg-gradient-to-br ${getColorClass()} min-w-[140px] w-[140px] sm:min-w-[180px] sm:w-[180px] h-[80px] shadow-md p-2
         hover:brightness-90 hover:saturate-150`}
     >
       {imageUrl ? (
@@ -151,7 +151,9 @@ const WebSourceCard: React.FC<{ source: WebSource }> = ({ source }) => {
       )}
       <div className="flex flex-col justify-center min-w-0">
         <span className="text-[11px] font-semibold text-neutral-200 truncate">{displayDomain}</span>
-        <span className="text-[13px] font-bold text-white truncate leading-tight">{source.title}</span>
+        <span className="text-[13px] font-bold text-white truncate leading-tight" title={source.title}>
+          {source.title.length > 30 ? source.title.slice(0, 30) + '…' : source.title}
+        </span>
       </div>
     </a>
   );
