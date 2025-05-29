@@ -53,7 +53,7 @@ You must use ONLY these sources - do not make up or reference other sources.
 STEP 3 - SYNTHESIS & OUTPUT:
 Format your response with the following structure:
 
-1. Introductory Paragraph: Begin with a 5–7 sentence introductory paragraph that welcomes the reader and introduces the topic. This paragraph should be plain text and should NOT contain citations.
+1. Introductory Paragraph: Begin with a 3–4 sentence introductory paragraph that welcomes the reader and introduces the topic. This paragraph should be plain text and should NOT contain citations.
 
 2. Dynamic Sections:
    - Organize the main content into as many sections as needed for the topic.
@@ -61,7 +61,7 @@ Format your response with the following structure:
    - Inside each section, use bullet points (*) for all lists.
    - Each bullet point should be a detailed mini-paragraph (2–4 sentences) with facts, context, and analysis, followed by an in-text citation (e.g., [1]).
 
-3. Summary Paragraph (Before Conclusion): Before the conclusion, include a plain text summary paragraph that synthesizes the main findings from all sections. This summary should NOT contain citations.
+3. Summary Table (Before Conclusion): Before the conclusion, include a plain text summary paragraph that synthesizes the main findings from all sections. This summary should NOT contain citations.
 
 4. Conclusion Paragraph: End with a plain text conclusion paragraph that summarizes overall insights and key themes. This paragraph should NOT contain citations.
 
@@ -259,17 +259,15 @@ function enforceAdvanceSearchStructure(output: string): string {
   const lines = output.split('\n');
   let intro = '';
   let sections: string[] = [];
-  let summary = '';
-  let conclusion = '';
   let summaryTable = '';
+  let conclusion = '';
   let currentSection: string[] = [];
-  let currentHeader = '';
   let inSummaryTable = false;
   let inSection = false;
   let inConclusion = false;
   let foundIntro = false;
-  let foundSummary = false;
   let foundConclusion = false;
+  let introSentenceCount = 0;
 
   // Helper to check if a line is a section header
   const isSectionHeader = (line: string) => line.startsWith('## ') && !/summary table|conclusion/i.test(line);
@@ -277,10 +275,25 @@ function enforceAdvanceSearchStructure(output: string): string {
   const isConclusionHeader = (line: string) => line.toLowerCase().includes('conclusion');
 
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+    let line = lines[i];
+    // Remove citations from all lines
+    line = line.replace(/\s*\[\d+\]/g, '');
+    // Remove citations from bullet points
+    if (line.trim().startsWith('*')) {
+      line = line.replace(/\s*\[\d+\]/g, '');
+    }
+    // Collect intro (3-4 sentences, no citations)
     if (!foundIntro && line && !line.startsWith('#')) {
-      intro += (intro ? ' ' : '') + line.trim();
-      foundIntro = true;
+      const sentences = line.match(/[^.!?]+[.!?]+/g) || [];
+      for (const sentence of sentences) {
+        if (introSentenceCount < 4) {
+          intro += (intro ? ' ' : '') + sentence.trim();
+          introSentenceCount++;
+        }
+      }
+      if (introSentenceCount >= 3) {
+        foundIntro = true;
+      }
       continue;
     }
     if (isSummaryTableHeader(line)) {
@@ -316,12 +329,6 @@ function enforceAdvanceSearchStructure(output: string): string {
       continue;
     }
     if (inSection) {
-      // Detect summary paragraph before conclusion
-      if (!foundSummary && line.trim() && !line.startsWith('*') && !isSectionHeader(line) && !isSummaryTableHeader(line) && !isConclusionHeader(line)) {
-        summary += line.trim() + ' ';
-        foundSummary = true;
-        continue;
-      }
       currentSection.push(line);
     }
   }
@@ -340,7 +347,6 @@ function enforceAdvanceSearchStructure(output: string): string {
   if (summaryTable.trim()) {
     result += summaryTable.trim() + '\n\n';
   }
-  result += summary.trim() ? summary.trim() + '\n\n' : '[Summary paragraph missing]\n\n';
   result += conclusion.trim() ? conclusion.trim() : '[Conclusion paragraph missing]';
   return result.trim();
 }
