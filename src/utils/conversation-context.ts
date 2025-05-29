@@ -322,12 +322,18 @@ function generateRecentContextSummary(recentMessages: Message[]): string {
  * Format messages for API call with enhanced context
  */
 export function formatMessagesForApi(
+  systemPrompt: string,
   messages: Message[],
-  context: ConversationContext,
+  currentQuery: string,
   includeContextSummary: boolean = true
 ): any[] {
-  // Start with the system message from the context
-  const formattedMessages: any[] = [];
+  // Build enhanced context
+  const context = buildConversationContext(messages);
+  
+  // Start with the system message
+  const formattedMessages: any[] = [
+    { role: "system", content: systemPrompt }
+  ];
   
   // Add context summary if requested
   if (includeContextSummary && context.recentContext) {
@@ -363,6 +369,15 @@ export function formatMessagesForApi(
       });
     }
   });
+  
+  // If the current query isn't the last user message (e.g., follow-up), add it
+  const lastUserMsg = userMessages[userMessages.length - 1];
+  if (!lastUserMsg || lastUserMsg.content !== currentQuery) {
+    formattedMessages.push({
+      role: "user",
+      content: currentQuery
+    });
+  }
   
   return formattedMessages;
 }

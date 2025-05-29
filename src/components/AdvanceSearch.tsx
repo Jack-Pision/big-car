@@ -188,25 +188,25 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
     }
 
     // For completed understand step
-    return (
+        return (
       <div className="space-y-4">
         <ul className="list-disc pl-5 space-y-2 text-neutral-300 text-base">
-          {(() => {
-            const contentString = typeof step.output === 'string' 
-              ? step.output 
-              : typeof step.content === 'string'
-                ? step.content
-                : '';
+                {(() => {
+                  const contentString = typeof step.output === 'string' 
+                    ? step.output 
+                    : typeof step.content === 'string'
+                      ? step.content
+                      : '';
 
             // Process the content to extract only plain, natural sentences
             let plainText = contentString
               .replace(/#{1,6}\s.*/g, '') // Remove all headings
-              .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold
-              .replace(/\*(.*?)\*/g, '$1') // Remove italics
-              .replace(/__(.*?)__/g, '$1') // Remove underline
-              .replace(/~~(.*?)~~/g, '$1') // Remove strikethrough
+                    .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold
+                    .replace(/\*(.*?)\*/g, '$1') // Remove italics
+                    .replace(/__(.*?)__/g, '$1') // Remove underline
+                    .replace(/~~(.*?)~~/g, '$1') // Remove strikethrough
               .replace(/```([\s\S]*?)```/g, '') // Remove code blocks entirely
-              .replace(/`(.*?)`/g, '$1') // Remove inline code
+                    .replace(/`(.*?)`/g, '$1') // Remove inline code
               .replace(/\[[^\]]+\]\([^)]+\)/g, '') // Remove links
               .replace(/!\[[^\]]+\]\([^)]+\)/g, ''); // Remove images
               
@@ -276,11 +276,11 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
 
             return bulletPoints.slice(0, 10).map((point: string, i: number) => (
               <li key={i}>{point}</li>
-            ));
-          })()}
-        </ul>
-      </div>
-    );
+                  ));
+                })()}
+              </ul>
+          </div>
+        );
   };
 
   // Helper to render the research step content
@@ -294,77 +294,77 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
     }
 
     // For completed research step, focus on showing the web sources
-    return (
+        return (
       <div className="space-y-4">
         <div className="text-neutral-300 text-base">
           I've gathered relevant information from the following sources:
-        </div>
-        
-        {/* Display detailed web sources with icons and clickable links */}
-        {webData && (
+            </div>
+            
+            {/* Display detailed web sources with icons and clickable links */}
+            {webData && (
           <div className="mt-4 space-y-4">
-            {/* Serper (Google) Articles */}
-            {webData.serperArticles?.length > 0 && (
+                {/* Serper (Google) Articles */}
+                {webData.serperArticles?.length > 0 && (
               <div className="space-y-2">
                 <div className="text-neutral-300 text-base mb-2">Web Articles:</div>
-                <div className="space-y-2">
+                    <div className="space-y-2">
                   {webData.serperArticles.slice(0, 20).map((article: any, i: number) => {
-                    let domain = '';
-                    try {
-                      domain = new URL(article.url).hostname;
-                    } catch {}
+                        let domain = '';
+                        try {
+                          domain = new URL(article.url).hostname;
+                        } catch {}
                     // Always use DuckDuckGo favicon service for consistency
                     const faviconUrl = domain ? `https://icons.duckduckgo.com/ip3/${domain}.ico` : undefined;
-                    return (
-                      <a 
-                        key={i} 
-                        href={article.url} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 p-2 rounded-lg hover:bg-neutral-800/50 transition-colors"
-                      >
-                        {/* Icon: Always try favicon, fallback to globe only if missing or fails */}
-                        <div className="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-neutral-800 rounded-full overflow-hidden">
-                          {faviconUrl ? (
-                            <img 
-                              src={faviconUrl} 
-                              alt="" 
-                              className="w-4 h-4 object-contain"
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).style.display = 'none';
-                                (e.target as HTMLImageElement).parentElement!.innerHTML = `
-                                  <svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"text-blue-400\">\n                                        <circle cx=\"12\" cy=\"12\" r=\"10\"></circle>\n                                        <line x1=\"2\" y1=\"12\" x2=\"22\" y2=\"12\"></line>\n                                        <path d=\"M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z\"></path>\n                                      </svg>
-                                `;
-                              }}
-                            />
-                          ) : (
+                        return (
+                          <a 
+                            key={i} 
+                            href={article.url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 p-2 rounded-lg hover:bg-neutral-800/50 transition-colors"
+                          >
+                            {/* Icon: Always try favicon, fallback to globe only if missing or fails */}
+                            <div className="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-neutral-800 rounded-full overflow-hidden">
+                              {faviconUrl ? (
+                                <img 
+                                  src={faviconUrl} 
+                                  alt="" 
+                                  className="w-4 h-4 object-contain"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).style.display = 'none';
+                                    (e.target as HTMLImageElement).parentElement!.innerHTML = `
+                                      <svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"text-blue-400\">\n                                        <circle cx=\"12\" cy=\"12\" r=\"10\"></circle>\n                                        <line x1=\"2\" y1=\"12\" x2=\"22\" y2=\"12\"></line>\n                                        <path d=\"M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z\"></path>\n                                      </svg>
+                                    `;
+                                  }}
+                                />
+                              ) : (
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-400"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
-                          )}
-                        </div>
-                        <div className="flex-1 overflow-hidden">
-                          <div className="text-sm text-cyan-400 truncate hover:underline">
-                            {article.title || article.url}
-                          </div>
-                          <div className="text-xs text-neutral-500 truncate">
-                            {(article.url || '').replace(/https?:\/\/(www\.)?/, '').split('/')[0]}
-                          </div>
-                        </div>
-                      </a>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+                              )}
+                            </div>
+                            <div className="flex-1 overflow-hidden">
+                              <div className="text-sm text-cyan-400 truncate hover:underline">
+                                {article.title || article.url}
+                              </div>
+                              <div className="text-xs text-neutral-500 truncate">
+                                {(article.url || '').replace(/https?:\/\/(www\.)?/, '').split('/')[0]}
+                              </div>
+                            </div>
+                          </a>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                  </div>
+                )}
         
         {!webData && (
           <div className="text-neutral-300 text-base">
             <p>No web sources were found for this query. Using internal knowledge instead.</p>
+              </div>
+            )}
           </div>
-        )}
-      </div>
-    );
+        );
   };
 
   // Helper to render the synthesize step content
@@ -379,11 +379,11 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
 
     // For completed synthesize step, only show a status message
     if (step.status === 'completed') {
-      return (
+        return (
         <div className="text-cyan-400 text-base font-medium">
           Response ready! See main chat for the full answer.
-        </div>
-      );
+          </div>
+        );
     }
   };
 
@@ -409,28 +409,28 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
                 {/* Timeline column: vertical line and circle */}
                 <div className="flex flex-col items-center justify-start" style={{ width: 24, position: 'relative' }}>
                   {/* Vertical line: continuous, except for last step */}
-                  {idx < steps.length - 1 && (
+              {idx < steps.length - 1 && (
                     <span className="absolute left-1/2 top-6 w-px" style={{ height: 'calc(100% - 1.5rem)', background: '#374151', transform: 'translateX(-50%)' }}></span>
-                  )}
+              )}
                   <span className={`relative flex items-center justify-center w-6 h-6 mt-0.5 ${isActive ? '' : isInactive ? 'opacity-40' : ''}`}>
                     <span className={`block w-6 h-6 rounded-full border-2 ${isActive ? 'border-white bg-neutral-800' : 'border-neutral-500 bg-neutral-900'} ${isInactive ? 'opacity-40' : ''}`}></span>
-                    {step.status === 'completed' && (
+                {step.status === 'completed' && (
                       <svg className={`absolute w-4 h-4 ${isActive ? 'text-white' : 'text-neutral-400'} ${isInactive ? 'opacity-40' : ''}`} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <path d="M6 10.5l3 3 5-5" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    )}
-                  </span>
+                    <path d="M6 10.5l3 3 5-5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </span>
                 </div>
                 {/* Step label, perfectly left-aligned with more space from icon */}
-                <button
-                  type="button"
+              <button
+                type="button"
                   className={`ml-4 text-left focus:outline-none bg-transparent border-none p-0 m-0 shadow-none transition-none ${isActive ? 'text-white' : 'text-neutral-400'} ${isInactive ? 'opacity-40' : ''}`}
                   style={{ fontSize: isActive ? '1.08rem' : '1rem', background: 'none', fontWeight: 400, alignSelf: 'center' }}
-                  onClick={() => handleStepClick(step.id)}
-                >
-                  {step.title}
-                </button>
-              </div>
+                onClick={() => handleStepClick(step.id)}
+              >
+                {step.title}
+              </button>
+            </div>
             );
           })}
         </div>
@@ -445,11 +445,11 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
             if (!displayingSteps.includes(step.id)) return null;
             
             return (
-              <motion.div
-                key={step.id}
-                ref={setStepRef(step.id)}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
+            <motion.div
+              key={step.id}
+              ref={setStepRef(step.id)}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
                 className="pb-6 border-b border-neutral-800 last:border-b-0"
               >
@@ -459,7 +459,7 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
                 {step.id === 'understand' && renderUnderstandContent(step)}
                 {step.id === 'research' && renderResearchContent(step)}
                 {step.id === 'synthesize' && renderSynthesizeContent(step)}
-              </motion.div>
+            </motion.div>
             );
           })}
         </div>
