@@ -61,9 +61,18 @@ Format your response with the following structure:
    - Inside each section, use bullet points (*) for all lists.
    - Each bullet point should be a detailed mini-paragraph (2–4 sentences) with facts, context, and analysis, followed by an in-text citation (e.g., [1]).
 
-3. Summary Table (Before Conclusion): Before the conclusion, include a plain text summary paragraph that synthesizes the main findings from all sections. This summary should NOT contain citations.
+3. Summary Table (REQUIRED): You MUST include a summary table before the conclusion with the following format:
+   - Begin with a '## Summary Table' header
+   - Create a properly formatted markdown table using | characters
+   - Include column headers and separator row (e.g., | Category | Key Points |)
+   - Summarize the key information from each section in the table
+   - Example:
+     | Category | Key Points |
+     | -------- | ---------- |
+     | Feature 1 | Main takeaways about feature 1 |
+     | Feature 2 | Main takeaways about feature 2 |
 
-4. Conclusion Paragraph: End with a plain text conclusion paragraph that summarizes overall insights and key themes. This paragraph should NOT contain citations.
+4. Conclusion Paragraph: End with a '## Conclusion' header followed by a plain text conclusion paragraph that summarizes overall insights and key themes. This paragraph should NOT contain citations.
 
 Citation Rules:
 - Citations (e.g., [1], [2]) should ONLY appear at the end of relevant sentences within bullet points.
@@ -72,13 +81,14 @@ Citation Rules:
 
 General Formatting:
 - The output should be clean, well-spaced, and easy to read—like a professional research summary.
-- Do not use numbered lists (except inside tables if needed for a Summary Table, which is optional).
+- Do not use numbered lists (except inside tables if needed for a Summary Table).
 - Do not use bullets or numbering for section titles or the main title.
 
 Remember to:
 - Show your thinking process using <think> tags in Step 1
 - Use ONLY the provided search results as sources
 - Write detailed, informative bullet points (2-4 sentences each)
+- ALWAYS include a properly formatted markdown table in the Summary Table section
 - Maintain professional formatting throughout`;
 
 interface ProcessedResponse {
@@ -266,60 +276,93 @@ function enforceAdvanceSearchStructure(output: string): string {
   let inConclusion = false;
   let foundIntro = false;
   let foundConclusion = false;
-  let introSentenceCount = 0;
   let introLines: string[] = [];
+  let inSummarySection = false;
+  let summaryLines: string[] = [];
 
   // Function to detect if a line looks like part of a markdown table
-  const isTableLine = (line: string) => line.includes('|') && (line.includes('---') || line.split('|').length > 2);
-  const isSectionHeader = (line: string) => line.startsWith('## ') && !/summary table|conclusion/i.test(line);
-  const isSummaryTableHeader = (line: string) => line.toLowerCase().includes('summary table');
-  const isConclusionHeader = (line: string) => line.toLowerCase().includes('conclusion');
+  const isTableLine = (line: string) => 
+    line.includes('|') && (line.includes('---') || line.split('|').length > 2) || 
+    /^\s*[+\-]+\s*$/.test(line) || // Table separators like +---+---+
+    line.trim().startsWith('+-') || // ASCII-style tables
+    (line.includes(':') && line.includes('|')); // Column alignment
+
+  // More flexible section header detection
+  const isSectionHeader = (line: string) => line.startsWith('## ') && !/summary|conclusion/i.test(line);
+  
+  // More flexible summary detection
+  const isSummaryHeader = (line: string) => 
+    /##\s+(summary|key\s+findings|overview|results)/i.test(line) || 
+    line.toLowerCase().includes('summary table');
+    
+  // More flexible conclusion detection
+  const isConclusionHeader = (line: string) => 
+    /##\s+(conclusion|final\s+thoughts|closing\s+remarks|summary\s+and\s+conclusion)/i.test(line);
 
   for (let i = 0; i < lines.length; i++) {
     let line = lines[i];
-    line = line.replace(/\s*\[\d+\]/g, '');
-    if (line.trim().startsWith('*')) {
-      line = line.replace(/\s*\[\d+\]/g, '');
-    }
-    // Skip table lines when looking for intro
-    if (!foundIntro && isTableLine(line)) {
-      continue;
-    }
-    if (!foundIntro && line && !line.startsWith('#') && !line.trim().startsWith('*') && !isSectionHeader(line) && !isSummaryTableHeader(line) && !isConclusionHeader(line) && !isTableLine(line)) {
+    line = line.replace(/\s*\[\d+\]/g, ''); // Remove citation markers
+    
+    // Skip empty lines
+    if (!line.trim()) continue;
+    
+    // First, look for intro paragraph (more flexible detection)
+    if (!foundIntro && !line.startsWith('#') && !line.trim().startsWith('*') && 
+        !isSectionHeader(line) && !isSummaryHeader(line) && !isConclusionHeader(line) && 
+        !isTableLine(line)) {
       introLines.push(line.trim());
-      const sentences = introLines.join(' ').match(/[^.!?]+[.!?]+/g) || [];
-      introSentenceCount = sentences.length;
-      if (introSentenceCount >= 3) {
+      
+      // Consider intro found if we have a decent amount of text (not just requiring 3 sentences)
+      if (introLines.join(' ').length > 100 || introLines.length >= 2) {
         foundIntro = true;
       }
       continue;
     }
-    if (!foundIntro && introLines.length > 0 && (isSectionHeader(line) || isSummaryTableHeader(line) || isConclusionHeader(line) || line.trim().startsWith('*') || isTableLine(line))) {
+    
+    // Mark intro as found when we hit a section header
+    if (!foundIntro && introLines.length > 0 && 
+        (isSectionHeader(line) || isSummaryHeader(line) || isConclusionHeader(line) || 
+         line.trim().startsWith('*') || isTableLine(line))) {
       foundIntro = true;
     }
-    if (isSummaryTableHeader(line) || (!isSectionHeader(line) && !isConclusionHeader(line) && isTableLine(line) && !inSection && !inConclusion)) {
+    
+    // Detect summary section or table - more flexible detection
+    if (isSummaryHeader(line) || 
+        (!isSectionHeader(line) && !isConclusionHeader(line) && isTableLine(line) && !inSection && !inConclusion)) {
       inSummaryTable = true;
+      inSummarySection = true;
       summaryTable += (summaryTable ? '\n' : '') + line;
       continue;
     }
-    if (inSummaryTable) {
-      if (line.startsWith('## ') && !isSummaryTableHeader(line)) {
-        inSummaryTable = false;
-      } else {
+    
+    // Collect summary lines
+    if (inSummarySection && !isSectionHeader(line) && !isConclusionHeader(line)) {
+      if (isTableLine(line) || !line.startsWith('##')) {
         summaryTable += '\n' + line;
         continue;
       }
     }
+    
+    // End summary section when we hit a new section header
+    if (inSummarySection && (isSectionHeader(line) || isConclusionHeader(line))) {
+      inSummarySection = false;
+    }
+    
+    // Detect conclusion - more flexible detection
     if (isConclusionHeader(line)) {
       inConclusion = true;
       foundConclusion = true;
       conclusion += (conclusion ? '\n' : '') + line;
       continue;
     }
+    
+    // Collect conclusion lines
     if (inConclusion) {
       conclusion += '\n' + line;
       continue;
     }
+    
+    // Handle section headers
     if (isSectionHeader(line)) {
       if (currentSection.length) {
         sections.push(currentSection.join('\n'));
@@ -329,27 +372,56 @@ function enforceAdvanceSearchStructure(output: string): string {
       inSection = true;
       continue;
     }
+    
+    // Collect section content
     if (inSection) {
       currentSection.push(line);
     }
   }
+  
+  // Add the last section if there is one
   if (currentSection.length) {
     sections.push(currentSection.join('\n'));
   }
 
+  // Process collected intro lines
   intro = introLines.join(' ').trim();
 
+  // Create a fallback summary table if none was found but we have sections
+  if (!summaryTable.trim() && sections.length > 0) {
+    summaryTable = '## Summary Table\n\n';
+    summaryTable += '| Category | Key Points |\n';
+    summaryTable += '| -------- | ---------- |\n';
+    
+    // Extract section titles to include in the table
+    for (const section of sections) {
+      const sectionLines = section.split('\n');
+      const titleMatch = sectionLines[0].match(/##\s+(.+)/);
+      if (titleMatch && titleMatch[1]) {
+        const title = titleMatch[1].trim();
+        summaryTable += `| ${title} | Summary of ${title} information |\n`;
+      }
+    }
+  }
+
+  // Build the final result
   let result = '';
   result += intro ? intro + '\n\n' : '[Introductory paragraph missing]\n\n';
+  
   if (sections.length) {
     result += sections.join('\n\n') + '\n\n';
   } else {
     result += '[Sections missing]\n\n';
   }
+  
   if (summaryTable.trim()) {
     result += summaryTable.trim() + '\n\n';
+  } else {
+    result += '## Summary Table\n\n[Summary table missing]\n\n';
   }
-  result += conclusion.trim() ? conclusion.trim() : '[Conclusion paragraph missing]';
+  
+  result += conclusion.trim() ? conclusion.trim() : '## Conclusion\n\n[Conclusion paragraph missing]';
+  
   return result.trim();
 }
 
@@ -477,7 +549,10 @@ export default function TestChat() {
       if (synthesisStep?.output) {
         setShowPulsingDot(true);
         let cleanedOutput = cleanAIOutput(synthesisStep.output);
+        
+        // Apply our improved structure enforcement
         cleanedOutput = enforceAdvanceSearchStructure(cleanedOutput);
+        
         const alreadyPresent = messages.some(m => m.role === 'assistant' && m.content === cleanedOutput);
         if (!alreadyPresent) {
           setTimeout(() => {
