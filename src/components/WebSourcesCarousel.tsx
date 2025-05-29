@@ -129,21 +129,29 @@ const WebSourceCard: React.FC<{ source: WebSource }> = ({ source }) => {
         </div>
       ) : (
         <div className="flex-shrink-0 w-8 h-8 rounded-full overflow-hidden bg-black/30 mr-2 flex items-center justify-center">
-          {faviconUrl && (
+          {faviconUrl ? (
             <img
               src={faviconUrl}
               alt=""
-              className="w-full h-full object-contain"
+              className="w-6 h-6 object-contain p-1"
               onError={(e) => {
                 (e.target as HTMLImageElement).style.display = 'none';
+                (e.target as HTMLImageElement).parentElement!.innerHTML = `
+                  <svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' class='text-neutral-400'><circle cx='12' cy='12' r='10'></circle><line x1='2' y1='12' x2='22' y2='12'></line></svg>
+                `;
               }}
             />
+          ) : (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-neutral-400">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="2" y1="12" x2="22" y2="12"></line>
+            </svg>
           )}
         </div>
       )}
       <div className="flex flex-col justify-center min-w-0">
-        <span className="text-[11px] text-neutral-200 truncate font-medium">{displayDomain}</span>
-        <span className="text-xs text-white font-semibold truncate">{source.title}</span>
+        <span className="text-[11px] font-semibold text-neutral-200 truncate">{displayDomain}</span>
+        <span className="text-[13px] font-bold text-white truncate leading-tight">{source.title}</span>
       </div>
     </a>
   );
