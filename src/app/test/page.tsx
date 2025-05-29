@@ -915,7 +915,10 @@ FORMATTING REQUIREMENTS:
                       <>
                         {/* Show the sources carousel at the top of assistant message if sources exist */}
                         {(msg as any).webSources && (msg as any).webSources.length > 0 && (
-                          <WebSourcesCarousel sources={(msg as any).webSources} />
+                          <>
+                            <WebSourcesCarousel sources={(msg as any).webSources} />
+                            <div style={{ height: '1.5rem' }} />
+                          </>
                         )}
                       
                         {thinkingTime && <ThinkingIndicator duration={thinkingTime} />}
