@@ -267,6 +267,7 @@ function enforceAdvanceSearchStructure(output: string): string {
   let foundIntro = false;
   let foundConclusion = false;
   let introSentenceCount = 0;
+  let introLines: string[] = [];
 
   const isSectionHeader = (line: string) => line.startsWith('## ') && !/summary table|conclusion/i.test(line);
   const isSummaryTableHeader = (line: string) => line.toLowerCase().includes('summary table');
@@ -280,19 +281,19 @@ function enforceAdvanceSearchStructure(output: string): string {
     if (line.trim().startsWith('*')) {
       line = line.replace(/\s*\[\d+\]/g, '');
     }
-    // Only accept a plain text paragraph as intro (not bullet, not section header)
+    // Accumulate intro lines (not bullet, not section, not table, not conclusion)
     if (!foundIntro && line && !line.startsWith('#') && !line.trim().startsWith('*') && !isSectionHeader(line) && !isSummaryTableHeader(line) && !isConclusionHeader(line)) {
-      const sentences = line.match(/[^.!?]+[.!?]+/g) || [];
-      for (const sentence of sentences) {
-        if (introSentenceCount < 4) {
-          intro += (intro ? ' ' : '') + sentence.trim();
-          introSentenceCount++;
-        }
-      }
+      introLines.push(line.trim());
+      // Count sentences in accumulated intro
+      const sentences = introLines.join(' ').match(/[^.!?]+[.!?]+/g) || [];
+      introSentenceCount = sentences.length;
       if (introSentenceCount >= 3) {
         foundIntro = true;
       }
       continue;
+    }
+    if (!foundIntro && introLines.length > 0 && (isSectionHeader(line) || isSummaryTableHeader(line) || isConclusionHeader(line) || line.trim().startsWith('*'))) {
+      foundIntro = true;
     }
     if (isSummaryTableHeader(line)) {
       inSummaryTable = true;
@@ -334,8 +335,11 @@ function enforceAdvanceSearchStructure(output: string): string {
     sections.push(currentSection.join('\n'));
   }
 
+  // Join intro lines for the intro paragraph
+  intro = introLines.join(' ').trim();
+
   let result = '';
-  result += intro.trim() ? intro.trim() + '\n\n' : '[Introductory paragraph missing]\n\n';
+  result += intro ? intro + '\n\n' : '[Introductory paragraph missing]\n\n';
   if (sections.length) {
     result += sections.join('\n\n') + '\n\n';
   } else {
