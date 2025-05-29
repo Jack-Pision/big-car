@@ -388,10 +388,10 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
   };
 
   return (
-    <div className="flex max-w-6xl w-full mx-auto rounded-2xl border border-black/5 shadow-lg bg-neutral-900" style={{ height: '440px', minHeight: '440px' }}>
+    <div className="flex flex-col md:flex-row w-full mx-auto rounded-2xl border border-black/5 shadow-lg bg-neutral-900 overflow-hidden" style={{ height: '100%', minHeight: '400px' }}>
       {/* Left Panel - Step List */}
-      <div className="w-80 min-w-[220px] max-w-xs flex-shrink-0 bg-neutral-950 p-6 h-full rounded-l-2xl">
-        <div className="flex items-center gap-2 mb-6">
+      <div className="w-full md:w-80 md:min-w-[220px] md:max-w-xs flex-shrink-0 bg-neutral-950 p-4 md:p-6 overflow-y-auto md:h-full md:max-h-none md:border-b-0 md:border-r md:border-r-neutral-800 md:rounded-l-2xl" style={{ maxHeight: '180px', height: 'auto', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+        <div className="flex items-center gap-2 mb-4 md:mb-6">
           {/* New microchip icon with cyan color */}
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-400">
             <rect x="7" y="7" width="10" height="10" rx="2"/>
@@ -480,9 +480,9 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
       </div>
 
       {/* Right Panel - All Steps Content (Scrollable) */}
-      <div ref={rightPanelRef} className="flex-1 h-full overflow-y-auto p-8 bg-neutral-900 rounded-r-2xl hide-scrollbar">
+      <div ref={rightPanelRef} className="flex-1 overflow-y-auto p-4 md:p-8 bg-neutral-900 md:rounded-r-2xl hide-scrollbar md:h-full md:max-h-none" style={{ height: 'calc(100% - 180px)', maxHeight: 'calc(100% - 180px)' }}>
         {/* All steps in sequence */}
-        <div className="space-y-10">
+        <div className="space-y-6 md:space-y-10">
           {steps.map((step) => {
             // Only show steps that are in the displayingSteps array
             if (!displayingSteps.includes(step.id)) return null;
@@ -493,15 +493,15 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
               ref={setStepRef(step.id)}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="pb-6 border-b border-neutral-800 last:border-b-0"
-              >
-                <h2 className="text-xl text-white mb-4">{step.title}</h2>
-                
-                {/* Step specific content */}
-                {step.id === 'understand' && renderUnderstandContent(step)}
-                {step.id === 'research' && renderResearchContent(step)}
-                {step.id === 'synthesize' && renderSynthesizeContent(step)}
+              transition={{ duration: 0.5 }}
+              className="pb-6 border-b border-neutral-800 last:border-b-0"
+            >
+              <h2 className="text-xl text-white mb-4">{step.title}</h2>
+              
+              {/* Step specific content */}
+              {step.id === 'understand' && renderUnderstandContent(step)}
+              {step.id === 'research' && renderResearchContent(step)}
+              {step.id === 'synthesize' && renderSynthesizeContent(step)}
             </motion.div>
             );
           })}

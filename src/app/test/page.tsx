@@ -1452,7 +1452,7 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory }: {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
       className="w-full rounded-xl border border-neutral-800 overflow-hidden mb-2 mt-2 bg-neutral-900"
-      style={{ minHeight: "300px", maxHeight: "500px" }}
+      style={{ minHeight: "350px", height: "calc(100vh - 180px)", maxHeight: "550px" }}
     >
       {hasHistory && onClearHistory && (
         <div className="flex justify-end px-4 pt-2">
@@ -1469,14 +1469,16 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory }: {
           </button>
         </div>
       )}
-      <AdvanceSearch
-        steps={steps}
-        activeStepId={isFinalStepComplete ? manualStepId || activeStepId : activeStepId}
-        onManualStepClick={isFinalStepComplete ? setManualStepId : undefined}
-        manualNavigationEnabled={isFinalStepComplete}
-        error={error}
-        webData={webData}
-      />
+      <div className="h-full" style={{ height: hasHistory ? "calc(100% - 30px)" : "100%" }}>
+        <AdvanceSearch
+          steps={steps}
+          activeStepId={isFinalStepComplete ? manualStepId || activeStepId : activeStepId}
+          onManualStepClick={isFinalStepComplete ? setManualStepId : undefined}
+          manualNavigationEnabled={isFinalStepComplete}
+          error={error}
+          webData={webData}
+        />
+      </div>
     </motion.div>
   );
 } 
