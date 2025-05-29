@@ -76,7 +76,7 @@ export function structureAIResponse(rawResponse: string, template: TemplateType)
   console.log(`Structuring response for template: ${template}`);
   
   // Example naive parsing for 'default' or as a fallback
-  const sectionsArray = rawResponse.split(/\\n#{1,3}\\s|\\n\\*\\*.*\\*\\*:\\n/g).map(s => s.trim()).filter(s => s.length > 0);
+  const sectionsArray = rawResponse.split(/\n#{1,3}\s|\n\*\*.*\*\*:\n/g).map(s => s.trim()).filter(s => s.length > 0);
 
   if (template === 'basicChat') {
     return {
@@ -111,7 +111,7 @@ export function applyTemplate(structuredContent: ContentBlocks, template: Templa
   let markdownOutput = "";
 
   if (structuredContent.title) {
-    markdownOutput += `# ${structuredContent.title}\\n\\n`;
+    markdownOutput += `# ${structuredContent.title}\n\n`;
   }
 
   switch (template) {
@@ -120,21 +120,21 @@ export function applyTemplate(structuredContent: ContentBlocks, template: Templa
       // This would look for specific keys in structuredContent if structureAIResponse was more detailed
       structuredContent.sections.forEach(section => {
         if (section.heading) {
-          markdownOutput += `## ${section.heading}\\n\\n`;
+          markdownOutput += `## ${section.heading}\n\n`;
         }
-        markdownOutput += `${section.content}\\n\\n`;
+        markdownOutput += `${section.content}\n\n`;
         if (section.subItems) {
           section.subItems.forEach(subItem => {
-            markdownOutput += `- ${subItem}\\n`;
+            markdownOutput += `- ${subItem}\n`;
           });
-          markdownOutput += '\\n';
+          markdownOutput += '\n';
         }
       });
       break;
     case 'basicChat':
-      markdownOutput = structuredContent.mainResponse || structuredContent.sections.map(s => s.content).join('\\n\\n');
+      markdownOutput = structuredContent.mainResponse || structuredContent.sections.map(s => s.content).join('\n\n');
       if (structuredContent.followUp) {
-        markdownOutput += `\\n\\n${structuredContent.followUp}`;
+        markdownOutput += `\n\n${structuredContent.followUp}`;
       }
       break;
     case 'educationalGuide':
@@ -143,14 +143,14 @@ export function applyTemplate(structuredContent: ContentBlocks, template: Templa
     default:
       structuredContent.sections.forEach(section => {
         if (section.heading) {
-          markdownOutput += `### ${section.heading}\\n\\n`; // Default to H3 for sections
+          markdownOutput += `### ${section.heading}\n\n`; // Default to H3 for sections
         }
-        markdownOutput += `${section.content}\\n\\n`;
+        markdownOutput += `${section.content}\n\n`;
          if (section.subItems) {
           section.subItems.forEach(subItem => {
-            markdownOutput += `- ${subItem}\\n`;
+            markdownOutput += `- ${subItem}\n`;
           });
-          markdownOutput += '\\n';
+          markdownOutput += '\n';
         }
       });
       break;

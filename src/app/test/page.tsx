@@ -12,6 +12,7 @@ import { supabase, createSupabaseClient } from '@/lib/supabase-client';
 import { motion } from 'framer-motion';
 import PulsingDot from '@/components/PulsingDot';
 import TextReveal from '@/components/TextReveal';
+import EnhancedTextReveal from '@/components/EnhancedTextReveal';
 import ThinkingIndicator from '@/components/ThinkingIndicator';
 import AdvanceSearch from '@/components/AdvanceSearch';
 import { useDeepResearch } from '@/hooks/useDeepResearch';
@@ -324,9 +325,80 @@ const markdownComponents = {
       {...props}
     />
   ),
+  h3: (props: React.ComponentProps<'h3'>) => (
+    <h3
+      className="ai-section-subtitle text-[1.3rem] font-medium leading-snug mb-1 mt-3"
+      {...props}
+    />
+  ),
   p: (props: React.ComponentProps<'p'>) => (
     <p
       className="ai-body-text text-[1.08rem] font-normal leading-relaxed mb-2"
+      {...props}
+    />
+  ),
+  ul: (props: React.ComponentProps<'ul'>) => (
+    <ul
+      className="ai-list list-disc ml-6 my-2 space-y-1"
+      {...props}
+    />
+  ),
+  ol: (props: React.ComponentProps<'ol'>) => (
+    <ol
+      className="ai-list list-decimal ml-6 my-2 space-y-1"
+      {...props}
+    />
+  ),
+  li: (props: React.ComponentProps<'li'>) => (
+    <li
+      className="ai-list-item mb-1"
+      {...props}
+    />
+  ),
+  blockquote: (props: React.ComponentProps<'blockquote'>) => (
+    <blockquote
+      className="ai-blockquote border-l-4 border-cyan-400/60 bg-black/20 pl-4 py-1 my-3 italic"
+      {...props}
+    />
+  ),
+  code: (props: React.ComponentProps<'code'>) => {
+    const { children, className } = props;
+    // Check if this is an inline code block or a multi-line code block
+    const match = /language-(\w+)/.exec(className || '');
+    
+    if (!match) {
+      // Inline code
+      return <code className="ai-inline-code bg-black/30 px-1.5 py-0.5 rounded text-[0.9em] font-mono" {...props} />;
+    }
+    
+    // Multi-line code block
+    return (
+      <code className={`${className} ai-code-block text-[0.9em] font-mono`} {...props} />
+    );
+  },
+  pre: (props: React.ComponentProps<'pre'>) => (
+    <pre
+      className="ai-code-container bg-black/30 p-3 my-3 rounded-md overflow-x-auto border border-gray-800"
+      {...props}
+    />
+  ),
+  table: (props: React.ComponentProps<'table'>) => (
+    <div className="ai-table-container overflow-x-auto my-4">
+      <table
+        className="ai-table min-w-full border-collapse"
+        {...props}
+      />
+    </div>
+  ),
+  th: (props: React.ComponentProps<'th'>) => (
+    <th
+      className="ai-table-header bg-gray-800 px-4 py-2 text-left text-sm font-semibold text-white border-b-2 border-cyan-500/30"
+      {...props}
+    />
+  ),
+  td: (props: React.ComponentProps<'td'>) => (
+    <td
+      className="ai-table-cell px-4 py-2 border-b border-gray-700/50 text-gray-200"
       {...props}
     />
   ),
@@ -523,6 +595,12 @@ export default function TestChat() {
 
     // Store the current query for Deep Research
     setCurrentQuery(currentInput);
+    
+    // Extract query context for template selection
+    const queryContext = {
+      queryKeywords: currentInput.toLowerCase().split(/\s+/).filter(word => word.length > 3),
+      conversationLength: messages.filter(m => m.role === 'user').length
+    };
     
     // If Deep Research is active, show the view inline in the chat
     if (showAdvanceSearch) {
@@ -943,7 +1021,7 @@ export default function TestChat() {
                 if (showPulsingDot) setShowPulsingDot(false);
                 return (
                   <motion.div
-                  key={i}
+                    key={i}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, ease: "easeOut" }}
@@ -968,11 +1046,17 @@ export default function TestChat() {
                           <span className="text-sm text-white italic font-light mb-2">[Response stopped by user]</span>
                         ) : (
                           <div className="w-full max-w-full overflow-hidden">
-                            <TextReveal 
+                            <EnhancedTextReveal 
                               text={processedContent}
                               markdownComponents={markdownComponents}
                               webSources={(msg as any).webSources || []}
                               revealIntervalMs={220}
+                              userQuery={messages.find(m => m.id === msg.parentId)?.content || ''}
+                              queryContext={{
+                                queryKeywords: (messages.find(m => m.id === msg.parentId)?.content || '')
+                                  .toLowerCase().split(/\s+/).filter(word => word.length > 3),
+                                conversationLength: messages.filter(m => m.role === 'user').length
+                              }}
                             />
                           </div>
                         )}
