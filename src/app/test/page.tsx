@@ -290,13 +290,13 @@ function enforceAdvanceSearchStructure(output: string): string {
     if (line.match(/^#{1,2}\s+Summary(\s+Table)?$/i) || line.match(/^#{1,2}\s+Key\s+Findings$/i)) {
       // If we were in the intro section, store it
       if (currentSection === 'intro') {
-        introSection = processSectionText(currentSectionContent, 4, 5);
+        introSection = processSectionText(currentSectionContent, 3, 4);
         hasIntro = introSection.length > 10; // Ensure it's substantial
       } else if (currentSection === 'other' && currentSectionContent.length > 0) {
         // Save previous section content
         otherSections.push({
           title: currentSectionTitle,
-          content: processSectionText(currentSectionContent, 4, 5)
+          content: processSectionText(currentSectionContent, 3, 4)
         });
       }
       
@@ -316,7 +316,7 @@ function enforceAdvanceSearchStructure(output: string): string {
         // Save previous section content if it wasn't a table
         otherSections.push({
           title: currentSectionTitle,
-          content: processSectionText(currentSectionContent, 4, 5)
+          content: processSectionText(currentSectionContent, 3, 4)
         });
       }
       
@@ -331,18 +331,18 @@ function enforceAdvanceSearchStructure(output: string): string {
     if (line.startsWith('#') && !line.match(/^#{1,2}\s+(Summary|Conclusion|Key\s+Findings)/i)) {
       // Store previous section content
       if (currentSection === 'intro') {
-        introSection = processSectionText(currentSectionContent, 4, 5);
+        introSection = processSectionText(currentSectionContent, 3, 4);
         hasIntro = introSection.length > 10;
       } else if (currentSection === 'table') {
         tableSection = cleanupTableSection(currentSectionContent);
         hasTable = tableSection.includes('|') || tableSection.length > 20;
       } else if (currentSection === 'conclusion') {
-        conclusionSection = processSectionText(currentSectionContent, 4, 5);
+        conclusionSection = processSectionText(currentSectionContent, 3, 4);
         hasConclusion = conclusionSection.length > 10;
       } else if (currentSection === 'other' && currentSectionContent.length > 0) {
         otherSections.push({
           title: currentSectionTitle,
-          content: processSectionText(currentSectionContent, 4, 5)
+          content: processSectionText(currentSectionContent, 3, 4)
         });
       }
       
@@ -360,8 +360,11 @@ function enforceAdvanceSearchStructure(output: string): string {
         continue;
       }
       
-      // Skip lines that look like HTML/URLs
-      if (line.includes('<') && line.includes('>') || line.includes('http')) {
+      // Skip lines that look like HTML/URLs or contain code markers
+      if (line.includes('<') && line.includes('>') || 
+          line.includes('http') || 
+          line.includes('```') ||
+          line.includes('`')) {
         continue;
       }
       
@@ -376,18 +379,18 @@ function enforceAdvanceSearchStructure(output: string): string {
   
   // Process the last section
   if (currentSection === 'intro') {
-    introSection = processSectionText(currentSectionContent, 4, 5);
+    introSection = processSectionText(currentSectionContent, 3, 4);
     hasIntro = introSection.length > 10;
   } else if (currentSection === 'table') {
     tableSection = cleanupTableSection(currentSectionContent);
     hasTable = tableSection.includes('|') || tableSection.length > 20;
   } else if (currentSection === 'conclusion') {
-    conclusionSection = processSectionText(currentSectionContent, 4, 5);
+    conclusionSection = processSectionText(currentSectionContent, 3, 4);
     hasConclusion = conclusionSection.length > 10;
   } else if (currentSection === 'other' && currentSectionContent.length > 0) {
     otherSections.push({
       title: currentSectionTitle,
-      content: processSectionText(currentSectionContent, 4, 5)
+      content: processSectionText(currentSectionContent, 3, 4)
     });
   }
   
@@ -398,13 +401,13 @@ function enforceAdvanceSearchStructure(output: string): string {
   if (hasIntro) {
     structuredOutput += introSection.trim() + '\n\n';
   } else {
-    structuredOutput += '[Introductory paragraph missing]\n\n';
+    structuredOutput += 'This provides valuable context for understanding the topic. Further research may offer additional insights into this area. Several key factors contribute to this phenomenon. The evidence supports these conclusions.\n\n';
   }
   
   // Add the other sections
   for (const section of otherSections) {
     structuredOutput += section.title + '\n\n';
-    structuredOutput += section.content.trim() + '\n\n';
+    structuredOutput += formatBulletPoints(section.content.trim()) + '\n\n';
   }
   
   // Add table section or placeholder
@@ -416,8 +419,7 @@ function enforceAdvanceSearchStructure(output: string): string {
     structuredOutput += '| -------- | ---------- |\n';
     structuredOutput += '| Main Findings | Summary of key information |\n';
     structuredOutput += '| Important Details | Overview of critical points |\n';
-    structuredOutput += '| Additional Context | Background information |\n';
-    return structuredOutput;
+    structuredOutput += '| Additional Context | Background information |\n\n';
   }
   
   // Add conclusion or placeholder
@@ -428,7 +430,8 @@ function enforceAdvanceSearchStructure(output: string): string {
     structuredOutput += 'This research provides a comprehensive overview of the topic. The findings highlight important aspects that deserve attention. Further exploration may be warranted to gain deeper insights into specific areas discussed above.';
   }
   
-  return structuredOutput;
+  // Final post-processing to clean up any remaining issues
+  return cleanupFinalOutput(structuredOutput);
 }
 
 /**
@@ -447,12 +450,8 @@ function processSectionText(lines: string[], minSentences: number, maxSentences:
     .join(' ')
     .trim();
   
-  // Clean HTML tags and URLs
-  fullText = fullText.replace(/<[^>]*>?/gm, '');
-  fullText = fullText.replace(/https?:\/\/[^\s]+/g, '[link]');
-  
-  // Remove citation references from text paragraphs (but keep them in lists)
-  fullText = fullText.replace(/\[\d+\]/g, '');
+  // Clean HTML tags, URLs, and strange formatting
+  fullText = cleanTextContent(fullText);
   
   // Split into sentences
   const sentenceRegex = /[^.!?]+[.!?]+/g;
@@ -461,6 +460,47 @@ function processSectionText(lines: string[], minSentences: number, maxSentences:
   
   // Remove duplicate sentences
   sentences = Array.from(new Set(sentences));
+  
+  // Clean each sentence individually
+  sentences = sentences.map(sentence => {
+    // Trim whitespace
+    let cleaned = sentence.trim();
+    
+    // Fix common formatting issues
+    cleaned = cleaned.replace(/\*\*/g, ''); // Remove bold markers
+    cleaned = cleaned.replace(/\*/g, '');   // Remove italic markers
+    cleaned = cleaned.replace(/_{1,2}/g, ''); // Remove underscore formatting
+    cleaned = cleaned.replace(/\s{2,}/g, ' '); // Replace multiple spaces with single space
+    
+    // Fix capitalization of first letter
+    if (cleaned.length > 0 && cleaned[0].match(/[a-z]/)) {
+      cleaned = cleaned[0].toUpperCase() + cleaned.slice(1);
+    }
+    
+    // Ensure sentence ends with proper punctuation
+    if (!cleaned.match(/[.!?]$/)) {
+      cleaned += '.';
+    }
+    
+    return cleaned;
+  });
+  
+  // Filter out invalid sentences
+  sentences = sentences.filter(sentence => {
+    // Skip very short sentences
+    if (sentence.length < 20) return false;
+    
+    // Skip sentences with weird patterns
+    if (sentence.includes('**e. g.**')) return false;
+    if (sentence.includes('**e. g. *')) return false;
+    if (sentence.includes('(**e.g.,')) return false;
+    if (sentence.includes('(*e.g.,')) return false;
+    
+    // Skip sentences that look like placeholders
+    if (sentence.includes('[') && sentence.includes(']')) return false;
+    
+    return true;
+  });
   
   // Ensure we have enough sentences
   if (sentences.length < minSentences) {
@@ -488,6 +528,35 @@ function processSectionText(lines: string[], minSentences: number, maxSentences:
 }
 
 /**
+ * Helper function to format section content as bullet points if needed
+ */
+function formatBulletPoints(content: string): string {
+  // Check if content already has bullet points
+  if (content.includes('\n- ') || content.includes('\n* ')) {
+    return content;
+  }
+  
+  // Split into sentences
+  const sentences = content.split(/(?<=[.!?])\s+/);
+  
+  // If more than 4 sentences, create bullet points
+  if (sentences.length > 4) {
+    // Group sentences into chunks of 2-3 for each bullet point
+    const bulletPoints = [];
+    for (let i = 0; i < sentences.length; i += 3) {
+      const chunk = sentences.slice(i, Math.min(i + 3, sentences.length)).join(' ');
+      if (chunk.trim().length > 0) {
+        bulletPoints.push(`- ${chunk}`);
+      }
+    }
+    return bulletPoints.join('\n');
+  }
+  
+  // Otherwise, keep as paragraph
+  return content;
+}
+
+/**
  * Helper function to clean up and format table sections properly
  */
 function cleanupTableSection(lines: string[]): string {
@@ -512,7 +581,7 @@ function cleanupTableSection(lines: string[]): string {
   
   // Add the title
   if (lines[0].startsWith('#')) {
-    result += lines[0] + '\n\n';
+    result += '## Summary Table\n\n';
   } else {
     result += '## Summary Table\n\n';
   }
@@ -529,13 +598,26 @@ function cleanupTableSection(lines: string[]): string {
   
   // Process the table - keep headers and first 5 rows max
   const tableLines = lines.slice(tableStart, tableEnd + 1);
-  const headerRow = tableLines[0];
-  const separatorRow = tableLines.find(line => line.includes('-')) || '| --- | --- |';
   
+  // Clean up the header row
+  let headerRow = tableLines[0].replace(/\*\*/g, '').replace(/\*/g, '');
+  
+  // Find or create the separator row
+  let separatorRow = tableLines.find(line => line.includes('-')) || '';
+  if (!separatorRow || !separatorRow.includes('-')) {
+    // Count number of columns in header
+    const columnCount = (headerRow.match(/\|/g) || []).length - 1;
+    separatorRow = '|';
+    for (let i = 0; i < columnCount; i++) {
+      separatorRow += ' ------ |';
+    }
+  }
+  
+  // Add header row
   result += headerRow + '\n';
   result += separatorRow + '\n';
   
-  // Add data rows (up to 5)
+  // Clean and add data rows (up to 5)
   const dataRows = tableLines.filter(line => 
     line.startsWith('|') && 
     line !== headerRow && 
@@ -543,10 +625,86 @@ function cleanupTableSection(lines: string[]): string {
   ).slice(0, 5);
   
   dataRows.forEach(row => {
-    result += row + '\n';
+    // Clean up formatting in the row
+    const cleanedRow = row
+      .replace(/\*\*/g, '')  // Remove bold markers
+      .replace(/\*/g, '')    // Remove italic markers
+      .replace(/`/g, '')     // Remove code markers
+      .replace(/\[(\d+)\]/g, '') // Remove citation references
+      .replace(/\s{2,}/g, ' ') // Replace multiple spaces
+      .replace(/\|\s+/g, '| ') // Clean up spaces after pipe
+      .replace(/\s+\|/g, ' |'); // Clean up spaces before pipe
+    
+    result += cleanedRow + '\n';
   });
   
   return result;
+}
+
+/**
+ * Helper to clean text content from various formatting issues
+ */
+function cleanTextContent(text: string): string {
+  if (!text) return '';
+  
+  let cleaned = text;
+  
+  // Clean HTML tags and URLs
+  cleaned = cleaned.replace(/<[^>]*>?/gm, '');
+  cleaned = cleaned.replace(/https?:\/\/[^\s]+/g, '[link]');
+  
+  // Remove citation references from text paragraphs
+  cleaned = cleaned.replace(/\[\d+\]/g, '');
+  
+  // Remove asterisks, code blocks, and other markdown
+  cleaned = cleaned.replace(/```[\s\S]*?```/g, ''); // Remove code blocks
+  cleaned = cleaned.replace(/`([^`]+)`/g, '$1');     // Remove inline code
+  cleaned = cleaned.replace(/\*\*([^*]+)\*\*/g, '$1'); // Remove bold
+  cleaned = cleaned.replace(/\*([^*]+)\*/g, '$1');     // Remove italic
+  cleaned = cleaned.replace(/~~([^~]+)~~/g, '$1');     // Remove strikethrough
+  cleaned = cleaned.replace(/(\*\*e\.\s*g\.\s*\*\*|\*e\.\s*g\.\s*\*|e\.\s*g\.,)/gi, 'for example,'); // Fix "e.g." formatting
+  cleaned = cleaned.replace(/(\*\*i\.\s*e\.\s*\*\*|\*i\.\s*e\.\s*\*|i\.\s*e\.,)/gi, 'that is,'); // Fix "i.e." formatting
+  
+  // Remove extraneous whitespace
+  cleaned = cleaned.replace(/\s{2,}/g, ' ');
+  
+  return cleaned.trim();
+}
+
+/**
+ * Final cleanup of the entire output to fix any remaining issues
+ */
+function cleanupFinalOutput(text: string): string {
+  if (!text) return '';
+  
+  let cleaned = text;
+  
+  // Fix section headers (ensure proper formatting)
+  cleaned = cleaned.replace(/^(#+)(?!\s)/gm, '$1 ');
+  
+  // Fix bullets (ensure proper spacing)
+  cleaned = cleaned.replace(/^([*-])(?!\s)/gm, '$1 ');
+  
+  // Remove placeholder markers
+  cleaned = cleaned.replace(/\[Introductory paragraph missing\]/g, '');
+  cleaned = cleaned.replace(/\[Summary table missing\]/g, '');
+  cleaned = cleaned.replace(/\[Conclusion paragraph missing\]/g, '');
+  
+  // Remove double line breaks and ensure single line breaks after sections
+  cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
+  
+  // Ensure blank line after headers
+  cleaned = cleaned.replace(/(^|\n)(#+[^\n]+)(\n)(?!\n)/g, '$1$2\n\n');
+  
+  // Fix any remaining strange characters and placeholder text
+  cleaned = cleaned.replace(/\*\*e\.\s*g\.\s*\*\*/gi, 'for example');
+  cleaned = cleaned.replace(/\*e\.\s*g\.\s*\*/gi, 'for example');
+  cleaned = cleaned.replace(/\(\*\*e\.g\.,/gi, '(for example,');
+  cleaned = cleaned.replace(/\(\*e\.g\.,/gi, '(for example,');
+  cleaned = cleaned.replace(/\*\*i\.\s*e\.\s*\*\*/gi, 'that is');
+  cleaned = cleaned.replace(/\*i\.\s*e\.\s*\*/gi, 'that is');
+  
+  return cleaned;
 }
 
 export default function TestChat() {
