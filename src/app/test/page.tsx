@@ -269,22 +269,24 @@ function enforceAdvanceSearchStructure(output: string): string {
   let introSentenceCount = 0;
   let introLines: string[] = [];
 
+  // Function to detect if a line looks like part of a markdown table
+  const isTableLine = (line: string) => line.includes('|') && (line.includes('---') || line.split('|').length > 2);
   const isSectionHeader = (line: string) => line.startsWith('## ') && !/summary table|conclusion/i.test(line);
   const isSummaryTableHeader = (line: string) => line.toLowerCase().includes('summary table');
   const isConclusionHeader = (line: string) => line.toLowerCase().includes('conclusion');
 
   for (let i = 0; i < lines.length; i++) {
     let line = lines[i];
-    // Remove citations from all lines
     line = line.replace(/\s*\[\d+\]/g, '');
-    // Remove citations from bullet points
     if (line.trim().startsWith('*')) {
       line = line.replace(/\s*\[\d+\]/g, '');
     }
-    // Accumulate intro lines (not bullet, not section, not table, not conclusion)
-    if (!foundIntro && line && !line.startsWith('#') && !line.trim().startsWith('*') && !isSectionHeader(line) && !isSummaryTableHeader(line) && !isConclusionHeader(line)) {
+    // Skip table lines when looking for intro
+    if (!foundIntro && isTableLine(line)) {
+      continue;
+    }
+    if (!foundIntro && line && !line.startsWith('#') && !line.trim().startsWith('*') && !isSectionHeader(line) && !isSummaryTableHeader(line) && !isConclusionHeader(line) && !isTableLine(line)) {
       introLines.push(line.trim());
-      // Count sentences in accumulated intro
       const sentences = introLines.join(' ').match(/[^.!?]+[.!?]+/g) || [];
       introSentenceCount = sentences.length;
       if (introSentenceCount >= 3) {
@@ -292,30 +294,30 @@ function enforceAdvanceSearchStructure(output: string): string {
       }
       continue;
     }
-    if (!foundIntro && introLines.length > 0 && (isSectionHeader(line) || isSummaryTableHeader(line) || isConclusionHeader(line) || line.trim().startsWith('*'))) {
+    if (!foundIntro && introLines.length > 0 && (isSectionHeader(line) || isSummaryTableHeader(line) || isConclusionHeader(line) || line.trim().startsWith('*') || isTableLine(line))) {
       foundIntro = true;
     }
-    if (isSummaryTableHeader(line)) {
+    if (isSummaryTableHeader(line) || (!isSectionHeader(line) && !isConclusionHeader(line) && isTableLine(line) && !inSection && !inConclusion)) {
       inSummaryTable = true;
-      summaryTable += line + '\n';
+      summaryTable += (summaryTable ? '\n' : '') + line;
       continue;
     }
     if (inSummaryTable) {
       if (line.startsWith('## ') && !isSummaryTableHeader(line)) {
         inSummaryTable = false;
       } else {
-        summaryTable += line + '\n';
+        summaryTable += '\n' + line;
         continue;
       }
     }
     if (isConclusionHeader(line)) {
       inConclusion = true;
       foundConclusion = true;
-      conclusion += line + '\n';
+      conclusion += (conclusion ? '\n' : '') + line;
       continue;
     }
     if (inConclusion) {
-      conclusion += line + '\n';
+      conclusion += '\n' + line;
       continue;
     }
     if (isSectionHeader(line)) {
@@ -335,7 +337,6 @@ function enforceAdvanceSearchStructure(output: string): string {
     sections.push(currentSection.join('\n'));
   }
 
-  // Join intro lines for the intro paragraph
   intro = introLines.join(' ').trim();
 
   let result = '';
