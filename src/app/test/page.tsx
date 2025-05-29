@@ -15,10 +15,11 @@ import TextReveal from '@/components/TextReveal';
 import ThinkingIndicator from '@/components/ThinkingIndicator';
 import AdvanceSearch from '@/components/AdvanceSearch';
 import { useDeepResearch } from '@/hooks/useDeepResearch';
-import { WebSource } from '@/utils/source-utils';
+import { WebSource } from '@/utils/source-utils/index';
 import { v4 as uuidv4 } from 'uuid';
 import EmptyBox from '@/components/EmptyBox';
 import WebSourcesCarousel from '../../components/WebSourcesCarousel';
+import { formatMessagesForApi, enhanceSystemPrompt, buildConversationContext } from '@/utils/conversation-context';
 
 const SYSTEM_PROMPT = `You are a helpful, knowledgeable, and friendly AI assistant. Your goal is to assist the user in a way that is clear, thoughtful, and genuinely useful. Follow these guidelines:
 
@@ -344,6 +345,9 @@ interface Message {
   imageUrls?: string[];
   webSources?: WebSource[];
   researchId?: string;
+  id: string;
+  timestamp: number;
+  parentId?: string;
 }
 
 export default function TestChat() {
@@ -400,7 +404,12 @@ export default function TestChat() {
   const showImageMsg = (content: string, imgSrc: string) => {
     setMessages((prev) => [
       ...prev,
-      { role: "user" as const, content: `${content} <img src=\"${imgSrc}\" />` },
+      { 
+        role: "user" as const, 
+        content: `${content} <img src=\"${imgSrc}\" />`,
+        id: uuidv4(),
+        timestamp: Date.now()
+      },
     ]);
   };
 
@@ -519,8 +528,8 @@ export default function TestChat() {
       const researchId = uuidv4();
       setMessages(prev => [
         ...prev,
-        { role: "user", content: currentInput },
-        { role: "deep-research", content: currentInput, researchId }
+        { role: "user", content: currentInput, id: uuidv4(), timestamp: Date.now() },
+        { role: "deep-research", content: currentInput, researchId, id: uuidv4(), timestamp: Date.now() }
       ]);
       setInput("");
       setImagePreviewUrls([]);
@@ -538,9 +547,12 @@ export default function TestChat() {
 
     let userMessageContent = currentInput;
     let uploadedImageUrls: string[] = [];
+    const messageId = uuidv4();
     let userMessageForDisplay: Message = {
       role: "user" as const,
       content: currentInput,
+      id: messageId,
+      timestamp: Date.now()
     };
 
     // Temp message for image upload indication
@@ -605,48 +617,39 @@ export default function TestChat() {
           .join('\n');
       }
 
-      // Check if this is a follow-up question (not the first message)
-      const isFollowUp = messages.filter(m => m.role === 'user').length > 0;
+      // Get enhanced system prompt with better follow-up handling
+      // Build conversation context for better follow-up handling
+      const context = buildConversationContext(messages);
+      const baseSystemPrompt = SYSTEM_PROMPT;
+      const enhancedSystemPrompt = enhanceSystemPrompt(baseSystemPrompt, context, currentInput);
       
-      // Add follow-up instruction to system prompt if needed
-      let enhancedSystemPrompt = SYSTEM_PROMPT;
-      if (isFollowUp) {
-        enhancedSystemPrompt = `${SYSTEM_PROMPT}\n\nThis is a follow-up question. While maintaining your detailed and helpful approach, try to build on previous context rather than repeating information already covered. Focus on advancing the conversation and providing new insights.`;
-      }
-      
-      // Prepend citation instructions ONLY for Deep Research
-      if (showAdvanceSearch && webData) {
-        // Professional formatting instructions
-        const formattingInstructions = `
-IMPORTANT: Your answer MUST be at least 750 words. Do not stop before you reach this length. If you finish early, add more details, examples, or analysis until you reach the required length.
-
-BULLET POINT DETAIL REQUIREMENT:
-For each bullet point, write a detailed, self-contained summary (5–8 sentences) that explains the topic, provides context, and includes key facts or findings. Do not use single-sentence or headline-style bullets. Each bullet should be a mini-paragraph.
-
-FORMATTING REQUIREMENTS:
-1. Your response MUST follow a professional, well-structured format like a research document or report.
-2. Start with a clear main title using # heading (e.g., "# Latest Developments in AI, 2025").
-3. Divide content into logical sections with ## headings.
-4. Use bullet points (*) for all key details and findings.
-5. End with a "## Conclusion" section.
-6. Include a "## Summary Table" if the information can be presented in tabular form.
-7. For citations, use ONLY numbered references in square brackets [1], [2] at the end of sentences/bullets.`;
-        
-        enhancedSystemPrompt = `${formattingInstructions}\n\n${CITATION_INSTRUCTIONS}\n\n${enhancedSystemPrompt}`;
-      }
-      
+      // Add image context if needed
       const systemPrompt = imageContextPrompt 
         ? `${enhancedSystemPrompt}\n\n${imageContextPrompt}`
         : enhancedSystemPrompt;
 
+      // Format messages for API using the new utility
+      const formattedMessages = formatMessagesForApi(
+        systemPrompt,
+        messages,
+        currentInput,
+        true // include context summary
+      );
+
+      // Add image URLs if needed
+      if (uploadedImageUrls.length > 0) {
+        // If there are images, add them to the last user message
+        const lastUserMsgIndex = formattedMessages.length - 1;
+        if (formattedMessages[lastUserMsgIndex].role === 'user') {
+          formattedMessages[lastUserMsgIndex].imageUrls = uploadedImageUrls;
+        }
+
+        // Extract descriptions only for Gemma (keep existing logic)
+        const previousImageDescriptions = imageContexts.map(ctx => ctx.description);
+      }
+      
       const apiPayload: any = {
-        messages: [
-          { role: "system", content: systemPrompt },
-          // Filter out previous assistant messages before sending, keep user messages
-          ...messages.filter(m => m.role === 'user'), 
-          // Add the current user message (text part)
-          { role: "user", content: userMessageContent }
-        ].filter(msg => msg.content || (msg as any).imageUrls), // Ensure content or imageUrls exists
+        messages: formattedMessages,
         
         // Adjust parameters for more detailed responses
         temperature: 0.8,
@@ -666,7 +669,13 @@ FORMATTING REQUIREMENTS:
         
         // If there was no text input but images, we construct a default prompt for the API
         if (!userMessageContent) {
-          apiPayload.messages[apiPayload.messages.length -1].content = "Describe these images.";
+          // Find the last user message in the formatted messages
+          const lastUserMsgIndex = formattedMessages.findIndex(
+            msg => msg.role === 'user'
+          );
+          if (lastUserMsgIndex !== -1) {
+            formattedMessages[lastUserMsgIndex].content = "Describe these images.";
+          }
         }
       }
       
@@ -685,9 +694,14 @@ FORMATTING REQUIREMENTS:
         let aiMsg: Message = { 
           role: "assistant" as const,
           content: "", 
+          id: uuidv4(),
+          timestamp: Date.now(),
+          parentId: messageId, // Link to the user message
           imageUrls: uploadedImageUrls, // Associate assistant response with the uploaded images
           webSources: [] // Initialize webSources
         };
+
+        // Add initial empty assistant message to the chat
         setMessages((prev) => [...prev, aiMsg]);
 
         while (!done) {
@@ -753,15 +767,18 @@ FORMATTING REQUIREMENTS:
         }
         
       } else {
-      const data = await res.json();
+        const data = await res.json();
         const assistantResponseContent = cleanAIResponse(data.choices?.[0]?.message?.content || data.generated_text || data.error || JSON.stringify(data) || "No response");
         const aiMsg: Message = {
-        role: "assistant" as const,
+          role: "assistant" as const,
           content: assistantResponseContent.content,
+          id: uuidv4(),
+          timestamp: Date.now(),
+          parentId: messageId, // Link to the user message
           imageUrls: uploadedImageUrls, // Associate assistant response with the uploaded images
           webSources: [] // Initialize webSources
-      };
-      setMessages((prev) => [...prev, aiMsg]);
+        };
+        setMessages((prev) => [...prev, aiMsg]);
         
         // If this was an image request, store the image description for future context
         if (uploadedImageUrls.length > 0) {
@@ -790,15 +807,29 @@ FORMATTING REQUIREMENTS:
       }
     } catch (err: any) {
       if (err.name === 'AbortError') {
-      setMessages((prev) => [
-        ...prev,
-          { role: "assistant" as const, content: "[Response stopped by user]", imageUrls: uploadedImageUrls },
+        setMessages((prev) => [
+          ...prev,
+          { 
+            role: "assistant" as const, 
+            content: "[Response stopped by user]", 
+            id: uuidv4(),
+            timestamp: Date.now(),
+            parentId: messageId, // Link to the user message
+            imageUrls: uploadedImageUrls 
+          },
         ]);
       } else {
-      setMessages((prev) => [
-        ...prev,
-          { role: "assistant" as const, content: "Error: " + (err?.message || String(err)), imageUrls: uploadedImageUrls },
-      ]);
+        setMessages((prev) => [
+          ...prev,
+          { 
+            role: "assistant" as const, 
+            content: "Error: " + (err?.message || String(err)), 
+            id: uuidv4(),
+            timestamp: Date.now(),
+            parentId: messageId, // Link to the user message
+            imageUrls: uploadedImageUrls 
+          },
+        ]);
       }
     } finally {
       setIsAiResponding(false);
