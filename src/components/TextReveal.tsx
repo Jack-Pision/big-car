@@ -38,8 +38,12 @@ const TextReveal: React.FC<TextRevealProps> = ({
 
     // Clean and normalize markdown before further processing
     const cleanedText = cleanMarkdown(text.trim());
+    
+    // Preserve special section markers for introduction, summary table, and conclusion
+    const preservedText = ensureStructureSectionsPreserved(cleanedText);
+    
     // Enhance tables and remove citations from tables
-    const enhancedText = processMarkdownWithTables(cleanedText);
+    const enhancedText = processMarkdownWithTables(preservedText);
 
     // Reveal text progressively
     let currentPosition = 0;
@@ -102,6 +106,40 @@ const TextReveal: React.FC<TextRevealProps> = ({
 
     return () => clearInterval(revealInterval);
   }, [text, revealIntervalMs]);
+
+  // Helper function to ensure structure sections are preserved
+  const ensureStructureSectionsPreserved = (text: string): string => {
+    // Check if the text contains placeholder markers
+    const hasIntroPlaceholder = text.includes('[Introductory paragraph missing]');
+    const hasSummaryTablePlaceholder = text.includes('[Summary table missing]');
+    const hasConclusionPlaceholder = text.includes('[Conclusion paragraph missing]');
+    
+    // If any placeholders are present, ensure they're properly formatted as markdown
+    let processedText = text;
+    
+    if (hasIntroPlaceholder) {
+      processedText = processedText.replace(
+        '[Introductory paragraph missing]',
+        '<div class="missing-section intro-missing">Introduction paragraph missing</div>'
+      );
+    }
+    
+    if (hasSummaryTablePlaceholder) {
+      processedText = processedText.replace(
+        /## Summary Table\s*\n\s*\[Summary table missing\]/g,
+        '## Summary Table\n<div class="missing-section table-missing">Summary table missing</div>'
+      );
+    }
+    
+    if (hasConclusionPlaceholder) {
+      processedText = processedText.replace(
+        /## Conclusion\s*\n\s*\[Conclusion paragraph missing\]/g,
+        '## Conclusion\n<div class="missing-section conclusion-missing">Conclusion paragraph missing</div>'
+      );
+    }
+    
+    return processedText;
+  };
 
   // Process the markdown and citations together using client-side only logic
   useEffect(() => {
@@ -273,6 +311,30 @@ const TextReveal: React.FC<TextRevealProps> = ({
           font-size: inherit;
           line-height: inherit;
         }
+        
+        /* Styling for missing section notifications */
+        .missing-section {
+          padding: 12px 16px;
+          margin: 16px 0;
+          border-radius: 8px;
+          font-style: italic;
+          color: #f0f0f0;
+          font-size: 0.9rem;
+          text-align: center;
+        }
+        .intro-missing {
+          background-color: rgba(59, 130, 246, 0.2);
+          border-left: 4px solid #3b82f6;
+        }
+        .table-missing {
+          background-color: rgba(236, 72, 153, 0.2);
+          border-left: 4px solid #ec4899;
+        }
+        .conclusion-missing {
+          background-color: rgba(234, 179, 8, 0.2);
+          border-left: 4px solid #eab308;
+        }
+        
         /* Enhanced styling for markdown headers and lists */
         .markdown-body {
           color: #fff;
