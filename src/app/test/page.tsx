@@ -252,6 +252,99 @@ interface Message {
   parentId?: string;
 }
 
+// Helper to enforce Advance Search output structure
+function enforceAdvanceSearchStructure(output: string): string {
+  if (!output) return output;
+  // Split into lines for easier processing
+  const lines = output.split('\n');
+  let intro = '';
+  let sections: string[] = [];
+  let summary = '';
+  let conclusion = '';
+  let summaryTable = '';
+  let currentSection: string[] = [];
+  let currentHeader = '';
+  let inSummaryTable = false;
+  let inSection = false;
+  let inConclusion = false;
+  let foundIntro = false;
+  let foundSummary = false;
+  let foundConclusion = false;
+
+  // Helper to check if a line is a section header
+  const isSectionHeader = (line: string) => line.startsWith('## ') && !/summary table|conclusion/i.test(line);
+  const isSummaryTableHeader = (line: string) => line.toLowerCase().includes('summary table');
+  const isConclusionHeader = (line: string) => line.toLowerCase().includes('conclusion');
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!foundIntro && line && !line.startsWith('#')) {
+      intro += (intro ? ' ' : '') + line.trim();
+      foundIntro = true;
+      continue;
+    }
+    if (isSummaryTableHeader(line)) {
+      inSummaryTable = true;
+      summaryTable += line + '\n';
+      continue;
+    }
+    if (inSummaryTable) {
+      if (line.startsWith('## ') && !isSummaryTableHeader(line)) {
+        inSummaryTable = false;
+      } else {
+        summaryTable += line + '\n';
+        continue;
+      }
+    }
+    if (isConclusionHeader(line)) {
+      inConclusion = true;
+      foundConclusion = true;
+      conclusion += line + '\n';
+      continue;
+    }
+    if (inConclusion) {
+      conclusion += line + '\n';
+      continue;
+    }
+    if (isSectionHeader(line)) {
+      if (currentSection.length) {
+        sections.push(currentSection.join('\n'));
+        currentSection = [];
+      }
+      currentSection.push(line);
+      inSection = true;
+      continue;
+    }
+    if (inSection) {
+      // Detect summary paragraph before conclusion
+      if (!foundSummary && line.trim() && !line.startsWith('*') && !isSectionHeader(line) && !isSummaryTableHeader(line) && !isConclusionHeader(line)) {
+        summary += line.trim() + ' ';
+        foundSummary = true;
+        continue;
+      }
+      currentSection.push(line);
+    }
+  }
+  if (currentSection.length) {
+    sections.push(currentSection.join('\n'));
+  }
+
+  // Clean up and enforce order
+  let result = '';
+  result += intro.trim() ? intro.trim() + '\n\n' : '[Introductory paragraph missing]\n\n';
+  if (sections.length) {
+    result += sections.join('\n\n') + '\n\n';
+  } else {
+    result += '[Sections missing]\n\n';
+  }
+  if (summaryTable.trim()) {
+    result += summaryTable.trim() + '\n\n';
+  }
+  result += summary.trim() ? summary.trim() + '\n\n' : '[Summary paragraph missing]\n\n';
+  result += conclusion.trim() ? conclusion.trim() : '[Conclusion paragraph missing]';
+  return result.trim();
+}
+
 export default function TestChat() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -369,16 +462,14 @@ export default function TestChat() {
     return output.trim();
   };
 
-  // When deep research completes, automatically start the AI request
+  // In the useEffect that processes the synthesis output, enforce the structure before displaying
   useEffect(() => {
     if (isComplete && currentQuery) {
       const synthesisStep = steps.find(step => step.id === 'synthesize');
       if (synthesisStep?.output) {
-        // Show pulsing dot before output is added
         setShowPulsingDot(true);
-        // Process the output to remove unwanted content
-        const cleanedOutput = cleanAIOutput(synthesisStep.output);
-        // Only add if not already present in messages
+        let cleanedOutput = cleanAIOutput(synthesisStep.output);
+        cleanedOutput = enforceAdvanceSearchStructure(cleanedOutput);
         const alreadyPresent = messages.some(m => m.role === 'assistant' && m.content === cleanedOutput);
         if (!alreadyPresent) {
           setTimeout(() => {
@@ -392,8 +483,8 @@ export default function TestChat() {
                 timestamp: Date.now()
               }
             ]);
-            setShowPulsingDot(false); // Hide dot as soon as output starts
-          }, 800); // Show dot for a short moment before output
+            setShowPulsingDot(false);
+          }, 800);
         } else {
           setShowPulsingDot(false);
         }
