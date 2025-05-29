@@ -21,6 +21,7 @@ import { v4 as uuidv4 } from 'uuid';
 import EmptyBox from '@/components/EmptyBox';
 import WebSourcesCarousel from '../../components/WebSourcesCarousel';
 import { formatMessagesForApi, enhanceSystemPrompt, buildConversationContext } from '@/utils/conversation-context';
+import { selectSystemPrompt } from '@/utils/system-prompts';
 
 const SYSTEM_PROMPT = `You are a helpful, knowledgeable, and friendly AI assistant. Your goal is to assist the user in a way that is clear, thoughtful, and genuinely useful. Follow these guidelines:
 
@@ -596,11 +597,16 @@ export default function TestChat() {
     // Store the current query for Deep Research
     setCurrentQuery(currentInput);
     
+    // Select appropriate system prompt based on query content
+    const selectedSystemPrompt = selectSystemPrompt(currentInput);
+    console.log("Selected system prompt type:", selectedSystemPrompt.substring(0, 50) + "...");
+    
     // Extract query context for template selection
     const queryContext = {
       queryKeywords: currentInput.toLowerCase().split(/\s+/).filter(word => word.length > 3),
       conversationLength: messages.filter(m => m.role === 'user').length
     };
+    console.log("Query context:", queryContext);
     
     // If Deep Research is active, show the view inline in the chat
     if (showAdvanceSearch) {
@@ -700,8 +706,9 @@ export default function TestChat() {
       // Get enhanced system prompt with better follow-up handling
       // Build conversation context for better follow-up handling
       const context = buildConversationContext(messages);
-      const baseSystemPrompt = SYSTEM_PROMPT;
-      const enhancedSystemPrompt = enhanceSystemPrompt(baseSystemPrompt, context, currentInput);
+      
+      // Enhance the selected system prompt with follow-up handling
+      const enhancedSystemPrompt = enhanceSystemPrompt(selectedSystemPrompt, context, currentInput);
       
       // Add image context if needed
       const systemPrompt = imageContextPrompt 
@@ -709,15 +716,27 @@ export default function TestChat() {
         : enhancedSystemPrompt;
 
       // Format messages for API using the new utility
-      const formattedMessages = formatMessagesForApi(
-        systemPrompt,
-        messages,
-        currentInput,
-        true // include context summary
-      );
+      const formattedMessages = [
+        { role: "system", content: systemPrompt },
+        ...formatMessagesForApi(
+          messages, 
+          context,
+          true // include context summary
+        )
+      ];
+
+      // Add last user message with current input if needed
+      const lastUserMsg = messages.filter(m => m.role === 'user').pop();
+      if (!lastUserMsg || lastUserMsg.content !== currentInput) {
+        formattedMessages.push({
+          role: "user",
+          content: currentInput,
+          ...(uploadedImageUrls.length > 0 ? { imageUrls: uploadedImageUrls } : {})
+        });
+      }
 
       // Add image URLs if needed
-      if (uploadedImageUrls.length > 0) {
+      if (uploadedImageUrls.length > 0 && !formattedMessages[formattedMessages.length - 1].imageUrls) {
         // If there are images, add them to the last user message
         const lastUserMsgIndex = formattedMessages.length - 1;
         if (formattedMessages[lastUserMsgIndex].role === 'user') {
