@@ -255,7 +255,6 @@ interface Message {
 // Helper to enforce Advance Search output structure
 function enforceAdvanceSearchStructure(output: string): string {
   if (!output) return output;
-  // Split into lines for easier processing
   const lines = output.split('\n');
   let intro = '';
   let sections: string[] = [];
@@ -269,7 +268,6 @@ function enforceAdvanceSearchStructure(output: string): string {
   let foundConclusion = false;
   let introSentenceCount = 0;
 
-  // Helper to check if a line is a section header
   const isSectionHeader = (line: string) => line.startsWith('## ') && !/summary table|conclusion/i.test(line);
   const isSummaryTableHeader = (line: string) => line.toLowerCase().includes('summary table');
   const isConclusionHeader = (line: string) => line.toLowerCase().includes('conclusion');
@@ -282,8 +280,8 @@ function enforceAdvanceSearchStructure(output: string): string {
     if (line.trim().startsWith('*')) {
       line = line.replace(/\s*\[\d+\]/g, '');
     }
-    // Collect intro (3-4 sentences, no citations)
-    if (!foundIntro && line && !line.startsWith('#')) {
+    // Only accept a plain text paragraph as intro (not bullet, not section header)
+    if (!foundIntro && line && !line.startsWith('#') && !line.trim().startsWith('*') && !isSectionHeader(line) && !isSummaryTableHeader(line) && !isConclusionHeader(line)) {
       const sentences = line.match(/[^.!?]+[.!?]+/g) || [];
       for (const sentence of sentences) {
         if (introSentenceCount < 4) {
@@ -336,7 +334,6 @@ function enforceAdvanceSearchStructure(output: string): string {
     sections.push(currentSection.join('\n'));
   }
 
-  // Clean up and enforce order
   let result = '';
   result += intro.trim() ? intro.trim() + '\n\n' : '[Introductory paragraph missing]\n\n';
   if (sections.length) {
