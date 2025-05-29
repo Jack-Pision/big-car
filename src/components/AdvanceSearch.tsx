@@ -400,39 +400,82 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
           </svg>
           <span className="text-xl text-neutral-200 font-normal">Advance Search</span>
         </div>
+
+        {/* Add conversation mode indicator */}
+        {steps[0]?.status === 'active' && steps[0]?.content?.includes('follow-up') && (
+          <div className="mb-4 flex items-center gap-2 py-1.5 px-2.5 rounded-lg bg-cyan-900/20 border border-cyan-800/30">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-400">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+            <span className="text-xs text-cyan-300">Follow-up question mode</span>
+          </div>
+        )}
+
         <div className="flex flex-col relative">
-          {steps.map((step, idx) => {
-            const isActive = step.id === activeStepId;
-            const isInactive = activeStepId && !isActive;
-            return (
-              <div key={step.id} className="relative min-h-[48px] z-10 flex flex-row items-center">
-                {/* Timeline column: vertical line and circle */}
-                <div className="flex flex-col items-center justify-start" style={{ width: 24, position: 'relative' }}>
-                  {/* Vertical line: continuous, except for last step */}
-              {idx < steps.length - 1 && (
-                    <span className="absolute left-1/2 top-6 w-px" style={{ height: 'calc(100% - 1.5rem)', background: '#374151', transform: 'translateX(-50%)' }}></span>
-              )}
-                  <span className={`relative flex items-center justify-center w-6 h-6 mt-0.5 ${isActive ? '' : isInactive ? 'opacity-40' : ''}`}>
-                    <span className={`block w-6 h-6 rounded-full border-2 ${isActive ? 'border-white bg-neutral-800' : 'border-neutral-500 bg-neutral-900'} ${isInactive ? 'opacity-40' : ''}`}></span>
+          {/* Timeline line connecting steps */}
+          <div className="absolute left-[10px] top-0 bottom-0 w-px bg-neutral-800"></div>
+          
+          {/* Step list */}
+          {steps.map((step, index) => (
+            <div
+              key={step.id}
+              ref={setStepRef(step.id)}
+              className={`relative flex flex-col ${index < steps.length - 1 ? 'mb-6' : ''}`}
+            >
+              {/* Step timeline dot */}
+              <div
+                className={`absolute left-0 top-0 w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                  step.status === 'completed'
+                    ? 'bg-cyan-500 border-cyan-500'
+                    : step.status === 'active'
+                    ? 'bg-black border-cyan-500'
+                    : 'bg-black border-neutral-700'
+                }`}
+                style={{ zIndex: 1 }}
+              >
                 {step.status === 'completed' && (
-                      <svg className={`absolute w-4 h-4 ${isActive ? 'text-white' : 'text-neutral-400'} ${isInactive ? 'opacity-40' : ''}`} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <path d="M6 10.5l3 3 5-5" strokeLinecap="round" strokeLinejoin="round" />
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
                   </svg>
                 )}
-              </span>
-                </div>
-                {/* Step label, perfectly left-aligned with more space from icon */}
-              <button
-                type="button"
-                  className={`ml-4 text-left focus:outline-none bg-transparent border-none p-0 m-0 shadow-none transition-none ${isActive ? 'text-white' : 'text-neutral-400'} ${isInactive ? 'opacity-40' : ''}`}
-                  style={{ fontSize: isActive ? '1.08rem' : '1rem', background: 'none', fontWeight: 400, alignSelf: 'center' }}
-                onClick={() => handleStepClick(step.id)}
+              </div>
+              
+              {/* Step content */}
+              <div
+                className={`pl-8 cursor-pointer ${
+                  step.status === 'completed' || step.status === 'active'
+                    ? 'opacity-100'
+                    : 'opacity-40'
+                }`}
+                onClick={() => {
+                  if (step.status === 'completed' || step.status === 'active') {
+                    handleStepClick(step.id);
+                  }
+                }}
               >
-                {step.title}
-              </button>
+                {/* Step title */}
+                <div className="mb-1 font-medium text-sm flex items-center gap-2">
+                  <span className={step.status === 'completed' ? 'text-cyan-400' : step.status === 'active' ? 'text-cyan-400' : 'text-neutral-400'}>
+                    {step.title}
+                  </span>
+                  
+                  {/* Show active indicator */}
+                  {step.status === 'active' && (
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse"></div>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Step description (only show for active/completed) */}
+                {(step.status === 'completed' || step.status === 'active') && (
+                  <div className="text-xs text-neutral-400">
+                    {step.content?.split('\n')[0]}
+                  </div>
+                )}
+              </div>
             </div>
-            );
-          })}
+          ))}
         </div>
       </div>
 

@@ -108,7 +108,13 @@ interface WebData {
   webCitations: string;
 }
 
-export const useDeepResearch = (isActive: boolean, query: string = '') => {
+// Add interface for conversation context
+interface ResearchConversation {
+  previousQueries: string[];
+  previousResponses: string[];
+}
+
+export const useDeepResearch = (isActive: boolean, query: string = '', conversationHistory: ResearchConversation = { previousQueries: [], previousResponses: [] }) => {
   const [steps, setSteps] = useState<ThinkingStep[]>([...DEFAULT_THINKING_STEPS]);
   const [activeStepId, setActiveStepId] = useState<string | null>(null);
   const [isComplete, setIsComplete] = useState(false);
@@ -127,27 +133,42 @@ export const useDeepResearch = (isActive: boolean, query: string = '') => {
       setError(null);
       
       // Start the process with understanding step
-      processUnderstandStep(query);
+      processUnderstandStep(query, conversationHistory);
     }
     
     if (!isActive) {
       setIsInProgress(false);
       setIsComplete(false);
     }
-  }, [query, isActive]);
+  }, [query, isActive, conversationHistory]);
 
   // Step 1: Understanding - Call AI to analyze the query
-  const processUnderstandStep = async (query: string) => {
+  const processUnderstandStep = async (query: string, conversationHistory: ResearchConversation) => {
     try {
       setActiveStepId('understand');
       updateStepStatus('understand', 'active', 'Analyzing your query...', null, []);
+
+      // Create system message with conversation context if available
+      let systemContent = 'You are a research planning assistant. Analyze the query and create a list of 7-10 insightful bullet points. IMPORTANT FORMAT INSTRUCTIONS: Each bullet point must be a single, clear, natural sentence. Do not include any headings, section titles, prefixes, meta-labels, or special formatting. Do not use colons or numbering at the start of bullet points. Do not include phrases like "Sub-question:", "Research Strategy:", "Key Concepts:", etc. Do not use markdown formatting. Only output plain, natural sentences as bullet points. Do not repeat or rephrase the same point. Consider all relevant information needs, possible interpretations, and research approaches for the query, but present them as simple, direct sentences.';
+      
+      // Add conversation context if there's history
+      if (conversationHistory.previousQueries.length > 0) {
+        systemContent += '\n\nThis is a follow-up question to a previous conversation. Here is the conversation history:';
+        for (let i = 0; i < conversationHistory.previousQueries.length; i++) {
+          systemContent += `\n\nPrevious Question: ${conversationHistory.previousQueries[i]}`;
+          if (conversationHistory.previousResponses[i]) {
+            systemContent += `\nPrevious Answer Summary: ${summarizeResponse(conversationHistory.previousResponses[i])}`;
+          }
+        }
+        systemContent += '\n\nConsider this history when analyzing the new query. Determine if this is a follow-up question that refers to entities or concepts from previous questions.';
+      }
 
       const response = await fetch('/api/nvidia', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: [
-            { role: 'system', content: 'You are a research planning assistant. Analyze the query and create a list of 7-10 insightful bullet points. IMPORTANT FORMAT INSTRUCTIONS: Each bullet point must be a single, clear, natural sentence. Do not include any headings, section titles, prefixes, meta-labels, or special formatting. Do not use colons or numbering at the start of bullet points. Do not include phrases like "Sub-question:", "Research Strategy:", "Key Concepts:", etc. Do not use markdown formatting. Only output plain, natural sentences as bullet points. Do not repeat or rephrase the same point. Consider all relevant information needs, possible interpretations, and research approaches for the query, but present them as simple, direct sentences.' },
+            { role: 'system', content: systemContent },
             { role: 'user', content: query }
           ],
           temperature: 0.2
@@ -268,13 +289,8 @@ export const useDeepResearch = (isActive: boolean, query: string = '') => {
       setActiveStepId('synthesize');
       updateStepStatus('synthesize', 'active', 'Synthesizing a detailed research report...');
 
-      // Step 3b: Get the full research-paper style answer from the AI
-      const response = await fetch('/api/nvidia', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [
-            { role: 'system', content: `You are a Deep Research AI assistant. Use the provided web data to create a comprehensive, well-structured response.
+      // Prepare system content with conversation context if available
+      let systemContent = `You are a Deep Research AI assistant. Use the provided web data to create a comprehensive, well-structured response.
 
 IMPORTANT STRUCTURE REQUIREMENTS - YOUR RESPONSE MUST FOLLOW THIS EXACT FORMAT:
 
@@ -315,7 +331,25 @@ FORMATTING GUIDANCE:
 - Ensure proper spacing between sections.
 - No run-on sentences or paragraphs.
 - Each bullet point should be a cohesive paragraph, not a single line.
-- Don't use any meta-language (like "According to the web search").` },
+- Don't use any meta-language (like "According to the web search").`;
+
+      // Add conversation context if there's history
+      if (conversationHistory.previousQueries.length > 0) {
+        systemContent += '\n\nCONVERSATION CONTEXT:';
+        systemContent += '\nThis is a follow-up question to a previous conversation. Consider this history when formulating your response:';
+        for (let i = 0; i < conversationHistory.previousQueries.length; i++) {
+          systemContent += `\n- Previous Query: "${conversationHistory.previousQueries[i]}"`;
+        }
+        systemContent += '\n\nIMPORTANT: Maintain the same output structure as specified above, even when answering follow-up questions.';
+      }
+
+      // Step 3b: Get the full research-paper style answer from the AI
+      const response = await fetch('/api/nvidia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [
+            { role: 'system', content: systemContent },
             { role: 'user', content: `Query: ${query}\n\nAnalysis: ${analysis}\n\nWeb Data: ${JSON.stringify(webData)}` }
           ],
           temperature: 0.2
@@ -360,6 +394,29 @@ FORMATTING GUIDANCE:
     } catch (err: any) {
       handleError('synthesize', err.message);
     }
+  };
+
+  // Helper function to summarize previous responses
+  const summarizeResponse = (response: string): string => {
+    // Extract main topics from the response
+    const sections: string[] = [];
+    
+    // Get introduction (first paragraph)
+    const introMatch = response.match(/^([^#]+?)(?=\n*##|$)/);
+    if (introMatch) {
+      sections.push(introMatch[0].trim().substring(0, 150) + (introMatch[0].length > 150 ? '...' : ''));
+    }
+    
+    // Get section headings
+    const sectionHeadings = response.match(/##\s+([^\n]+)/g);
+    if (sectionHeadings) {
+      sections.push('Sections covered: ' + sectionHeadings
+        .map(h => h.replace(/^##\s+/, ''))
+        .filter(h => !h.includes('Summary Table') && !h.includes('Conclusion'))
+        .join(', '));
+    }
+    
+    return sections.join(' ');
   };
 
   // Helper to update step status and content

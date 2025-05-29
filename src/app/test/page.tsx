@@ -652,7 +652,16 @@ export default function TestChat() {
   const [showAdvanceSearch, setShowAdvanceSearch] = useState(false);
   const [currentQuery, setCurrentQuery] = useState('');
   
-  // Deep Research hook
+  // Add state for tracking Advance Search conversation history
+  const [advanceSearchHistory, setAdvanceSearchHistory] = useState<{
+    previousQueries: string[];
+    previousResponses: string[];
+  }>({
+    previousQueries: [],
+    previousResponses: []
+  });
+  
+  // Deep Research hook - now passing conversation history
   const {
     steps,
     activeStepId,
@@ -660,7 +669,7 @@ export default function TestChat() {
     isInProgress,
     error,
     webData
-  } = useDeepResearch(showAdvanceSearch, currentQuery);
+  } = useDeepResearch(showAdvanceSearch, currentQuery, advanceSearchHistory);
 
   const [manualStepId, setManualStepId] = useState<string | null>(null);
   const isFinalStepComplete = steps[steps.length - 1]?.status === 'completed';
@@ -727,6 +736,7 @@ export default function TestChat() {
         const alreadyPresent = messages.some(m => m.role === 'assistant' && m.content === cleanedOutput);
         if (!alreadyPresent) {
           setTimeout(() => {
+            // Add the AI response to the messages
             setMessages(prev => [
               ...prev.filter(m => m.role !== 'assistant'),
               { 
@@ -737,6 +747,13 @@ export default function TestChat() {
                 timestamp: Date.now()
               }
             ]);
+            
+            // Update the conversation history for future follow-up questions
+            setAdvanceSearchHistory(prev => ({
+              previousQueries: [...prev.previousQueries, currentQuery],
+              previousResponses: [...prev.previousResponses, cleanedOutput]
+            }));
+            
             setShowPulsingDot(false);
           }, 500);
         }
@@ -1115,6 +1132,14 @@ export default function TestChat() {
     setEmptyBoxes(prev => prev.filter(id => id !== boxId));
   };
 
+  // Add a function to clear the Advance Search conversation history
+  function clearAdvanceSearchHistory() {
+    setAdvanceSearchHistory({
+      previousQueries: [],
+      previousResponses: []
+    });
+  }
+
   return (
     <>
       <div className="min-h-screen flex flex-col" style={{ background: '#161618' }}>
@@ -1168,7 +1193,7 @@ export default function TestChat() {
                 const cleanContent = content.replace(/<thinking-indicator.*?\/>/g, '');
                 const isStoppedMsg = cleanContent.trim() === '[Response stopped by user]';
                 // Make citations clickable using webData.sources
-                const processedContent = makeCitationsClickable(cleanContent, webData?.sources || []);
+                const processedContent = makeCitationsClickable(cleanContent, msg.webSources || []);
                 // Hide pulsing dot as soon as output starts rendering
                 if (showPulsingDot) setShowPulsingDot(false);
                 return (
@@ -1186,9 +1211,9 @@ export default function TestChat() {
                     ) : (
                       <>
                         {/* Show the sources carousel at the top of assistant message if sources exist */}
-                        {(msg as any).webSources && (msg as any).webSources.length > 0 && (
+                        {msg.webSources && msg.webSources.length > 0 && (
                           <>
-                            <WebSourcesCarousel sources={(msg as any).webSources} />
+                            <WebSourcesCarousel sources={msg.webSources} />
                             <div style={{ height: '1.5rem' }} />
                           </>
                         )}
@@ -1201,7 +1226,7 @@ export default function TestChat() {
                             <TextReveal 
                               text={processedContent}
                               markdownComponents={markdownComponents}
-                              webSources={(msg as any).webSources || []}
+                              webSources={msg.webSources || []}
                               revealIntervalMs={220}
                   />
                 </div>
@@ -1212,7 +1237,11 @@ export default function TestChat() {
                 );
               } else if (msg.role === "deep-research") {
                 return (
-                  <DeepResearchBlock key={msg.researchId} query={msg.content} />
+                  <DeepResearchBlock 
+                    query={msg.content} 
+                    conversationHistory={advanceSearchHistory}
+                    onClearHistory={clearAdvanceSearchHistory}
+                  />
                 );
               } else { // User message
                 return (
@@ -1387,7 +1416,14 @@ export default function TestChat() {
   );
 }
 
-function DeepResearchBlock({ query }: { query: string }) {
+function DeepResearchBlock({ query, conversationHistory, onClearHistory }: { 
+  query: string, 
+  conversationHistory: {
+    previousQueries: string[];
+    previousResponses: string[];
+  },
+  onClearHistory?: () => void
+}) {
   const {
     steps,
     activeStepId,
@@ -1395,9 +1431,12 @@ function DeepResearchBlock({ query }: { query: string }) {
     isInProgress,
     error,
     webData
-  } = useDeepResearch(true, query);
+  } = useDeepResearch(true, query, conversationHistory);
   const [manualStepId, setManualStepId] = useState<string | null>(null);
   const isFinalStepComplete = steps[steps.length - 1]?.status === 'completed';
+  
+  const hasHistory = conversationHistory.previousQueries.length > 0;
+  
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -1406,6 +1445,21 @@ function DeepResearchBlock({ query }: { query: string }) {
       className="w-full rounded-xl border border-neutral-800 overflow-hidden mb-2 mt-2 bg-neutral-900"
       style={{ minHeight: "300px", maxHeight: "500px" }}
     >
+      {hasHistory && onClearHistory && (
+        <div className="flex justify-end px-4 pt-2">
+          <button
+            onClick={onClearHistory}
+            className="text-xs text-cyan-500 hover:text-cyan-400 flex items-center gap-1 opacity-70 hover:opacity-100 transition-opacity"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 6h18"></path>
+              <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+              <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+            </svg>
+            Clear history ({conversationHistory.previousQueries.length})
+          </button>
+        </div>
+      )}
       <AdvanceSearch
         steps={steps}
         activeStepId={isFinalStepComplete ? manualStepId || activeStepId : activeStepId}
