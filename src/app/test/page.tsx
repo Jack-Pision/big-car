@@ -736,9 +736,9 @@ export default function TestChat() {
         const alreadyPresent = messages.some(m => m.role === 'assistant' && m.content === cleanedOutput);
         if (!alreadyPresent) {
           setTimeout(() => {
-            // Add the AI response to the messages
+            // Add the AI response to the messages - KEEP ALL PREVIOUS MESSAGES
             setMessages(prev => [
-              ...prev.filter(m => m.role !== 'assistant'),
+              ...prev, // Keep all previous messages instead of filtering
               { 
                 role: 'assistant', 
                 content: cleanedOutput,
@@ -775,11 +775,14 @@ export default function TestChat() {
     if (showAdvanceSearch) {
       setShowAdvanceSearch(true);
       const researchId = uuidv4();
+      
+      // Always add a new user message and research block for each query
       setMessages(prev => [
         ...prev,
         { role: "user", content: currentInput, id: uuidv4(), timestamp: Date.now() },
         { role: "deep-research", content: currentInput, researchId, id: uuidv4(), timestamp: Date.now() }
       ]);
+      
       setInput("");
       setImagePreviewUrls([]);
       setSelectedFilesForUpload([]);
