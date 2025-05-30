@@ -91,6 +91,7 @@ export default function Sidebar({
                 <span className="font-medium">Board</span>
               </button>
               {/* Streaming Chat Navigation Button */}
+              {/*
               <button
                 className="mx-4 mb-2 flex items-center gap-2 px-3 py-2 rounded-lg text-[#e5e7eb] hover:bg-[#232323]/80 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/10"
                 onClick={() => router.push('/streaming-chat')}
@@ -100,6 +101,7 @@ export default function Sidebar({
                 <svg width="20" height="20" fill="none" stroke="#e5e7eb" strokeWidth="2" viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M8 8h8v8H8z"/></svg>
                 <span className="font-medium">Streaming Chat</span>
               </button>
+              */}
               {/* Test Navigation Button */}
               <button
                 className="mx-4 mb-2 flex items-center gap-2 px-3 py-2 rounded-lg text-[#e5e7eb] hover:bg-[#232323]/80 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/10"
@@ -111,6 +113,7 @@ export default function Sidebar({
                 <span className="font-medium">Test</span>
               </button>
               {/* Mind Flow Navigation Button */}
+              {/*
               <button
                 className="mx-4 mb-2 flex items-center gap-2 px-3 py-2 rounded-lg text-[#e5e7eb] hover:bg-[#232323]/80 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/10"
                 onClick={() => router.push('/mind-flow')}
@@ -124,7 +127,9 @@ export default function Sidebar({
                 </svg>
                 <span className="font-medium">Mind Flow</span>
               </button>
+              */}
               {/* Visual Learning Navigation Button */}
+              {/*
               <button
                 className="mx-4 mb-2 flex items-center gap-2 px-3 py-2 rounded-lg text-[#e5e7eb] hover:bg-[#232323]/80 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/10"
                 onClick={() => router.push('/visual-learning')}
@@ -137,7 +142,9 @@ export default function Sidebar({
                 </svg>
                 <span className="font-medium">Visual learning</span>
               </button>
+              */}
               {/* Help Navigation Button */}
+              {/*
               <button
                 className="mx-4 mb-2 flex items-center gap-2 px-3 py-2 rounded-lg text-[#e5e7eb] hover:bg-[#232323]/80 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/10"
                 onClick={() => router.push('/help')}
@@ -147,6 +154,7 @@ export default function Sidebar({
                 <svg width="20" height="20" fill="none" stroke="#e5e7eb" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 1 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12" y2="17"/></svg>
                 <span className="font-medium">Help</span>
               </button>
+              */}
               {/* Search Bar Below Visual Learning */}
               <div className="mx-4 mb-4 flex items-center gap-2 bg-[#232323] rounded-lg px-2 py-1 border border-gray-800">
                 <svg width="18" height="18" fill="none" stroke="#e5e7eb" strokeWidth="2" viewBox="0 0 24 24">
