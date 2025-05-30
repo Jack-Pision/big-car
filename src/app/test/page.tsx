@@ -819,12 +819,11 @@ export default function TestChat() {
     let currentActiveSessionId = activeSessionId;
 
     // Create a new session if one isn't active or if it's a "new chat" scenario
-    if (!currentActiveSessionId || (isChatEmpty && !hasInteracted && !activeSessionId)) {
+    if (!currentActiveSessionId) {
       const newSession = createNewSession(currentInput || (currentSelectedFiles.length > 0 ? "Image Upload" : undefined));
       setActiveSessionId(newSession.id);
       currentActiveSessionId = newSession.id;
       setMessages([]); // Start with empty messages for the new session
-      // No need to call setSidebarOpen(true) then getSessionsFromService() here, sidebar will refresh on its own
     }
 
     if (!hasInteracted) setHasInteracted(true);
@@ -1206,9 +1205,8 @@ export default function TestChat() {
   }
 
   const handleNewChatRequest = () => {
-    const newSession = createNewSession();
-    setActiveSessionId(newSession.id);
-    setMessages([]);
+    router.push('/test'); // Redirect to default page
+    setSidebarOpen(false);
     setInput('');
     setImagePreviewUrls([]);
     setSelectedFilesForUpload([]);
@@ -1218,8 +1216,7 @@ export default function TestChat() {
     setShowAdvanceSearchUI(false);
     setShowHeading(true); // Show heading for new chat
     setHasInteracted(false); // Reset interaction state
-    setSidebarOpen(false); // Close sidebar
-    // The sidebar will update its list automatically because getSessions() is called in its useEffect
+    // Do not create a session here
   };
 
   const handleSelectSession = (sessionId: string) => {

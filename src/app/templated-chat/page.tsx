@@ -95,16 +95,7 @@ export default function TemplatedChat() {
 
   // Chat management functions
   function handleNewChat() {
-    const newId = uuidv4();
-    const newChat = {
-      id: newId,
-      title: 'New Chat',
-      timestamp: Date.now(),
-      snippet: '',
-      messages: [],
-    };
-    setChats([newChat, ...chats]);
-    setActiveChatId(newId);
+    router.push('/test'); // Redirect to default page
     setSidebarOpen(false);
   }
   function handleSelectChat(id: string) {
@@ -130,6 +121,19 @@ export default function TemplatedChat() {
     if (e) e.preventDefault();
     if (!input.trim() || isLoading || aiTyping) return;
     setError("");
+    // If no active session, create one now
+    if (!activeChatId) {
+      const newId = uuidv4();
+      const newChat = {
+        id: newId,
+        title: input.trim().slice(0, 20) || 'New Chat',
+        timestamp: Date.now(),
+        snippet: '',
+        messages: [],
+      };
+      setChats([newChat, ...chats]);
+      setActiveChatId(newId);
+    }
     
     // Extract keywords for template selection
     const keywords = input.trim().toLowerCase()
