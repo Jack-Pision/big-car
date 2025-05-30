@@ -698,8 +698,8 @@ export default function TestChat() {
 
   // Effect to load the last active session or create a new one on initial load
   useEffect(() => {
-    // Do not auto-select or load any session on mount
-    setShowHeading(true); // Show heading for a brand new start
+    // Always start with a blank/welcoming page
+    setShowHeading(true); // Show welcoming heading
     setHasInteracted(false);
     setActiveSessionId(null);
     setMessages([]);
@@ -1193,7 +1193,6 @@ export default function TestChat() {
   }
 
   const handleNewChatRequest = () => {
-    router.push('/test'); // Redirect to default page
     setSidebarOpen(false);
     setInput('');
     setImagePreviewUrls([]);
@@ -1202,9 +1201,10 @@ export default function TestChat() {
     setAdvanceSearchHistory({ previousQueries: [], previousResponses: [] });
     setIsAdvanceSearchActive(false);
     setShowAdvanceSearchUI(false);
-    setShowHeading(true); // Show heading for new chat
+    setShowHeading(true); // Show welcoming heading
     setHasInteracted(false); // Reset interaction state
-    // Do not create a session here
+    setActiveSessionId(null);
+    setMessages([]);
   };
 
   const handleSelectSession = (sessionId: string) => {
