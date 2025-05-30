@@ -1403,7 +1403,7 @@ export default function TestChat() {
         {/* Overlay for sidebar, covers everything including footer/input bar */}
         {sidebarOpen && (
           <div
-            className="fixed inset-0 bg-black/20 z-60"
+            className="fixed inset-0 bg-black/20 z-90"
             aria-hidden="true"
             onClick={() => setSidebarOpen(false)}
           />
