@@ -1154,10 +1154,6 @@ export default function TestChat() {
         <div className="fixed top-4 left-4 z-50">
         <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
       </div>
-        {/* Overlay for sidebar, covers everything including footer */}
-        {sidebarOpen && (
-          <div className="fixed inset-0 bg-black/20 z-40" aria-hidden="true" />
-        )}
       <Sidebar
         open={sidebarOpen}
         chats={chats}
