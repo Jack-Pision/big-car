@@ -170,11 +170,12 @@ export default function Sidebar({
                   aria-label="Search chats"
                 />
               </div>
+              {/* Sessions Section Header */}
+              <div className="mx-4 mt-4 mb-2">
+                <span className="text-xs font-semibold text-gray-300 tracking-wide" style={{ letterSpacing: '0.05em' }}>SESSIONS</span>
+              </div>
               {/* Chat List */}
               <div className="flex-1 overflow-y-auto px-4 pb-4">
-                {filteredChats.length === 0 && (
-                  <div className="text-gray-400 text-sm text-center mt-8">No chats yet</div>
-                )}
                 {filteredChats.map((chat) => (
                   <div
                     key={chat.id}
