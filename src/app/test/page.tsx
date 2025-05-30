@@ -45,11 +45,34 @@ import rehypeRaw from 'rehype-raw';
 
 const BASE_SYSTEM_PROMPT = `You are a helpful, knowledgeable, and friendly AI assistant. Your goal is to assist the user in a way that is clear, thoughtful, and genuinely useful.
 
-When the user asks a general question or for a simple conversation, provide a direct and concise answer, preferably using the 'conversation' JSON schema with a 'content' field, and optionally a 'key_takeaway' field if highly relevant. Use Markdown within these fields for basic formatting (bold, italics, lists).
+When the user asks a general question or for a simple conversation, provide a direct and concise answer using the 'conversation' JSON schema. The 'content' field of this schema MUST be populated with well-formatted Markdown. This includes:
+*   Using Markdown Headings like '## Heading Level 2' for main sections if needed, and '### Heading Level 3' for sub-sections.
+*   Using bold (like '**text**') for key terms, emphasis, and labels.
+*   Using bulleted lists (starting with '-' or '*') or numbered lists (starting with '1.') for enumerations, steps, or distinct points.
+*   Using italics (like '*text*' or '_text_') for subtle emphasis or definitions.
+*   Structuring the content logically: start with a brief, engaging introduction, followed by organized sections if the information is complex, and end with a concluding remark or a question to encourage further interaction.
+Optionally, include a 'key_takeaway' field if there is a very important, short summary point.
 
-If the query is identified as requiring a specific structured JSON output (e.g., a 'tutorial', 'comparison', or 'informational_summary'), YOU MUST ADHERE STRICTLY to the JSON schema provided later in the prompt for that specific type of output. Populate all fields thoughtfully. For text fields within the schema (like 'introduction', 'instruction', 'summary', 'text_content'), write naturally but use Markdown for clarity (bolding, lists, inline code). For list_items or key_value_pairs, ensure each item is distinct and clear. Do not fall back to general text formatting or a different JSON structure in such cases.
+If the query is identified as requiring a specific structured JSON output (e.g., a 'tutorial', 'comparison', or 'informational_summary'), YOU MUST ADHERE STRICTLY to the JSON schema provided later in the prompt for that specific type of output. Populate all fields thoughtfully.
+For all text fields within ANY schema (like 'introduction', 'instruction', 'summary', 'text_content', 'list_items', 'key_value_pairs.value'), write naturally but YOU MUST use Markdown for clarity and structure as detailed above (headings, bolding, lists, italics). Do not fall back to plain text or a different JSON structure in such cases.
+Ensure that any list_items or key_value_pairs entries are distinct, clear, and also utilize Markdown where appropriate for emphasis or clarity within each item/value.
 
-For all other text-based responses where a specific JSON schema is NOT requested for the current turn, you can use general markdown formatting guidelines if you are not outputting JSON: start with a short summary, use ## Section Title headers if needed, and use bullet points with bold labels if appropriate.`;
+For example, if asked "Tell me about AI", for a 'conversation' schema, the 'content' field might look like:
+"## Understanding Artificial Intelligence
+
+Artificial Intelligence (AI) is a fascinating and rapidly evolving field. Here's a brief overview:
+
+### Key Concepts
+*   **Machine Learning:** Algorithms that allow computers to learn from data.
+*   **Natural Language Processing:** Enabling computers to understand and generate human language.
+*   **Computer Vision:** Allowing machines to interpret and understand visual information.
+
+### Impact
+AI is transforming various industries, from healthcare to entertainment.
+
+Let me know if you'd like to dive deeper into any specific aspect!"
+
+Your primary goal is to provide structured, readable, and helpful information formatted with Markdown inside the appropriate JSON fields.`;
 
 const CITATION_INSTRUCTIONS = `IMPORTANT: You are a Deep Research AI assistant. Follow this three-step process:
 
@@ -87,8 +110,8 @@ Based on the search results, provide a thorough, accurate, and balanced response
    For example:
    | Category | Key Points |
    | -------- | ---------- |
-   | Main Concept | Summary of important information |
-   | Best Practices | List of top recommendations |
+   | Main Concept | Summary of important information | [1] |
+   | Best Practices | List of top recommendations | [2] |
    | Challenges | Overview of common difficulties |
 
 4. CONCLUSION:
@@ -982,18 +1005,48 @@ export default function TestChat() {
         console.log("[handleSend] Raw AI JSON Response Text:", rawResponseText);
 
         let structuredData;
-        let parsedQueryType = queryType;
+        let parsedQueryType = queryType; // Use a mutable variable for potentially overriding
 
         try {
           structuredData = JSON.parse(rawResponseText);
-          if (parsedQueryType === 'conversation' && !structuredData.content) {
-            console.warn("[handleSend] Conversation schema missing 'content'. Fallback parsing.");
-            structuredData = { content: rawResponseText }; 
+          // Validate conversation schema specifically
+          if (parsedQueryType === 'conversation') {
+            if (!structuredData.content || typeof structuredData.content !== 'string') {
+              console.warn("[handleSend] Conversation schema missing or invalid 'content'. Attempting to find usable text or defaulting to an error message.");
+              // Attempt to find any string-like content if the main 'content' field is missing
+              let foundContent = '';
+              if (typeof structuredData === 'string') { // AI might have just sent a plain string
+                foundContent = structuredData;
+              } else if (typeof structuredData.message === 'string') {
+                foundContent = structuredData.message;
+              } else if (typeof structuredData.response === 'string') {
+                foundContent = structuredData.response;
+              }
+              // If still no content, or if the AI returned an object that wasn't the expected schema
+              if (!foundContent && typeof structuredData === 'object' && structuredData !== null) {
+                 // Check if it's a simple object that *could* be stringified into something readable,
+                 // but avoid stringifying complex, deeply nested objects that are clearly not conversational.
+                 const keys = Object.keys(structuredData);
+                 if (keys.length <= 3 && Object.values(structuredData).every(v => typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean')) {
+                    foundContent = "AI Response (unexpected format): " + JSON.stringify(structuredData, null, 2);
+                 } else {
+                    foundContent = "I apologize, I couldn't format my response correctly. Please try rephrasing your query.";
+                 }
+              } else if (!foundContent) {
+                 foundContent = "I apologize, I couldn't format my response correctly. Please try rephrasing your query.";
+              }
+              structuredData = { content: foundContent }; // Re-assign to conversation schema
+            }
+          } else if (!SCHEMAS[parsedQueryType]) { // If it's not a known schema type
+            console.warn(`[handleSend] Unknown schema type '${parsedQueryType}' returned by AI. Defaulting to conversation display with raw text.`);
+            structuredData = { content: rawResponseText };
+            parsedQueryType = 'conversation';
           }
         } catch (parseError) {
           console.error("[handleSend] Error parsing structured AI response:", parseError, "Raw content:", rawResponseText);
-          structuredData = { content: rawResponseText }; 
-          parsedQueryType = 'conversation';
+          // If parsing fails, treat the raw text as conversational content
+          structuredData = { content: "I received a response I couldn't fully understand. Here it is: " + rawResponseText };
+          parsedQueryType = 'conversation'; // Fallback to conversation type for display
         }
 
         const aiMsg: Message = {
