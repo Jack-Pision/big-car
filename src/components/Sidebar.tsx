@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+import Logo from './Logo.svg';
 
 interface Chat {
   id: string;
@@ -63,14 +64,10 @@ export default function Sidebar({
             aria-label="Sidebar navigation"
           >
             <div className="flex flex-col h-full relative z-40">
-              {/* New Chat Button */}
-              <button
-                className="m-4 mb-2 py-2 px-4 rounded-lg bg-black text-white font-semibold hover:bg-neutral-800 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/30"
-                onClick={onNewChat}
-                aria-label="Start a new chat"
-              >
-                + New Chat
-              </button>
+              {/* Logo at the top, replacing New Chat button */}
+              <div className="flex items-center justify-center m-4 mb-2" style={{ height: '40px' }}>
+                <img src={Logo} alt="App Logo" style={{ height: '40px', width: 'auto', display: 'block' }} />
+              </div>
               {/* Search Icon Button */}
               {/*
               <button
