@@ -3,9 +3,9 @@ export function classifyQuery(query: string): string {
   const lowerQuery = query.toLowerCase();
   
   if (lowerQuery.includes("how to") || 
-      lowerQuery.includes("steps") || 
-      lowerQuery.includes("guide") ||
-      lowerQuery.includes("tutorial") ||
+      lowerQuery.includes("steps to") || 
+      lowerQuery.includes("guide to") ||
+      lowerQuery.includes("tutorial for") ||
       lowerQuery.includes("explain how")) {
     return "tutorial";
   }
@@ -15,6 +15,21 @@ export function classifyQuery(query: string): string {
       lowerQuery.includes("vs") ||
       lowerQuery.includes("versus")) {
     return "comparison";
+  }
+
+  // Informational Summary classification (new)
+  // Matches queries like "what is [topic]", "tell me about [topic]", "[topic] overview"
+  if (lowerQuery.startsWith("what is ") || 
+      lowerQuery.startsWith("what are ") || 
+      lowerQuery.startsWith("tell me about ") || 
+      lowerQuery.startsWith("explain ") && !lowerQuery.includes("how") || // Avoid conflict with tutorial
+      lowerQuery.endsWith(" overview") ||
+      lowerQuery.endsWith(" summary")) {
+    // Further check to avoid overly simple questions becoming summaries
+    const words = lowerQuery.split(" ");
+    if (words.length > 2) { // Requires more than just "what is x" for a summary
+        return "informational_summary";
+    }
   }
   
   // Add more classifications here for other types like 'deepDive', 'educational', etc.

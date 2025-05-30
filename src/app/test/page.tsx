@@ -34,18 +34,22 @@ import {
 import { SCHEMAS } from '@/lib/output-schemas';
 import { classifyQuery } from '@/lib/query-classifier';
 import DynamicResponseRenderer from '@/components/DynamicResponseRenderer';
+import TutorialDisplay, { TutorialData } from '@/components/TutorialDisplay';
+import ComparisonDisplay, { ComparisonData } from '@/components/ComparisonDisplay';
+import InformationalSummaryDisplay, { InformationalSummaryData } from '@/components/InformationalSummaryDisplay';
+import ConversationDisplay, { ConversationData } from '@/components/ConversationDisplay';
+import { Bot, User, Paperclip, Send, XCircle, Search, Trash2, PlusCircle, Settings, Zap, ExternalLink, AlertTriangle } from 'lucide-react';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import rehypeRaw from 'rehype-raw';
 
 const BASE_SYSTEM_PROMPT = `You are a helpful, knowledgeable, and friendly AI assistant. Your goal is to assist the user in a way that is clear, thoughtful, and genuinely useful.
 
-When the user asks a general question or for a simple conversation, provide a direct and concise answer.
+When the user asks a general question or for a simple conversation, provide a direct and concise answer, preferably using the 'conversation' JSON schema with a 'content' field, and optionally a 'key_takeaway' field if highly relevant. Use Markdown within these fields for basic formatting (bold, italics, lists).
 
-If the query is identified as requiring a specific structured JSON output (e.g., a tutorial, comparison), YOU MUST ADHERE STRICTLY to the JSON schema provided later in the prompt for that specific type of output. Do not fall back to general text formatting in such cases.
+If the query is identified as requiring a specific structured JSON output (e.g., a 'tutorial', 'comparison', or 'informational_summary'), YOU MUST ADHERE STRICTLY to the JSON schema provided later in the prompt for that specific type of output. Populate all fields thoughtfully. For text fields within the schema (like 'introduction', 'instruction', 'summary', 'text_content'), write naturally but use Markdown for clarity (bolding, lists, inline code). For list_items or key_value_pairs, ensure each item is distinct and clear. Do not fall back to general text formatting or a different JSON structure in such cases.
 
-For all other text-based responses where a specific JSON schema is NOT requested for the current turn, you can use the following general markdown formatting guidelines:
-1. Start with a short summary paragraph that directly answers the question if applicable.
-2. Organize information into sections with clear ## Section Title headers if needed for clarity.
-3. Under each section, use bullet points with bold labels followed by descriptions if appropriate.
-4. Keep descriptions concise but informative.`;
+For all other text-based responses where a specific JSON schema is NOT requested for the current turn, you can use general markdown formatting guidelines if you are not outputting JSON: start with a short summary, use ## Section Title headers if needed, and use bullet points with bold labels if appropriate.`;
 
 const CITATION_INSTRUCTIONS = `IMPORTANT: You are a Deep Research AI assistant. Follow this three-step process:
 
@@ -860,7 +864,7 @@ export default function TestChat() {
 
     console.log("[handleSend] Query:", currentInput);
     console.log("[handleSend] Classified Query Type:", queryType);
-    console.log("[handleSend] Selected Response Schema:", JSON.stringify(responseSchema, null, 2));
+    console.log("[handleSend] Selected Response Schema Name:", queryType);
 
     aiStreamAbortController.current = new AbortController();
 
@@ -914,10 +918,14 @@ export default function TestChat() {
 
       const context = buildConversationContext(messages);
       let turnSpecificSystemPrompt = BASE_SYSTEM_PROMPT;
+
       if (uploadedImageUrls.length === 0 && queryType !== 'conversation') {
-        turnSpecificSystemPrompt += `\n\nIMPORTANT: For this query, you MUST output a JSON object that strictly conforms to the following schema:\n${JSON.stringify(responseSchema, null, 2)}\nDo not include any other text or markdown outside of this JSON object.`;
+        turnSpecificSystemPrompt += `\n\nIMPORTANT: For this query, classified as '${queryType}', your entire response MUST be a single JSON object that strictly conforms to the following JSON schema. Do NOT include any text, markdown, or explanations outside of this JSON object. Adhere to all field types and requirements specified in the schema.\nSchema:\n${JSON.stringify(responseSchema, null, 2)}`;
+      } else if (uploadedImageUrls.length === 0 && queryType === 'conversation') {
+        turnSpecificSystemPrompt += `\n\nFor this conversational query, please provide your response as a JSON object conforming to the 'conversation' schema: { "content": "your response text...", "key_takeaway": "optional takeaway..." }. Use Markdown within the 'content' and 'key_takeaway' fields for formatting.`;
       }
-      console.log("[handleSend] Turn Specific System Prompt:\n", turnSpecificSystemPrompt);
+
+      console.log("[handleSend] Turn Specific System Prompt Length:", turnSpecificSystemPrompt.length);
 
       const enhancedSystemPrompt = enhanceSystemPrompt(turnSpecificSystemPrompt, context, currentInput);
       
@@ -930,15 +938,14 @@ export default function TestChat() {
 
       const apiPayload: any = {
         messages: formattedMessages,
-        temperature: 0.7,
-        max_tokens: 3000,
+        temperature: 0.6,
+        max_tokens: 3500,
         top_p: 0.9,
-        frequency_penalty: 0.3,
-        presence_penalty: 0.3,
-        ...(uploadedImageUrls.length === 0 && { 
+        frequency_penalty: 0.2,
+        presence_penalty: 0.2,
+        ...(uploadedImageUrls.length === 0 && {
           response_format: {
-            type: "json_object",
-            // schema: responseSchema // EXPERIMENTAL - Keep commented for now to rely on prompt first
+            type: "json_object", 
           }
         })
       };
@@ -975,17 +982,24 @@ export default function TestChat() {
         console.log("[handleSend] Raw AI JSON Response Text:", rawResponseText);
 
         let structuredData;
+        let parsedQueryType = queryType;
+
         try {
           structuredData = JSON.parse(rawResponseText);
+          if (parsedQueryType === 'conversation' && !structuredData.content) {
+            console.warn("[handleSend] Conversation schema missing 'content'. Fallback parsing.");
+            structuredData = { content: rawResponseText }; 
+          }
         } catch (parseError) {
-          console.error("Error parsing structured AI response:", parseError, "Raw content:", rawResponseText);
-          structuredData = { content: typeof rawResponseText === 'string' ? rawResponseText : "Error: AI response was not valid JSON." };
+          console.error("[handleSend] Error parsing structured AI response:", parseError, "Raw content:", rawResponseText);
+          structuredData = { content: rawResponseText }; 
+          parsedQueryType = 'conversation';
         }
 
         const aiMsg: Message = {
           role: "assistant" as const,
-          content: '',
-          contentType: queryType,
+          content: '', 
+          contentType: parsedQueryType,
           structuredContent: structuredData,
           id: uuidv4(),
           timestamp: Date.now(),
@@ -1183,6 +1197,31 @@ export default function TestChat() {
     setActiveSessionId(null);
     saveActiveSessionId(null); // Clear the active session
     setMessages([]);
+  };
+
+  const renderMessageContent = (msg: Message) => {
+    if (msg.contentType && msg.structuredContent) {
+      switch (msg.contentType) {
+        case 'tutorial':
+          return <TutorialDisplay data={msg.structuredContent as TutorialData} />;
+        case 'comparison':
+          return <ComparisonDisplay data={msg.structuredContent as ComparisonData} />;
+        case 'informational_summary':
+          return <InformationalSummaryDisplay data={msg.structuredContent as InformationalSummaryData} />;
+        case 'conversation': // Added case for conversation schema
+          return <ConversationDisplay data={msg.structuredContent as ConversationData} />;
+        default:
+          // Fallback for unknown structured content types or if content is just a string
+          if (typeof msg.structuredContent === 'string') {
+            return <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="prose dark:prose-invert max-w-none">{msg.structuredContent}</ReactMarkdown>;
+          }
+          // If structuredContent is an object but not a known type, display its string representation
+          return <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="prose dark:prose-invert max-w-none">{`Unsupported structured content: ${JSON.stringify(msg.structuredContent)}`}</ReactMarkdown>;
+      }
+    } else if (msg.content) { // Fallback for simple text content or streamed content
+        return <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="prose dark:prose-invert max-w-none">{msg.content}</ReactMarkdown>;
+    }
+    return null; // Or some placeholder for empty messages
   };
 
   return (
