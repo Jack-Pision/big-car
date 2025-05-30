@@ -1391,6 +1391,14 @@ export default function TestChat() {
           </div>
         </form>
       </div>
+        {/* Overlay for sidebar, covers everything including footer/input bar */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black/20 z-[9998]"
+            aria-hidden="true"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
         {/* Hidden file input */}
         <input 
           type="file"
@@ -1400,14 +1408,6 @@ export default function TestChat() {
           accept="image/*"
           multiple
         />
-        {/* Overlay for sidebar, covers everything including footer/input bar */}
-        {sidebarOpen && (
-          <div
-            className="fixed inset-0 bg-black/20 z-90"
-            aria-hidden="true"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
         {/* Sidebar - render last so it appears above everything */}
         <Sidebar
           open={sidebarOpen}
