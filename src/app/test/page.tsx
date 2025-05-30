@@ -682,9 +682,11 @@ export default function TestChat() {
 
   // Add a state to track if the chat is empty (no messages)
   const isChatEmpty = messages.length === 0;
-  
-  // This will control the position of the input box (centered vs bottom)
-  const inputPosition = isChatEmpty ? "center" : "bottom";
+  // Track if the user has sent the first message (for animation)
+  const [hasInteracted, setHasInteracted] = useState(false);
+
+  // This will control the position of the input box and heading (centered vs bottom)
+  const inputPosition = isChatEmpty && !hasInteracted ? "center" : "bottom";
 
   // Helper to show the image in chat
   const showImageMsg = (content: string, imgSrc: string) => {
@@ -776,6 +778,7 @@ export default function TestChat() {
     const currentSelectedFiles = selectedFilesForUpload;
 
     if (!currentInput && !currentSelectedFiles.length) return;
+    if (!hasInteracted) setHasInteracted(true);
 
     // Store the current query for Deep Research
     setCurrentQuery(currentInput);
@@ -1164,125 +1167,24 @@ export default function TestChat() {
       <div
         ref={scrollRef}
         className="flex-1 overflow-y-auto w-full flex flex-col items-center justify-center relative"
-        style={{ paddingBottom: `${isChatEmpty ? 0 : inputBarHeight + EXTRA_GAP}px` }}
+        style={{ paddingBottom: `${isChatEmpty && !hasInteracted ? 0 : inputBarHeight + EXTRA_GAP}px` }}
       >
+        {/* Centered wrapper for heading and input */}
         <div
-          className={`absolute left-0 right-0 flex flex-col items-center transition-opacity duration-700 ${
-            showHeading && messages.length === 0 ? "opacity-100" : "opacity-0 pointer-events-none"
+          className={`fixed left-1/2 -translate-x-1/2 w-full max-w-3xl flex flex-col items-center justify-center z-50 transition-all duration-500 ease-in-out ${
+            inputPosition === "center" ? "top-1/2 -translate-y-1/2" : "bottom-0 translate-y-0 pointer-events-none"
           }`}
-            style={{ transitionDuration: '0.35s' }}
         >
-            <h1 className="text-[3.2rem] font-normal text-gray-200 text-center">
+          {/* Heading with fade animation */}
+          <h1 className={`text-[3.2rem] font-normal text-gray-200 text-center mb-6 transition-opacity duration-500 ${inputPosition === "center" ? "opacity-100" : "opacity-0"}`}>
             Seek and You'll find
           </h1>
-        </div>
-          {/* Empty boxes */}
-          {messages.length === 0 && emptyBoxes.map(boxId => (
-            <EmptyBox key={boxId} onClose={() => handleRemoveBox(boxId)} />
-          ))}
-        {/* Conversation */}
-          <div className="w-full max-w-3xl mx-auto flex flex-col gap-4 items-center justify-center z-10 pt-12 pb-4">
-            {messages.map((msg, i) => {
-              if (msg.role === "assistant") {
-                const { content, thinkingTime } = cleanAIResponse(msg.content);
-                const cleanContent = content.replace(/<thinking-indicator.*?\/>/g, '');
-                const isStoppedMsg = cleanContent.trim() === '[Response stopped by user]';
-                // Make citations clickable using webData.sources
-                const processedContent = makeCitationsClickable(cleanContent, msg.webSources || []);
-                // Hide pulsing dot as soon as output starts rendering
-                if (showPulsingDot) setShowPulsingDot(false);
-                return (
-                  <motion.div
-                  key={i}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, ease: "easeOut" }}
-                    className="w-full markdown-body text-left flex flex-col items-start ai-response-text"
-                    style={{ color: '#fff', maxWidth: '100%', overflowWrap: 'break-word' }}
-                  >
-                    {/* PulsingDot: Only show if showPulsingDot is true */}
-                    {i === messages.length - 1 && showPulsingDot ? (
-                      <PulsingDot isVisible={true} />
-                    ) : (
-                      <>
-                        {/* Show the sources carousel at the top of assistant message if sources exist */}
-                        {msg.webSources && msg.webSources.length > 0 && (
-                          <>
-                            <WebSourcesCarousel sources={msg.webSources} />
-                            <div style={{ height: '1.5rem' }} />
-                          </>
-                        )}
-                      
-                        {thinkingTime && <ThinkingIndicator duration={thinkingTime} />}
-                        {isStoppedMsg ? (
-                          <span className="text-sm text-white italic font-light mb-2">[Response stopped by user]</span>
-                        ) : (
-                          <div className="w-full max-w-full overflow-hidden">
-                            <TextReveal 
-                              text={processedContent}
-                              markdownComponents={markdownComponents}
-                              webSources={msg.webSources || []}
-                              revealIntervalMs={220}
-                  />
-                </div>
-                        )}
-                      </>
-                    )}
-                  </motion.div>
-                );
-              } else if (msg.role === "deep-research") {
-                return (
-                  <DeepResearchBlock 
-                    query={msg.content} 
-                    conversationHistory={advanceSearchHistory}
-                    onClearHistory={clearAdvanceSearchHistory}
-                  />
-                );
-              } else { // User message
-                return (
-                <div
-                  key={i}
-                    className="px-5 py-3 rounded-2xl shadow bg-gray-800 text-white self-end max-w-full text-lg flex flex-col items-end"
-                  style={{ wordBreak: "break-word" }}
-                >
-                    {msg.imageUrls && msg.imageUrls.map((url, index) => (
-                      <img 
-                        key={index}
-                        src={url} 
-                        alt={`Preview ${index + 1}`} 
-                        className="max-w-xs max-h-64 rounded-md mb-2 self-end" 
-                      />
-                    ))}
-                    <div>{msg.content}</div>
-                  </div>
-                );
-              }
-            })}
-                </div>
-          {/* If there are messages, show EmptyBox after the last message */}
-          {messages.length > 0 && emptyBoxes.map(boxId => (
-            <EmptyBox key={boxId} onClose={() => handleRemoveBox(boxId)} />
-          ))}
-        </div>
-        {/* Fixed Footer Bar Behind Input */}
-        <div
-          className={`fixed left-0 right-0 bottom-0 z-40 transition-opacity duration-300 ${isChatEmpty ? 'opacity-0' : 'opacity-100'}`}
-          style={{ height: `${inputBarHeight}px`, background: '#161618' }}
-          aria-hidden="true"
-        />
-      {/* Input Bar - Dynamic position */}
-        <div 
-          ref={inputBarRef} 
-          className={`fixed left-1/2 -translate-x-1/2 w-full max-w-3xl flex justify-center z-50 transition-all duration-500 ease-in-out ${
-            inputPosition === "center" ? "top-1/2 -translate-y-1/2" : "bottom-0 translate-y-0"
-          }`} 
-          style={{ pointerEvents: 'auto' }}
-        >
-        <form
+          {/* Input form */}
+          <form
             className="w-full flex flex-col gap-2 rounded-2xl shadow-lg px-3 py-2 mx-4 mb-3"
             style={{ background: '#232323', border: '2px solid rgba(255,255,255,0.18)', boxShadow: '0 4px 32px 0 rgba(0,0,0,0.32)' }}
-          onSubmit={handleSend}
-        >
+            onSubmit={handleSend}
+          >
             {/* Image previews above textarea */}
             {imagePreviewUrls.length > 0 && (
               <div className="flex flex-row gap-2 mb-2 justify-center">
@@ -1304,14 +1206,14 @@ export default function TestChat() {
             <div className="flex flex-col w-full gap-2 items-center">
               {/* Textarea row */}
               <div className="w-full">
-          <textarea
-            ref={textareaRef}
-            value={input}
-            onChange={e => setInput(e.target.value)}
+                <textarea
+                  ref={textareaRef}
+                  value={input}
+                  onChange={e => setInput(e.target.value)}
                   className="w-full border-none outline-none bg-transparent px-2 py-1 text-gray-200 text-sm placeholder-gray-500 resize-none overflow-auto self-center rounded-lg"
                   placeholder="Ask anything..."
-            disabled={loading}
-            rows={1}
+                  disabled={loading}
+                  rows={1}
                   style={{ maxHeight: '96px', minHeight: '40px', lineHeight: '1.5' }}
                 />
               </div>
@@ -1400,40 +1302,127 @@ export default function TestChat() {
             </button>
                 </div>
               </div>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
-        {/* Overlay for sidebar, covers everything including footer/input bar */}
-        {sidebarOpen && (
-          <div
-            className="fixed inset-0 bg-black/20 z-[9998]"
-            aria-hidden="true"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
-        {/* Hidden file input */}
-        <input 
-          type="file"
-          ref={fileInputRef1}
-          style={{ display: 'none' }}
-          onChange={handleFirstFileChange}
-          accept="image/*"
-          multiple
+        {/* Conversation and other UI below */}
+        <div className="w-full max-w-3xl mx-auto flex flex-col gap-4 items-center justify-center z-10 pt-12 pb-4">
+          {messages.map((msg, i) => {
+            if (msg.role === "assistant") {
+              const { content, thinkingTime } = cleanAIResponse(msg.content);
+              const cleanContent = content.replace(/<thinking-indicator.*?\/>/g, '');
+              const isStoppedMsg = cleanContent.trim() === '[Response stopped by user]';
+              // Make citations clickable using webData.sources
+              const processedContent = makeCitationsClickable(cleanContent, msg.webSources || []);
+              // Hide pulsing dot as soon as output starts rendering
+              if (showPulsingDot) setShowPulsingDot(false);
+              return (
+                <motion.div
+                key={i}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, ease: "easeOut" }}
+                  className="w-full markdown-body text-left flex flex-col items-start ai-response-text"
+                  style={{ color: '#fff', maxWidth: '100%', overflowWrap: 'break-word' }}
+                >
+                  {/* PulsingDot: Only show if showPulsingDot is true */}
+                  {i === messages.length - 1 && showPulsingDot ? (
+                    <PulsingDot isVisible={true} />
+                  ) : (
+                    <>
+                      {/* Show the sources carousel at the top of assistant message if sources exist */}
+                      {msg.webSources && msg.webSources.length > 0 && (
+                        <>
+                          <WebSourcesCarousel sources={msg.webSources} />
+                          <div style={{ height: '1.5rem' }} />
+                        </>
+                      )}
+                    
+                      {thinkingTime && <ThinkingIndicator duration={thinkingTime} />}
+                      {isStoppedMsg ? (
+                        <span className="text-sm text-white italic font-light mb-2">[Response stopped by user]</span>
+                      ) : (
+                        <div className="w-full max-w-full overflow-hidden">
+                          <TextReveal 
+                            text={processedContent}
+                            markdownComponents={markdownComponents}
+                            webSources={msg.webSources || []}
+                            revealIntervalMs={220}
+                  />
+                </div>
+                      )}
+                    </>
+                  )}
+                </motion.div>
+              );
+            } else if (msg.role === "deep-research") {
+              return (
+                <DeepResearchBlock 
+                  query={msg.content} 
+                  conversationHistory={advanceSearchHistory}
+                  onClearHistory={clearAdvanceSearchHistory}
+                />
+              );
+            } else { // User message
+              return (
+              <div
+                key={i}
+                  className="px-5 py-3 rounded-2xl shadow bg-gray-800 text-white self-end max-w-full text-lg flex flex-col items-end"
+                style={{ wordBreak: "break-word" }}
+              >
+                  {msg.imageUrls && msg.imageUrls.map((url, index) => (
+                    <img 
+                      key={index}
+                      src={url} 
+                      alt={`Preview ${index + 1}`} 
+                      className="max-w-xs max-h-64 rounded-md mb-2 self-end" 
+                    />
+                  ))}
+                  <div>{msg.content}</div>
+                </div>
+              );
+            }
+          })}
+              </div>
+        </div>
+      </div>
+      {/* Fixed Footer Bar Behind Input */}
+      <div
+        className={`fixed left-0 right-0 bottom-0 z-40 transition-opacity duration-300 ${isChatEmpty && !hasInteracted ? 'opacity-0' : 'opacity-100'}`}
+        style={{ height: `${inputBarHeight}px`, background: '#161618' }}
+        aria-hidden="true"
+      />
+      {/* Overlay for sidebar, covers everything including footer/input bar */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/20 z-[9998]"
+          aria-hidden="true"
+          onClick={() => setSidebarOpen(false)}
         />
-        {/* Sidebar - render last so it appears above everything */}
-        <Sidebar
-          open={sidebarOpen}
-          chats={chats}
-          activeChatId={activeChatId}
-          onClose={() => setSidebarOpen(false)}
-          onNewChat={() => {}}
-          onSelectChat={() => {}}
-          onEditChat={() => {}}
-          onDeleteChat={() => {}}
-          onClearAll={() => {}}
-          onOpenSearch={() => {}}
-          onNavigateBoard={() => router.push('/board')}
-        />
+      )}
+      {/* Hidden file input */}
+      <input 
+        type="file"
+        ref={fileInputRef1}
+        style={{ display: 'none' }}
+        onChange={handleFirstFileChange}
+        accept="image/*"
+        multiple
+      />
+      {/* Sidebar - render last so it appears above everything */}
+      <Sidebar
+        open={sidebarOpen}
+        chats={chats}
+        activeChatId={activeChatId}
+        onClose={() => setSidebarOpen(false)}
+        onNewChat={() => {}}
+        onSelectChat={() => {}}
+        onEditChat={() => {}}
+        onDeleteChat={() => {}}
+        onClearAll={() => {}}
+        onOpenSearch={() => {}}
+        onNavigateBoard={() => router.push('/board')}
+      />
     </div>
     </>
   );
