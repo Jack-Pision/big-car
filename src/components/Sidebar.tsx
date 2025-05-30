@@ -104,7 +104,7 @@ export default function Sidebar({
               */}
               {/* Test Navigation Button */}
               <button
-                className="mx-4 mb-2 flex items-center gap-2 px-3 py-2 rounded-lg text-[#e5e7eb] hover:bg-[#232323]/80 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/10 text-left w-[calc(100%-2rem)]"
+                className="mb-2 flex items-center gap-2 px-3 py-2 rounded-lg text-[#e5e7eb] hover:bg-[#232323]/80 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/10 text-left w-full pl-4"
                 onClick={() => router.push('/test')}
                 aria-label="Go to Test Page"
                 tabIndex={0}
