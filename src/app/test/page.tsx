@@ -1455,7 +1455,7 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory }: {
       style={{ minHeight: "350px", height: "calc(100vh - 180px)", maxHeight: "550px" }}
     >
       {hasHistory && onClearHistory && (
-        <div className="flex justify-end px-4 pt-2 invisible">
+        <div className="sr-only">
           <button
             onClick={onClearHistory}
             className="text-xs text-cyan-500 hover:text-cyan-400 flex items-center gap-1 opacity-70 hover:opacity-100 transition-opacity"
