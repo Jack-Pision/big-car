@@ -821,25 +821,18 @@ export default function TestChat() {
     
     // If Advance Search UI mode is active, process as Advance Search
     if (showAdvanceSearchUI) {
-      setIsAiResponding(true);
-      setLoading(true);
-      try {
-        setIsAdvanceSearchActive(true); // Activate the processing state
-        const researchId = uuidv4();
-        // Always add a new user message and research block for each query
-        setMessages(prev => [
-          ...prev,
-          { role: "user", content: currentInput, id: uuidv4(), timestamp: Date.now() },
-          { role: "deep-research", content: currentInput, researchId, id: uuidv4(), timestamp: Date.now() }
-        ]);
-        setInput("");
-        setImagePreviewUrls([]);
-        setSelectedFilesForUpload([]);
-        return;
-      } finally {
-        setIsAiResponding(false);
-        setLoading(false);
-      }
+      setIsAdvanceSearchActive(true); // Activate the processing state
+      const researchId = uuidv4();
+      // Always add a new user message and research block for each query
+      setMessages(prev => [
+        ...prev,
+        { role: "user", content: currentInput, id: uuidv4(), timestamp: Date.now() },
+        { role: "deep-research", content: currentInput, researchId, id: uuidv4(), timestamp: Date.now() }
+      ]);
+      setInput("");
+      setImagePreviewUrls([]);
+      setSelectedFilesForUpload([]);
+      return;
     }
 
     // This is the existing AI request code which we'll now only run when deep research is not active
