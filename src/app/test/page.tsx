@@ -35,16 +35,17 @@ import { SCHEMAS } from '@/lib/output-schemas';
 import { classifyQuery } from '@/lib/query-classifier';
 import DynamicResponseRenderer from '@/components/DynamicResponseRenderer';
 
-const SYSTEM_PROMPT = `You are a helpful, knowledgeable, and friendly AI assistant. Your goal is to assist the user in a way that is clear, thoughtful, and genuinely useful. 
+const BASE_SYSTEM_PROMPT = `You are a helpful, knowledgeable, and friendly AI assistant. Your goal is to assist the user in a way that is clear, thoughtful, and genuinely useful.
 
-FORMAT YOUR RESPONSES WITH THIS EXACT STRUCTURE:
-1. Start with a short summary paragraph that directly answers the question.
-2. Organize information into sections with clear ## Section Title headers.
-3. Under each section, use bullet points with bold labels followed by descriptions:
-   * **Label:** Description text here.
-   * **Another Label:** More descriptive content here.
-4. Add as many sections as needed based on the topic.
-5. Keep descriptions concise but informative - adapt length based on complexity.`;
+When the user asks a general question or for a simple conversation, provide a direct and concise answer.
+
+If the query is identified as requiring a specific structured JSON output (e.g., a tutorial, comparison), YOU MUST ADHERE STRICTLY to the JSON schema provided later in the prompt for that specific type of output. Do not fall back to general text formatting in such cases.
+
+For all other text-based responses where a specific JSON schema is NOT requested for the current turn, you can use the following general markdown formatting guidelines:
+1. Start with a short summary paragraph that directly answers the question if applicable.
+2. Organize information into sections with clear ## Section Title headers if needed for clarity.
+3. Under each section, use bullet points with bold labels followed by descriptions if appropriate.
+4. Keep descriptions concise but informative.`;
 
 const CITATION_INSTRUCTIONS = `IMPORTANT: You are a Deep Research AI assistant. Follow this three-step process:
 
@@ -834,7 +835,6 @@ export default function TestChat() {
     if (!hasInteracted) setHasInteracted(true);
     setCurrentQuery(currentInput);
 
-    // If Advance Search UI mode is active, process as Advance Search
     if (showAdvanceSearchUI) {
       setIsAdvanceSearchActive(true);
       const researchId = uuidv4();
@@ -851,10 +851,16 @@ export default function TestChat() {
       return;
     }
 
-    // Default Chat Logic Path
     setIsAiResponding(true);
     setLoading(true);
     if (showHeading) setShowHeading(false);
+
+    const queryType = classifyQuery(currentInput) as keyof typeof SCHEMAS;
+    const responseSchema = SCHEMAS[queryType] || SCHEMAS.conversation;
+
+    console.log("[handleSend] Query:", currentInput);
+    console.log("[handleSend] Classified Query Type:", queryType);
+    console.log("[handleSend] Selected Response Schema:", JSON.stringify(responseSchema, null, 2));
 
     aiStreamAbortController.current = new AbortController();
 
@@ -907,8 +913,13 @@ export default function TestChat() {
       }
 
       const context = buildConversationContext(messages);
-      const baseSystemPrompt = SYSTEM_PROMPT;
-      const enhancedSystemPrompt = enhanceSystemPrompt(baseSystemPrompt, context, currentInput);
+      let turnSpecificSystemPrompt = BASE_SYSTEM_PROMPT;
+      if (uploadedImageUrls.length === 0 && queryType !== 'conversation') {
+        turnSpecificSystemPrompt += `\n\nIMPORTANT: For this query, you MUST output a JSON object that strictly conforms to the following schema:\n${JSON.stringify(responseSchema, null, 2)}\nDo not include any other text or markdown outside of this JSON object.`;
+      }
+      console.log("[handleSend] Turn Specific System Prompt:\n", turnSpecificSystemPrompt);
+
+      const enhancedSystemPrompt = enhanceSystemPrompt(turnSpecificSystemPrompt, context, currentInput);
       
       const formattedMessages = formatMessagesForApi(
         enhancedSystemPrompt,
@@ -917,19 +928,17 @@ export default function TestChat() {
         true
       );
 
-      const queryType = classifyQuery(currentInput) as keyof typeof SCHEMAS;
-      const responseSchema = SCHEMAS[queryType] || SCHEMAS.conversation;
-
       const apiPayload: any = {
         messages: formattedMessages,
-        temperature: 0.8,
-        max_tokens: 2048,
-        top_p: 0.95,
+        temperature: 0.7,
+        max_tokens: 3000,
+        top_p: 0.9,
         frequency_penalty: 0.3,
         presence_penalty: 0.3,
-        ...(uploadedImageUrls.length === 0 && {
+        ...(uploadedImageUrls.length === 0 && { 
           response_format: {
-            type: "json_object"
+            type: "json_object",
+            // schema: responseSchema // EXPERIMENTAL - Keep commented for now to rely on prompt first
           }
         })
       };
@@ -943,9 +952,9 @@ export default function TestChat() {
         const previousImageDescriptions = imageContexts.map(ctx => ctx.description);
         apiPayload.previousImageDescriptions = previousImageDescriptions;
         if (!userMessageForDisplay.content || userMessageForDisplay.content === "Image selected for analysis.") {
-          if (formattedMessages[lastUserMsgIndex]) {
-            formattedMessages[lastUserMsgIndex].content = "Describe these images.";
-          }
+             if (formattedMessages[lastUserMsgIndex]) {
+                formattedMessages[lastUserMsgIndex].content = "Describe these images.";
+             }
         }
       }
       
@@ -962,22 +971,15 @@ export default function TestChat() {
       }
       
       if (res.headers.get('content-type')?.includes('application/json') && uploadedImageUrls.length === 0) {
-        const data = await res.json();
-        
-        let structuredData;
-        let rawContent = data.choices?.[0]?.message?.content || data.generated_text || data.error || JSON.stringify(data) || "{}";
+        const rawResponseText = await res.text();
+        console.log("[handleSend] Raw AI JSON Response Text:", rawResponseText);
 
+        let structuredData;
         try {
-          if (typeof rawContent === 'string') {
-            structuredData = JSON.parse(rawContent);
-          } else if (typeof rawContent === 'object') {
-            structuredData = rawContent;
-          } else {
-            structuredData = { content: "Error: Unexpected response format from AI." };
-          }
+          structuredData = JSON.parse(rawResponseText);
         } catch (parseError) {
-          console.error("Error parsing structured AI response:", parseError, "Raw content:", rawContent);
-          structuredData = { content: typeof rawContent === 'string' ? rawContent : "Error: AI response was not valid JSON." };
+          console.error("Error parsing structured AI response:", parseError, "Raw content:", rawResponseText);
+          structuredData = { content: typeof rawResponseText === 'string' ? rawResponseText : "Error: AI response was not valid JSON." };
         }
 
         const aiMsg: Message = {
@@ -1045,20 +1047,20 @@ export default function TestChat() {
           }
         }
         if (uploadedImageUrls.length > 0) {
-          const { content: cleanedContent } = cleanAIResponse(aiMsg.content);
-          const descriptionSummary = cleanedContent.slice(0, 150) + (cleanedContent.length > 150 ? '...' : '');
-          const newImageCount = imageCounter + uploadedImageUrls.length;
-          setImageCounter(newImageCount);
-          const newImageContexts = uploadedImageUrls.map((url, index) => ({
-            order: imageCounter + index + 1,
-            description: descriptionSummary,
-            imageUrl: url,
-            timestamp: Date.now()
-          }));
-          setImageContexts(prev => {
-            const updated = [...prev, ...newImageContexts];
-            return updated.slice(-10);
-          });
+            const { content: cleanedContent } = cleanAIResponse(aiMsg.content);
+            const descriptionSummary = cleanedContent.slice(0, 150) + (cleanedContent.length > 150 ? '...' : '');
+            const newImageCount = imageCounter + uploadedImageUrls.length;
+            setImageCounter(newImageCount);
+            const newImageContexts = uploadedImageUrls.map((url, index) => ({
+                order: imageCounter + index + 1,
+                description: descriptionSummary,
+                imageUrl: url,
+                timestamp: Date.now()
+            }));
+            setImageContexts(prev => {
+                const updated = [...prev, ...newImageContexts];
+                return updated.slice(-10);
+            });
         }
       }
     } catch (err: any) {
