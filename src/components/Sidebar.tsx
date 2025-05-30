@@ -64,8 +64,9 @@ export default function Sidebar({
           >
             <div className="flex flex-col h-full relative z-40">
               {/* Logo at the top, replacing New Chat button */}
-              <div className="flex items-center justify-center m-4 mb-2" style={{ height: '40px' }}>
-                <img src="/Logo.svg" alt="App Logo" style={{ height: '40px', width: 'auto', display: 'block' }} />
+              <div className="flex flex-col items-center justify-center m-4 mb-2" style={{ height: '64px' }}>
+                <img src="/Logo.svg" alt="App Logo" style={{ height: '56px', width: 'auto', display: 'block' }} />
+                <span className="mt-2 text-white text-lg font-medium">Tehom AI</span>
               </div>
               {/* Search Icon Button */}
               {/*
