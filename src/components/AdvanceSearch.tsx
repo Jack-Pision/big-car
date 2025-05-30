@@ -388,9 +388,9 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
   };
 
   return (
-    <div className="flex flex-col md:flex-row w-full mx-auto rounded-2xl border border-black/5 shadow-lg bg-neutral-900 overflow-hidden" style={{ height: '100%', minHeight: '400px' }}>
+    <div className="flex flex-col md:flex-row w-full mx-auto rounded-2xl border border-black/5 shadow-lg bg-neutral-900 overflow-hidden h-full min-h-[400px]" style={{ minHeight: '400px' }}>
       {/* Left Panel - Step List */}
-      <div className="w-full md:w-80 md:min-w-[220px] md:max-w-xs flex-shrink-0 bg-neutral-950 p-4 md:p-6 overflow-y-auto md:h-full md:max-h-none md:border-b-0 md:border-r md:border-r-neutral-800 md:rounded-l-2xl" style={{ maxHeight: '180px', height: 'auto', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+      <div className="w-full md:w-80 md:min-w-[220px] md:max-w-xs flex-shrink-0 bg-neutral-950 p-4 md:p-6 overflow-y-auto md:h-full md:max-h-none md:border-b-0 md:border-r md:border-r-neutral-800 md:rounded-l-2xl h-full flex flex-col">
         <div className="flex items-center gap-2 mb-4 md:mb-6">
           {/* New microchip icon with cyan color */}
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-400">
@@ -411,7 +411,7 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
           </div>
         )}
 
-        <div className="flex flex-col relative">
+        <div className="flex flex-col relative flex-1">
           {/* Timeline line connecting steps */}
           <div className="absolute left-[10px] top-0 bottom-0 w-px bg-neutral-800"></div>
           
@@ -480,9 +480,9 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
       </div>
 
       {/* Right Panel - All Steps Content (Scrollable) */}
-      <div ref={rightPanelRef} className="flex-1 overflow-y-auto p-4 md:p-8 bg-neutral-900 md:rounded-r-2xl hide-scrollbar md:h-full md:max-h-none" style={{ height: 'calc(100% - 180px)', maxHeight: 'calc(100% - 180px)' }}>
+      <div ref={rightPanelRef} className="flex-1 overflow-y-auto p-4 md:p-8 bg-neutral-900 md:rounded-r-2xl hide-scrollbar h-full flex flex-col">
         {/* All steps in sequence */}
-        <div className="space-y-6 md:space-y-10">
+        <div className="space-y-6 md:space-y-10 flex-1">
           {steps.map((step) => {
             // Only show steps that are in the displayingSteps array
             if (!displayingSteps.includes(step.id)) return null;
