@@ -109,8 +109,11 @@ export default function Sidebar({
                 aria-label="Start a new chat"
                 tabIndex={0}
               >
-                <svg width="20" height="20" fill="none" stroke="#e5e7eb" strokeWidth="2.2" viewBox="0 0 24 24">
-                  <path d="M4 21h17M12 17V4m0 0l-4 4m4-4l4 4" strokeLinecap="round" strokeLinejoin="round"/>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e5e7eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="4" y="4" width="16" height="16" rx="2"/>
+                  <path d="M8 8h8M8 12h4"/>
+                  <path d="M15.5 15.5l2 2M19 15l-2.5 2.5"/>
+                  <path d="M15 19h4v-4"/>
                 </svg>
                 <span className="font-medium">New chat</span>
               </button>
