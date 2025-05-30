@@ -54,16 +54,6 @@ export default function Sidebar({
     <AnimatePresence>
       {open && (
         <>
-          {/* Overlay for all screen sizes */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 bg-black/20 z-60"
-            aria-hidden="true"
-            onClick={onClose}
-          />
           <motion.aside
             initial={{ x: '-100%' }}
             animate={{ x: 0 }}

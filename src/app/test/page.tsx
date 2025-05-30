@@ -1167,6 +1167,14 @@ export default function TestChat() {
         onOpenSearch={() => {}}
         onNavigateBoard={() => router.push('/board')}
       />
+      {/* Overlay for sidebar, covers everything including footer/input bar */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/20 z-60"
+          aria-hidden="true"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
       {/* Conversation area (scrollable) */}
       <div
         ref={scrollRef}
@@ -1273,7 +1281,7 @@ export default function TestChat() {
         </div>
         {/* Fixed Footer Bar Behind Input */}
         <div
-          className="fixed left-0 right-0 bottom-0 z-40"
+          className="fixed left-0 right-0 bottom-0 z-50"
           style={{ height: `${inputBarHeight}px`, background: '#161618' }}
           aria-hidden="true"
         />
