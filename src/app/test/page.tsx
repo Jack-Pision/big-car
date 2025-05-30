@@ -1154,27 +1154,6 @@ export default function TestChat() {
         <div className="fixed top-4 left-4 z-50">
         <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
       </div>
-      <Sidebar
-        open={sidebarOpen}
-        chats={chats}
-        activeChatId={activeChatId}
-        onClose={() => setSidebarOpen(false)}
-        onNewChat={() => {}}
-        onSelectChat={() => {}}
-        onEditChat={() => {}}
-        onDeleteChat={() => {}}
-        onClearAll={() => {}}
-        onOpenSearch={() => {}}
-        onNavigateBoard={() => router.push('/board')}
-      />
-      {/* Overlay for sidebar, covers everything including footer/input bar */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/20 z-60"
-          aria-hidden="true"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
       {/* Conversation area (scrollable) */}
       <div
         ref={scrollRef}
@@ -1420,6 +1399,28 @@ export default function TestChat() {
           onChange={handleFirstFileChange}
           accept="image/*"
           multiple
+        />
+        {/* Overlay for sidebar, covers everything including footer/input bar */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black/20 z-60"
+            aria-hidden="true"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+        {/* Sidebar - render last so it appears above everything */}
+        <Sidebar
+          open={sidebarOpen}
+          chats={chats}
+          activeChatId={activeChatId}
+          onClose={() => setSidebarOpen(false)}
+          onNewChat={() => {}}
+          onSelectChat={() => {}}
+          onEditChat={() => {}}
+          onDeleteChat={() => {}}
+          onClearAll={() => {}}
+          onOpenSearch={() => {}}
+          onNavigateBoard={() => router.push('/board')}
         />
     </div>
     </>
