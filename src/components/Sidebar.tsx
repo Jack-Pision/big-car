@@ -104,7 +104,7 @@ export default function Sidebar({
               */}
               {/* Test Navigation Button */}
               <button
-                className="mx-4 mb-2 flex items-center gap-2 px-3 py-2 rounded-lg text-[#e5e7eb] hover:bg-[#232323]/80 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/10"
+                className="mx-4 mb-2 flex items-center gap-2 px-3 py-2 rounded-lg text-[#e5e7eb] hover:bg-[#232323]/80 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/10 text-left w-[calc(100%-2rem)]"
                 onClick={() => router.push('/test')}
                 aria-label="Go to Test Page"
                 tabIndex={0}
@@ -155,24 +155,25 @@ export default function Sidebar({
                 <span className="font-medium">Help</span>
               </button>
               */}
-              {/* Search Bar Below Visual Learning */}
-              <div className="mx-4 mb-4 flex items-center gap-2 bg-[#232323] rounded-lg px-2 py-1 border border-gray-800">
-                <svg width="18" height="18" fill="none" stroke="#e5e7eb" strokeWidth="2" viewBox="0 0 24 24">
+              {/* Sessions Section Header */}
+              <div className="mx-4 mt-4 mb-2">
+                <span className="text-xs font-semibold text-gray-300 tracking-wide" style={{ letterSpacing: '0.05em' }}>SESSIONS</span>
+              </div>
+              {/* Search Bar Below Sessions */}
+              <div className="mx-4 mb-4 flex items-center gap-2 bg-[#232323] rounded-lg px-2 py-3 border border-gray-800" style={{ minHeight: '48px' }}>
+                <svg width="20" height="20" fill="none" stroke="#e5e7eb" strokeWidth="2" viewBox="0 0 24 24">
                   <circle cx="11" cy="11" r="7"/>
                   <line x1="21" y1="21" x2="16.65" y2="16.65"/>
                 </svg>
                 <input
                   type="text"
                   placeholder="Search chats..."
-                  className="flex-1 bg-transparent outline-none text-sm text-[#e5e7eb] placeholder-gray-400"
+                  className="flex-1 bg-transparent outline-none text-sm text-[#e5e7eb] placeholder-gray-400 py-2"
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
                   aria-label="Search chats"
+                  style={{ minHeight: '36px' }}
                 />
-              </div>
-              {/* Sessions Section Header */}
-              <div className="mx-4 mt-4 mb-2">
-                <span className="text-xs font-semibold text-gray-300 tracking-wide" style={{ letterSpacing: '0.05em' }}>SESSIONS</span>
               </div>
               {/* Chat List */}
               <div className="flex-1 overflow-y-auto px-4 pb-4">
