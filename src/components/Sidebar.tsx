@@ -89,7 +89,7 @@ export default function Sidebar({
                   <span className="text-xs font-semibold text-gray-300 tracking-wide" style={{ letterSpacing: '0.05em' }}>SESSIONS</span>
                 </div>
                 {/* Search Bar Below Sessions */}
-                <div className="mx-4 mb-4 flex items-center gap-2 bg-[#232323] rounded-lg px-2 py-1 border border-gray-300" style={{ minHeight: '36px' }}>
+                <div className="mx-4 mb-4 flex items-center gap-2 bg-[#232323] rounded-lg px-2 py-1 border" style={{ borderColor: '#e5e7eb', minHeight: '36px' }}>
                   <svg width="20" height="20" fill="none" stroke="#e5e7eb" strokeWidth="2" viewBox="0 0 24 24">
                     <circle cx="11" cy="11" r="7"/>
                     <line x1="21" y1="21" x2="16.65" y2="16.65"/>
