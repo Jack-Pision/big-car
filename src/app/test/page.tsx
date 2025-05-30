@@ -20,18 +20,6 @@ import { v4 as uuidv4 } from 'uuid';
 import EmptyBox from '@/components/EmptyBox';
 import WebSourcesCarousel from '../../components/WebSourcesCarousel';
 import { formatMessagesForApi, enhanceSystemPrompt, buildConversationContext } from '@/utils/conversation-context';
-import SessionSidebar from '../../components/SessionSidebar';
-import { Session, Chat as ChatType, Message as DbMessage } from '../../lib/types';
-import { 
-  createSession, 
-  getSessions, 
-  getSession,
-  createChat, 
-  getChat,
-  updateChatMessages,
-  ensureTablesExist,
-  getChats
-} from '../../lib/session-service';
 
 const SYSTEM_PROMPT = `You are a helpful, knowledgeable, and friendly AI assistant. Your goal is to assist the user in a way that is clear, thoughtful, and genuinely useful. 
 
@@ -261,7 +249,6 @@ interface ImageContext {
   timestamp: number;    // When this image was processed
 }
 
-// Define the Message interface locally to avoid conflicts
 interface Message {
   role: 'user' | 'assistant' | 'deep-research';
   content: string;
@@ -271,31 +258,6 @@ interface Message {
   id: string;
   timestamp: number;
   parentId?: string;
-}
-
-// Convert between DB Message type and local Message type
-function convertDbMessagesToLocal(dbMessages: DbMessage[]): Message[] {
-  return dbMessages.map(msg => {
-    // Convert WebSource from DB format to local format
-    const webSources = msg.webSources?.map(source => ({
-      title: source.title,
-      url: source.url,
-      icon: source.icon || '/icons/web-icon.svg', // Default icon
-      type: source.type || 'web', // Default type
-      favicon: source.favicon,
-      snippet: source.snippet
-    })) as WebSource[] | undefined;
-
-    return {
-      ...msg,
-      webSources
-    };
-  });
-}
-
-// Convert local Message type to DB Message type
-function convertLocalMessagesToDb(messages: Message[]): DbMessage[] {
-  return messages;
 }
 
 // Helper to enforce Advance Search output structure
@@ -726,11 +688,6 @@ export default function TestChat() {
   // This will control the position of the input box and heading (centered vs bottom)
   const inputPosition = isChatEmpty && !hasInteracted ? "center" : "bottom";
 
-  // Add session state
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
-  const [currentChatId, setCurrentChatId] = useState<string | null>(null);
-  const [isLoadingChat, setIsLoadingChat] = useState(false);
-
   // Helper to show the image in chat
   const showImageMsg = (content: string, imgSrc: string) => {
     setMessages((prev) => [
@@ -815,78 +772,6 @@ export default function TestChat() {
     }
   }, [isComplete, currentQuery, steps, messages, webData?.sources]);
 
-  // Initialize sessions and tables
-  useEffect(() => {
-    // Ensure tables exist when component mounts
-    const initializeSupabase = async () => {
-      await ensureTablesExist();
-      
-      // Check for default session
-      const sessions = await getSessions();
-      if (sessions.length === 0) {
-        // Create a default session if none exist
-        const defaultSession = await createSession('Default Session');
-        if (defaultSession) {
-          setCurrentSessionId(defaultSession.id);
-          // Create a default chat
-          const defaultChat = await createChat(defaultSession.id);
-          if (defaultChat) {
-            setCurrentChatId(defaultChat.id);
-          }
-        }
-      } else {
-        // Use the first session
-        setCurrentSessionId(sessions[0].id);
-        // Get chats for this session
-        const chats = await getChats(sessions[0].id);
-        if (chats.length > 0) {
-          setCurrentChatId(chats[0].id);
-          // Load chat messages with conversion
-          setMessages(convertDbMessagesToLocal(chats[0].messages || []));
-        } else {
-          // Create a new chat if none exist
-          const newChat = await createChat(sessions[0].id);
-          if (newChat) {
-            setCurrentChatId(newChat.id);
-          }
-        }
-      }
-    };
-
-    initializeSupabase();
-  }, []);
-
-  // Save messages when they change
-  useEffect(() => {
-    if (currentChatId && messages.length > 0) {
-      updateChatMessages(currentChatId, convertLocalMessagesToDb(messages));
-    }
-  }, [messages, currentChatId]);
-
-  // Handle selecting a chat
-  const handleSelectChat = async (chatId: string, sessionId: string) => {
-    setIsLoadingChat(true);
-    setCurrentSessionId(sessionId);
-    setCurrentChatId(chatId);
-    
-    // Load chat messages
-    const chat = await getChat(chatId);
-    if (chat) {
-      setMessages(convertDbMessagesToLocal(chat.messages || []));
-    } else {
-      setMessages([]);
-    }
-    setIsLoadingChat(false);
-  };
-
-  // Handle creating a new chat
-  const handleNewChat = (sessionId: string) => {
-    // Clear current messages
-    setMessages([]);
-    setCurrentSessionId(sessionId);
-    // The created chat ID will be set by the sidebar component
-  };
-
   async function handleSend(e?: React.FormEvent) {
     if (e) e.preventDefault();
     const currentInput = input.trim();
@@ -918,8 +803,8 @@ export default function TestChat() {
 
     // This is the existing AI request code which we'll now only run when deep research is not active
     setIsAiResponding(true);
-    setLoading(true);
-    if (showHeading) setShowHeading(false);
+      setLoading(true);
+      if (showHeading) setShowHeading(false);
 
     // Create a new abort controller for this AI response
     aiStreamAbortController.current = new AbortController();
@@ -954,19 +839,19 @@ export default function TestChat() {
         // Upload each file individually and collect their public URLs
         uploadedImageUrls = await Promise.all(
           currentSelectedFiles.map(async (file) => {
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${Math.random()}.${fileExt}`;
-            const filePath = `${fileName}`;
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Math.random()}.${fileExt}`;
+        const filePath = `${fileName}`;
             const { error: uploadError } = await clientSideSupabase.storage
               .from('images2')
-              .upload(filePath, file);
-            if (uploadError) {
+          .upload(filePath, file);
+        if (uploadError) {
               console.error('Supabase upload error for file:', file.name, uploadError);
               throw new Error(`Failed to upload ${file.name}: ${uploadError.message}`);
-            }
-            const { data: urlData } = clientSideSupabase.storage
+        }
+        const { data: urlData } = clientSideSupabase.storage
               .from('images2')
-              .getPublicUrl(filePath);
+          .getPublicUrl(filePath);
             if (!urlData.publicUrl) {
               console.error('Failed to get public URL for file:', file.name);
               throw new Error(`Failed to get public URL for ${file.name}`);
@@ -1081,7 +966,7 @@ export default function TestChat() {
         };
 
         // Add initial empty assistant message to the chat
-      setMessages((prev) => [...prev, aiMsg]);
+        setMessages((prev) => [...prev, aiMsg]);
 
         while (!done) {
           const { value, done: doneReading } = await reader.read();
@@ -1210,9 +1095,9 @@ export default function TestChat() {
           },
         ]);
       }
-    } finally {
+      } finally {
       setIsAiResponding(false);
-      setLoading(false);
+        setLoading(false);
       aiStreamAbortController.current = null;
     }
     setImagePreviewUrls([]);
@@ -1271,66 +1156,282 @@ export default function TestChat() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-900 antialiased text-gray-900 dark:text-gray-100">
-      {/* Session sidebar */}
-      {sidebarOpen && (
-        <SessionSidebar
-          onSelectChat={handleSelectChat}
-          onNewChat={handleNewChat}
-          currentChatId={currentChatId || undefined}
-          currentSessionId={currentSessionId || undefined}
-        />
-      )}
-      
-      {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <header className="h-14 flex items-center border-b border-gray-200 dark:border-gray-800 px-4">
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-          >
-            {sidebarOpen ? (
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            ) : (
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            )}
-          </button>
-          <h1 className="ml-4 text-xl font-semibold">AI Study App</h1>
-        </header>
-        
-        {/* Main content area */}
-        <main className="flex-1 overflow-hidden">
-          {isLoadingChat ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="loader">Loading...</div>
-            </div>
-          ) : (
-            <div className="min-h-screen flex flex-col" style={{ background: '#161618' }}>
-              {/* Existing chat interface */}
-              <div className="flex-1 flex flex-col">
-                <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 pb-0">
-                  {/* Rest of the existing UI */}
-                  <GlobalStyles />
-                  
-                  {/* The rest of your existing chat UI */}
-                  {/* ... existing chat message rendering code ... */}
+    <>
+      <div className="min-h-screen flex flex-col" style={{ background: '#161618' }}>
+        <GlobalStyles />
+      {/* Hamburger menu and sidebar */}
+        <div className="fixed top-4 left-4 z-50">
+        <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
+      </div>
+
+      {/* Conversation area (scrollable) */}
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto w-full flex flex-col items-center justify-center relative"
+          style={{ paddingBottom: `${isChatEmpty && !hasInteracted ? 0 : inputBarHeight + EXTRA_GAP}px` }}
+      >
+          {/* Centered wrapper for heading and input */}
+        <div
+            className={`fixed left-1/2 -translate-x-1/2 w-full max-w-3xl flex flex-col items-center justify-center z-50 transition-all duration-500 ease-in-out ${
+              inputPosition === "center" ? "top-1/2 -translate-y-1/2" : "bottom-0 translate-y-0 pointer-events-none"
+          }`}
+        >
+            {/* Heading with fade animation */}
+            <h1 className={`text-[3.2rem] font-normal text-gray-200 text-center mb-6 transition-opacity duration-500 ${inputPosition === "center" ? "opacity-100" : "opacity-0"}`}>
+            Seek and You'll find
+          </h1>
+
+            {/* Input form */}
+            <form
+              className="w-full flex flex-col gap-2 rounded-2xl shadow-lg px-3 py-2 mx-4 mb-3"
+              style={{ background: '#232323', border: '2px solid rgba(255,255,255,0.18)', boxShadow: '0 4px 32px 0 rgba(0,0,0,0.32)' }}
+              onSubmit={handleSend}
+            >
+              {/* Image previews above textarea */}
+              {imagePreviewUrls.length > 0 && (
+                <div className="flex flex-row gap-2 mb-2 justify-center">
+                  {imagePreviewUrls.map((url, idx) => (
+                    <div key={idx} className="relative">
+                      <img src={url} alt={`Preview ${idx + 1}`} className="w-16 h-16 object-cover rounded-lg" />
+                      <button
+                        type="button"
+                        className="absolute top-0 right-0 bg-black bg-opacity-60 text-white rounded-full p-1"
+                        onClick={() => removeImagePreview(idx)}
+                      >
+                        &times;
+                      </button>
+        </div>
+                  ))}
                 </div>
-                
-                {/* Input area */}
-                <div className="px-4 pb-4" style={{ marginBottom: `${EXTRA_GAP}px` }}>
-                  {/* ... existing input UI ... */}
+              )}
+
+              {/* Input area: textarea on top, actions below */}
+              <div className="flex flex-col w-full gap-2 items-center">
+                {/* Textarea row */}
+                <div className="w-full">
+                  <textarea
+                    ref={textareaRef}
+                    value={input}
+                    onChange={e => setInput(e.target.value)}
+                    className="w-full border-none outline-none bg-transparent px-2 py-1 text-gray-200 text-sm placeholder-gray-500 resize-none overflow-auto self-center rounded-lg"
+                    placeholder="Ask anything..."
+                    disabled={loading}
+                    rows={1}
+                    style={{ maxHeight: '96px', minHeight: '40px', lineHeight: '1.5' }}
+                  />
+                </div>
+
+                {/* Actions row */}
+                <div className="flex flex-row w-full items-center justify-between gap-2">
+                  {/* Left group: Write, Search, Deep Research */}
+                  <div className="flex flex-row gap-2 items-center">
+                    {/* Write button */}
+                    <button
+                      type="button"
+                      className={`flex items-center gap-1.5 rounded-full bg-gray-800 hover:bg-gray-700 transition px-3 py-1.5 flex-shrink-0 text-xs font-medium text-cyan-400`}
+                      style={{ height: "36px" }}
+                      onClick={handleWriteClick}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#22d3ee' }}>
+                        <path d="M12 20h9" />
+                        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19.5 3 21l1.5-4L16.5 3.5z" />
+                      </svg>
+                      <span className="whitespace-nowrap">Write</span>
+                    </button>
+
+                    {/* Search button */}
+                    <button
+                      type="button"
+                      className="rounded-full bg-gray-800 text-cyan-400 hover:bg-gray-700 transition flex items-center justify-center gap-1.5 px-3 py-1.5 flex-shrink-0"
+                      style={{ height: "36px" }}
+                    >
+                      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                        <circle cx="11" cy="11" r="7"/>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                      </svg>
+                      <span className="text-xs font-medium">Search</span>
+                    </button>
+
+                    {/* Deep Research button */}
+                    <button
+                      type="button"
+                      className={`flex items-center gap-1.5 rounded-full bg-gray-800 hover:bg-gray-700 transition px-3 py-1.5 flex-shrink-0 ${showAdvanceSearchUI ? 'text-cyan-400' : 'text-gray-400'}`}
+                      style={{ height: "36px" }}
+                      tabIndex={0}
+                      onClick={() => setShowAdvanceSearchUI(a => !a)}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: showAdvanceSearchUI ? '#22d3ee' : '#a3a3a3' }}>
+                        <circle cx="12" cy="12" r="3" />
+                        <circle cx="19" cy="5" r="2" />
+                        <circle cx="5" cy="19" r="2" />
+                        <line x1="14.15" y1="14.15" x2="17" y2="17" />
+                        <line x1="6.85" y1="17.15" x2="10.15" y2="13.85" />
+                        <line x1="13.85" y1="10.15" x2="17.15" y2="6.85" />
+                      </svg>
+                      <span className="whitespace-nowrap text-xs font-medium">Advance Search</span>
+                    </button>
+              </div>
+
+                  {/* Right group: Plus, Send */}
+                  <div className="flex flex-row gap-2 items-center">
+                    {/* Plus button */}
+                    <button 
+                      type="button" 
+                      className="p-2 rounded-full bg-gray-800 text-gray-300 hover:bg-gray-700 transition flex items-center justify-center flex-shrink-0"
+                      style={{ width: "36px", height: "36px" }}
+                      onClick={handleFirstPlusClick}
+                    >
+                      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                      </svg>
+                    </button>
+
+                    {/* Send/Stop button */}
+                    <button
+                      type={isAiResponding ? "button" : "submit"}
+                      className="rounded-full bg-gray-200 hover:bg-white transition flex items-center justify-center flex-shrink-0"
+                      style={{ width: "36px", height: "36px", pointerEvents: loading && !isAiResponding ? 'none' : 'auto' }}
+                      onClick={isAiResponding ? handleStopAIResponse : undefined}
+                      disabled={loading && !isAiResponding}
+                      aria-label={isAiResponding ? "Stop AI response" : "Send"}
+                    >
+                      {isAiResponding ? (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <rect x="7" y="7" width="10" height="10" rx="2" fill="#374151" />
+                        </svg>
+                      ) : (
+                        <svg width="16" height="16" fill="none" stroke="#374151" strokeWidth="2.5" viewBox="0 0 24 24">
+                          <path d="M12 19V5M5 12l7-7 7 7" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-        </main>
+            </form>
+          </div>
+
+          {/* Conversation and other UI below */}
+          <div className="w-full max-w-3xl mx-auto flex flex-col gap-4 items-center justify-center z-10 pt-12 pb-4">
+            {messages.map((msg, i) => {
+              if (msg.role === "assistant") {
+                const { content, thinkingTime } = cleanAIResponse(msg.content);
+                const cleanContent = content.replace(/<thinking-indicator.*?\/>/g, '');
+                const isStoppedMsg = cleanContent.trim() === '[Response stopped by user]';
+                const processedContent = makeCitationsClickable(cleanContent, msg.webSources || []);
+                if (showPulsingDot) setShowPulsingDot(false);
+                
+                return (
+                  <motion.div
+                  key={i}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, ease: "easeOut" }}
+                    className="w-full markdown-body text-left flex flex-col items-start ai-response-text"
+                    style={{ color: '#fff', maxWidth: '100%', overflowWrap: 'break-word' }}
+                  >
+                    {i === messages.length - 1 && showPulsingDot ? (
+                      <PulsingDot isVisible={true} />
+                    ) : (
+                      <>
+                        {msg.webSources && msg.webSources.length > 0 && (
+                          <>
+                            <WebSourcesCarousel sources={msg.webSources} />
+                            <div style={{ height: '1.5rem' }} />
+                          </>
+                        )}
+                        {thinkingTime && <ThinkingIndicator duration={thinkingTime} />}
+                        {isStoppedMsg ? (
+                          <span className="text-sm text-white italic font-light mb-2">[Response stopped by user]</span>
+                        ) : (
+                          <div className="w-full max-w-full overflow-hidden">
+                            <TextReveal 
+                              text={processedContent}
+                              markdownComponents={markdownComponents}
+                              webSources={msg.webSources || []}
+                              revealIntervalMs={220}
+                  />
+                </div>
+                        )}
+                      </>
+                    )}
+                  </motion.div>
+                );
+              } else if (msg.role === "deep-research") {
+                return (
+                  <DeepResearchBlock 
+                    key={i}
+                    query={msg.content} 
+                    conversationHistory={advanceSearchHistory}
+                    onClearHistory={clearAdvanceSearchHistory}
+                  />
+                );
+              } else {
+                return (
+                <div
+                  key={i}
+                    className="px-5 py-3 rounded-2xl shadow bg-gray-800 text-white self-end max-w-full text-lg flex flex-col items-end"
+                  style={{ wordBreak: "break-word" }}
+                >
+                    {msg.imageUrls && msg.imageUrls.map((url, index) => (
+                      <img 
+                        key={index}
+                        src={url} 
+                        alt={`Preview ${index + 1}`} 
+                        className="max-w-xs max-h-64 rounded-md mb-2 self-end" 
+                      />
+                    ))}
+                    <div>{msg.content}</div>
+        </div>
+                );
+              }
+            })}
       </div>
-    </div>
+        </div>
+
+        {/* Fixed Footer Bar Behind Input */}
+        <div
+          className={`fixed left-0 right-0 bottom-0 z-40 transition-opacity duration-300 ${isChatEmpty && !hasInteracted ? 'opacity-0' : 'opacity-100'}`}
+          style={{ height: `${inputBarHeight}px`, background: '#161618' }}
+          aria-hidden="true"
+        />
+
+        {/* Overlay for sidebar */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black/20 z-[9998]"
+            aria-hidden="true"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+
+        {/* Hidden file input */}
+          <input
+            type="file"
+          ref={fileInputRef1}
+            style={{ display: 'none' }}
+          onChange={handleFirstFileChange}
+          accept="image/*"
+          multiple
+        />
+
+        {/* Sidebar */}
+        <Sidebar
+          open={sidebarOpen}
+          chats={chats}
+          activeChatId={activeChatId}
+          onClose={() => setSidebarOpen(false)}
+          onNewChat={() => {}}
+          onSelectChat={() => {}}
+          onEditChat={() => {}}
+          onDeleteChat={() => {}}
+          onClearAll={() => {}}
+          onOpenSearch={() => {}}
+          onNavigateBoard={() => router.push('/board')}
+        />
+      </div>
+    </>
   );
 }
 
@@ -1368,7 +1469,7 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory }: {
     >
       {hasHistory && onClearHistory && (
         <div className="sr-only">
-          <button
+            <button
             onClick={onClearHistory}
             className="text-xs text-cyan-500 hover:text-cyan-400 flex items-center gap-1 opacity-70 hover:opacity-100 transition-opacity"
           >
@@ -1376,10 +1477,10 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory }: {
               <path d="M3 6h18"></path>
               <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
               <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-            </svg>
+              </svg>
             Clear history ({conversationHistory.previousQueries.length})
-          </button>
-        </div>
+            </button>
+          </div>
       )}
       <div className="flex-1 flex flex-col h-full">
         <AdvanceSearch
