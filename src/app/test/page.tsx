@@ -20,6 +20,15 @@ import { v4 as uuidv4 } from 'uuid';
 import EmptyBox from '@/components/EmptyBox';
 import WebSourcesCarousel from '../../components/WebSourcesCarousel';
 import { formatMessagesForApi, enhanceSystemPrompt, buildConversationContext } from '@/utils/conversation-context';
+import { Session } from '@/lib/types';
+import {
+  createNewSession,
+  getSessionMessages,
+  saveSessionMessages,
+  updateSessionTimestamp,
+  getSessionTitleFromMessage,
+  getSessions as getSessionsFromService
+} from '@/lib/session-service';
 
 const SYSTEM_PROMPT = `You are a helpful, knowledgeable, and friendly AI assistant. Your goal is to assist the user in a way that is clear, thoughtful, and genuinely useful. 
 
@@ -632,8 +641,7 @@ export default function TestChat() {
   const MAX_HEIGHT = BASE_HEIGHT * 3; // 3x
   const EXTRA_GAP = 32; // px
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [chats, setChats] = useState([]); // You can implement chat history if needed
-  const [activeChatId, setActiveChatId] = useState(null);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef1 = useRef<HTMLInputElement>(null);
@@ -682,11 +690,40 @@ export default function TestChat() {
 
   // Add a state to track if the chat is empty (no messages)
   const isChatEmpty = messages.length === 0;
-  // Track if the user has sent the first message (for animation)
+  // Track if the user has sent the first message (for animation and session creation)
   const [hasInteracted, setHasInteracted] = useState(false);
 
   // This will control the position of the input box and heading (centered vs bottom)
-  const inputPosition = isChatEmpty && !hasInteracted ? "center" : "bottom";
+  const inputPosition = isChatEmpty && !hasInteracted && !activeSessionId ? "center" : "bottom";
+
+  // Effect to load the last active session or create a new one on initial load
+  useEffect(() => {
+    const sessions = getSessionsFromService();
+    if (sessions.length > 0) {
+      // Load the most recent session
+      const lastSession = sessions[0];
+      setActiveSessionId(lastSession.id);
+      setMessages(getSessionMessages(lastSession.id));
+      setHasInteracted(true); // Assume interaction if loading a session
+      setShowHeading(false);
+    } else {
+      // No sessions, user will start a new one implicitly
+      // Or, explicitly create one here if desired:
+      // const newSession = createNewSession();
+      // setActiveSessionId(newSession.id);
+      // setMessages([]);
+      setShowHeading(true); // Show heading for a brand new start
+      setHasInteracted(false);
+    }
+  }, []);
+
+  // Effect to save messages whenever they change for the active session
+  useEffect(() => {
+    if (activeSessionId && messages.length > 0) {
+      saveSessionMessages(activeSessionId, messages);
+      updateSessionTimestamp(activeSessionId); // Also update timestamp on new message
+    }
+  }, [messages, activeSessionId]);
 
   // Helper to show the image in chat
   const showImageMsg = (content: string, imgSrc: string) => {
@@ -778,6 +815,18 @@ export default function TestChat() {
     const currentSelectedFiles = selectedFilesForUpload;
 
     if (!currentInput && !currentSelectedFiles.length) return;
+
+    let currentActiveSessionId = activeSessionId;
+
+    // Create a new session if one isn't active or if it's a "new chat" scenario
+    if (!currentActiveSessionId || (isChatEmpty && !hasInteracted && !activeSessionId)) {
+      const newSession = createNewSession(currentInput || (currentSelectedFiles.length > 0 ? "Image Upload" : undefined));
+      setActiveSessionId(newSession.id);
+      currentActiveSessionId = newSession.id;
+      setMessages([]); // Start with empty messages for the new session
+      // No need to call setSidebarOpen(true) then getSessionsFromService() here, sidebar will refresh on its own
+    }
+
     if (!hasInteracted) setHasInteracted(true);
 
     // Store the current query for Deep Research
@@ -827,8 +876,9 @@ export default function TestChat() {
     // Add user message to chat (with or without image previews for user messages)
     if (currentSelectedFiles.length > 0) {
       // For user message display, use the local preview URLs directly
-      userMessageForDisplay.imageUrls = imagePreviewUrls || undefined; 
+      userMessageForDisplay.imageUrls = imagePreviewUrls || undefined;
     }
+    // Ensure messages are updated against the correct session ID
     setMessages((prev) => [...prev, userMessageForDisplay]);
 
     try {
@@ -1155,6 +1205,42 @@ export default function TestChat() {
     });
   }
 
+  const handleNewChatRequest = () => {
+    const newSession = createNewSession();
+    setActiveSessionId(newSession.id);
+    setMessages([]);
+    setInput('');
+    setImagePreviewUrls([]);
+    setSelectedFilesForUpload([]);
+    setCurrentQuery('');
+    setAdvanceSearchHistory({ previousQueries: [], previousResponses: [] });
+    setIsAdvanceSearchActive(false);
+    setShowAdvanceSearchUI(false);
+    setShowHeading(true); // Show heading for new chat
+    setHasInteracted(false); // Reset interaction state
+    setSidebarOpen(false); // Close sidebar
+    // The sidebar will update its list automatically because getSessions() is called in its useEffect
+  };
+
+  const handleSelectSession = (sessionId: string) => {
+    if (!sessionId) { // Handling deletion or empty selection case
+        handleNewChatRequest();
+        return;
+    }
+    setActiveSessionId(sessionId);
+    setMessages(getSessionMessages(sessionId));
+    setInput('');
+    setImagePreviewUrls([]);
+    setSelectedFilesForUpload([]);
+    setCurrentQuery(''); // Clear current query when switching sessions
+    setAdvanceSearchHistory({ previousQueries: [], previousResponses: [] }); // Reset deep research history
+    setIsAdvanceSearchActive(false); // Reset deep research active state
+    setShowAdvanceSearchUI(false); // Reset deep research UI toggle
+    setShowHeading(messages.length === 0); // Show heading if the loaded session is empty
+    setHasInteracted(true); // Assume interaction when a session is selected
+    setSidebarOpen(false); // Close sidebar
+  };
+
   return (
     <>
       <div className="min-h-screen flex flex-col" style={{ background: '#161618' }}>
@@ -1419,16 +1505,10 @@ export default function TestChat() {
         {/* Sidebar */}
         <Sidebar
           open={sidebarOpen}
-          chats={chats}
-          activeChatId={activeChatId}
+          activeSessionId={activeSessionId}
           onClose={() => setSidebarOpen(false)}
-          onNewChat={() => {}}
-          onSelectChat={() => {}}
-          onEditChat={() => {}}
-          onDeleteChat={() => {}}
-          onClearAll={() => {}}
-          onOpenSearch={() => {}}
-          onNavigateBoard={() => router.push('/board')}
+          onNewChat={handleNewChatRequest}
+          onSelectSession={handleSelectSession}
         />
       </div>
     </>
