@@ -680,6 +680,12 @@ export default function TestChat() {
 
   const [showPulsingDot, setShowPulsingDot] = useState(false);
 
+  // Add a state to track if the chat is empty (no messages)
+  const isChatEmpty = messages.length === 0;
+  
+  // This will control the position of the input box (centered vs bottom)
+  const inputPosition = isChatEmpty ? "center" : "bottom";
+
   // Helper to show the image in chat
   const showImageMsg = (content: string, imgSrc: string) => {
     setMessages((prev) => [
@@ -1158,7 +1164,7 @@ export default function TestChat() {
       <div
         ref={scrollRef}
         className="flex-1 overflow-y-auto w-full flex flex-col items-center justify-center relative"
-        style={{ paddingBottom: `${inputBarHeight + EXTRA_GAP}px` }}
+        style={{ paddingBottom: `${isChatEmpty ? 0 : inputBarHeight + EXTRA_GAP}px` }}
       >
         <div
           className={`absolute left-0 right-0 flex flex-col items-center transition-opacity duration-700 ${
@@ -1260,12 +1266,18 @@ export default function TestChat() {
         </div>
         {/* Fixed Footer Bar Behind Input */}
         <div
-          className="fixed left-0 right-0 bottom-0 z-50"
+          className={`fixed left-0 right-0 bottom-0 z-40 transition-opacity duration-300 ${isChatEmpty ? 'opacity-0' : 'opacity-100'}`}
           style={{ height: `${inputBarHeight}px`, background: '#161618' }}
           aria-hidden="true"
         />
-      {/* Fixed Input Bar at Bottom */}
-        <div ref={inputBarRef} className="fixed left-1/2 -translate-x-1/2 bottom-0 w-full max-w-3xl flex justify-center z-50" style={{ pointerEvents: 'auto' }}>
+      {/* Input Bar - Dynamic position */}
+        <div 
+          ref={inputBarRef} 
+          className={`fixed left-1/2 -translate-x-1/2 w-full max-w-3xl flex justify-center z-50 transition-all duration-500 ease-in-out ${
+            inputPosition === "center" ? "top-1/2 -translate-y-1/2" : "bottom-0 translate-y-0"
+          }`} 
+          style={{ pointerEvents: 'auto' }}
+        >
         <form
             className="w-full flex flex-col gap-2 rounded-2xl shadow-lg px-3 py-2 mx-4 mb-3"
             style={{ background: '#232323', border: '2px solid rgba(255,255,255,0.18)', boxShadow: '0 4px 32px 0 rgba(0,0,0,0.32)' }}
