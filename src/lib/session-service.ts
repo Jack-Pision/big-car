@@ -8,6 +8,7 @@ import { Session } from './types'; // Assuming types.ts is in the same directory
 
 const SESSIONS_KEY = 'chatSessions';
 const SESSION_MESSAGES_PREFIX = 'sessionMessages_';
+const ACTIVE_SESSION_KEY = 'activeSessionId';
 
 // Helper to get a title for a session from the first user message
 export function getSessionTitleFromMessage(messageContent: string): string {
@@ -72,4 +73,18 @@ export function updateSessionTimestamp(sessionId: string): void {
     sessions.unshift(updatedSession);
     saveSessions(sessions);
   }
+}
+
+export function saveActiveSessionId(sessionId: string | null): void {
+  if (typeof window === 'undefined') return;
+  if (sessionId) {
+    localStorage.setItem(ACTIVE_SESSION_KEY, sessionId);
+  } else {
+    localStorage.removeItem(ACTIVE_SESSION_KEY);
+  }
+}
+
+export function getActiveSessionId(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem(ACTIVE_SESSION_KEY);
 } 

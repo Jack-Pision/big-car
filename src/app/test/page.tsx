@@ -27,7 +27,9 @@ import {
   saveSessionMessages,
   updateSessionTimestamp,
   getSessionTitleFromMessage,
-  getSessions as getSessionsFromService
+  getSessions as getSessionsFromService,
+  saveActiveSessionId,
+  getActiveSessionId
 } from '@/lib/session-service';
 
 const SYSTEM_PROMPT = `You are a helpful, knowledgeable, and friendly AI assistant. Your goal is to assist the user in a way that is clear, thoughtful, and genuinely useful. 
@@ -698,11 +700,20 @@ export default function TestChat() {
 
   // Effect to load the last active session or create a new one on initial load
   useEffect(() => {
-    // Always start with a blank/welcoming page
-    setShowHeading(true); // Show welcoming heading
-    setHasInteracted(false);
-    setActiveSessionId(null);
-    setMessages([]);
+    const savedSessionId = getActiveSessionId();
+    if (savedSessionId) {
+      // Load the saved session
+      setActiveSessionId(savedSessionId);
+      setMessages(getSessionMessages(savedSessionId));
+      setShowHeading(false);
+      setHasInteracted(true);
+    } else {
+      // Show welcome page for new users
+      setShowHeading(true);
+      setHasInteracted(false);
+      setActiveSessionId(null);
+      setMessages([]);
+    }
   }, []);
 
   // Effect to save messages whenever they change for the active session
@@ -1187,6 +1198,26 @@ export default function TestChat() {
     });
   }
 
+  const handleSelectSession = (sessionId: string) => {
+    if (!sessionId) { // Handling deletion or empty selection case
+        handleNewChatRequest();
+        return;
+    }
+    setActiveSessionId(sessionId);
+    saveActiveSessionId(sessionId); // Save the active session
+    setMessages(getSessionMessages(sessionId));
+    setInput('');
+    setImagePreviewUrls([]);
+    setSelectedFilesForUpload([]);
+    setCurrentQuery(''); // Clear current query when switching sessions
+    setAdvanceSearchHistory({ previousQueries: [], previousResponses: [] }); // Reset deep research history
+    setIsAdvanceSearchActive(false); // Reset deep research active state
+    setShowAdvanceSearchUI(false); // Reset deep research UI toggle
+    setShowHeading(messages.length === 0); // Show heading if the loaded session is empty
+    setHasInteracted(true); // Assume interaction when a session is selected
+    setSidebarOpen(false); // Close sidebar
+  };
+
   const handleNewChatRequest = () => {
     setSidebarOpen(false);
     setInput('');
@@ -1199,26 +1230,8 @@ export default function TestChat() {
     setShowHeading(true); // Show welcoming heading
     setHasInteracted(false); // Reset interaction state
     setActiveSessionId(null);
+    saveActiveSessionId(null); // Clear the active session
     setMessages([]);
-  };
-
-  const handleSelectSession = (sessionId: string) => {
-    if (!sessionId) { // Handling deletion or empty selection case
-        handleNewChatRequest();
-        return;
-    }
-    setActiveSessionId(sessionId);
-    setMessages(getSessionMessages(sessionId));
-    setInput('');
-    setImagePreviewUrls([]);
-    setSelectedFilesForUpload([]);
-    setCurrentQuery(''); // Clear current query when switching sessions
-    setAdvanceSearchHistory({ previousQueries: [], previousResponses: [] }); // Reset deep research history
-    setIsAdvanceSearchActive(false); // Reset deep research active state
-    setShowAdvanceSearchUI(false); // Reset deep research UI toggle
-    setShowHeading(messages.length === 0); // Show heading if the loaded session is empty
-    setHasInteracted(true); // Assume interaction when a session is selected
-    setSidebarOpen(false); // Close sidebar
   };
 
   return (
