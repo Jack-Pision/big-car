@@ -68,7 +68,7 @@ function BasicRenderer({ data }: { data: any }): ReactNode {
       // Check if we have any string fields we can use
       const stringFields = Object.entries(data)
         .filter(([_, value]) => typeof value === 'string' && value.length > 0)
-        .map(([key, value]) => ({ key, value }));
+        .map(([key, value]) => ({ key, value: value as string }));
       
       if (stringFields.length > 0) {
         // If there's a single string field with substantial content, use that
