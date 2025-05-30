@@ -698,23 +698,11 @@ export default function TestChat() {
 
   // Effect to load the last active session or create a new one on initial load
   useEffect(() => {
-    const sessions = getSessionsFromService();
-    if (sessions.length > 0) {
-      // Load the most recent session
-      const lastSession = sessions[0];
-      setActiveSessionId(lastSession.id);
-      setMessages(getSessionMessages(lastSession.id));
-      setHasInteracted(true); // Assume interaction if loading a session
-      setShowHeading(false);
-    } else {
-      // No sessions, user will start a new one implicitly
-      // Or, explicitly create one here if desired:
-      // const newSession = createNewSession();
-      // setActiveSessionId(newSession.id);
-      // setMessages([]);
-      setShowHeading(true); // Show heading for a brand new start
-      setHasInteracted(false);
-    }
+    // Do not auto-select or load any session on mount
+    setShowHeading(true); // Show heading for a brand new start
+    setHasInteracted(false);
+    setActiveSessionId(null);
+    setMessages([]);
   }, []);
 
   // Effect to save messages whenever they change for the active session
