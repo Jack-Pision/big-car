@@ -72,6 +72,7 @@ export default function Sidebar({
                 + New Chat
               </button>
               {/* Search Icon Button */}
+              {/*
               <button
                 className="mx-4 mb-4 flex items-center justify-center w-10 h-10 rounded-full bg-black text-white hover:bg-neutral-800 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/30"
                 onClick={onOpenSearch}
@@ -80,7 +81,9 @@ export default function Sidebar({
               >
                 <svg width="20" height="20" fill="none" stroke="#e5e7eb" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
               </button>
+              */}
               {/* Board Navigation Button */}
+              {/*
               <button
                 className="mx-4 mb-2 flex items-center gap-2 px-3 py-2 rounded-lg text-[#e5e7eb] hover:bg-[#232323]/80 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/10"
                 onClick={onNavigateBoard}
@@ -90,6 +93,7 @@ export default function Sidebar({
                 <svg width="20" height="20" fill="none" stroke="#e5e7eb" strokeWidth="2" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/></svg>
                 <span className="font-medium">Board</span>
               </button>
+              */}
               {/* Streaming Chat Navigation Button */}
               {/*
               <button
@@ -279,6 +283,7 @@ export default function Sidebar({
                 ))}
               </div>
               {/* Footer */}
+              {/*
               <button
                 className="w-full py-2 rounded-lg bg-red-100 text-red-700 font-semibold hover:bg-red-200 transition-colors duration-200 mb-2"
                 onClick={() => setShowClearAll(true)}
@@ -290,6 +295,7 @@ export default function Sidebar({
                 Study Assistant v1.0<br />
                 <span className="text-gray-300">by Jack-Pision</span>
               </div>
+              */}
               {/* Clear All Confirmation Modal */}
               <AnimatePresence>
                 {showClearAll && (
