@@ -31,6 +31,9 @@ import {
   saveActiveSessionId,
   getActiveSessionId
 } from '@/lib/session-service';
+import { SCHEMAS } from '@/lib/output-schemas';
+import { classifyQuery } from '@/lib/query-classifier';
+import DynamicResponseRenderer from '@/components/DynamicResponseRenderer';
 
 const SYSTEM_PROMPT = `You are a helpful, knowledgeable, and friendly AI assistant. Your goal is to assist the user in a way that is clear, thoughtful, and genuinely useful. 
 
@@ -263,6 +266,8 @@ interface ImageContext {
 interface Message {
   role: 'user' | 'assistant' | 'deep-research';
   content: string;
+  contentType?: string;
+  structuredContent?: any;
   imageUrls?: string[];
   webSources?: WebSource[];
   researchId?: string;
@@ -812,51 +817,47 @@ export default function TestChat() {
     if (e) e.preventDefault();
     const currentInput = input.trim();
     const currentSelectedFiles = selectedFilesForUpload;
+    let uploadedImageUrls: string[] = [];
 
     if (!currentInput && !currentSelectedFiles.length) return;
 
     let currentActiveSessionId = activeSessionId;
 
-    // Create a new session if one isn't active or if it's a "new chat" scenario
     if (!currentActiveSessionId) {
       const newSession = createNewSession(currentInput || (currentSelectedFiles.length > 0 ? "Image Upload" : undefined));
       setActiveSessionId(newSession.id);
+      saveActiveSessionId(newSession.id);
       currentActiveSessionId = newSession.id;
-      setMessages([]); // Start with empty messages for the new session
+      setMessages([]);
     }
 
     if (!hasInteracted) setHasInteracted(true);
-
-    // Store the current query for Deep Research
     setCurrentQuery(currentInput);
-    
+
     // If Advance Search UI mode is active, process as Advance Search
     if (showAdvanceSearchUI) {
-      setIsAdvanceSearchActive(true); // Activate the processing state
+      setIsAdvanceSearchActive(true);
       const researchId = uuidv4();
-      // Always add a new user message and research block for each query
       setMessages(prev => [
         ...prev,
         { role: "user", content: currentInput, id: uuidv4(), timestamp: Date.now() },
         { role: "deep-research", content: currentInput, researchId, id: uuidv4(), timestamp: Date.now() }
       ]);
-      setInput(""); // Always clear input after send
+      setInput("");
       setImagePreviewUrls([]);
       setSelectedFilesForUpload([]);
-      // Defensive: ensure loading and isAiResponding are false for advance search
       setLoading(false);
       setIsAiResponding(false);
       return;
     }
 
+    // Default Chat Logic Path
     setIsAiResponding(true);
     setLoading(true);
     if (showHeading) setShowHeading(false);
 
     aiStreamAbortController.current = new AbortController();
 
-    let userMessageContent = currentInput;
-    let uploadedImageUrls: string[] = [];
     const messageId = uuidv4();
     let userMessageForDisplay: Message = {
       role: "user" as const,
@@ -872,29 +873,27 @@ export default function TestChat() {
       userMessageForDisplay.imageUrls = imagePreviewUrls || undefined;
     }
     setMessages((prev) => [...prev, userMessageForDisplay]);
-    setInput(""); // Always clear input after send
+    setInput("");
 
     try {
       if (currentSelectedFiles.length > 0) {
         const clientSideSupabase = createSupabaseClient();
         if (!clientSideSupabase) throw new Error('Supabase client not available');
-        
-        // Upload each file individually and collect their public URLs
         uploadedImageUrls = await Promise.all(
           currentSelectedFiles.map(async (file) => {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Math.random()}.${fileExt}`;
-        const filePath = `${fileName}`;
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Math.random()}.${fileExt}`;
+            const filePath = `${fileName}`;
             const { error: uploadError } = await clientSideSupabase.storage
               .from('images2')
-          .upload(filePath, file);
-        if (uploadError) {
+              .upload(filePath, file);
+            if (uploadError) {
               console.error('Supabase upload error for file:', file.name, uploadError);
               throw new Error(`Failed to upload ${file.name}: ${uploadError.message}`);
-        }
-        const { data: urlData } = clientSideSupabase.storage
+            }
+            const { data: urlData } = clientSideSupabase.storage
               .from('images2')
-          .getPublicUrl(filePath);
+              .getPublicUrl(filePath);
             if (!urlData.publicUrl) {
               console.error('Failed to get public URL for file:', file.name);
               throw new Error(`Failed to get public URL for ${file.name}`);
@@ -902,85 +901,49 @@ export default function TestChat() {
             return urlData.publicUrl;
           })
         );
-
         if (uploadedImageUrls.length === 0 && currentSelectedFiles.length > 0) {
           throw new Error('Failed to get public URLs for any of the uploaded images.');
         }
       }
 
-      // After file upload logic and before prompt construction
-      let webData = {
-        serperArticles: null as any,
-        sources: [] as any[],
-        webCitations: '' as string
-      };
-
-      // Build the image context system prompt for Nemotron
-      let imageContextPrompt = "";
-      if (imageContexts.length > 0) {
-        // Build a system prompt with all image contexts
-        imageContextPrompt = imageContexts
-          .map(ctx => `Image ${ctx.order}: "${ctx.description}"`)
-          .join('\n');
-      }
-
-      // Get enhanced system prompt with better follow-up handling
-      // Build conversation context for better follow-up handling
       const context = buildConversationContext(messages);
       const baseSystemPrompt = SYSTEM_PROMPT;
       const enhancedSystemPrompt = enhanceSystemPrompt(baseSystemPrompt, context, currentInput);
       
-      // Add image context if needed
-      const systemPrompt = imageContextPrompt 
-        ? `${enhancedSystemPrompt}\n\n${imageContextPrompt}`
-        : enhancedSystemPrompt;
-
-      // Format messages for API using the new utility
       const formattedMessages = formatMessagesForApi(
-        systemPrompt,
+        enhancedSystemPrompt,
         messages,
         currentInput,
-        true // include context summary
+        true
       );
 
-      // Add image URLs if needed
+      const queryType = classifyQuery(currentInput) as keyof typeof SCHEMAS;
+      const responseSchema = SCHEMAS[queryType] || SCHEMAS.conversation;
+
+      const apiPayload: any = {
+        messages: formattedMessages,
+        temperature: 0.8,
+        max_tokens: 2048,
+        top_p: 0.95,
+        frequency_penalty: 0.3,
+        presence_penalty: 0.3,
+        ...(uploadedImageUrls.length === 0 && {
+          response_format: {
+            type: "json_object"
+          }
+        })
+      };
+      
       if (uploadedImageUrls.length > 0) {
-        // If there are images, add them to the last user message
         const lastUserMsgIndex = formattedMessages.length - 1;
         if (formattedMessages[lastUserMsgIndex].role === 'user') {
           formattedMessages[lastUserMsgIndex].imageUrls = uploadedImageUrls;
         }
-
-        // Extract descriptions only for Gemma (keep existing logic)
-        const previousImageDescriptions = imageContexts.map(ctx => ctx.description);
-      }
-      
-      const apiPayload: any = {
-        messages: formattedMessages,
-        
-        // Adjust parameters for more detailed responses
-        temperature: 0.8,
-        max_tokens: 2048,
-        top_p: 0.95,
-        frequency_penalty: 0.3,  // Lower to allow more detailed explanations
-        presence_penalty: 0.3,   // Lower to allow more detailed explanations
-      };
-
-      // For Gemma's context, send the previous image descriptions
-      if (uploadedImageUrls.length > 0) {
-        // Extract descriptions only for Gemma
-        const previousImageDescriptions = imageContexts.map(ctx => ctx.description);
-        
         apiPayload.imageUrls = uploadedImageUrls;
+        const previousImageDescriptions = imageContexts.map(ctx => ctx.description);
         apiPayload.previousImageDescriptions = previousImageDescriptions;
-        
-        // If there was no text input but images, we construct a default prompt for the API
-        if (!userMessageContent) {
-          // Find the last user message in the formatted messages
-          const lastUserMsgIndex = formattedMessages.findIndex(
-            msg => msg.role === 'user'
-          );
-          if (lastUserMsgIndex !== -1) {
+        if (!userMessageForDisplay.content || userMessageForDisplay.content === "Image selected for analysis.") {
+          if (formattedMessages[lastUserMsgIndex]) {
             formattedMessages[lastUserMsgIndex].content = "Describe these images.";
           }
         }
@@ -993,22 +956,56 @@ export default function TestChat() {
         signal: aiStreamAbortController.current.signal,
       });
 
-      if (res.body && res.headers.get('content-type')?.includes('text/event-stream')) {
-        const reader = res.body.getReader();
+      if (!res.ok) {
+        const errorData = await res.text();
+        throw new Error(`API request failed with status ${res.status}: ${errorData}`);
+      }
+      
+      if (res.headers.get('content-type')?.includes('application/json') && uploadedImageUrls.length === 0) {
+        const data = await res.json();
+        
+        let structuredData;
+        let rawContent = data.choices?.[0]?.message?.content || data.generated_text || data.error || JSON.stringify(data) || "{}";
+
+        try {
+          if (typeof rawContent === 'string') {
+            structuredData = JSON.parse(rawContent);
+          } else if (typeof rawContent === 'object') {
+            structuredData = rawContent;
+          } else {
+            structuredData = { content: "Error: Unexpected response format from AI." };
+          }
+        } catch (parseError) {
+          console.error("Error parsing structured AI response:", parseError, "Raw content:", rawContent);
+          structuredData = { content: typeof rawContent === 'string' ? rawContent : "Error: AI response was not valid JSON." };
+        }
+
+        const aiMsg: Message = {
+          role: "assistant" as const,
+          content: '',
+          contentType: queryType,
+          structuredContent: structuredData,
+          id: uuidv4(),
+          timestamp: Date.now(),
+          parentId: messageId,
+          webSources: []
+        };
+        setMessages((prev) => [...prev, aiMsg]);
+
+      } else {
+        const reader = res.body!.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
         let done = false;
         let aiMsg: Message = { 
-        role: "assistant" as const,
+          role: "assistant" as const,
           content: "", 
           id: uuidv4(),
           timestamp: Date.now(),
-          parentId: messageId, // Link to the user message
-          imageUrls: uploadedImageUrls, // Associate assistant response with the uploaded images
-          webSources: [] // Initialize webSources
+          parentId: messageId,
+          imageUrls: uploadedImageUrls.length > 0 ? uploadedImageUrls : undefined,
+          webSources: []
         };
-
-        // Add initial empty assistant message to the chat
         setMessages((prev) => [...prev, aiMsg]);
 
         while (!done) {
@@ -1034,7 +1031,7 @@ export default function TestChat() {
                         updatedMessages[lastMsgIndex] = { 
                           ...updatedMessages[lastMsgIndex], 
                           content: aiMsg.content,
-                          webSources: aiMsg.webSources // Preserve web sources
+                          webSources: aiMsg.webSources
                         };
                       }
                       return updatedMessages;
@@ -1047,72 +1044,24 @@ export default function TestChat() {
             }
           }
         }
-        
-        // If this was an image request, store the image description for future context
         if (uploadedImageUrls.length > 0) {
-          const { content } = cleanAIResponse(aiMsg.content);
-          // Store a summary (first 150 chars) of the image description for context
-          const descriptionSummary = content.slice(0, 150) + (content.length > 150 ? '...' : '');
-          
-          // Increment the image counter for each new image
+          const { content: cleanedContent } = cleanAIResponse(aiMsg.content);
+          const descriptionSummary = cleanedContent.slice(0, 150) + (cleanedContent.length > 150 ? '...' : '');
           const newImageCount = imageCounter + uploadedImageUrls.length;
           setImageCounter(newImageCount);
-          
-          // Create new image context entries for each uploaded image
           const newImageContexts = uploadedImageUrls.map((url, index) => ({
-            order: imageCounter + index + 1, // 1-based numbering
+            order: imageCounter + index + 1,
             description: descriptionSummary,
             imageUrl: url,
             timestamp: Date.now()
           }));
-          
-          // Add to existing image contexts, keeping a maximum of 10 for memory management
           setImageContexts(prev => {
             const updated = [...prev, ...newImageContexts];
-            return updated.slice(-10); // Keep the 10 most recent image contexts
-          });
-        }
-        
-      } else {
-        const data = await res.json();
-        const assistantResponseContent = cleanAIResponse(data.choices?.[0]?.message?.content || data.generated_text || data.error || JSON.stringify(data) || "No response");
-        const aiMsg: Message = {
-          role: "assistant" as const,
-          content: assistantResponseContent.content,
-          id: uuidv4(),
-          timestamp: Date.now(),
-          parentId: messageId, // Link to the user message
-          imageUrls: uploadedImageUrls, // Associate assistant response with the uploaded images
-          webSources: [] // Initialize webSources
-        };
-        setMessages((prev) => [...prev, aiMsg]);
-        
-        // If this was an image request, store the image description for future context
-        if (uploadedImageUrls.length > 0) {
-          // Store a summary (first 150 chars) of the image description for context
-          const descriptionSummary = assistantResponseContent.content.slice(0, 150) + 
-            (assistantResponseContent.content.length > 150 ? '...' : '');
-            
-          // Increment the image counter for each new image
-          const newImageCount = imageCounter + uploadedImageUrls.length;
-          setImageCounter(newImageCount);
-          
-          // Create new image context entries for each uploaded image
-          const newImageContexts = uploadedImageUrls.map((url, index) => ({
-            order: imageCounter + index + 1, // 1-based numbering
-            description: descriptionSummary,
-            imageUrl: url,
-            timestamp: Date.now()
-          }));
-          
-          // Add to existing image contexts, keeping a maximum of 10 for memory management
-          setImageContexts(prev => {
-            const updated = [...prev, ...newImageContexts];
-            return updated.slice(-10); // Keep the 10 most recent image contexts
+            return updated.slice(-10);
           });
         }
       }
-      } catch (err: any) {
+    } catch (err: any) {
       if (err.name === 'AbortError') {
         setMessages((prev) => [
           ...prev,
@@ -1121,8 +1070,8 @@ export default function TestChat() {
             content: "[Response stopped by user]", 
             id: uuidv4(),
             timestamp: Date.now(),
-            parentId: messageId, // Link to the user message
-            imageUrls: uploadedImageUrls 
+            parentId: messageId, 
+            imageUrls: uploadedImageUrls.length > 0 ? uploadedImageUrls : undefined
           },
         ]);
       } else {
@@ -1133,14 +1082,14 @@ export default function TestChat() {
             content: "Error: " + (err?.message || String(err)), 
             id: uuidv4(),
             timestamp: Date.now(),
-            parentId: messageId, // Link to the user message
-            imageUrls: uploadedImageUrls 
+            parentId: messageId, 
+            imageUrls: uploadedImageUrls.length > 0 ? uploadedImageUrls : undefined
           },
         ]);
       }
-      } finally {
+    } finally {
       setIsAiResponding(false);
-        setLoading(false);
+      setLoading(false);
       aiStreamAbortController.current = null;
     }
     setImagePreviewUrls([]);
@@ -1395,22 +1344,47 @@ export default function TestChat() {
           <div className="w-full max-w-3xl mx-auto flex flex-col gap-4 items-center justify-center z-10 pt-12 pb-4">
             {messages.map((msg, i) => {
               if (msg.role === "assistant") {
-                const { content, thinkingTime } = cleanAIResponse(msg.content);
-                const cleanContent = content.replace(/<thinking-indicator.*?\/>/g, '');
+                if (msg.contentType && msg.structuredContent) {
+                  return (
+                    <motion.div
+                      key={msg.id + '-structured-' + i}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, ease: "easeOut" }}
+                      className="w-full text-left flex flex-col items-start ai-response-text mb-4"
+                      style={{ color: '#fff', maxWidth: '100%', overflowWrap: 'break-word' }}
+                    >
+                      {msg.webSources && msg.webSources.length > 0 && (
+                        <>
+                          <WebSourcesCarousel sources={msg.webSources} />
+                          <div style={{ height: '1.5rem' }} />
+                        </>
+                      )}
+                      <DynamicResponseRenderer 
+                        data={msg.structuredContent} 
+                        type={msg.contentType} 
+                      />
+                    </motion.div>
+                  );
+                }
+
+                const { content: rawContent, thinkingTime } = cleanAIResponse(msg.content);
+                const cleanContent = rawContent.replace(/<thinking-indicator.*?>\n<\/thinking-indicator>\n|<thinking-indicator.*?\/>/g, '');
+
                 const isStoppedMsg = cleanContent.trim() === '[Response stopped by user]';
                 const processedContent = makeCitationsClickable(cleanContent, msg.webSources || []);
-                if (showPulsingDot) setShowPulsingDot(false);
+                if (showPulsingDot && i === messages.length -1 ) setShowPulsingDot(false);
                 
                 return (
                   <motion.div
-                  key={i}
+                    key={msg.id + '-text-' + i}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, ease: "easeOut" }}
-                    className="w-full markdown-body text-left flex flex-col items-start ai-response-text"
+                    className="w-full markdown-body text-left flex flex-col items-start ai-response-text mb-4"
                     style={{ color: '#fff', maxWidth: '100%', overflowWrap: 'break-word' }}
                   >
-                    {i === messages.length - 1 && showPulsingDot ? (
+                    {i === messages.length - 1 && showPulsingDot && !isStoppedMsg && !msg.structuredContent ? (
                       <PulsingDot isVisible={true} />
                     ) : (
                       <>
@@ -1430,8 +1404,8 @@ export default function TestChat() {
                               markdownComponents={markdownComponents}
                               webSources={msg.webSources || []}
                               revealIntervalMs={220}
-                  />
-                </div>
+                            />
+                          </div>
                         )}
                       </>
                     )}
@@ -1440,7 +1414,7 @@ export default function TestChat() {
               } else if (msg.role === "deep-research") {
                 return (
                   <DeepResearchBlock 
-                    key={i}
+                    key={msg.id + '-dr-' + i}
                     query={msg.content} 
                     conversationHistory={advanceSearchHistory}
                     onClearHistory={clearAdvanceSearchHistory}
@@ -1449,8 +1423,8 @@ export default function TestChat() {
               } else {
                 return (
                 <div
-                  key={i}
-                    className="px-5 py-3 rounded-2xl shadow bg-gray-800 text-white self-end max-w-full text-lg flex flex-col items-end"
+                  key={msg.id + '-user-' + i}
+                  className="px-5 py-3 rounded-2xl shadow bg-gray-800 text-white self-end max-w-full text-lg flex flex-col items-end mb-4"
                   style={{ wordBreak: "break-word" }}
                 >
                     {msg.imageUrls && msg.imageUrls.map((url, index) => (
@@ -1462,7 +1436,7 @@ export default function TestChat() {
                       />
                     ))}
                     <div>{msg.content}</div>
-        </div>
+                </div>
                 );
               }
             })}
