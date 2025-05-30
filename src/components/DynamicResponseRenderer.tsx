@@ -1,6 +1,7 @@
 import { ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 
 interface ResponseRendererProps {
   data: any;
@@ -30,7 +31,45 @@ const markdownComponents = {
 };
 
 function BasicRenderer({ data }: { data: any }): ReactNode {
-  return <ReactMarkdown components={markdownComponents} remarkPlugins={[remarkGfm]}>{data.content || ''}</ReactMarkdown>;
+  // Extract the content string if we have a proper conversation object
+  let contentToRender = '';
+  
+  if (typeof data === 'object' && data !== null) {
+    // If data is an object with a content field, use that
+    if (data.content && typeof data.content === 'string') {
+      contentToRender = data.content;
+    } 
+    // If somehow we got the whole JSON stringified inside the content field
+    else if (typeof data.content === 'string' && data.content.trim().startsWith('{') && data.content.includes('"content":')) {
+      try {
+        const parsedInnerJson = JSON.parse(data.content);
+        if (parsedInnerJson.content) {
+          contentToRender = parsedInnerJson.content;
+        }
+      } catch (e) {
+        // If parsing fails, use the original content
+        contentToRender = data.content || '';
+      }
+    }
+    // Fallback if we have a completely unexpected structure
+    else if (typeof data === 'object') {
+      // Don't stringify the entire object, as this would recreate the problem
+      contentToRender = data.content || "The AI provided a response in an unexpected format.";
+    }
+  } else if (typeof data === 'string') {
+    // If data is just a string, use it directly
+    contentToRender = data;
+  }
+
+  return (
+    <ReactMarkdown 
+      components={markdownComponents} 
+      remarkPlugins={[remarkGfm]}
+      rehypePlugins={[rehypeRaw]}
+    >
+      {contentToRender}
+    </ReactMarkdown>
+  );
 }
 
 function TutorialRenderer({ data }: { data: any }): ReactNode {
