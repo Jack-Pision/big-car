@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import Logo from './Logo.svg';
 
 interface Chat {
   id: string;
@@ -66,7 +65,7 @@ export default function Sidebar({
             <div className="flex flex-col h-full relative z-40">
               {/* Logo at the top, replacing New Chat button */}
               <div className="flex items-center justify-center m-4 mb-2" style={{ height: '40px' }}>
-                <img src={Logo} alt="App Logo" style={{ height: '40px', width: 'auto', display: 'block' }} />
+                <img src="/Logo.svg" alt="App Logo" style={{ height: '40px', width: 'auto', display: 'block' }} />
               </div>
               {/* Search Icon Button */}
               {/*
