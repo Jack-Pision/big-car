@@ -829,18 +829,19 @@ export default function TestChat() {
         { role: "user", content: currentInput, id: uuidv4(), timestamp: Date.now() },
         { role: "deep-research", content: currentInput, researchId, id: uuidv4(), timestamp: Date.now() }
       ]);
-      setInput("");
+      setInput(""); // Always clear input after send
       setImagePreviewUrls([]);
       setSelectedFilesForUpload([]);
+      // Defensive: ensure loading and isAiResponding are false for advance search
+      setLoading(false);
+      setIsAiResponding(false);
       return;
     }
 
-    // This is the existing AI request code which we'll now only run when deep research is not active
     setIsAiResponding(true);
     setLoading(true);
     if (showHeading) setShowHeading(false);
 
-    // Create a new abort controller for this AI response
     aiStreamAbortController.current = new AbortController();
 
     let userMessageContent = currentInput;
@@ -853,18 +854,14 @@ export default function TestChat() {
       timestamp: Date.now()
     };
 
-    // Temp message for image upload indication
     if (currentSelectedFiles.length > 0 && !currentInput) {
-      userMessageForDisplay.content = "Image selected for analysis."; // Placeholder if no text
+      userMessageForDisplay.content = "Image selected for analysis.";
     }
-
-    // Add user message to chat (with or without image previews for user messages)
     if (currentSelectedFiles.length > 0) {
-      // For user message display, use the local preview URLs directly
       userMessageForDisplay.imageUrls = imagePreviewUrls || undefined;
     }
-    // Ensure messages are updated against the correct session ID
     setMessages((prev) => [...prev, userMessageForDisplay]);
+    setInput(""); // Always clear input after send
 
     try {
       if (currentSelectedFiles.length > 0) {
