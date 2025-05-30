@@ -31,34 +31,59 @@ const markdownComponents = {
 };
 
 function BasicRenderer({ data }: { data: any }): ReactNode {
-  // Extract the content string if we have a proper conversation object
+  // Extract the content string from various possible formats
   let contentToRender = '';
   
-  if (typeof data === 'object' && data !== null) {
-    // If data is an object with a content field, use that
+  // Case 1: If data is a string, use it directly
+  if (typeof data === 'string') {
+    contentToRender = data;
+  } 
+  // Case 2: If data is an object with a content field
+  else if (data && typeof data === 'object') {
     if (data.content && typeof data.content === 'string') {
       contentToRender = data.content;
-    } 
-    // If somehow we got the whole JSON stringified inside the content field
-    else if (typeof data.content === 'string' && data.content.trim().startsWith('{') && data.content.includes('"content":')) {
-      try {
-        const parsedInnerJson = JSON.parse(data.content);
-        if (parsedInnerJson.content) {
-          contentToRender = parsedInnerJson.content;
+      
+      // Case 3: Handle nested JSON within content (sometimes happens with AI responses)
+      if (contentToRender.trim().startsWith('{') && contentToRender.trim().endsWith('}')) {
+        try {
+          const nestedData = JSON.parse(contentToRender);
+          if (nestedData && typeof nestedData === 'object') {
+            // If the nested object has a content field, use that
+            if (nestedData.content && typeof nestedData.content === 'string') {
+              contentToRender = nestedData.content;
+            }
+            // Otherwise try to stringify the nested object in a readable way
+            else {
+              contentToRender = "```json\n" + JSON.stringify(nestedData, null, 2) + "\n```";
+            }
+          }
+        } catch (e) {
+          // If parsing fails, keep using the original content
+          console.warn("Failed to parse nested JSON in content:", e);
         }
-      } catch (e) {
-        // If parsing fails, use the original content
-        contentToRender = data.content || '';
       }
     }
-    // Fallback if we have a completely unexpected structure
-    else if (typeof data === 'object') {
-      // Don't stringify the entire object, as this would recreate the problem
-      contentToRender = data.content || "The AI provided a response in an unexpected format.";
+    // Case 4: If no content field but the object is stringifiable
+    else if (Object.keys(data).length > 0) {
+      // Check if we have any string fields we can use
+      const stringFields = Object.entries(data)
+        .filter(([_, value]) => typeof value === 'string' && value.length > 0)
+        .map(([key, value]) => ({ key, value }));
+      
+      if (stringFields.length > 0) {
+        // If there's a single string field with substantial content, use that
+        const mainField = stringFields.find(field => field.value.length > 100) || stringFields[0];
+        contentToRender = mainField.value;
+      } else {
+        // Last resort: format the whole object as a JSON codeblock for visibility
+        contentToRender = "```json\n" + JSON.stringify(data, null, 2) + "\n```";
+      }
     }
-  } else if (typeof data === 'string') {
-    // If data is just a string, use it directly
-    contentToRender = data;
+  }
+  
+  // Fallback for empty content
+  if (!contentToRender.trim()) {
+    contentToRender = "Sorry, I couldn't generate a proper response format.";
   }
 
   return (

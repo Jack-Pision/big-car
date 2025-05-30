@@ -50,29 +50,22 @@ When the user asks a general question or for a simple conversation, provide a di
 *   Using bold (like '**text**') for key terms, emphasis, and labels.
 *   Using bulleted lists (starting with '-' or '*') or numbered lists (starting with '1.') for enumerations, steps, or distinct points.
 *   Using italics (like '*text*' or '_text_') for subtle emphasis or definitions.
-*   Structuring the content logically: start with a brief, engaging introduction, followed by organized sections if the information is complex, and end with a concluding remark or a question to encourage further interaction.
-Optionally, include a 'key_takeaway' field if there is a very important, short summary point.
+*   Structuring the content logically: start with a brief, engaging introduction, followed by organized sections if the information is complex, and end with a concise conclusion if appropriate.
 
-If the query is identified as requiring a specific structured JSON output (e.g., a 'tutorial', 'comparison', or 'informational_summary'), YOU MUST ADHERE STRICTLY to the JSON schema provided later in the prompt for that specific type of output. Populate all fields thoughtfully.
-For all text fields within ANY schema (like 'introduction', 'instruction', 'summary', 'text_content', 'list_items', 'key_value_pairs.value'), write naturally but YOU MUST use Markdown for clarity and structure as detailed above (headings, bolding, lists, italics). Do not fall back to plain text or a different JSON structure in such cases.
-Ensure that any list_items or key_value_pairs entries are distinct, clear, and also utilize Markdown where appropriate for emphasis or clarity within each item/value.
+DO NOT include the JSON structure or field names in your response content.
+DO NOT mention JSON, schema, or formatting in your content.
+DO NOT use triple backticks or code blocks to wrap your response.
 
-For example, if asked "Tell me about AI", for a 'conversation' schema, the 'content' field might look like:
-"## Understanding Artificial Intelligence
+IMPORTANT: Your response MUST be a valid JSON object that follows one of the predefined schemas. Each schema defines a specific structure for a different type of response:
 
-Artificial Intelligence (AI) is a fascinating and rapidly evolving field. Here's a brief overview:
+1. 'conversation' schema: For general questions and conversations, use:
+   { "content": "Your markdown-formatted response here", "key_takeaway": "Optional short takeaway" }
 
-### Key Concepts
-*   **Machine Learning:** Algorithms that allow computers to learn from data.
-*   **Natural Language Processing:** Enabling computers to understand and generate human language.
-*   **Computer Vision:** Allowing machines to interpret and understand visual information.
+2. 'tutorial' schema: For how-to guides and step-by-step instructions
+3. 'comparison' schema: For comparing two or more items
+4. 'informational_summary' schema: For detailed informational summaries
 
-### Impact
-AI is transforming various industries, from healthcare to entertainment.
-
-Let me know if you'd like to dive deeper into any specific aspect!"
-
-Your primary goal is to provide structured, readable, and helpful information formatted with Markdown inside the appropriate JSON fields.`;
+Your goal is to provide helpful responses that are well-formatted, easy to read, and directly address the user's question. Ensure your JSON is properly structured with no syntax errors.`;
 
 const CITATION_INSTRUCTIONS = `IMPORTANT: You are a Deep Research AI assistant. Follow this three-step process:
 
@@ -1008,45 +1001,58 @@ export default function TestChat() {
         let parsedQueryType = queryType; // Use a mutable variable for potentially overriding
 
         try {
+          // Attempt to parse the raw response first
           structuredData = JSON.parse(rawResponseText);
-          // Validate conversation schema specifically
+          
+          // Handle conversation schema validation and fallbacks more robustly
           if (parsedQueryType === 'conversation') {
+            // Direct check for valid conversation schema
             if (!structuredData.content || typeof structuredData.content !== 'string') {
-              console.warn("[handleSend] Conversation schema missing or invalid 'content'. Attempting to find usable text or defaulting to an error message.");
-              // Attempt to find any string-like content if the main 'content' field is missing
-              let foundContent = '';
-              if (typeof structuredData === 'string') { // AI might have just sent a plain string
-                foundContent = structuredData;
-              } else if (typeof structuredData.message === 'string') {
-                foundContent = structuredData.message;
-              } else if (typeof structuredData.response === 'string') {
-                foundContent = structuredData.response;
+              console.warn("[handleSend] Invalid conversation schema. Attempting to extract usable content.");
+              
+              // Case 1: The whole response is just a string
+              if (typeof structuredData === 'string') {
+                structuredData = { content: structuredData };
+              } 
+              // Case 2: The structure has a different field that might contain the content
+              else if (typeof structuredData.message === 'string') {
+                structuredData = { content: structuredData.message };
+              } 
+              else if (typeof structuredData.response === 'string') {
+                structuredData = { content: structuredData.response };
               }
-              // If still no content, or if the AI returned an object that wasn't the expected schema
-              if (!foundContent && typeof structuredData === 'object' && structuredData !== null) {
-                 // Check if it's a simple object that *could* be stringified into something readable,
-                 // but avoid stringifying complex, deeply nested objects that are clearly not conversational.
-                 const keys = Object.keys(structuredData);
-                 if (keys.length <= 3 && Object.values(structuredData).every(v => typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean')) {
-                    foundContent = "AI Response (unexpected format): " + JSON.stringify(structuredData, null, 2);
-                 } else {
-                    foundContent = "I apologize, I couldn't format my response correctly. Please try rephrasing your query.";
-                 }
-              } else if (!foundContent) {
-                 foundContent = "I apologize, I couldn't format my response correctly. Please try rephrasing your query.";
+              // Case 3: The content field contains nested JSON (happens with some AI models)
+              else if (structuredData.content && typeof structuredData.content === 'string' && 
+                       (structuredData.content.trim().startsWith('{') && structuredData.content.trim().endsWith('}'))) {
+                try {
+                  const nestedContent = JSON.parse(structuredData.content);
+                  if (nestedContent.content && typeof nestedContent.content === 'string') {
+                    structuredData = { content: nestedContent.content };
+                  }
+                } catch (nestedParseError) {
+                  // Keep the original content if nested parsing fails
+                }
               }
-              structuredData = { content: foundContent }; // Re-assign to conversation schema
+              // Case 4: If we still don't have valid content, create a friendly error message
+              if (!structuredData.content || typeof structuredData.content !== 'string') {
+                structuredData = { 
+                  content: "I apologize, but I couldn't format my response correctly. Here's what I was trying to say:\n\n" + 
+                           rawResponseText.substring(0, 500) + (rawResponseText.length > 500 ? "..." : "")
+                };
+              }
             }
-          } else if (!SCHEMAS[parsedQueryType]) { // If it's not a known schema type
-            console.warn(`[handleSend] Unknown schema type '${parsedQueryType}' returned by AI. Defaulting to conversation display with raw text.`);
-            structuredData = { content: rawResponseText };
+          } else if (!SCHEMAS[parsedQueryType]) {
+            console.warn(`[handleSend] Unknown schema type '${parsedQueryType}'. Defaulting to conversation display.`);
+            structuredData = { content: "Sorry, I tried to respond with an unsupported format. Here's my response in plain text:\n\n" + rawResponseText };
             parsedQueryType = 'conversation';
           }
         } catch (parseError) {
-          console.error("[handleSend] Error parsing structured AI response:", parseError, "Raw content:", rawResponseText);
-          // If parsing fails, treat the raw text as conversational content
-          structuredData = { content: "I received a response I couldn't fully understand. Here it is: " + rawResponseText };
-          parsedQueryType = 'conversation'; // Fallback to conversation type for display
+          console.error("[handleSend] Error parsing AI response:", parseError, "Raw content:", rawResponseText);
+          // If parsing fails completely, present the raw text as conversational content with an apology
+          structuredData = { 
+            content: "I apologize for the formatting error. Here's my response:\n\n" + rawResponseText 
+          };
+          parsedQueryType = 'conversation';
         }
 
         const aiMsg: Message = {

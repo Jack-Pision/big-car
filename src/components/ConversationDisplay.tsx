@@ -9,31 +9,83 @@ export interface ConversationData {
 }
 
 interface ConversationDisplayProps {
-  data: ConversationData | string;
+  data: ConversationData | string | any; // Accept any type to handle unexpected formats
 }
 
 const ConversationDisplay: React.FC<ConversationDisplayProps> = ({ data }) => {
-  // Handle different data formats to extract content
+  // Extract content from various possible data formats
   let content = '';
   let keyTakeaway = '';
 
+  // Case 1: String content
   if (typeof data === 'string') {
-    // If data is a string, use it directly as content
     content = data;
-  } else if (data && typeof data === 'object') {
-    // If data is an object with expected properties
-    if (typeof data.content === 'string') {
-      content = data.content;
-      
-      // Check if the content might be a stringified JSON
-      if (content.trim().startsWith('{') && content.includes('"content":')) {
-        try {
-          const parsedContent = JSON.parse(content);
-          if (parsedContent.content) {
-            content = parsedContent.content;
+  } 
+  // Case 2: Properly structured object
+  else if (data && typeof data === 'object') {
+    // Try to extract content field
+    if (data.content !== undefined) {
+      if (typeof data.content === 'string') {
+        content = data.content;
+        
+        // Handle nested JSON in content (happens with some AI responses)
+        if (content.trim().startsWith('{') && content.trim().endsWith('}')) {
+          try {
+            const parsedContent = JSON.parse(content);
+            if (parsedContent && typeof parsedContent === 'object') {
+              // If the nested content has a content field, use that
+              if (parsedContent.content && typeof parsedContent.content === 'string') {
+                content = parsedContent.content;
+              }
+              // If it has other text fields, try to extract those
+              else {
+                const textFields = Object.entries(parsedContent)
+                  .filter(([_, v]) => typeof v === 'string' && v.length > 0);
+                
+                if (textFields.length > 0) {
+                  // Pick the longest text field as the main content
+                  const mainField = textFields.reduce((prev, curr) => 
+                    (curr[1] as string).length > (prev[1] as string).length ? curr : prev
+                  );
+                  content = mainField[1] as string;
+                }
+              }
+            }
+          } catch (e) {
+            // If parsing fails, keep original content
+            console.warn("Failed to parse nested JSON in conversation content", e);
           }
+        }
+      } 
+      // Handle non-string content field (convert to string)
+      else if (data.content !== null) {
+        try {
+          content = JSON.stringify(data.content, null, 2);
+          content = "```json\n" + content + "\n```";
         } catch (e) {
-          // If parsing fails, keep using the original content
+          content = "Error: Could not format content";
+        }
+      }
+    }
+    // Case 3: No content field but has text fields we can use
+    else {
+      const textFields = Object.entries(data)
+        .filter(([k, v]) => typeof v === 'string' && v.length > 0 && k !== 'key_takeaway')
+        .map(([k, v]) => ({ key: k, value: v as string }));
+      
+      if (textFields.length > 0) {
+        // Find the most likely content field - longest text
+        const mainField = textFields.reduce((prev, curr) => 
+          curr.value.length > prev.value.length ? curr : prev
+        );
+        content = mainField.value;
+      }
+      // Case 4: No text fields at all - stringify the object
+      else if (Object.keys(data).length > 0) {
+        try {
+          content = "```json\n" + JSON.stringify(data, null, 2) + "\n```";
+        } catch (e) {
+          content = "Error: Could not format data";
         }
       }
     }
@@ -43,9 +95,14 @@ const ConversationDisplay: React.FC<ConversationDisplayProps> = ({ data }) => {
       keyTakeaway = data.key_takeaway;
     }
   }
+  // Case 5: Null or undefined data
+  else {
+    content = "No content provided";
+  }
 
-  if (!content) {
-    return <p className="text-red-500">Error: No conversation content provided.</p>;
+  // Ensure we have something to display
+  if (!content.trim()) {
+    content = "Error: Could not extract content from response";
   }
 
   return (
