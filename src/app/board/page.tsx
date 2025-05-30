@@ -298,16 +298,10 @@ export default function BoardPage() {
         </div>
         <Sidebar
           open={sidebarOpen}
-          chats={[]}
-          activeChatId={null}
+          activeSessionId={null}
           onClose={() => setSidebarOpen(false)}
           onNewChat={() => {}}
-          onSelectChat={() => {}}
-          onEditChat={() => {}}
-          onDeleteChat={() => {}}
-          onClearAll={() => {}}
-          onOpenSearch={() => {}}
-          onNavigateBoard={() => router.push('/board')}
+          onSelectSession={() => {}}
         />
         {/* Main content: Split pane (chat + editor) */}
         <div className="flex-1 h-screen flex flex-col">

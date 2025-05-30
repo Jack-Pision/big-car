@@ -306,21 +306,10 @@ Example of a good list:
       </div>
       <Sidebar
         open={sidebarOpen}
-        chats={chats.map(({ id, title, timestamp, messages }) => ({
-          id,
-          title,
-          timestamp,
-          snippet: messages.length > 0 ? messages[messages.length - 1].content.slice(0, 40) : '',
-        }))}
-        activeChatId={activeChatId}
+        activeSessionId={activeChatId}
         onClose={() => setSidebarOpen(false)}
         onNewChat={handleNewChat}
-        onSelectChat={handleSelectChat}
-        onEditChat={handleEditChat}
-        onDeleteChat={handleDeleteChat}
-        onClearAll={handleClearAll}
-        onOpenSearch={() => setSearchPopupOpen(true)}
-        onNavigateBoard={() => router.push('/board')}
+        onSelectSession={handleSelectChat}
       />
       {/* Welcoming message with fade-out animation */}
       <div className={`w-full flex justify-center items-center relative h-24 md:h-28 transition-opacity duration-500 ${hasUserMessage ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}

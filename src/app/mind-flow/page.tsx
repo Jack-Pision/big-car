@@ -13,16 +13,10 @@ export default function MindFlowPage() {
       {/* Sidebar (visible for navigation) */}
       <Sidebar
         open={sidebarOpen}
-        chats={[]}
-        activeChatId={null}
+        activeSessionId={null}
         onClose={() => setSidebarOpen(false)}
         onNewChat={() => {}}
-        onSelectChat={() => {}}
-        onEditChat={() => {}}
-        onDeleteChat={() => {}}
-        onClearAll={() => {}}
-        onOpenSearch={() => {}}
-        onNavigateBoard={() => router.push('/board')}
+        onSelectSession={() => {}}
       />
       {/* Main content (Mind Flow page) */}
       <div className="flex flex-col items-center justify-center flex-1 p-4">

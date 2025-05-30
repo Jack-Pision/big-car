@@ -61,16 +61,10 @@ export default function VisualLearningPage() {
       </div>
       <Sidebar
         open={sidebarOpen}
-        chats={[]}
-        activeChatId={null}
+        activeSessionId={null}
         onClose={() => setSidebarOpen(false)}
         onNewChat={() => {}}
-        onSelectChat={() => {}}
-        onEditChat={() => {}}
-        onDeleteChat={() => {}}
-        onClearAll={() => {}}
-        onOpenSearch={() => {}}
-        onNavigateBoard={() => router.push('/board')}
+        onSelectSession={() => {}}
       />
       {/* Main content: Movable split layout */}
       <div className="flex-1 h-screen flex flex-col">
