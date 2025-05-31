@@ -1254,6 +1254,7 @@ export default function TestChat() {
           webSources: []
         };
         let aiMsgAdded = false; // Track if we've added the AI message yet
+        let firstChunk = true; // Track if this is the first content chunk
 
         while (!done) {
           const { value, done: doneReading } = await reader.read();
@@ -1270,11 +1271,12 @@ export default function TestChat() {
                   const parsed = JSON.parse(data);
                   const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.message?.content || parsed.choices?.[0]?.text || parsed.content || '';
                   if (delta) {
-                    setIsProcessing(false); // Hide loading dots when we start getting content
                     aiMsg.content += delta;
-                    if (!aiMsgAdded) {
+                    if (firstChunk) {
+                      setIsProcessing(false); // Hide loading dots only when first content chunk is added
                       setMessages((prev) => [...prev, { ...aiMsg }]);
                       aiMsgAdded = true;
+                      firstChunk = false;
                     } else {
                       setMessages((prev) => {
                         const updatedMessages = [...prev];
