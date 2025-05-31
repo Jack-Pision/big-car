@@ -1297,7 +1297,8 @@ export default function TestChat() {
         let didRespond = false;
         let fullText = "";
         chunkBufferRef.current = [];
-        const reader = res.body.getReader();
+        if (!res.body) throw new Error("No response body from AI");
+        const reader = res.body!.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
         let done = false;
