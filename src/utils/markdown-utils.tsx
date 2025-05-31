@@ -14,7 +14,7 @@ export const markdownComponents = {
   ul: (props: React.ComponentProps<'ul'>) => <ul className="markdown-body-ul ml-6 mb-2 list-disc" {...props} />,
   ol: (props: React.ComponentProps<'ol'>) => <ol className="markdown-body-ol ml-6 mb-2 list-decimal" {...props} />,
   li: (props: React.ComponentProps<'li'>) => <li className="markdown-body-li mb-1" {...props} />,
-  p: (props: React.ComponentProps<'p'>) => <p className="my-2" {...props} />,
+  p: (props: React.ComponentProps<'p'>) => <p className="mb-1" {...props} />,
 };
 
 /**
