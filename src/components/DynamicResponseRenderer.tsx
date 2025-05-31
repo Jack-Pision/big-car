@@ -8,6 +8,20 @@ interface ResponseRendererProps {
   type: string;
 }
 
+// Helper function to unescape string literals in content
+const unescapeString = (str: string): string => {
+  if (typeof str !== 'string') return '';
+  
+  // Replace common escape sequences with their actual characters
+  return str
+    .replace(/\\n/g, '\n')
+    .replace(/\\t/g, '\t')
+    .replace(/\\r/g, '\r')
+    .replace(/\\"/g, '"')
+    .replace(/\\'/g, "'")
+    .replace(/\\\\/g, '\\');
+};
+
 const markdownComponents = {
   h1: (props: React.ComponentProps<'h1'>) => (
     <h1
@@ -85,6 +99,9 @@ function BasicRenderer({ data }: { data: any }): ReactNode {
   if (!contentToRender.trim()) {
     contentToRender = "Sorry, I couldn't generate a proper response format.";
   }
+
+  // Unescape string literals in content
+  contentToRender = unescapeString(contentToRender);
 
   return (
     <ReactMarkdown 

@@ -12,6 +12,20 @@ interface ConversationDisplayProps {
   data: ConversationData | string | any; // Accept any type to handle unexpected formats
 }
 
+// Helper function to unescape string literals in content
+const unescapeString = (str: string): string => {
+  if (typeof str !== 'string') return '';
+  
+  // Replace common escape sequences with their actual characters
+  return str
+    .replace(/\\n/g, '\n')
+    .replace(/\\t/g, '\t')
+    .replace(/\\r/g, '\r')
+    .replace(/\\"/g, '"')
+    .replace(/\\'/g, "'")
+    .replace(/\\\\/g, '\\');
+};
+
 const ConversationDisplay: React.FC<ConversationDisplayProps> = ({ data }) => {
   // Extract content from various possible data formats
   let content = '';
@@ -103,6 +117,12 @@ const ConversationDisplay: React.FC<ConversationDisplayProps> = ({ data }) => {
   // Ensure we have something to display
   if (!content.trim()) {
     content = "Error: Could not extract content from response";
+  }
+
+  // Unescape string literals in content and key takeaway
+  content = unescapeString(content);
+  if (keyTakeaway) {
+    keyTakeaway = unescapeString(keyTakeaway);
   }
 
   return (
