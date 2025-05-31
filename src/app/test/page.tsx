@@ -1518,13 +1518,10 @@ export default function TestChat() {
     <>
       <div className="min-h-screen flex flex-col" style={{ background: '#161618' }}>
         <GlobalStyles />
-      {/* Hamburger menu only on the left */}
-      <div className="fixed top-4 left-4 z-50">
+      {/* Hamburger menu and logo container */}
+      <div className="fixed top-4 left-4 z-50 flex items-center gap-3">
         <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
-      </div>
-      {/* Logo on the top right */}
-      <div className="fixed top-4 right-4 z-50">
-        <Image src="/Logo.svg" alt="Logo" width={120} height={120} priority />
+        <Image src="/Logo.svg" alt="Logo" width={90} height={90} priority />
       </div>
 
       {/* Conversation area (scrollable) */}
