@@ -82,6 +82,15 @@ export default function StreamingChat() {
   const chunkBufferRef = useRef<string[]>([]);
   // Add debounce timer ref
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Add state for intelligent content handling
+  const [currentContentMode, setCurrentContentMode] = useState<'text' | 'code' | 'json' | 'table'>('text');
+  const [specialBlocks, setSpecialBlocks] = useState<{
+    start: number;
+    end: number;
+    type: 'code' | 'json' | 'table';
+    complete: boolean;
+  }[]>([]);
 
   // Scroll to bottom on new message
   useEffect(() => {

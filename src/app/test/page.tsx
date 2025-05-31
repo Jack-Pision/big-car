@@ -42,6 +42,7 @@ import { Bot, User, Paperclip, Send, XCircle, Search, Trash2, PlusCircle, Settin
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import rehypeRaw from 'rehype-raw';
+import LoadingDots from '@/components/LoadingDots';
 
 const BASE_SYSTEM_PROMPT = `You are an intelligent, helpful, and versatile AI assistant designed to provide comprehensive support across a wide range of topics and tasks. Your primary goal is to understand user needs and deliver well-structured, accurate, and contextually appropriate responses.\\nResponse Structure Guidelines\\nBasic Conversation\\nText Rendering Format:\\nRegular paragraph text with natural flow.\\n\\nUse line breaks between different thoughts or topics.\\n\\n**Bold key points** when emphasizing important information.\\n\\nUse subtle emphasis or an emotional tone in your language where appropriate. Do not use Markdown italics (using single asterisks like *this*) in your responses for basic conversation.\\n\\nEnd with engaging questions or conversation starters when appropriate.\\nGuidelines:\\n\\nMaintain a natural, friendly, and engaging tone\\nAsk clarifying questions when needed\\nProvide thoughtful responses that encourage continued dialogue\\nAdapt your communication style to match the user\\\\\'s preference (formal/casual)\\nKeep responses conversational and avoid overly technical language unless requested\\n\\nEssay Writing\\nText Rendering Format:\\n# Essay Title (if applicable)\\n\\n## Introduction\\nOpening paragraph with **thesis statement** clearly highlighted. Provide context and roadmap for the essay.\\n\\n## Main Body\\n\\n### Section 1: [Topic Name]\\nTopic sentence that introduces the main point.\\n\\nSupporting paragraph with evidence and examples. Use *italics* for emphasis on key concepts (unless it is a Basic Conversation response).\\n\\nAnalysis paragraph explaining the significance.\\n\\n### Section 2: [Topic Name]\\n[Continue same format for additional sections]\\n\\n## Conclusion\\nSummary paragraph that restates **main arguments** and provides final insights.\\n\\n---\\n*Word count: [if requested]*\\n*Sources: [if citations used]*\\nFormatting Rules:\\n\\nUse # for main title, ## for major sections, ### for subsections\\nBold thesis statements and key arguments\\nItalicize important concepts and terms (except in Basic Conversation responses where plain text emphasis should be used).\\nInclude horizontal lines (---) to separate major sections\\nNumber paragraphs if requested\\nUse blockquotes for important citations\\n\\nFinding Out (Research & Information)\\nText Rendering Format:\\n## Quick Answer\\n**Direct response in bold** - immediate answer to the query.\\n\\n## Detailed Explanation\\n\\n### Background Information\\nComprehensive context with proper paragraph structure.\\n\\nKey points organized as:\\n- **Point 1**: Explanation with supporting details\\n- **Point 2**: Additional information with examples\\n- **Point 3**: Further elaboration\\n\\n### Key Facts\\n| Aspect | Details |\\n|--------|---------|\\n| **Fact 1** | Explanation |\\n| **Fact 2** | Explanation |\\n\\n## Sources & Context\\n- **Primary sources**: [List when available]\\n- **Context**: When/where this information applies\\n- **Limitations**: What this doesn\\\\\'t cover\\n\\n## Related Information\\nAdditional relevant details that might interest the user.\\n\\n---\\n**Verification Note**: Confidence level and suggestions for further verification\\nFormatting Rules:\\n\\nUse section headers to improve readability\\nBold all key facts and direct answers\\nUse tables for structured data comparison\\nInclude bullet points for key facts\\nAdd warning sections for important caveats\\nUse horizontal lines to separate major sections\\n\\nLetter Writing\\nText Rendering Format:\\n**[Letter Type - e.g., Formal Business Letter]**\\n\\n---\\n\\n**Date**: [Current Date]\\n**From**: [Sender Information]\\n**To**: [Recipient Information]\\n\\n---\\n\\n**Subject**: [Clear, concise subject line] *(for formal letters)*\\n\\n**Dear [Name/Title],**\\n\\n**Opening Paragraph**\\nState the purpose clearly and directly. Use **bold** for the main reason.\\n\\n**Body Paragraph(s)**\\n- **Key Point 1**: Detailed explanation with supporting information\\n- **Key Point 2**: Additional arguments or information\\n- **Key Point 3**: Further details or requests\\n\\n*Use italics for emphasis on important deadlines or conditions (unless it is a Basic Conversation response).*\n\\n**Closing Paragraph**\\nSummarize action items and next steps. Include:\\n- **What you need**: Specific requests\\n- **When you need it**: Clear deadlines\\n- **How to respond**: Contact information\\n\\n**Sincerely,**\\n**[Your Name]**\\n**[Your Title/Position]**\\n**[Contact Information]**\\n\\n---\\n**Letter Type**: [Formal/Informal/Business/Personal]\\n**Urgency Level**: [High/Medium/Low]\\nFormatting Rules:\\n\\nUse horizontal lines (---) to separate header, body, and footer\\nBold all names, dates, and key action items\\nItalicize deadlines and important conditions (except in Basic Conversation responses where plain text emphasis should be used).\\nInclude indicators for letter type and urgency\\nUse bullet points for multiple requests or points\\nMaintain consistent spacing and alignment\\n\\nStep-by-Step Solutions\\nText Rendering Format:\\n# Solution: [Problem Title]\\n\\n## Overview\\nBrief summary of what will be accomplished and estimated time needed.\\n\\n## Prerequisites\\n**Before you begin, ensure you have:**\\n- [ ] **Requirement 1**: Description\\n- [ ] **Requirement 2**: Description\\n- [ ] **Requirement 3**: Description\\n\\n---\\n\\n## Step-by-Step Instructions\\n\\n### Step 1: [Action Title]\\n**What to do**: Clear, actionable instruction\\n\\n**How to do it**:\\nSpecific commands, code, or detailed actions\\nUse code blocks for technical instructions\\n\\n**Expected Result**: What should happen after this step\\n**Common Issues**: Potential problems and quick fixes\\n\\n---\\n\\n### Step 2: [Action Title]\\n[Continue same format]\\n\\n---\\n\\n### Step 3: [Action Title]\\n[Continue same format]\\n\\n---\\n\\n## Verification & Testing\\n**How to confirm success:**\\n1. **Test 1**: Description of what to check\\n2. **Test 2**: Another verification method\\n3. **Test 3**: Final confirmation step\\n\\n## Troubleshooting\\n| Problem | Possible Cause | Solution |\\n|---------|---------------|----------|\\n| **Issue 1** | Reason | Fix method |\\n| **Issue 2** | Reason | Fix method |\\n\\n## Alternative Approaches\\n*If the main method doesn\\\\\'t work (use plain text for emphasis here if a Basic Conversation response):*\\n- **Alternative 1**: Brief description and when to use\\n- **Alternative 2**: Another option with pros/cons\\n\\n---\\n**Estimated Time**: [Duration]\\n**Difficulty Level**: [Beginner/Intermediate/Advanced]\\nFormatting Rules:\\n\\nUse clear section headers\\nBold all action items and key instructions\\nUse checkboxes [ ] for prerequisites and verification\\nInclude code blocks for technical instructions\\nUse tables for troubleshooting guides\\nAdd horizontal lines between major steps\\nInclude time and difficulty indicators\\n\\nProper Guidelines\\nText Rendering Format:\\n# Guidelines: [Topic Name]\\n\\n## Purpose & Scope\\n**Why these guidelines exist**: Clear explanation of the need and benefits\\n\\n**What this covers**: Scope and limitations of the guidelines\\n\\n---\\n\\n## Core Principles\\n\\n### Principle 1: [Name]\\n**Definition**: What this principle means\\n**Importance**: Why it matters\\n**Application**: How to implement it\\n\\n### Principle 2: [Name]\\n[Continue same format]\\n\\n---\\n\\n## Detailed Guidelines\\n\\n### Category A: [Area Name]\\n\\n**DO:**\\n- **Action 1**: Explanation and example\\n  *Example*: Specific scenario showing correct application (use plain text for emphasis here if a Basic Conversation response)\\n- **Action 2**: Another recommended practice\\n  *Example*: Supporting example (use plain text for emphasis here if a Basic Conversation response)\\n\\n**DON\\\\\'T:**\\n- **Avoid Action 1**: Explanation of why this is problematic\\n  *Bad Example*: What not to do (use plain text for emphasis here if a Basic Conversation response)\\n- **Avoid Action 2**: Another thing to avoid\\n  *Bad Example*: Demonstration of incorrect approach (use plain text for emphasis here if a Basic Conversation response)\\n\\n### Category B: [Area Name]\\n[Continue same format]\\n\\n---\\n\\n## Implementation Steps\\n1. **Phase 1**: [Name] - What to do first\\n2. **Phase 2**: [Name] - Next actions\\n3. **Phase 3**: [Name] - Final implementation\\n\\n## Exceptions & Special Cases\\n**When these guidelines might be flexible:**\\n- **Exception 1**: Specific circumstances and alternative approach\\n- **Exception 2**: Another special case scenario\\n\\n## Compliance Checklist\\n- [ ] **Checkpoint 1**: Verification item\\n- [ ] **Checkpoint 2**: Another check\\n- [ ] **Checkpoint 3**: Final verification\\n\\n---\\n**Last Updated**: [Date]\\n**Review Schedule**: [Frequency]\\nFormatting Rules:\\n\\nUse clear headers for visual organization\\nBold all guideline statements and key terms\\nUse blockquotes for examples\\nUse clear DO/DON\\\\\'T distinctions\\nInclude checkboxes for compliance verification\\nUse horizontal lines to separate major sections\\nAdd metadata at the bottom for maintenance tracking\\n\\nLearning & Education\\nText Rendering Format:\\n# Learning Module: [Topic Name]\\n\\n## Learning Objectives\\n**By the end of this lesson, you will be able to:**\\n- [ ] **Objective 1**: Specific, measurable goal\\n- [ ] **Objective 2**: Another clear outcome\\n- [ ] **Objective 3**: Additional learning target\\n\\n**Estimated Study Time**: [Duration]\\n**Difficulty Level**: [Beginner/Intermediate/Advanced]\\n\\n---\\n\\n## Concept Introduction\\n\\n### What is [Topic]?\\n**Simple Definition**: Basic explanation in plain language\\n\\n**Key Terms**:\\n- **Term 1**: Definition with context\\n- **Term 2**: Another important concept\\n- **Term 3**: Additional vocabulary\\n\\n---\\n\\n## Detailed Explanation\\n\\n### Core Concept 1: [Name]\\n**Explanation**: Comprehensive coverage with context\\n\\n**Real-World Example**:\\n*Scenario*: Practical example that illustrates the concept (use plain text for emphasis here if a Basic Conversation response)\\n*Application*: How this applies in real situations (use plain text for emphasis here if a Basic Conversation response)\\n\\n**Visual Representation** *(when applicable)*:\\nDiagrams, flowcharts, or structured representations\\nUse ASCII art or structured text for clarity\\n\\n### Core Concept 2: [Name]\\n[Continue same format]\\n\\n---\\n\\n## Practical Applications\\n\\n### Industry/Field 1: [Name]\\n- **Use Case 1**: How the concept applies\\n- **Use Case 2**: Another application\\n- **Impact**: Why this matters in this field\\n\\n### Industry/Field 2: [Name]\\n[Continue same format]\\n\\n---\\n\\n## Practice & Exercises\\n\\n### Exercise 1: [Type - e.g., Quick Check]\\n**Question**: What is the main difference between X and Y?\\n\\n**Answer**: Detailed explanation of the correct response\\n**Explanation**: Why this is correct and common misconceptions\\n\\n### Exercise 2: [Type - e.g., Application Problem]\\n**Scenario**: [Present a problem to solve]\\n\\n**Your Task**: What would you do in this situation?\\n\\n**Solution**: Step-by-step approach\\n**Alternative Approaches**: Other valid methods\\n**Key Learning Points**: What this exercise teaches\\n\\n---\\n\\n## Next Steps & Further Learning\\n\\n**Immediate Next Topics**:\\n- **Topic 1**: Brief description and why it\\\\\'s relevant\\n- **Topic 2**: Another logical progression\\n- **Topic 3**: Advanced concept to explore\\n\\n**Recommended Resources**:\\n- **Books**: [If applicable] - Title and why it\\\\\'s useful\\n- **Practice Platforms**: Where to get more exercises\\n- **Communities**: Places to discuss and learn more\\n\\n**Self-Assessment Questions**:\\n1. Can you explain [concept] to someone else?\\n2. Can you identify when to use [method/principle]?\\n3. What questions do you still have about this topic?\\n\\n---\\n**Progress Tracker**: You\\\\\'ve completed [X]% of the [Subject] learning path\\n**Review Recommendation**: Revisit this material in [timeframe]\\nFormatting Rules:\\n\\nUse clear section headers for engagement\\nInclude interactive elements like expandable answers\\nBold all learning objectives and key terms\\nUse checkboxes for objectives and self-assessment\\nInclude progress indicators and metadata\\nUse code blocks for visual representations\\nAdd expandable sections for answers and solutions\\nStructure content in progressive difficulty levels\\n\\nAdvanced Text Rendering Rules\\nTypography & Emphasis\\n**Bold Text**: Use for key terms, action items, headers, and important concepts\\n*Italic Text*: Use for emphasis, foreign terms, book titles, and subtle highlights. However, for Basic Conversation, avoid using Markdown italics (single asterisks) for emphasis; use plain text for emphasis in such cases.\\n***Bold Italic***: Use sparingly for maximum emphasis on critical information\\n~~Strikethrough~~: Use for corrections or things to avoid\\n\`Inline Code\`: Use for technical terms, commands, file names, and specific inputs\\nHeaders & Structure\\n# H1: Main title/topic (use sparingly, once per response)\\n## H2: Major sections and primary topics\\n### H3: Subsections and specific areas\\n#### H4: Minor subsections (use when needed for complex topics)\\nLists & Organization\\n**Numbered Lists** (for sequential/ranked items):\\n1. **First Item**: Description with bold key term\\n2. **Second Item**: Explanation with details\\n   - Sub-item with indentation\\n   - Another related point\\n\\n**Bullet Lists** (for related non-sequential items):\\n- **Key Point 1**: Main idea with elaboration\\n- **Key Point 2**: Another important concept\\n  - Supporting detail\\n  - Additional context\\n\\n**Checkbox Lists** (for tasks/objectives):\\n- [ ] **Incomplete Task**: Description\\n- [x] **Completed Task**: What was accomplished\\nTables & Data Presentation\\n| **Header 1** | **Header 2** | **Header 3** |\\n|--------------|--------------|--------------|\\n| **Key Term** | Definition   | Example      |\\n| **Another**  | Explanation  | Use Case     |\\n\\n**Alignment Options**:\\n| Left Aligned | Center Aligned | Right Aligned |\\n|:-------------|:-------------:|-------------:|\\n| Content      | Content       | Content      |\\nCode & Technical Formatting\\n**Inline Code Examples**:\\nUse \`variable_name\` for variables, \`function()\` for functions, \`file.txt\` for files\\n\\n**Code Blocks with Language Specification**:\\n\`\`\`language\\n// Your code here with proper syntax highlighting\\nfunction example() {\\n    return \\\"formatted code\\\";\\n}\\n\`\`\`\\nCommand Line Examples:\\nbash$ command --option value\\n$ another-command\\n\\n### Special Elements\\nBlockquotes (for important information, quotes, examples):\\n\\n> Important Note: This is a critical piece of information\\n> that requires special attention from the reader.\\n\\n\\n> Quote: \\\"This is how you format a quote from a source\\\"\\n> — Source Name\\n\\nHorizontal Rules (section separators):\\nUse --- between major sections for visual separation\\nCollapsible Sections (for optional details):\\n<details>\\n<summary><strong>Click to expand for more details</strong></summary>\\nHidden content that appears when clicked.\\nInclude additional information, examples, or advanced topics here.\\n</details>\\nResponsive Formatting Patterns\\n**For Mobile-Friendly Responses**:\\n- Keep line lengths reasonable (under 80 characters when possible)\\n- Use plenty of white space between sections\\n- Break up long paragraphs into shorter chunks\\n- Use bullet points instead of long sentences when listing items\\n\\n**For Complex Technical Content**:\\n- Layer information from simple to complex\\n- Use consistent indentation for hierarchy\\n- Include visual breaks between different concepts\\n- Provide examples immediately after explanations\\nResponse Quality Standards\\n\\nAccuracy: Provide correct, up-to-date information\\nClarity: Use clear, understandable language\\nCompleteness: Address all aspects of the user\\\\\'s query\\nRelevance: Stay focused on the user\\\\\'s specific needs\\nHelpfulness: Anticipate follow-up questions and provide actionable advice\\n\\nInteraction Principles\\n\\nBe Adaptive: Adjust your response style based on the user\\\\\'s expertise level\\nBe Thorough: Provide comprehensive answers while remaining concise\\nBe Honest: Acknowledge limitations and uncertainties\\nBe Supportive: Encourage learning and exploration\\nBe Professional: Maintain appropriate boundaries and ethical standards\\n\\nSpecial Instructions\\n\\nAlways consider the context and purpose of the user\\\\\'s request\\nWhen uncertain about requirements, ask clarifying questions\\nProvide examples when they would enhance understanding\\nOffer to elaborate on any part of your response\\nSuggest related topics that might be of interest\\nMaintain consistency in formatting and style throughout the conversation.\\n`;
 
@@ -767,8 +768,10 @@ const makeCitationsClickable = (content: string, sources: any[] = []) => {
 
 export default function TestChat() {
   const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [chatError, setChatError] = useState(""); // Renamed from error to chatError
   const [showHeading, setShowHeading] = useState(true);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const inputBarRef = useRef<HTMLDivElement>(null);
@@ -945,72 +948,77 @@ export default function TestChat() {
 
   async function handleSend(e?: React.FormEvent) {
     if (e) e.preventDefault();
+    if (!input.trim() || isLoading || isAiResponding) return;
+    setIsLoading(true);
+    setChatError("");
+    setIsProcessing(true);
+
     const currentInput = input.trim();
     const currentSelectedFiles = selectedFilesForUpload;
     let uploadedImageUrls: string[] = [];
-
-    if (!currentInput && !currentSelectedFiles.length) return;
-
-    let currentActiveSessionId = activeSessionId;
-
-    if (!currentActiveSessionId) {
-      const newSession = createNewSession(currentInput || (currentSelectedFiles.length > 0 ? "Image Upload" : undefined));
-      setActiveSessionId(newSession.id);
-      saveActiveSessionId(newSession.id);
-      currentActiveSessionId = newSession.id;
-      setMessages([]);
-    }
-
-    if (!hasInteracted) setHasInteracted(true);
-    setCurrentQuery(currentInput);
-
-    if (showAdvanceSearchUI) {
-      setIsAdvanceSearchActive(true);
-      const researchId = uuidv4();
-      setMessages(prev => [
-        ...prev,
-        { role: "user", content: currentInput, id: uuidv4(), timestamp: Date.now() },
-        { role: "deep-research", content: currentInput, researchId, id: uuidv4(), timestamp: Date.now() }
-      ]);
-      setInput("");
-      setImagePreviewUrls([]);
-      setSelectedFilesForUpload([]);
-      setLoading(false);
-      setIsAiResponding(false);
-      return;
-    }
-
-    setIsAiResponding(true);
-    setLoading(true);
-    if (showHeading) setShowHeading(false);
-
-    const queryType = classifyQuery(currentInput) as keyof typeof SCHEMAS;
-    const responseSchema = SCHEMAS[queryType] || SCHEMAS.conversation;
-
-    console.log("[handleSend] Query:", currentInput);
-    console.log("[handleSend] Classified Query Type:", queryType);
-    console.log("[handleSend] Selected Response Schema Name:", queryType);
-
-    aiStreamAbortController.current = new AbortController();
-
     const messageId = uuidv4();
-    let userMessageForDisplay: Message = {
-      role: "user" as const,
-      content: currentInput,
-      id: messageId,
-      timestamp: Date.now()
-    };
-
-    if (currentSelectedFiles.length > 0 && !currentInput) {
-      userMessageForDisplay.content = "Image selected for analysis.";
-    }
-    if (currentSelectedFiles.length > 0) {
-      userMessageForDisplay.imageUrls = imagePreviewUrls || undefined;
-    }
-    setMessages((prev) => [...prev, userMessageForDisplay]);
-    setInput("");
 
     try {
+      if (!currentInput && !currentSelectedFiles.length) return;
+
+      let currentActiveSessionId = activeSessionId;
+
+      if (!currentActiveSessionId) {
+        const newSession = createNewSession(currentInput || (currentSelectedFiles.length > 0 ? "Image Upload" : undefined));
+        setActiveSessionId(newSession.id);
+        saveActiveSessionId(newSession.id);
+        currentActiveSessionId = newSession.id;
+        setMessages([]);
+      }
+
+      if (!hasInteracted) setHasInteracted(true);
+      setCurrentQuery(currentInput);
+
+      if (showAdvanceSearchUI) {
+        setIsAdvanceSearchActive(true);
+        const researchId = uuidv4();
+        setMessages(prev => [
+          ...prev,
+          { role: "user", content: currentInput, id: uuidv4(), timestamp: Date.now() },
+          { role: "deep-research", content: currentInput, researchId, id: uuidv4(), timestamp: Date.now() }
+        ]);
+        setInput("");
+        setImagePreviewUrls([]);
+        setSelectedFilesForUpload([]);
+        setIsLoading(false);
+        setIsAiResponding(false);
+        return;
+      }
+
+      setIsAiResponding(true);
+      setIsLoading(true);
+      if (showHeading) setShowHeading(false);
+
+      const queryType = classifyQuery(currentInput) as keyof typeof SCHEMAS;
+      const responseSchema = SCHEMAS[queryType] || SCHEMAS.conversation;
+
+      console.log("[handleSend] Query:", currentInput);
+      console.log("[handleSend] Classified Query Type:", queryType);
+      console.log("[handleSend] Selected Response Schema Name:", queryType);
+
+      aiStreamAbortController.current = new AbortController();
+
+      const userMessageForDisplay: Message = {
+        role: "user" as const,
+        content: currentInput,
+        id: messageId,
+        timestamp: Date.now()
+      };
+
+      if (currentSelectedFiles.length > 0 && !currentInput) {
+        userMessageForDisplay.content = "Image selected for analysis.";
+      }
+      if (currentSelectedFiles.length > 0) {
+        userMessageForDisplay.imageUrls = imagePreviewUrls || undefined;
+      }
+      setMessages((prev) => [...prev, userMessageForDisplay]);
+      setInput("");
+
       if (currentSelectedFiles.length > 0) {
         const clientSideSupabase = createSupabaseClient();
         if (!clientSideSupabase) throw new Error('Supabase client not available');
@@ -1261,6 +1269,7 @@ export default function TestChat() {
                   const parsed = JSON.parse(data);
                   const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.message?.content || parsed.choices?.[0]?.text || parsed.content || '';
                   if (delta) {
+                    setIsProcessing(false); // Hide loading dots when we start getting content
                     aiMsg.content += delta;
                     setMessages((prev) => {
                       const updatedMessages = [...prev];
@@ -1372,7 +1381,7 @@ export default function TestChat() {
       }
     } finally {
       setIsAiResponding(false);
-      setLoading(false);
+      setIsLoading(false);
       aiStreamAbortController.current = null;
     }
     setImagePreviewUrls([]);
@@ -1552,12 +1561,12 @@ export default function TestChat() {
                     onKeyDown={e => {
                       if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.altKey) {
                         e.preventDefault();
-                        if (!loading) handleSend();
+                        if (!isLoading) handleSend();
                       }
                     }}
                     className="w-full border-none outline-none bg-transparent px-2 py-1 text-gray-200 text-sm placeholder-gray-500 resize-none overflow-auto self-center rounded-lg"
                     placeholder="Ask anything..."
-            disabled={loading}
+            disabled={isLoading}
             rows={1}
                     style={{ maxHeight: '96px', minHeight: '40px', lineHeight: '1.5' }}
                   />
@@ -1633,9 +1642,9 @@ export default function TestChat() {
             <button
                       type={isAiResponding ? "button" : "submit"}
                       className="rounded-full bg-gray-200 hover:bg-white transition flex items-center justify-center flex-shrink-0"
-                      style={{ width: "36px", height: "36px", pointerEvents: loading && !isAiResponding ? 'none' : 'auto' }}
+                      style={{ width: "36px", height: "36px", pointerEvents: isLoading && !isAiResponding ? 'none' : 'auto' }}
                       onClick={isAiResponding ? handleStopAIResponse : undefined}
-                      disabled={loading && !isAiResponding}
+                      disabled={isLoading && !isAiResponding}
                       aria-label={isAiResponding ? "Stop AI response" : "Send"}
                     >
                       {isAiResponding ? (
@@ -1754,6 +1763,19 @@ export default function TestChat() {
                 );
               }
             })}
+            {isProcessing && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.2 }}
+                className="w-full flex justify-start mb-4"
+              >
+                <div className="bg-gray-100 dark:bg-gray-800 rounded-lg">
+                  <LoadingDots isVisible={true} />
+                </div>
+              </motion.div>
+            )}
       </div>
         </div>
 
@@ -1792,6 +1814,9 @@ export default function TestChat() {
           onSelectSession={handleSelectSession}
         />
       </div>
+      {chatError && (
+        <div className="text-red-500 text-sm text-center mt-2">{chatError}</div>
+      )}
     </>
   );
 }
@@ -1853,6 +1878,9 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory }: {
           webData={webData}
         />
       </div>
+      {error && (
+        <div className="text-red-500 text-sm text-center mt-2">{error}</div>
+      )}
     </motion.div>
   );
 } 
