@@ -92,6 +92,10 @@ export default function StreamingChat() {
     complete: boolean;
   }[]>([]);
 
+  // Add new state for controlling the Stop button
+  const [isStopActive, setIsStopActive] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   // Scroll to bottom on new message
   useEffect(() => {
     chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior: 'smooth' });
@@ -348,6 +352,10 @@ export default function StreamingChat() {
     let fullText = "";
     let timeoutId: NodeJS.Timeout | null = null;
     
+    // Create new abort controller
+    abortControllerRef.current = new AbortController();
+    setIsStopActive(true);
+    
     // Reset chunk buffer
     chunkBufferRef.current = [];
     
@@ -410,6 +418,7 @@ Example of a good list:
           "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
+        signal: abortControllerRef.current.signal // Add abort signal
       });
       if (!res.body) throw new Error("No response body from AI");
       const reader = res.body.getReader();
@@ -487,14 +496,34 @@ Example of a good list:
         setMessages((prev) => prev.slice(0, -1));
       }
     } catch (err: any) {
-      setError("Failed to connect to AI. " + (typeof err === "object" && err && "message" in err ? (err as any).message : String(err)));
+      if (err.name === 'AbortError') {
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: "[Response stopped by user]",
+            id: uuidv4(),
+            timestamp: Date.now()
+          }
+        ]);
+      } else {
+        setError("Failed to connect to AI. " + (typeof err === "object" && err && "message" in err ? (err as any).message : String(err)));
+      }
       setIsLoading(false);
       setAiTyping(false);
       setStreamedContent("");
       setDisplayed("");
-      setMessages((prev) => prev.slice(0, -1));
     } finally {
       if (timeoutId) clearTimeout(timeoutId);
+      setIsStopActive(false);
+      abortControllerRef.current = null;
+    }
+  }
+
+  // Add stop handler function
+  function handleStop() {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
     }
   }
 
@@ -594,14 +623,23 @@ Example of a good list:
               if (e.key === 'Enter' && !e.shiftKey) handleSend();
             }}
           />
-          {/* Send button */}
+          {/* Send/Stop button */}
           <button
-            type="submit"
-            aria-label="Send"
+            type={isStopActive ? "button" : "submit"}
+            aria-label={isStopActive ? "Stop AI response" : "Send"}
             className="w-10 h-10 flex items-center justify-center rounded-full bg-black text-white hover:bg-neutral-800 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/30"
-            disabled={isLoading || aiTyping || !input.trim()}
+            disabled={!isStopActive && (isLoading || aiTyping || !input.trim())}
+            onClick={isStopActive ? handleStop : undefined}
           >
-            <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            {isStopActive ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor" />
+              </svg>
+            ) : (
+              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+              </svg>
+            )}
           </button>
         </div>
       </form>
