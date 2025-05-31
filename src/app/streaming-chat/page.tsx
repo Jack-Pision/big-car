@@ -82,6 +82,15 @@ export default function StreamingChat() {
   const chunkBufferRef = useRef<string[]>([]);
   // Add debounce timer ref
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Add state for intelligent content handling
+  const [currentContentMode, setCurrentContentMode] = useState<'text' | 'code' | 'json' | 'table'>('text');
+  const [specialBlocks, setSpecialBlocks] = useState<{
+    start: number;
+    end: number;
+    type: 'code' | 'json' | 'table';
+    complete: boolean;
+  }[]>([]);
 
   // Scroll to bottom on new message
   useEffect(() => {
@@ -519,7 +528,7 @@ Example of a good list:
                   <div className="whitespace-pre-wrap break-words">{message.content}</div>
                 ) : (
                   <div className="w-full markdown-body text-left flex flex-col items-start ai-response-text">
-                    <MarkdownRenderer 
+                    <IntelligentMarkdown 
                       content={message.content} 
                       userQuery={message.userQuery || ''} 
                       context={queryContext}
@@ -535,7 +544,7 @@ Example of a good list:
             <div className={`message ai-message transition-opacity duration-150 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
               <div className="message-content px-4 py-3 rounded-xl max-w-full overflow-hidden bg-gray-100 dark:bg-gray-800">
                 <div className="w-full markdown-body text-left flex flex-col items-start ai-response-text">
-                  <MarkdownRenderer 
+                  <IntelligentMarkdown 
                     content={displayed} 
                     userQuery={currentUserQuery} 
                     context={queryContext}
