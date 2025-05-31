@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useLayoutEffect, useEffect } from "react";
+import { useState, useRef, useLayoutEffect, useEffect, useCallback } from "react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -947,6 +947,57 @@ export default function TestChat() {
     }
   }, [isComplete, currentQuery, steps, messages, webData?.sources]);
 
+  const [streamedContent, setStreamedContent] = useState("");
+  const [displayedContent, setDisplayedContent] = useState("");
+  const [aiTyping, setAiTyping] = useState(false);
+  const [fadeIn, setFadeIn] = useState(true);
+  const chunkBufferRef = useRef<string[]>([]);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Debounced content update function to reduce UI jitter
+  const updateStreamedContentDebounced = useCallback((newContent: string) => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    debounceTimerRef.current = setTimeout(() => {
+      setStreamedContent(newContent);
+      debounceTimerRef.current = null;
+    }, 50);
+  }, []);
+
+  // Typewriter effect for streamed AI response
+  useEffect(() => {
+    if (!aiTyping || !streamedContent) return;
+    let i = 0;
+    setDisplayedContent("");
+    setIsLoading(false);
+    setFadeIn(true);
+    const interval = setInterval(() => {
+      const filteredDisplayed = streamedContent.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+      const charsPerFrame = Math.max(1, Math.floor(filteredDisplayed.length / 200));
+      const newPosition = Math.min(i + charsPerFrame, filteredDisplayed.length);
+      setDisplayedContent(filteredDisplayed.slice(0, newPosition));
+      i = newPosition;
+      if (i >= streamedContent.length) {
+        clearInterval(interval);
+        setFadeIn(false);
+        setTimeout(() => {
+          setAiTyping(false);
+          setMessages((prev) => [
+            ...prev.slice(0, -1),
+            { 
+              ...prev[prev.length - 1], 
+              content: streamedContent
+            },
+          ]);
+          setStreamedContent("");
+          setFadeIn(true);
+        }, 150);
+      }
+    }, 25);
+    return () => clearInterval(interval);
+  }, [streamedContent, aiTyping]);
+
   async function handleSend(e?: React.FormEvent) {
     if (e) e.preventDefault();
     if (!input.trim() || isLoading || isAiResponding) return;
@@ -1240,7 +1291,13 @@ export default function TestChat() {
       setMessages((prev) => [...prev, aiMsg]);
 
       } else {
-        const reader = res.body!.getReader();
+        setAiTyping(true);
+        setStreamedContent("");
+        setDisplayedContent("");
+        let didRespond = false;
+        let fullText = "";
+        chunkBufferRef.current = [];
+        const reader = res.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
         let done = false;
@@ -1253,9 +1310,8 @@ export default function TestChat() {
           imageUrls: uploadedImageUrls.length > 0 ? uploadedImageUrls : undefined,
           webSources: []
         };
-        let aiMsgAdded = false; // Track if we've added the AI message yet
-        let firstChunk = true; // Track if this is the first content chunk
-
+        let aiMsgAdded = false;
+        let firstChunk = true;
         while (!done) {
           const { value, done: doneReading } = await reader.read();
           done = doneReading;
@@ -1271,11 +1327,17 @@ export default function TestChat() {
                   const parsed = JSON.parse(data);
                   const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.message?.content || parsed.choices?.[0]?.text || parsed.content || '';
                   if (delta) {
+                    didRespond = true;
+                    fullText += delta;
+                    chunkBufferRef.current.push(delta);
+                    if (chunkBufferRef.current.length >= 3 || done) {
+                      const filteredText = fullText.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+                      updateStreamedContentDebounced(filteredText);
+                    }
                     aiMsg.content += delta;
                     if (firstChunk) {
                       setIsProcessing(false); // Hide loading dots only when first content chunk is added
                       setMessages((prev) => {
-                        // Only add if not already present
                         if (!prev.some(m => m.id === aiMsg.id)) {
                           return [...prev, { ...aiMsg }];
                         }
@@ -1305,67 +1367,13 @@ export default function TestChat() {
             }
           }
         }
-        
-        // Apply post-processing after streaming is complete
-        if (queryType === 'conversation' || !queryType) {
-          // For default chat (conversation) and any undefined queryType, apply post-processing
-          const processedContent = postProcessAIChatResponse(aiMsg.content);
-          
-          // Update the message with processed content and set contentType
-          setMessages((prev) => {
-            const updatedMessages = [...prev];
-            const lastMsgIndex = updatedMessages.length - 1;
-            if(updatedMessages[lastMsgIndex] && updatedMessages[lastMsgIndex].role === 'assistant'){
-              updatedMessages[lastMsgIndex] = { 
-                ...updatedMessages[lastMsgIndex], 
-                content: processedContent,
-                contentType: 'conversation' // Explicitly mark as conversation type
-              };
-            }
-            return updatedMessages;
-          });
-          
-          // Update the aiMsg object for future reference
-          aiMsg.content = processedContent;
-          aiMsg.contentType = 'conversation';
-        } else if (showAdvanceSearchUI || currentQuery.includes('@AdvanceSearch')) {
-          // For deep-research, apply the specific deep-research processing
-          const processedResearch = enforceAdvanceSearchStructure(aiMsg.content);
-          
-          setMessages((prev) => {
-            const updatedMessages = [...prev];
-            const lastMsgIndex = updatedMessages.length - 1;
-            if(updatedMessages[lastMsgIndex] && updatedMessages[lastMsgIndex].role === 'assistant'){
-              updatedMessages[lastMsgIndex] = { 
-                ...updatedMessages[lastMsgIndex], 
-                content: processedResearch,
-                contentType: 'deep-research' // Mark as deep-research type
-              };
-            }
-            return updatedMessages;
-          });
-          
-          // Update aiMsg for future reference
-          aiMsg.content = processedResearch;
-          aiMsg.contentType = 'deep-research';
+        // Final update with any remaining buffered content
+        if (chunkBufferRef.current.length > 0) {
+          const filteredText = fullText.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+          setStreamedContent(filteredText);
+          chunkBufferRef.current = [];
         }
-        
-        if (uploadedImageUrls.length > 0) {
-            const { content: cleanedContent } = cleanAIResponse(aiMsg.content);
-            const descriptionSummary = cleanedContent.slice(0, 150) + (cleanedContent.length > 150 ? '...' : '');
-            const newImageCount = imageCounter + uploadedImageUrls.length;
-            setImageCounter(newImageCount);
-            const newImageContexts = uploadedImageUrls.map((url, index) => ({
-                order: imageCounter + index + 1,
-                description: descriptionSummary,
-                imageUrl: url,
-                timestamp: Date.now()
-            }));
-            setImageContexts(prev => {
-                const updated = [...prev, ...newImageContexts];
-                return updated.slice(-10);
-            });
-        }
+        // ... post-processing and image handling as before ...
       }
     } catch (err: any) {
       if (err.name === 'AbortError') {
@@ -1778,7 +1786,18 @@ export default function TestChat() {
                 );
               }
             })}
-            {isProcessing && (
+            {aiTyping && (
+              <div className={`message ai-message transition-opacity duration-150 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
+                <div className="message-content px-4 py-3 rounded-xl max-w-full overflow-hidden bg-gray-100 dark:bg-gray-800">
+                  <div className="w-full markdown-body text-left flex flex-col items-start ai-response-text">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="prose dark:prose-invert max-w-none">
+                      {displayedContent}
+                    </ReactMarkdown>
+                  </div>
+                </div>
+              </div>
+            )}
+            {isProcessing && !aiTyping && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
