@@ -1274,16 +1274,22 @@ export default function TestChat() {
                     aiMsg.content += delta;
                     if (firstChunk) {
                       setIsProcessing(false); // Hide loading dots only when first content chunk is added
-                      setMessages((prev) => [...prev, { ...aiMsg }]);
+                      setMessages((prev) => {
+                        // Only add if not already present
+                        if (!prev.some(m => m.id === aiMsg.id)) {
+                          return [...prev, { ...aiMsg }];
+                        }
+                        return prev;
+                      });
                       aiMsgAdded = true;
                       firstChunk = false;
                     } else {
                       setMessages((prev) => {
                         const updatedMessages = [...prev];
-                        const lastMsgIndex = updatedMessages.length - 1;
-                        if(updatedMessages[lastMsgIndex] && updatedMessages[lastMsgIndex].role === 'assistant'){
-                          updatedMessages[lastMsgIndex] = { 
-                            ...updatedMessages[lastMsgIndex], 
+                        const aiIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
+                        if (aiIndex !== -1) {
+                          updatedMessages[aiIndex] = {
+                            ...updatedMessages[aiIndex],
                             content: aiMsg.content,
                             webSources: aiMsg.webSources
                           };
