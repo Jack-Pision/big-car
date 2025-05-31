@@ -1414,8 +1414,6 @@ export default function TestChat() {
 
       if (uploadedImageUrls.length === 0 && queryType !== 'conversation') {
         turnSpecificSystemPrompt += `\n\nIMPORTANT: For this query, classified as '${queryType}', your entire response MUST be a single JSON object that strictly conforms to the following JSON schema. Do NOT include any text, markdown, or explanations outside of this JSON object. Adhere to all field types and requirements specified in the schema.\nSchema:\n${JSON.stringify(responseSchema, null, 2)}`;
-      } else if (uploadedImageUrls.length === 0 && queryType === 'conversation') {
-        turnSpecificSystemPrompt += `\n\nFor this conversational query, please provide your response as a JSON object conforming to the 'conversation' schema: { "content": "your response text...", "key_takeaway": "optional takeaway..." }. Use Markdown within the 'content' and 'key_takeaway' fields for formatting.`;
       }
 
       console.log("[handleSend] Turn Specific System Prompt Length:", turnSpecificSystemPrompt.length);
@@ -1436,7 +1434,7 @@ export default function TestChat() {
         top_p: 0.9,
         frequency_penalty: 0.2,
         presence_penalty: 0.2,
-        ...(uploadedImageUrls.length === 0 && {
+        ...(uploadedImageUrls.length === 0 && queryType !== 'conversation' && {
           response_format: {
             type: "json_object", 
           }
