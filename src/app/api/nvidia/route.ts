@@ -237,7 +237,7 @@ async function fetchOpenRouterImageAnalysis(
 
 async function fetchNvidiaText(messages: any[], options: any = {}) {
   const payload = {
-    model: 'nvidia/llama-3.1-nemotron-ultra-253b-v1',
+    model: 'deepseek-ai/deepseek-r1',
     messages,
     temperature: options.temperature || 0.6,
     top_p: options.top_p || 0.95,
