@@ -10,6 +10,7 @@ import ReactMarkdown from 'react-markdown';
 import { MarkdownRenderer } from '../../utils/markdown-utils';
 import { QueryContext } from '../../utils/template-utils';
 import IntelligentMarkdown from '../../components/IntelligentMarkdown';
+import React from 'react';
 
 const NVIDIA_API_URL = "/api/nvidia";
 
@@ -49,6 +50,40 @@ const markdownComponents = {
   ol: (props: React.ComponentProps<'ol'>) => <ol className="markdown-body-ol ml-6 mb-2 list-decimal" {...props} />,
   li: (props: React.ComponentProps<'li'>) => <li className="markdown-body-li mb-1" {...props} />,
 };
+
+// Add a simple cache for frequent queries
+const responseCache = new Map<string, string>();
+
+const getCachedResponse = (query: string) => {
+  return responseCache.get(query);
+};
+
+const cacheResponse = (query: string, response: string) => {
+  responseCache.set(query, response);
+};
+
+// Fix MessageComponent to receive queryContext as prop
+const MessageComponent = React.memo(({ message, queryContext }: { message: Message, queryContext: QueryContext }) => {
+  return (
+    <div className={`message ${message.role === 'user' ? 'user-message' : 'ai-message'}`}>
+      <div className={`message-content px-4 py-3 rounded-xl max-w-full overflow-hidden ${
+        message.role === 'user' ? 'ml-auto bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-800'
+      }`}>
+        {message.role === 'user' ? (
+          <div className="whitespace-pre-wrap break-words">{message.content}</div>
+        ) : (
+          <div className="w-full markdown-body text-left flex flex-col items-start ai-response-text">
+            <MarkdownRenderer 
+              content={message.content} 
+              userQuery={message.userQuery || ''} 
+              context={queryContext}
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+});
 
 export default function StreamingChat() {
   const [input, setInput] = useState("");
@@ -111,60 +146,35 @@ export default function StreamingChat() {
   
   // Process streamed content to identify special blocks
   const processStreamedContent = useCallback((content: string) => {
-    if (!content) return content;
+    if (!content) return;
     
-    const blocks = {
-      codeBlocks: [] as {start: number, end: number}[],
-      jsonBlocks: [] as {start: number, end: number}[],
-      tableBlocks: [] as {start: number, end: number}[]
-    };
+    // Process content in larger chunks for better performance
+    const CHUNK_SIZE = 10; // Increased chunk size
+    const chunks = content.match(new RegExp(`.{1,${CHUNK_SIZE}}`, 'g')) || [];
     
-    // Find code blocks
-    let codeBlockStart = -1;
-    const lines = content.split('\n');
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      if (line.trim().startsWith('```')) {
-        if (codeBlockStart === -1) {
-          codeBlockStart = content.indexOf(line);
-        } else {
-          blocks.codeBlocks.push({
-            start: codeBlockStart,
-            end: content.indexOf(line) + line.length
-          });
-          codeBlockStart = -1;
-        }
-      }
-    }
-    
-    // If we have an unclosed code block, don't display it yet
-    if (codeBlockStart !== -1) {
-      blocks.codeBlocks.push({
-        start: codeBlockStart,
-        end: -1 // Mark as incomplete
-      });
-    }
-    
-    // Find potential JSON blocks outside of code blocks
-    const jsonRegex = /[\[{](?:[^[\]{}]|"(?:\\.|[^"\\])*"|\[(?:[^[\]{}]|"(?:\\.|[^"\\])*")*\]|\{(?:[^[\]{}]|"(?:\\.|[^"\\])*")*\})*[\]}]/g;
-    let match;
-    while ((match = jsonRegex.exec(content)) !== null) {
-      // Check if this JSON is inside a code block
-      const isInCodeBlock = blocks.codeBlocks.some(
-        block => match!.index >= block.start && (block.end === -1 || match!.index <= block.end)
-      );
-      
-      if (!isInCodeBlock) {
-        blocks.jsonBlocks.push({
-          start: match.index,
-          end: match.index + match[0].length
+    let currentChunk = 0;
+    const animate = () => {
+      if (currentChunk < chunks.length) {
+        setDisplayed(prev => {
+          const newContent = prev + chunks[currentChunk];
+          // Process special blocks in the new content
+          const codeBlockMatch = newContent.match(/```[\s\S]*?```/g);
+          if (codeBlockMatch) {
+            codeBlockMatch.forEach(block => {
+              handleStreamingBlock({
+                type: 'code',
+                content: block
+              });
+            });
+          }
+          return newContent;
         });
+        currentChunk++;
+        requestAnimationFrame(animate);
       }
-    }
-    
-    setContentBuffers(blocks);
-    return content;
-  }, []);
+    };
+    requestAnimationFrame(animate);
+  }, [displayed]);
   
   useEffect(() => {
     if (!aiTyping) return;
@@ -345,6 +355,19 @@ export default function StreamingChat() {
   }
 
   async function streamAI(msgs: Message[]) {
+    // Check if this is a follow-up question (not the first message)
+    const isFollowUp = msgs.filter(m => m.role === 'user').length > 1;
+    
+    // Check cache first
+    const cacheKey = msgs.map(m => m.content).join('|');
+    const cachedResponse = getCachedResponse(cacheKey);
+    if (cachedResponse) {
+      setStreamedContent(cachedResponse);
+      setDisplayed(cachedResponse);
+      setAiTyping(false);
+      return;
+    }
+
     setAiTyping(true);
     setStreamedContent("");
     setDisplayed("");
@@ -359,44 +382,15 @@ export default function StreamingChat() {
     // Reset chunk buffer
     chunkBufferRef.current = [];
     
-    // Check if this is a follow-up question (not the first message)
-    const isFollowUp = msgs.filter(m => m.role === 'user').length > 1;
-    
-    // Enhanced system prompt with conversation guidelines
-    const systemPrompt = `You are a helpful study tutor. ${isFollowUp ? 'This is a follow-up question. Answer directly without repeating previous information.' : ''}
+    // Optimize system prompt for faster responses
+    const systemPrompt = `You are a helpful study tutor. Be concise and direct in your responses. ${isFollowUp ? 'This is a follow-up question. Answer directly without repeating previous information.' : ''}
 
 CONVERSATION GUIDELINES:
-1. Maintain full awareness of the conversation history for context.
-2. Answer follow-up questions directly without summarizing previous exchanges.
-3. Do NOT repeat information from earlier messages unless explicitly asked.
-4. If a question builds on previous topics, just answer the new aspects.
-5. Only introduce yourself in the very first message of a conversation.
-6. Use natural conversational flow as if continuing an ongoing discussion.
-7. When answering follow-up questions, assume the user remembers previous answers.
-
-MARKDOWN FORMATTING GUIDELINES:
-1. Structure: Always use proper markdown with clean structure.
-2. Lists:
-   - For ordered lists, use the format: "1. **Item Title:** Item description..." (Number, bold title, and text on the same line).
-   - For unordered lists, use "- **Item Title:** Item description..." (Dash, bold title, and text on the same line).
-   - If there's no specific title for a list item, use "1. Item description..." or "- Item description...".
-   - Ensure list items are single-spaced (no blank lines between items within the same list).
-   - Add a blank line *before* the start of a list block and *after* the end of a list block, but not within it.
-3. Headings:
-   - Use "# ", "## ", "### " etc. for headings, with a space after the #.
-   - Add blank lines after all headings.
-4. Emphasis:
-   - Use **bold** for important terms or section titles.
-   - Use *italics* sparingly for emphasis.
-   - Do not put spaces inside emphasis markers (e.g., use **bold** not ** bold ** ).
-5. Paragraphs:
-   - Separate paragraphs with a single blank line.
-   - Don't split paragraphs unnecessarily.
-
-Your replies should have excellent markdown formatting that looks good even in plain text. Avoid extra blank lines, especially within list structures.
-Example of a good list:
-1. **Water Droplets:** Most clouds are made of water droplets, like the ones you see in fog, but way up high.
-2. **Ice Crystals:** High up in the sky, where it's really cold, clouds can also be made of ice crystals.`;
+1. Keep responses concise and to the point
+2. Use bullet points for lists
+3. Avoid unnecessary explanations
+4. Focus on key information
+5. Use markdown formatting efficiently`;
 
     const payload = {
       model: "deepseek-ai/deepseek-r1",
@@ -406,11 +400,14 @@ Example of a good list:
       ],
       temperature: 0.6,
       top_p: 0.95,
-      max_tokens: 4096,
-      presence_penalty: 0.6,  // Discourages repetition of content
-      frequency_penalty: 0.3, // Further reduces repetitive phrases
-      stream: true, // Enable streaming
+      max_tokens: 1024, // Reduced from 2048 for faster responses
+      presence_penalty: 0.6,
+      frequency_penalty: 0.3,
+      stream: true,
+      stop: ["\n\n", "Human:", "Assistant:"],
+      n: 1,
     };
+
     try {
       const res = await fetch(NVIDIA_API_URL, {
         method: "POST",
@@ -418,12 +415,14 @@ Example of a good list:
           "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
-        signal: abortControllerRef.current.signal // Add abort signal
+        signal: abortControllerRef.current.signal
       });
+
       if (!res.body) throw new Error("No response body from AI");
       const reader = res.body.getReader();
       let done = false;
-      // Timeout fallback: 20s
+      
+      // Reduced timeout to 15s
       timeoutId = setTimeout(() => {
         if (!didRespond) {
           setError("AI did not respond. Please try again.");
@@ -431,70 +430,58 @@ Example of a good list:
           setAiTyping(false);
           setStreamedContent("");
           setDisplayed("");
-          setMessages((prev) => prev.slice(0, -1)); // Remove empty AI message
+          setMessages((prev) => prev.slice(0, -1));
         }
-      }, 20000);
+      }, 15000);
       
-      // Improved streaming with chunk buffering
+      // Improved streaming with larger chunks
+      const decoder = new TextDecoder();
+      let buffer = '';
+      
       while (!done) {
         const { value, done: doneReading } = await reader.read();
         done = doneReading;
-        const chunk = value ? new TextDecoder().decode(value) : "";
         
-        // Process each line in the chunk
-        for (const line of chunk.split("\n")) {
-          const trimmed = line.trim();
-          if (!trimmed.startsWith("data: ")) continue;
-          const dataStr = trimmed.replace(/^data: /, "");
-          if (dataStr === "[DONE]") continue;
+        if (value) {
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
           
-          try {
-            const data = JSON.parse(dataStr);
-            const delta = data.choices?.[0]?.delta?.content;
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed.startsWith("data: ")) continue;
+            const dataStr = trimmed.replace(/^data: /, "");
+            if (dataStr === "[DONE]") continue;
             
-            if (delta) {
-              didRespond = true;
-              fullText += delta;
+            try {
+              const data = JSON.parse(dataStr);
+              const delta = data.choices?.[0]?.delta?.content;
               
-              // Add to chunk buffer instead of updating state immediately
-              chunkBufferRef.current.push(delta);
-              
-              // Use the debounced update to reduce UI jitter
-              // Process buffer in batches for smoother rendering
-              if (chunkBufferRef.current.length >= 3 || done) {
-                const filteredText = fullText.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-                updateStreamedContentDebounced(filteredText);
+              if (delta) {
+                didRespond = true;
+                fullText += delta;
+                chunkBufferRef.current.push(delta);
+                
+                // Process larger chunks for better performance
+                if (chunkBufferRef.current.length >= 5 || done) {
+                  const filteredText = fullText.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+                  updateStreamedContentDebounced(filteredText);
+                  chunkBufferRef.current = [];
+                }
               }
+            } catch (err) {
+              console.warn('Skipping malformed JSON chunk:', dataStr);
+              continue;
             }
-            
-            if (data.error) {
-              setError("Failed to connect to AI. " + (typeof data.error === "object" && data.error && "message" in data.error ? (data.error as any).message : String(data.error)));
-            }
-          } catch (err: any) {
-            // Skip malformed/incomplete JSON lines, but log for debugging
-            if (typeof window !== 'undefined') {
-              console.warn('Skipping malformed JSON chunk:', dataStr, err);
-            }
-            continue;
           }
         }
       }
       
-      // Final update with any remaining buffered content
-      if (chunkBufferRef.current.length > 0) {
-        const filteredText = fullText.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-        setStreamedContent(filteredText);
-        chunkBufferRef.current = [];
+      // Cache the successful response
+      if (didRespond) {
+        cacheResponse(cacheKey, fullText);
       }
       
-      if (!didRespond) {
-        setError("AI did not respond. Please try again.");
-        setIsLoading(false);
-        setAiTyping(false);
-        setStreamedContent("");
-        setDisplayed("");
-        setMessages((prev) => prev.slice(0, -1));
-      }
     } catch (err: any) {
       if (err.name === 'AbortError') {
         setMessages((prev) => [
@@ -507,16 +494,14 @@ Example of a good list:
           }
         ]);
       } else {
-        setError("Failed to connect to AI. " + (typeof err === "object" && err && "message" in err ? (err as any).message : String(err)));
+        setError("Failed to connect to AI. " + (err.message || String(err)));
       }
-      setIsLoading(false);
-      setAiTyping(false);
-      setStreamedContent("");
-      setDisplayed("");
     } finally {
       if (timeoutId) clearTimeout(timeoutId);
       setIsStopActive(false);
       abortControllerRef.current = null;
+      setIsLoading(false);
+      setAiTyping(false);
     }
   }
 
@@ -526,6 +511,18 @@ Example of a good list:
       abortControllerRef.current.abort();
     }
   }
+
+  // Modify the streaming logic to handle blocks progressively
+  const handleStreamingBlock = (block: { type: 'code' | 'json' | 'table', content: string }) => {
+    if (block.type === 'code' || block.type === 'json') {
+      setSpecialBlocks(prev => [...prev, {
+        start: displayed.length,
+        end: displayed.length + block.content.length,
+        type: block.type,
+        complete: true
+      }]);
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
@@ -551,21 +548,11 @@ Example of a good list:
       <div className="flex-1 w-full overflow-y-auto" ref={chatRef}>
         <div className="max-w-[850px] mx-auto px-2 pb-4 space-y-4">
           {messages.map((message, i) => (
-            <div key={message.id} className={`message ${message.role === 'user' ? 'user-message' : 'ai-message'}`}>
-              <div className={`message-content px-4 py-3 rounded-xl max-w-full overflow-hidden ${message.role === 'user' ? 'ml-auto bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-800'}`}>
-                {message.role === 'user' ? (
-                  <div className="whitespace-pre-wrap break-words">{message.content}</div>
-                ) : (
-                  <div className="w-full markdown-body text-left flex flex-col items-start ai-response-text">
-                    <MarkdownRenderer 
-                      content={message.content} 
-                      userQuery={message.userQuery || ''} 
-                      context={queryContext}
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
+            <MessageComponent 
+              key={message.id} 
+              message={message} 
+              queryContext={queryContext}
+            />
           ))}
           
           {/* If AI is currently typing, show the streamed content with fade effect */}
