@@ -1002,53 +1002,103 @@ export default function TestChat() {
 
         try {
           // Attempt to parse the raw response first
-          structuredData = JSON.parse(rawResponseText);
+          let parsedResponse = JSON.parse(rawResponseText);
+
+          // If parsedResponse is a string, it means the AI might have sent a JSON string literal.
+          // Try to parse it again.
+          if (typeof parsedResponse === 'string') {
+            try {
+              parsedResponse = JSON.parse(parsedResponse);
+            } catch (innerParseError) {
+              // If the inner parse fails, it means the string was not a JSON string literal.
+              // Treat the original string as the content if it was intended for conversation.
+              if (parsedQueryType === 'conversation') {
+                structuredData = { content: parsedResponse }; // Use the string directly
+              } else {
+                // For other types, this is an error, pass it through to outer catch.
+                throw innerParseError;
+              }
+            }
+          }
+
+          structuredData = parsedResponse; // Assign potentially re-parsed object
           
           // Handle conversation schema validation and fallbacks more robustly
           if (parsedQueryType === 'conversation') {
-            // Direct check for valid conversation schema
-            if (!structuredData.content || typeof structuredData.content !== 'string') {
-              console.warn("[handleSend] Invalid conversation schema. Attempting to extract usable content.");
-              
-              // Case 1: The whole response is just a string
-              if (typeof structuredData === 'string') {
-                structuredData = { content: structuredData };
-              } 
-              // Case 2: The structure has a different field that might contain the content
-              else if (typeof structuredData.message === 'string') {
-                structuredData = { content: structuredData.message };
-              } 
-              else if (typeof structuredData.response === 'string') {
-                structuredData = { content: structuredData.response };
-              }
-              // Case 3: The content field contains nested JSON (happens with some AI models)
-              else if (structuredData.content && typeof structuredData.content === 'string' && 
-                       (structuredData.content.trim().startsWith('{') && structuredData.content.trim().endsWith('}'))) {
+            // Case A: structuredData is an object with a valid 'content' string.
+            if (structuredData && typeof structuredData === 'object' && structuredData.content && typeof structuredData.content === 'string') {
+              // Potentially, structuredData.content itself could be a stringified JSON.
+              // This is common if the AI mistakenly nests JSON.
+              let currentContent = structuredData.content;
+              if (currentContent.trim().startsWith('{') && currentContent.trim().endsWith('}')) {
                 try {
-                  const nestedContent = JSON.parse(structuredData.content);
-                  if (nestedContent.content && typeof nestedContent.content === 'string') {
-                    structuredData = { content: nestedContent.content };
+                  const nestedContent = JSON.parse(currentContent);
+                  // If nestedContent is an object and has its own 'content' field, use that.
+                  if (nestedContent && typeof nestedContent === 'object' && nestedContent.content && typeof nestedContent.content === 'string') {
+                    structuredData.content = nestedContent.content; // Replace with deeply nested content
                   }
-                } catch (nestedParseError) {
-                  // Keep the original content if nested parsing fails
+                  // If nestedContent is just a string (AI returned { "content": "{\"actual_text\": \"Hi!\"}"})
+                  // This scenario is less likely if the outer parse worked, but good to be aware of.
+                  // The current logic for BasicRenderer should handle displaying stringified JSON if it reaches there.
+                } catch (e) {
+                  // If parsing the nested content string fails, leave structuredData.content as is.
+                  // BasicRenderer will display it (which might be the raw JSON string).
+                  console.warn("[handleSend] structuredData.content looked like JSON, but failed to parse:", e);
                 }
               }
-              // Case 4: If we still don't have valid content, create a friendly error message
-              if (!structuredData.content || typeof structuredData.content !== 'string') {
+              // At this point, structuredData.content should be the actual text string.
+              // Ensure key_takeaway is also a string if present.
+              if (structuredData.key_takeaway && typeof structuredData.key_takeaway !== 'string') {
+                structuredData.key_takeaway = String(structuredData.key_takeaway);
+              }
+            } 
+            // Case B: structuredData itself is just a string (AI didn't use JSON format at all for conversation)
+            else if (typeof structuredData === 'string') {
+              structuredData = { content: structuredData };
+            } 
+            // Case C: structuredData is an object, but no 'content' field, or 'content' is not a string.
+            // Try to find other string fields or fallback.
+            else if (structuredData && typeof structuredData === 'object') {
+              let foundContent = '';
+              if (typeof structuredData.message === 'string') foundContent = structuredData.message;
+              else if (typeof structuredData.response === 'string') foundContent = structuredData.response;
+              else if (typeof structuredData.text === 'string') foundContent = structuredData.text;
+              // Add more common fields if necessary
+
+              if (foundContent) {
+                structuredData = { content: foundContent };
+              } else {
+                // Last resort for an object without usable fields - stringify it or show error.
+                console.warn("[handleSend] Conversation schema object missing 'content' or usable fields. Raw:", rawResponseText);
                 structuredData = { 
-                  content: "I apologize, but I couldn't format my response correctly. Here's what I was trying to say:\n\n" + 
-                           rawResponseText.substring(0, 500) + (rawResponseText.length > 500 ? "..." : "")
+                  content: "I apologize, I couldn't understand the format of my response. Here's what I received: \n\n```json\n" + 
+                           JSON.stringify(structuredData, null, 2).substring(0, 500) + 
+                           (JSON.stringify(structuredData, null, 2).length > 500 ? "..." : "") + "\n```"
                 };
               }
+            } else {
+                // Fallback for completely unexpected structuredData type for conversation.
+                console.warn("[handleSend] Unexpected structuredData type for conversation. Raw:", rawResponseText);
+                structuredData = { content: "I apologize, my response was in an unexpected format. Raw data: " + String(structuredData).substring(0,200) };
             }
-          } else if (!SCHEMAS[parsedQueryType]) {
+          } else if (!SCHEMAS[parsedQueryType]) { // Non-conversation types
             console.warn(`[handleSend] Unknown schema type '${parsedQueryType}'. Defaulting to conversation display.`);
-            structuredData = { content: "Sorry, I tried to respond with an unsupported format. Here's my response in plain text:\n\n" + rawResponseText };
-            parsedQueryType = 'conversation';
+            // For unknown schemas, attempt to extract content if it looks like our conversation schema,
+            // otherwise, display the raw response text.
+            if (structuredData && typeof structuredData === 'object' && structuredData.content && typeof structuredData.content === 'string'){
+                // It has a content field, treat as conversation
+                 parsedQueryType = 'conversation'; // Will be handled by conversation logic above if re-processed or use as is.
+            } else {
+                structuredData = { content: "AI responded with an unrecognized data structure. Raw response: \n\n```json\n" + rawResponseText + "\n```" };
+                parsedQueryType = 'conversation';
+            }
           }
+          // For non-conversation schemas, we assume `structuredData` is now the correctly parsed object for that schema.
+          // No additional manipulation needed here; the specific renderers (TutorialRenderer etc.) expect the full object.
+
         } catch (parseError) {
-          console.error("[handleSend] Error parsing AI response:", parseError, "Raw content:", rawResponseText);
-          // If parsing fails completely, present the raw text as conversational content with an apology
+          console.error("[handleSend] Outer error parsing AI JSON response:", parseError, "Raw content:", rawResponseText);
+          // If parsing fails completely, treat the raw text as conversational content with an apology
           structuredData = { 
             content: "I apologize for the formatting error. Here's my response:\n\n" + rawResponseText 
           };
