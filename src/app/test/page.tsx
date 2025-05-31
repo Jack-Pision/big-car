@@ -1244,6 +1244,8 @@ export default function TestChat() {
         const decoder = new TextDecoder();
         let buffer = '';
         let done = false;
+        let contentBuffer = ''; // Buffer to accumulate content
+        let hasActualContent = false; // Flag to track if we have meaningful content
         let aiMsg: Message = { 
           role: "assistant" as const,
           content: "", 
@@ -1253,16 +1255,16 @@ export default function TestChat() {
           imageUrls: uploadedImageUrls.length > 0 ? uploadedImageUrls : undefined,
           webSources: []
         };
-        let aiMsgAdded = false; // Track if we've added the AI message yet
-        let firstChunk = true; // Track if this is the first content chunk
 
         while (!done) {
           const { value, done: doneReading } = await reader.read();
           done = doneReading;
           if (value) {
-            buffer += decoder.decode(value, { stream: true });
+            const chunk = decoder.decode(value, { stream: true });
+            buffer += chunk;
             let lines = buffer.split('\n');
             buffer = lines.pop() || '';
+            
             for (let line of lines) {
               if (line.startsWith('data:')) {
                 const data = line.replace('data:', '').trim();
@@ -1270,27 +1272,28 @@ export default function TestChat() {
                 try {
                   const parsed = JSON.parse(data);
                   const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.message?.content || parsed.choices?.[0]?.text || parsed.content || '';
+                  
                   if (delta) {
-                    aiMsg.content += delta;
-                    if (firstChunk) {
-                      setIsProcessing(false); // Hide loading dots only when first content chunk is added
-                      setMessages((prev) => {
-                        // Only add if not already present
-                        if (!prev.some(m => m.id === aiMsg.id)) {
-                          return [...prev, { ...aiMsg }];
-                        }
-                        return prev;
-                      });
-                      aiMsgAdded = true;
-                      firstChunk = false;
-                    } else {
+                    contentBuffer += delta; // Accumulate in buffer instead of showing immediately
+                    
+                    // Check if we have meaningful content (not just whitespace or processing text)
+                    if (!hasActualContent && contentBuffer.trim().length > 0 && !contentBuffer.includes('thinking') && !contentBuffer.includes('processing')) {
+                      hasActualContent = true;
+                      aiMsg.content = contentBuffer;
+                      
+                      // Only now add the message to chat and hide loading
+                      setIsProcessing(false);
+                      setMessages((prev) => [...prev, { ...aiMsg }]);
+                    } else if (hasActualContent) {
+                      // Update the message content only if we're already showing it
+                      aiMsg.content = contentBuffer;
                       setMessages((prev) => {
                         const updatedMessages = [...prev];
                         const aiIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
                         if (aiIndex !== -1) {
                           updatedMessages[aiIndex] = {
                             ...updatedMessages[aiIndex],
-                            content: aiMsg.content,
+                            content: contentBuffer,
                             webSources: aiMsg.webSources
                           };
                         }
@@ -1299,7 +1302,8 @@ export default function TestChat() {
                     }
                   }
                 } catch (err) {
-                  // console.error("Error parsing stream data:", err, "Data:", data);
+                  // Skip malformed chunks silently
+                  continue;
                 }
               }
             }
@@ -1308,10 +1312,8 @@ export default function TestChat() {
         
         // Apply post-processing after streaming is complete
         if (queryType === 'conversation' || !queryType) {
-          // For default chat (conversation) and any undefined queryType, apply post-processing
-          const processedContent = postProcessAIChatResponse(aiMsg.content);
+          const processedContent = postProcessAIChatResponse(contentBuffer);
           
-          // Update the message with processed content and set contentType
           setMessages((prev) => {
             const updatedMessages = [...prev];
             const lastMsgIndex = updatedMessages.length - 1;
@@ -1319,18 +1321,16 @@ export default function TestChat() {
               updatedMessages[lastMsgIndex] = { 
                 ...updatedMessages[lastMsgIndex], 
                 content: processedContent,
-                contentType: 'conversation' // Explicitly mark as conversation type
+                contentType: 'conversation'
               };
             }
             return updatedMessages;
           });
           
-          // Update the aiMsg object for future reference
           aiMsg.content = processedContent;
           aiMsg.contentType = 'conversation';
         } else if (showAdvanceSearchUI || currentQuery.includes('@AdvanceSearch')) {
-          // For deep-research, apply the specific deep-research processing
-          const processedResearch = enforceAdvanceSearchStructure(aiMsg.content);
+          const processedResearch = enforceAdvanceSearchStructure(contentBuffer);
           
           setMessages((prev) => {
             const updatedMessages = [...prev];
@@ -1339,13 +1339,12 @@ export default function TestChat() {
               updatedMessages[lastMsgIndex] = { 
                 ...updatedMessages[lastMsgIndex], 
                 content: processedResearch,
-                contentType: 'deep-research' // Mark as deep-research type
+                contentType: 'deep-research'
               };
             }
             return updatedMessages;
           });
           
-          // Update aiMsg for future reference
           aiMsg.content = processedResearch;
           aiMsg.contentType = 'deep-research';
         }
