@@ -147,6 +147,137 @@ function cleanAIResponse(text: string): ProcessedResponse {
   };
 }
 
+/**
+ * Post-processes AI chat responses for default chat to ensure clean, consistent output.
+ * This function implements various cleanup operations to fix common issues in AI-generated text.
+ * 
+ * IMPORTANT: This function is ONLY for default chat responses (currentQueryType === 'conversation')
+ * and should NOT be applied to advance search or other structured responses.
+ */
+function postProcessAIChatResponse(text: string): string {
+  if (typeof text !== 'string') {
+    return '';
+  }
+
+  let processedText = text;
+
+  // 1. Remove Raw Output Artifacts
+  // Remove common AI meta-language and instructional artifacts
+  const artifactPatterns = [
+    /\[Your response here\]/gi,
+    /\[End of response\]/gi,
+    /\[AI response continues\]/gi,
+    /\[AI Assistant\]/gi,
+    /\[I'll create a (.*?) for you\]/gi,
+    /\[Let me help you with that\]/gi,
+    /\[I understand you're asking about\]/gi,
+    /As an AI assistant[,.]/gi,
+    /As an AI language model[,.]/gi,
+    /I'm an AI assistant and /gi,
+    /I'll generate /gi,
+    /I'll create /gi,
+    /Here's (a|an|the) (answer|response|information|summary)/gi,
+    /Thank you for your question/gi,
+    /AI: /g,
+    /User: /g,
+  ];
+
+  artifactPatterns.forEach(pattern => {
+    processedText = processedText.replace(pattern, '');
+  });
+
+  // 2. Fix Markdown Formatting
+  // Remove all markdown formatting (asterisks and underscores for bold/italic) for default chat
+  processedText = processedText.replace(/\*\*([^*]+)\*\*/g, '$1'); // Remove **bold**
+  processedText = processedText.replace(/\*([^*]+)\*/g, '$1');     // Remove *italic*
+  processedText = processedText.replace(/__([^_]+)__/g, '$1');     // Remove __bold__
+  processedText = processedText.replace(/_([^_]+)_/g, '$1');       // Remove _italic_
+
+  // Fix broken lists (ensure proper space after list markers)
+  processedText = processedText.replace(/^(\s*[-*]|\s*[0-9]+\.)(?!\s)/gm, '$1 ');
+  
+  // Normalize multiple consecutive blank lines to at most two
+  processedText = processedText.replace(/\n{3,}/g, '\n\n');
+
+  // 3. Remove Biased or Overconfident Phrasing
+  const overconfidentPhrases = [
+    /\bI'm (100% )?certain\b/gi,
+    /\bI guarantee\b/gi,
+    /\bwithout any doubt\b/gi,
+    /\babsolutely (certain|sure)\b/gi,
+    /\bI can assure you\b/gi,
+    /\bI promise\b/gi,
+  ];
+
+  overconfidentPhrases.forEach(phrase => {
+    processedText = processedText.replace(phrase, match => {
+      // Replace with more measured alternatives
+      const alternatives = {
+        "I'm certain": "I believe",
+        "I'm 100% certain": "I believe",
+        "I guarantee": "I think",
+        "without any doubt": "based on available information",
+        "absolutely certain": "confident",
+        "absolutely sure": "confident",
+        "I can assure you": "It appears that",
+        "I promise": "I expect"
+      };
+      
+      const key = match.toLowerCase();
+      for (const [pattern, replacement] of Object.entries(alternatives)) {
+        if (key.includes(pattern.toLowerCase())) {
+          return replacement;
+        }
+      }
+      return "I believe"; // Default fallback
+    });
+  });
+
+  // 4. Fix Incomplete or Broken Text
+  // Close unclosed code blocks
+  const codeBlockFence = '```';
+  let openFenceCount = 0;
+  let lastFenceIndex = -1;
+  let fenceIndex = processedText.indexOf(codeBlockFence);
+  
+  while (fenceIndex !== -1) {
+    openFenceCount++;
+    lastFenceIndex = fenceIndex;
+    fenceIndex = processedText.indexOf(codeBlockFence, lastFenceIndex + codeBlockFence.length);
+  }
+  
+  // If odd number of fences, add a closing fence
+  if (openFenceCount % 2 !== 0) {
+    processedText += `\n${codeBlockFence}`;
+  }
+  
+  // Fix sentences that end abruptly
+  processedText = processedText.replace(/([a-z])(\s*\n|\s*$)/g, '$1.$2');
+
+  // 5. Filter Unsafe or Sensitive Content
+  // Basic HTML script tag removal
+  processedText = processedText.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+  // Filter other potentially unsafe HTML
+  processedText = processedText.replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '');
+  
+  // 6. Final Cleanup
+  // Trim trailing whitespace from each line
+  processedText = processedText.split('\n').map(line => line.trimRight()).join('\n');
+  
+  // Remove trailing line breaks and spaces
+  processedText = processedText.trim();
+  
+  // 7. Visual Formatting & Readability
+  // Add a line break after every full stop followed by a capital letter if no line break exists
+  // This helps break up dense text paragraphs
+  processedText = processedText.replace(/\.([A-Z])/g, '.\n$1');
+  
+  // Clean up multiple consecutive line breaks again after formatting changes
+  processedText = processedText.replace(/\n{3,}/g, '\n\n');
+  
+  return processedText;
+}
+
 // Add global style to force all AI text to be white
 const GlobalStyles = () => (
   <style jsx global>{`
@@ -1027,10 +1158,15 @@ export default function TestChat() {
               if (structuredData.key_takeaway && typeof structuredData.key_takeaway !== 'string') {
                 structuredData.key_takeaway = String(structuredData.key_takeaway);
               }
+              
+              // Apply post-processing to the conversation content
+              if (structuredData.content && typeof structuredData.content === 'string') {
+                structuredData.content = postProcessAIChatResponse(structuredData.content);
+              }
             } 
             // Case B: structuredData itself is just a string (AI didn't use JSON format at all for conversation)
             else if (typeof structuredData === 'string') {
-              structuredData = { content: structuredData };
+              structuredData = { content: postProcessAIChatResponse(structuredData) };
             } 
             // Case C: structuredData is an object, but no 'content' field, or 'content' is not a string.
             // Try to find other string fields or fallback.
@@ -1042,7 +1178,7 @@ export default function TestChat() {
               // Add more common fields if necessary
 
               if (foundContent) {
-                structuredData = { content: foundContent };
+                structuredData = { content: postProcessAIChatResponse(foundContent) };
               } else {
                 // Last resort for an object without usable fields - stringify it or show error.
                 console.warn("[handleSend] Conversation schema object missing 'content' or usable fields. Raw:", rawResponseText);
@@ -1063,7 +1199,8 @@ export default function TestChat() {
             // otherwise, display the raw response text.
             if (structuredData && typeof structuredData === 'object' && structuredData.content && typeof structuredData.content === 'string'){
                 // It has a content field, treat as conversation
-                 parsedQueryType = 'conversation'; // Will be handled by conversation logic above if re-processed or use as is.
+                parsedQueryType = 'conversation'; // Will be handled by conversation logic above if re-processed or use as is.
+                structuredData.content = postProcessAIChatResponse(structuredData.content);
             } else {
                 structuredData = { content: "AI responded with an unrecognized data structure. Raw response: \n\n```json\n" + rawResponseText + "\n```" };
                 parsedQueryType = 'conversation';
@@ -1076,7 +1213,7 @@ export default function TestChat() {
           console.error("[handleSend] Outer error parsing AI JSON response:", parseError, "Raw content:", rawResponseText);
           // If parsing fails completely, treat the raw text as conversational content with an apology
           structuredData = { 
-            content: "I apologize for the formatting error. Here's my response:\n\n" + rawResponseText 
+            content: "I apologize for the formatting error. Here's my response:\n\n" + postProcessAIChatResponse(rawResponseText)
           };
           parsedQueryType = 'conversation';
         }
@@ -1145,6 +1282,51 @@ export default function TestChat() {
             }
           }
         }
+        
+        // Apply post-processing after streaming is complete
+        if (queryType === 'conversation' || !queryType) {
+          // For default chat (conversation) and any undefined queryType, apply post-processing
+          const processedContent = postProcessAIChatResponse(aiMsg.content);
+          
+          // Update the message with processed content and set contentType
+          setMessages((prev) => {
+            const updatedMessages = [...prev];
+            const lastMsgIndex = updatedMessages.length - 1;
+            if(updatedMessages[lastMsgIndex] && updatedMessages[lastMsgIndex].role === 'assistant'){
+              updatedMessages[lastMsgIndex] = { 
+                ...updatedMessages[lastMsgIndex], 
+                content: processedContent,
+                contentType: 'conversation' // Explicitly mark as conversation type
+              };
+            }
+            return updatedMessages;
+          });
+          
+          // Update the aiMsg object for future reference
+          aiMsg.content = processedContent;
+          aiMsg.contentType = 'conversation';
+        } else if (showAdvanceSearchUI || currentQuery.includes('@AdvanceSearch')) {
+          // For deep-research, apply the specific deep-research processing
+          const processedResearch = enforceAdvanceSearchStructure(aiMsg.content);
+          
+          setMessages((prev) => {
+            const updatedMessages = [...prev];
+            const lastMsgIndex = updatedMessages.length - 1;
+            if(updatedMessages[lastMsgIndex] && updatedMessages[lastMsgIndex].role === 'assistant'){
+              updatedMessages[lastMsgIndex] = { 
+                ...updatedMessages[lastMsgIndex], 
+                content: processedResearch,
+                contentType: 'deep-research' // Mark as deep-research type
+              };
+            }
+            return updatedMessages;
+          });
+          
+          // Update aiMsg for future reference
+          aiMsg.content = processedResearch;
+          aiMsg.contentType = 'deep-research';
+        }
+        
         if (uploadedImageUrls.length > 0) {
             const { content: cleanedContent } = cleanAIResponse(aiMsg.content);
             const descriptionSummary = cleanedContent.slice(0, 150) + (cleanedContent.length > 150 ? '...' : '');
