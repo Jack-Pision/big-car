@@ -525,7 +525,7 @@ CONVERSATION GUIDELINES:
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div className="min-h-screen flex flex-col bg-white px-2 sm:px-4 md:px-8 lg:px-16">
       {/* Hamburger menu and sidebar */}
       <div className="fixed top-4 left-4 z-50 md:static md:z-10">
         <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
@@ -546,7 +546,7 @@ CONVERSATION GUIDELINES:
       </div>
       {/* Chat area fills all available space, scrollbar at window edge */}
       <div className="flex-1 w-full overflow-y-auto" ref={chatRef}>
-        <div className="max-w-[850px] mx-auto px-2 pb-4 space-y-4">
+        <div className="max-w-[850px] mx-auto px-2 sm:px-4 md:px-8 pb-4 space-y-4">
           {messages.map((message, i) => (
             <MessageComponent 
               key={message.id} 
@@ -582,7 +582,7 @@ CONVERSATION GUIDELINES:
         onSubmit={handleSend}
         aria-label="Chat input form"
       >
-        <div className="bg-white rounded-2xl shadow-lg w-full max-w-[850px] mx-auto flex items-center px-4 py-2 gap-2 sm:gap-3 mb-6 transition-all duration-200 focus-within:ring-2 focus-within:ring-black/10">
+        <div className="bg-white rounded-2xl shadow-lg w-full max-w-[850px] mx-auto flex items-center px-2 sm:px-4 md:px-8 py-2 gap-2 sm:gap-3 mb-6 transition-all duration-200 focus-within:ring-2 focus-within:ring-black/10">
           {/* Action buttons */}
           <button type="button" aria-label="Search" className="w-9 h-9 flex items-center justify-center rounded-full border border-gray-200 bg-white hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/20">
             <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
