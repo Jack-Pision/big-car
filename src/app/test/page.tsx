@@ -37,7 +37,7 @@ import DynamicResponseRenderer from '@/components/DynamicResponseRenderer';
 import TutorialDisplay, { TutorialData } from '@/components/TutorialDisplay';
 import ComparisonDisplay, { ComparisonData } from '@/components/ComparisonDisplay';
 import InformationalSummaryDisplay, { InformationalSummaryData } from '@/components/InformationalSummaryDisplay';
-import ConversationDisplay, { ConversationData } from '@/components/ConversationDisplay';
+import ConversationDisplay from '@/components/ConversationDisplay';
 import { Bot, User, Paperclip, Send, XCircle, Search, Trash2, PlusCircle, Settings, Zap, ExternalLink, AlertTriangle } from 'lucide-react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
@@ -1318,7 +1318,7 @@ export default function TestChat() {
         case 'informational_summary':
           return <InformationalSummaryDisplay data={msg.structuredContent as InformationalSummaryData} />;
         case 'conversation': // Added case for conversation schema
-          return <ConversationDisplay data={msg.structuredContent as ConversationData} />;
+          return <ConversationDisplay data={msg.structuredContent as string} />;
         default:
           // Fallback for unknown structured content types or if content is just a string
           if (typeof msg.structuredContent === 'string') {
