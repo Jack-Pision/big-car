@@ -87,7 +87,7 @@ export default function StreamingChat() {
         ]);
         setStreamedContent("");
       }
-    }, 12);
+    }, 25); // Increased for smoother animation
     return () => clearInterval(interval);
   }, [streamedContent, aiTyping]);
 
@@ -217,7 +217,7 @@ Example of a good list:
 2. **Ice Crystals:** High up in the sky, where it's really cold, clouds can also be made of ice crystals.`;
 
     const payload = {
-      model: "nvidia/llama-3.1-nemotron-ultra-253b-v1",
+      model: "deepseek-ai/deepseek-r1",
       messages: [
         { role: "system", content: systemPrompt },
         ...msgs.map(({ role, content }) => ({ role, content }))
@@ -227,7 +227,7 @@ Example of a good list:
       max_tokens: 4096,
       presence_penalty: 0.6,  // Discourages repetition of content
       frequency_penalty: 0.3, // Further reduces repetitive phrases
-      stream: false,
+      stream: true,
     };
     try {
       const res = await fetch(NVIDIA_API_URL, {
@@ -344,7 +344,7 @@ Example of a good list:
           ))}
           {/* If AI is currently typing, show the streamed content */}
           {aiTyping && (
-            <div className="message ai-message">
+            <div className="message ai-message transition-opacity duration-300">
               <div className="message-content px-4 py-3 rounded-xl max-w-full overflow-hidden bg-gray-100 dark:bg-gray-800">
                 <div className="w-full markdown-body text-left flex flex-col items-start ai-response-text">
                   <MarkdownRenderer 
@@ -427,3 +427,5 @@ Example of a good list:
     </div>
   );
 } 
+
+
