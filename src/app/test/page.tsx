@@ -1771,9 +1771,7 @@ export default function TestChat() {
                 transition={{ duration: 0.2 }}
                 className="w-full flex justify-start mb-4"
               >
-                <div className="bg-gray-100 dark:bg-gray-800 rounded-lg">
-                  <LoadingDots isVisible={true} />
-                </div>
+                <LoadingDots isVisible={true} />
               </motion.div>
             )}
       </div>
