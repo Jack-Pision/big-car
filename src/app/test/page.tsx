@@ -1367,6 +1367,12 @@ export default function TestChat() {
                     ref={textareaRef}
                     value={input}
                     onChange={e => setInput(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.altKey) {
+                        e.preventDefault();
+                        if (!loading) handleSend();
+                      }
+                    }}
                     className="w-full border-none outline-none bg-transparent px-2 py-1 text-gray-200 text-sm placeholder-gray-500 resize-none overflow-auto self-center rounded-lg"
                     placeholder="Ask anything..."
                     disabled={loading}
