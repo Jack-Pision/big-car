@@ -1219,7 +1219,7 @@ export default function TestChat() {
         }
 
         const aiMsg: Message = {
-          role: "assistant" as const,
+        role: "assistant" as const,
           content: '', 
           contentType: parsedQueryType,
           structuredContent: structuredData,
@@ -1227,8 +1227,8 @@ export default function TestChat() {
           timestamp: Date.now(),
           parentId: messageId,
           webSources: []
-        };
-        setMessages((prev) => [...prev, aiMsg]);
+      };
+      setMessages((prev) => [...prev, aiMsg]);
 
       } else {
         const reader = res.body!.getReader();
@@ -1346,8 +1346,8 @@ export default function TestChat() {
       }
     } catch (err: any) {
       if (err.name === 'AbortError') {
-        setMessages((prev) => [
-          ...prev,
+      setMessages((prev) => [
+        ...prev,
           { 
             role: "assistant" as const, 
             content: "[Response stopped by user]", 
@@ -1536,19 +1536,19 @@ export default function TestChat() {
                       >
                         &times;
                       </button>
+              </div>
+          ))}
         </div>
-                  ))}
-                </div>
               )}
 
               {/* Input area: textarea on top, actions below */}
               <div className="flex flex-col w-full gap-2 items-center">
                 {/* Textarea row */}
                 <div className="w-full">
-                  <textarea
-                    ref={textareaRef}
-                    value={input}
-                    onChange={e => setInput(e.target.value)}
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={e => setInput(e.target.value)}
                     onKeyDown={e => {
                       if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.altKey) {
                         e.preventDefault();
@@ -1557,8 +1557,8 @@ export default function TestChat() {
                     }}
                     className="w-full border-none outline-none bg-transparent px-2 py-1 text-gray-200 text-sm placeholder-gray-500 resize-none overflow-auto self-center rounded-lg"
                     placeholder="Ask anything..."
-                    disabled={loading}
-                    rows={1}
+            disabled={loading}
+            rows={1}
                     style={{ maxHeight: '96px', minHeight: '40px', lineHeight: '1.5' }}
                   />
                 </div>
@@ -1577,9 +1577,9 @@ export default function TestChat() {
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#22d3ee' }}>
                         <path d="M12 20h9" />
                         <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19.5 3 21l1.5-4L16.5 3.5z" />
-                      </svg>
+              </svg>
                       <span className="whitespace-nowrap">Write</span>
-                    </button>
+            </button>
 
                     {/* Search button */}
                     <button
@@ -1624,13 +1624,13 @@ export default function TestChat() {
                       onClick={handleFirstPlusClick}
                     >
                       <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                        <line x1="12" y1="5" x2="12" y2="19" />
-                        <line x1="5" y1="12" x2="19" y2="12" />
-                      </svg>
-                    </button>
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+            </button>
 
                     {/* Send/Stop button */}
-                    <button
+            <button
                       type={isAiResponding ? "button" : "submit"}
                       className="rounded-full bg-gray-200 hover:bg-white transition flex items-center justify-center flex-shrink-0"
                       style={{ width: "36px", height: "36px", pointerEvents: loading && !isAiResponding ? 'none' : 'auto' }}
@@ -1641,18 +1641,18 @@ export default function TestChat() {
                       {isAiResponding ? (
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                           <rect x="7" y="7" width="10" height="10" rx="2" fill="#374151" />
-                        </svg>
+              </svg>
                       ) : (
                         <svg width="16" height="16" fill="none" stroke="#374151" strokeWidth="2.5" viewBox="0 0 24 24">
                           <path d="M12 19V5M5 12l7-7 7 7" />
                         </svg>
                       )}
-                    </button>
+            </button>
                   </div>
                 </div>
-              </div>
-            </form>
           </div>
+        </form>
+      </div>
 
           {/* Conversation and other UI below */}
           <div className="w-full max-w-3xl mx-auto flex flex-col gap-4 items-center justify-center z-10 pt-12 pb-4">
@@ -1719,7 +1719,7 @@ export default function TestChat() {
                               webSources={msg.webSources || []}
                               revealIntervalMs={220}
                             />
-                          </div>
+    </div>
                         )}
                       </>
                     )}

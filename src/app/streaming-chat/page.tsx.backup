@@ -7,31 +7,10 @@ import { v4 as uuidv4 } from 'uuid';
 import SearchPopup from '../../components/SearchPopup';
 import { useRouter } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
-import { MarkdownRenderer } from '../../utils/markdown-utils';
+import { MarkdownRenderer } from '../../utils/markdown-utils';\nimport { QueryContext } from '../../utils/template-utils';\nimport IntelligentMarkdown from '../../components/IntelligentMarkdown';
 import { QueryContext } from '../../utils/template-utils';
-import IntelligentMarkdown from '../../components/IntelligentMarkdown';
 
 const NVIDIA_API_URL = "/api/nvidia";
-
-// Content mode detection for intelligent streaming
-enum ContentMode {
-  TEXT,
-  CODE_BLOCK,
-  JSON_BLOCK,
-  TABLE
-}
-
-// Helper functions for content mode detection
-const isCodeBlockStart = (text: string): boolean => /```(?:json|javascript|typescript)?$/m.test(text);
-const isCodeBlockEnd = (text: string): boolean => /```$/m.test(text);
-const isJsonStart = (text: string): boolean => /^[\s]*[\[{]/m.test(text);
-const isJsonEnd = (text: string, start: number): boolean => {
-  const openBrackets = (text.slice(start).match(/[{[]/g) || []).length;
-  const closeBrackets = (text.slice(start).match(/[}\]]/g) || []).length;
-  return openBrackets > 0 && openBrackets === closeBrackets;
-};
-const isTableStart = (text: string): boolean => /\|[-:]+\|[-:]+\|/m.test(text);
-const isTableEnd = (text: string): boolean => text.endsWith('\n') && !text.endsWith('|\n');
 
 interface Message {
   id: string;
@@ -88,156 +67,35 @@ export default function StreamingChat() {
     chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages, streamedContent]);
 
-  // Improved typewriter effect with smoother animation and intelligent content handling
+  // Typewriter effect for streamed AI response
   const [displayed, setDisplayed] = useState("");
-  const [contentBuffers, setContentBuffers] = useState({
-    codeBlocks: [] as {start: number, end: number}[],
-    jsonBlocks: [] as {start: number, end: number}[],
-    tableBlocks: [] as {start: number, end: number}[]
-  });
-  
-  // Process streamed content to identify special blocks
-  const processStreamedContent = useCallback((content: string) => {
-    if (!content) return content;
-    
-    const blocks = {
-      codeBlocks: [] as {start: number, end: number}[],
-      jsonBlocks: [] as {start: number, end: number}[],
-      tableBlocks: [] as {start: number, end: number}[]
-    };
-    
-    // Find code blocks
-    let codeBlockStart = -1;
-    const lines = content.split('\n');
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      if (line.trim().startsWith('```')) {
-        if (codeBlockStart === -1) {
-          codeBlockStart = content.indexOf(line);
-        } else {
-          blocks.codeBlocks.push({
-            start: codeBlockStart,
-            end: content.indexOf(line) + line.length
-          });
-          codeBlockStart = -1;
-        }
-      }
-    }
-    
-    // If we have an unclosed code block, don't display it yet
-    if (codeBlockStart !== -1) {
-      blocks.codeBlocks.push({
-        start: codeBlockStart,
-        end: -1 // Mark as incomplete
-      });
-    }
-    
-    // Find potential JSON blocks outside of code blocks
-    const jsonRegex = /[\[{](?:[^[\]{}]|"(?:\\.|[^"\\])*"|\[(?:[^[\]{}]|"(?:\\.|[^"\\])*")*\]|\{(?:[^[\]{}]|"(?:\\.|[^"\\])*")*\})*[\]}]/g;
-    let match;
-    while ((match = jsonRegex.exec(content)) !== null) {
-      // Check if this JSON is inside a code block
-      const isInCodeBlock = blocks.codeBlocks.some(
-        block => match!.index >= block.start && (block.end === -1 || match!.index <= block.end)
-      );
-      
-      if (!isInCodeBlock) {
-        blocks.jsonBlocks.push({
-          start: match.index,
-          end: match.index + match[0].length
-        });
-      }
-    }
-    
-    setContentBuffers(blocks);
-    return content;
-  }, []);
-  
   useEffect(() => {
     if (!aiTyping) return;
     if (!streamedContent) return;
-    
-    // Process the content to identify special blocks
-    processStreamedContent(streamedContent);
-    
     let i = 0;
     setDisplayed("");
     setIsLoading(false);
-    setFadeIn(true);
-    
     const interval = setInterval(() => {
+      // Remove <think>...</think> tags from the displayed content
       const filteredDisplayed = streamedContent.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-      
-      // Decide how much content to show based on current position
-      const charsPerFrame = Math.max(1, Math.floor(filteredDisplayed.length / 200));
-      
-      // Calculate new position
-      const newPosition = Math.min(i + charsPerFrame, filteredDisplayed.length);
-      
-      // Check if we're entering a special block
-      let shouldSkipToEnd = false;
-      let skipToPosition = newPosition;
-      
-      // Check if we're entering a code block
-      for (const block of contentBuffers.codeBlocks) {
-        // If the block is incomplete, don't display it at all
-        if (block.end === -1) {
-          if (newPosition > block.start) {
-            skipToPosition = block.start;
-            shouldSkipToEnd = true;
-            break;
-          }
-        } 
-        // If we're in the middle of a complete block, show the entire block at once
-        else if (newPosition > block.start && i <= block.start) {
-          skipToPosition = block.end;
-          shouldSkipToEnd = true;
-          break;
-        }
-      }
-      
-      // Check if we're entering a JSON block
-      if (!shouldSkipToEnd) {
-        for (const block of contentBuffers.jsonBlocks) {
-          if (newPosition > block.start && i <= block.start) {
-            skipToPosition = block.end;
-            shouldSkipToEnd = true;
-            break;
-          }
-        }
-      }
-      
-      // Update position based on block skipping logic
-      i = shouldSkipToEnd ? skipToPosition : newPosition;
-      
-      // Update displayed content
-      setDisplayed(filteredDisplayed.slice(0, i));
-      
+      setDisplayed(filteredDisplayed.slice(0, i + 1));
+      i++;
       if (i >= streamedContent.length) {
         clearInterval(interval);
-        
-        // Use a fade transition when completing the message
-        setFadeIn(false);
-        
-        // Short delay before moving streamed content to the message array
-        setTimeout(() => {
-          setAiTyping(false);
-          setMessages((prev) => [
-            ...prev.slice(0, -1),
-            { 
-              ...prev[prev.length - 1], 
-              content: streamedContent,
-              userQuery: prev[prev.length - 2]?.userQuery || ''
-            },
-          ]);
-          setStreamedContent("");
-          setFadeIn(true);
-        }, 150);
+        setAiTyping(false);
+        setMessages((prev) => [
+          ...prev.slice(0, -1),
+          { 
+            ...prev[prev.length - 1], 
+            content: streamedContent,
+            userQuery: prev[prev.length - 2]?.userQuery || ''
+          },
+        ]);
+        setStreamedContent("");
       }
-    }, 25);
-    
+    }, 25); // Increased from 12ms to 25ms for smoother animation
     return () => clearInterval(interval);
-  }, [streamedContent, aiTyping, contentBuffers, processStreamedContent]);
+  }, [streamedContent, aiTyping]);
 
   // Add debounced content update function to reduce state updates
   const updateStreamedContentDebounced = useCallback((newContent: string) => {

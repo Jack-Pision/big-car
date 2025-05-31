@@ -456,7 +456,7 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
                 {/* Step title */}
                 <div className="mb-1 font-medium text-sm flex items-center gap-2">
                   <span className={step.status === 'completed' ? 'text-cyan-400' : step.status === 'active' ? 'text-cyan-400' : 'text-neutral-400'}>
-                    {step.title}
+                {step.title}
                   </span>
                   
                   {/* Show active indicator */}
