@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Sidebar from '../../components/Sidebar';
 import HamburgerMenu from '../../components/HamburgerMenu';
 import { v4 as uuidv4 } from 'uuid';
 import SearchPopup from '../../components/SearchPopup';
 import { useRouter } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
-import { MarkdownRenderer } from '../../utils/markdown-utils';
+import { MarkdownRenderer } from '../../utils/markdown-utils';\nimport { QueryContext } from '../../utils/template-utils';\nimport IntelligentMarkdown from '../../components/IntelligentMarkdown';
 import { QueryContext } from '../../utils/template-utils';
 
 const NVIDIA_API_URL = "/api/nvidia";
@@ -55,6 +55,12 @@ export default function StreamingChat() {
     conversationLength: 0,
     queryKeywords: []
   });
+  // Add a new state for fade transition
+  const [fadeIn, setFadeIn] = useState(true);
+  // Add a buffer for chunks to reduce UI jitter
+  const chunkBufferRef = useRef<string[]>([]);
+  // Add debounce timer ref
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Scroll to bottom on new message
   useEffect(() => {
@@ -87,9 +93,23 @@ export default function StreamingChat() {
         ]);
         setStreamedContent("");
       }
-    }, 25); // Increased for smoother animation
+    }, 25); // Increased from 12ms to 25ms for smoother animation
     return () => clearInterval(interval);
   }, [streamedContent, aiTyping]);
+
+  // Add debounced content update function to reduce state updates
+  const updateStreamedContentDebounced = useCallback((newContent: string) => {
+    // Clear any existing timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    
+    // Set a short delay to batch updates
+    debounceTimerRef.current = setTimeout(() => {
+      setStreamedContent(newContent);
+      debounceTimerRef.current = null;
+    }, 50);
+  }, []);
 
   // Chat management functions
   function handleNewChat() {
@@ -177,6 +197,9 @@ export default function StreamingChat() {
     let fullText = "";
     let timeoutId: NodeJS.Timeout | null = null;
     
+    // Reset chunk buffer
+    chunkBufferRef.current = [];
+    
     // Check if this is a follow-up question (not the first message)
     const isFollowUp = msgs.filter(m => m.role === 'user').length > 1;
     
@@ -227,7 +250,7 @@ Example of a good list:
       max_tokens: 4096,
       presence_penalty: 0.6,  // Discourages repetition of content
       frequency_penalty: 0.3, // Further reduces repetitive phrases
-      stream: true,
+      stream: true, // Enable streaming
     };
     try {
       const res = await fetch(NVIDIA_API_URL, {
@@ -251,25 +274,39 @@ Example of a good list:
           setMessages((prev) => prev.slice(0, -1)); // Remove empty AI message
         }
       }, 20000);
+      
+      // Improved streaming with chunk buffering
       while (!done) {
         const { value, done: doneReading } = await reader.read();
         done = doneReading;
         const chunk = value ? new TextDecoder().decode(value) : "";
+        
+        // Process each line in the chunk
         for (const line of chunk.split("\n")) {
           const trimmed = line.trim();
           if (!trimmed.startsWith("data: ")) continue;
           const dataStr = trimmed.replace(/^data: /, "");
           if (dataStr === "[DONE]") continue;
+          
           try {
             const data = JSON.parse(dataStr);
             const delta = data.choices?.[0]?.delta?.content;
+            
             if (delta) {
               didRespond = true;
               fullText += delta;
-              // Remove <think>...</think> tags from the streamed content
-              const filteredText = fullText.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-              setStreamedContent(filteredText);
+              
+              // Add to chunk buffer instead of updating state immediately
+              chunkBufferRef.current.push(delta);
+              
+              // Use the debounced update to reduce UI jitter
+              // Process buffer in batches for smoother rendering
+              if (chunkBufferRef.current.length >= 3 || done) {
+                const filteredText = fullText.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+                updateStreamedContentDebounced(filteredText);
+              }
             }
+            
             if (data.error) {
               setError("Failed to connect to AI. " + (typeof data.error === "object" && data.error && "message" in data.error ? (data.error as any).message : String(data.error)));
             }
@@ -282,6 +319,14 @@ Example of a good list:
           }
         }
       }
+      
+      // Final update with any remaining buffered content
+      if (chunkBufferRef.current.length > 0) {
+        const filteredText = fullText.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+        setStreamedContent(filteredText);
+        chunkBufferRef.current = [];
+      }
+      
       if (!didRespond) {
         setError("AI did not respond. Please try again.");
         setIsLoading(false);
@@ -342,9 +387,10 @@ Example of a good list:
               </div>
             </div>
           ))}
-          {/* If AI is currently typing, show the streamed content */}
+          
+          {/* If AI is currently typing, show the streamed content with fade effect */}
           {aiTyping && (
-            <div className="message ai-message transition-opacity duration-300">
+            <div className={`message ai-message transition-opacity duration-150 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
               <div className="message-content px-4 py-3 rounded-xl max-w-full overflow-hidden bg-gray-100 dark:bg-gray-800">
                 <div className="w-full markdown-body text-left flex flex-col items-start ai-response-text">
                   <MarkdownRenderer 
@@ -356,6 +402,7 @@ Example of a good list:
               </div>
             </div>
           )}
+          
           {error && (
             <div className="text-red-500 text-sm text-center mt-2">{error}</div>
           )}
@@ -427,5 +474,6 @@ Example of a good list:
     </div>
   );
 } 
+
 
 
