@@ -62,12 +62,14 @@ const cacheResponse = (query: string, response: string) => {
   responseCache.set(query, response);
 };
 
-// Fix MessageComponent to receive queryContext as prop
+// Fix MessageComponent to better handle responsive spacing
 const MessageComponent = React.memo(({ message, queryContext }: { message: Message, queryContext: QueryContext }) => {
   return (
-    <div className={`message ${message.role === 'user' ? 'user-message' : 'ai-message'}`}>
-      <div className={`message-content px-4 py-3 rounded-xl max-w-full overflow-hidden ${
-        message.role === 'user' ? 'ml-auto bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-800'
+    <div className={`message px-2 sm:px-4 md:px-6 ${message.role === 'user' ? 'user-message flex justify-end' : 'ai-message'}`}>
+      <div className={`message-content px-4 py-3 rounded-xl overflow-hidden ${
+        message.role === 'user' 
+          ? 'ml-auto bg-blue-600 text-white max-w-[85%] md:max-w-[75%]' 
+          : 'bg-gray-100 dark:bg-gray-800 max-w-[92%] md:max-w-[85%]'
       }`}>
         {message.role === 'user' ? (
           <div className="whitespace-pre-wrap break-words">{message.content}</div>
@@ -525,7 +527,11 @@ CONVERSATION GUIDELINES:
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-white px-4 sm:px-6 md:px-8" style={{ paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}>
+    <div className="min-h-screen flex flex-col bg-white px-4 sm:px-6 md:px-8" 
+         style={{ 
+           paddingLeft: 'max(env(safe-area-inset-left), 1rem)', 
+           paddingRight: 'max(env(safe-area-inset-right), 1rem)' 
+         }}>
       {/* Hamburger menu and sidebar */}
       <div className="fixed top-4 left-4 z-50 md:static md:z-10">
         <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
@@ -538,15 +544,15 @@ CONVERSATION GUIDELINES:
         onSelectSession={handleSelectChat}
       />
       {/* Welcoming message with fade-out animation */}
-      <div className={`w-full flex justify-center items-center relative h-24 md:h-28 transition-opacity duration-500 ${hasUserMessage ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+      <div className={`w-full flex justify-center items-center relative h-24 md:h-28 transition-opacity duration-500 px-4 ${hasUserMessage ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
         style={{ minHeight: '4rem' }}>
         <span className="text-2xl md:text-3xl font-semibold text-neutral-700 text-center block select-none">
           Seek and You&apos;ll find
         </span>
       </div>
       {/* Chat area fills all available space, scrollbar at window edge */}
-      <div className="flex-1 w-full overflow-y-auto" ref={chatRef}>
-        <div className="max-w-[850px] mx-auto px-4 sm:px-6 md:px-8 pb-4 space-y-4">
+      <div className="flex-1 w-full overflow-y-auto px-1 sm:px-2 md:px-4" ref={chatRef}>
+        <div className="max-w-[850px] mx-auto pb-4 space-y-4">
           {messages.map((message, i) => (
             <MessageComponent 
               key={message.id} 
@@ -554,11 +560,10 @@ CONVERSATION GUIDELINES:
               queryContext={queryContext}
             />
           ))}
-          
           {/* If AI is currently typing, show the streamed content with fade effect */}
           {aiTyping && (
-            <div className={`message ai-message transition-opacity duration-150 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
-              <div className="message-content px-4 py-3 rounded-xl max-w-full overflow-hidden bg-gray-100 dark:bg-gray-800">
+            <div className={`message ai-message px-2 sm:px-4 md:px-6 transition-opacity duration-150 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
+              <div className="message-content px-4 py-3 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 max-w-[92%] md:max-w-[85%]">
                 <div className="w-full markdown-body text-left flex flex-col items-start ai-response-text">
                   <MarkdownRenderer 
                     content={displayed} 
@@ -569,20 +574,19 @@ CONVERSATION GUIDELINES:
               </div>
             </div>
           )}
-          
           {error && (
-            <div className="text-red-500 text-sm text-center mt-2">{error}</div>
+            <div className="text-red-500 text-sm text-center mt-2 px-4">{error}</div>
           )}
         </div>
       </div>
       {/* Input bar fixed at bottom */}
       <form
-        className="w-full flex justify-center fixed bottom-0 left-0 right-0 pb-[env(safe-area-inset-bottom)] z-10"
+        className="w-full flex justify-center fixed bottom-0 left-0 right-0 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] pt-2 px-4 z-10 bg-gradient-to-t from-white via-white to-transparent"
         autoComplete="off"
         onSubmit={handleSend}
         aria-label="Chat input form"
       >
-        <div className="bg-white rounded-2xl shadow-lg w-full max-w-[850px] mx-auto flex items-center px-4 sm:px-6 md:px-8 py-2 gap-2 sm:gap-3 mb-6 transition-all duration-200 focus-within:ring-2 focus-within:ring-black/10">
+        <div className="bg-white rounded-2xl shadow-lg w-full max-w-[850px] mx-auto flex items-center px-4 sm:px-6 md:px-8 py-2 gap-2 sm:gap-3 transition-all duration-200 focus-within:ring-2 focus-within:ring-black/10">
           {/* Action buttons */}
           <button type="button" aria-label="Search" className="w-9 h-9 flex items-center justify-center rounded-full border border-gray-200 bg-white hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/20">
             <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
