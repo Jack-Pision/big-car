@@ -45,64 +45,16 @@ const markdownComponents = {
 };
 
 function BasicRenderer({ data }: { data: any }): ReactNode {
-  // Extract the content string from various possible formats
+  // Always treat data as a string for display
   let contentToRender = '';
-  
-  // Case 1: If data is a string, use it directly
   if (typeof data === 'string') {
     contentToRender = data;
-  } 
-  // Case 2: If data is an object with a content field
-  else if (data && typeof data === 'object') {
-    if (data.content && typeof data.content === 'string') {
-      contentToRender = data.content;
-      
-      // Case 3: Handle nested JSON within content (sometimes happens with AI responses)
-      if (contentToRender.trim().startsWith('{') && contentToRender.trim().endsWith('}')) {
-        try {
-          const nestedData = JSON.parse(contentToRender);
-          if (nestedData && typeof nestedData === 'object') {
-            // If the nested object has a content field, use that
-            if (nestedData.content && typeof nestedData.content === 'string') {
-              contentToRender = nestedData.content;
-            }
-            // Otherwise try to stringify the nested object in a readable way
-            else {
-              contentToRender = "```json\n" + JSON.stringify(nestedData, null, 2) + "\n```";
-            }
-          }
-        } catch (e) {
-          // If parsing fails, keep using the original content
-          console.warn("Failed to parse nested JSON in content:", e);
-        }
-      }
-    }
-    // Case 4: If no content field but the object is stringifiable
-    else if (Object.keys(data).length > 0) {
-      // Check if we have any string fields we can use
-      const stringFields = Object.entries(data)
-        .filter(([_, value]) => typeof value === 'string' && value.length > 0)
-        .map(([key, value]) => ({ key, value: value as string }));
-      
-      if (stringFields.length > 0) {
-        // If there's a single string field with substantial content, use that
-        const mainField = stringFields.find(field => field.value.length > 100) || stringFields[0];
-        contentToRender = mainField.value;
-      } else {
-        // Last resort: format the whole object as a JSON codeblock for visibility
-        contentToRender = "```json\n" + JSON.stringify(data, null, 2) + "\n```";
-      }
-    }
+  } else if (data !== null && data !== undefined) {
+    contentToRender = String(data);
+  } else {
+    contentToRender = 'No content provided';
   }
-  
-  // Fallback for empty content
-  if (!contentToRender.trim()) {
-    contentToRender = "Sorry, I couldn't generate a proper response format.";
-  }
-
-  // Unescape string literals in content
   contentToRender = unescapeString(contentToRender);
-
   return (
     <ReactMarkdown 
       components={markdownComponents} 
