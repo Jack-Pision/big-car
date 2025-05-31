@@ -1513,7 +1513,7 @@ export default function TestChat() {
       {/* Hamburger menu and logo */}
         <div className="fixed top-4 left-4 z-50 flex items-center gap-3">
           <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
-          <Image src="/Logo.svg" alt="Logo" width={40} height={40} priority className="ml-1" />
+          <Image src="/Logo.svg" alt="Logo" width={120} height={120} priority className="ml-1" />
         </div>
 
       {/* Conversation area (scrollable) */}
