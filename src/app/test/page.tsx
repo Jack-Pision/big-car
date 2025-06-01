@@ -336,7 +336,10 @@ function postProcessAIChatResponse(text: string): string {
   
   // Clean up multiple consecutive line breaks again after formatting changes
   processedText = processedText.replace(/\n{3,}/g, '\n\n');
-  
+
+  // 8. Fix bullet point gaps: join bullet and text if separated by blank line
+  processedText = processedText.replace(/(^[-*]\s*)\n+([^\n*-].*)/gm, '$1$2');
+
   return processedText;
 }
 
