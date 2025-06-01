@@ -1520,14 +1520,13 @@ export default function TestChat() {
       {/* Hamburger menu and logo container */}
       <div className="fixed top-4 left-4 z-50 flex items-center gap-3">
         <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
-        <Image src="/Logo.svg" alt="Logo" width={90} height={90} priority />
+        <img src="/Logo.svg" alt="Logo" className="ml-3" style={{ width: 90, height: 90 }} />
       </div>
 
       {/* Responsive Header: visible on mobile/tablet, hidden on desktop */}
       <header className="block lg:hidden fixed top-0 left-0 right-0 z-50 bg-[#161618] shadow-md shadow-black/30 h-14 flex items-center px-4">
         <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
-        <img src="/Logo.svg" alt="Logo" className="ml-3" style={{ width: 40, height: 40 }} />
-        <span className="text-white text-lg font-semibold ml-2">Tehom AI</span>
+        <img src="/Logo.svg" alt="Logo" className="ml-3" style={{ width: 90, height: 90 }} />
       </header>
 
       {/* Conversation area (scrollable) */}
