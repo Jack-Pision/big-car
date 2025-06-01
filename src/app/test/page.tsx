@@ -337,6 +337,13 @@ function postProcessAIChatResponse(text: string): string {
   // Clean up multiple consecutive line breaks again after formatting changes
   processedText = processedText.replace(/\n{3,}/g, '\n\n');
   
+  // 8. Bold labels ending with a colon (e.g., 'Test:')
+  processedText = processedText.replace(/(^|\s)([A-Za-z0-9 _\-]+:)/g, (match, p1, p2) => {
+    // Avoid double-wrapping if already bold
+    if (p2.startsWith('**') && p2.endsWith('**')) return match;
+    return `${p1}**${p2.trim()}**`;
+  });
+
   return processedText;
 }
 
