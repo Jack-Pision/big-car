@@ -305,7 +305,7 @@ Example of a good list:
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div className="min-h-screen flex flex-col bg-white px-4 sm:px-4 md:px-8 lg:px-0">
       {/* Hamburger menu and sidebar */}
       <div className="fixed top-4 left-4 z-50 md:static md:z-10">
         <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
@@ -325,8 +325,8 @@ Example of a good list:
         </span>
       </div>
       {/* Chat area fills all available space, scrollbar at window edge */}
-      <div className="flex-1 w-full overflow-y-auto" ref={chatRef}>
-        <div className="max-w-[850px] mx-auto px-2 pb-4 space-y-4">
+      <div className="flex-1 w-full overflow-y-auto px-4 sm:px-4 md:px-8 lg:px-0" ref={chatRef}>
+        <div className="max-w-[850px] mx-auto pb-4 space-y-4">
           {messages.map((message, i) => (
             <div key={message.id} className={`message ${message.role === 'user' ? 'user-message' : 'ai-message'}`}>
               <div className={`message-content px-4 py-3 rounded-xl max-w-full overflow-hidden ${message.role === 'user' ? 'ml-auto bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-800'}`}>
@@ -365,7 +365,11 @@ Example of a good list:
       </div>
       {/* Input bar fixed at bottom */}
       <form
-        className="w-full flex justify-center fixed bottom-0 left-0 right-0 pb-[env(safe-area-inset-bottom)] z-10"
+        className="w-full flex justify-center fixed bottom-0 left-0 right-0 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] pt-2 px-4 sm:px-4 md:px-8 lg:px-0 z-10 bg-gradient-to-t from-white via-white to-transparent"
+        style={{ 
+          paddingLeft: 'max(env(safe-area-inset-left), 1rem)',
+          paddingRight: 'max(env(safe-area-inset-right), 1rem)'
+        }}
         autoComplete="off"
         onSubmit={handleSend}
         aria-label="Chat input form"
