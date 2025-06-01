@@ -293,10 +293,12 @@ body {
 .markdown-body th, .markdown-body td {
   border: none;
   border-bottom: 1px solid #23242a;
-  padding: 0.45em 0.9em;
-  font-size: 0.92rem;
+  border-left: none !important;
+  border-right: none !important;
   background: transparent;
   color: #f3f4f6;
+  padding: 0.45em 0.9em;
+  font-size: 0.92rem;
   vertical-align: middle;
 }
 .markdown-body th {
