@@ -1542,7 +1542,7 @@ export default function TestChat() {
 
             {/* Input form */}
             <form
-              className="flex flex-col gap-2 rounded-2xl shadow-lg py-2 w-full px-4 sm:px-6 md:px-8 lg:px-12 mb-3 bg-[#232323] border border-white/20"
+              className="flex flex-col gap-2 rounded-2xl shadow-lg py-2 w-full px-4 sm:px-6 md:px-8 lg:px-0 mb-3 bg-[#232323] border border-white/20"
               style={{ boxShadow: '0 4px 32px 0 rgba(0,0,0,0.32)' }}
               onSubmit={handleSend}
             >
@@ -1638,7 +1638,7 @@ export default function TestChat() {
               </div>
 
                   {/* Right group: Plus, Send */}
-                  <div className="flex flex-row gap-2 items-center ml-auto pr-2">
+                  <div className="flex flex-row gap-2 items-center ml-auto pr-2 lg:pr-0">
                     {/* Plus button */}
                     <button 
                       type="button" 
