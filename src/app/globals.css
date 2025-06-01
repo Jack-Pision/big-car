@@ -281,50 +281,40 @@ body {
   margin: 2em 0;
 }
 .markdown-body table {
-  border-collapse: separate;
-  border-spacing: 0;
-  margin: 2em auto;
+  border-collapse: collapse;
   width: 100%;
   max-width: 700px;
-  font-size: 0.97rem;
-  background: #18191c;
-  border-radius: 12px;
-  overflow: hidden;
+  font-size: 0.92rem;
+  background: transparent;
   color: #f3f4f6;
-  box-shadow: 0 2px 12px 0 rgba(0,0,0,0.08);
   border: none;
+  margin: 2em auto;
 }
 .markdown-body th, .markdown-body td {
   border: none;
   border-bottom: 1px solid #23242a;
-  padding: 0.55em 1em;
-  text-align: left;
-  font-size: 0.97rem;
+  padding: 0.45em 0.9em;
+  font-size: 0.92rem;
   background: transparent;
   color: #f3f4f6;
+  vertical-align: middle;
 }
 .markdown-body th {
   font-weight: 700;
-  background: #23242a;
+  background: transparent;
   color: #fff;
-  font-size: 1.01rem;
+  font-size: 0.98rem;
+  text-align: left;
+}
+.markdown-body td {
+  text-align: left;
 }
 .markdown-body tr:last-child th,
 .markdown-body tr:last-child td {
   border-bottom: none;
 }
 .markdown-body tr {
-  transition: background 0.2s;
-}
-.markdown-body tr:hover td {
-  background: #23242a;
-}
-.markdown-body td, .markdown-body th {
-  vertical-align: middle;
-}
-.markdown-body table, .markdown-body th, .markdown-body td {
-  box-shadow: none;
-  border: none;
+  background: none;
 }
 .markdown-body img {
   max-width: 100%;
