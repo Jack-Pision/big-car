@@ -1518,7 +1518,7 @@ export default function TestChat() {
       <div className="min-h-screen flex flex-col px-4 sm:px-4 md:px-8 lg:px-0" style={{ background: '#161618' }}>
         <GlobalStyles />
       {/* Single Header: always visible on all devices */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-[#161618] shadow-md shadow-black/30 h-14 flex items-center px-4">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-[#161618] shadow-md shadow-black/30 lg:shadow-none h-14 flex items-center px-4">
         <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
         <img src="/Logo.svg" alt="Logo" className="ml-3" style={{ width: 90, height: 90 }} />
       </header>
