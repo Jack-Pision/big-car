@@ -62,14 +62,14 @@ const cacheResponse = (query: string, response: string) => {
   responseCache.set(query, response);
 };
 
-// Fix MessageComponent to be fully responsive
+// Fix MessageComponent to add right margin to user messages and left margin to AI messages on mobile
 const MessageComponent = React.memo(({ message, queryContext }: { message: Message, queryContext: QueryContext }) => {
   return (
-    <div className={`message px-3 sm:px-4 md:px-5 lg:px-2 ${message.role === 'user' ? 'user-message flex justify-end' : 'ai-message'}`}>
+    <div className={`message flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} px-0`}>
       <div className={`message-content px-4 py-3 rounded-xl overflow-hidden ${
         message.role === 'user' 
-          ? 'ml-auto bg-blue-600 text-white max-w-[80%] sm:max-w-[75%] md:max-w-[70%]' 
-          : 'bg-gray-100 dark:bg-gray-800 max-w-[90%] sm:max-w-[85%] md:max-w-[80%]'
+          ? 'ml-auto bg-blue-600 text-white max-w-[80%] sm:max-w-[75%] md:max-w-[70%] mr-4 sm:mr-6 md:mr-8' 
+          : 'bg-gray-100 dark:bg-gray-800 max-w-[90%] sm:max-w-[85%] md:max-w-[80%] ml-4 sm:ml-6 md:ml-8'
       }`}>
         {message.role === 'user' ? (
           <div className="whitespace-pre-wrap break-words">{message.content}</div>
@@ -563,8 +563,8 @@ CONVERSATION GUIDELINES:
           ))}
           {/* If AI is currently typing, show the streamed content with fade effect */}
           {aiTyping && (
-            <div className={`message ai-message px-4 transition-opacity duration-150 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
-              <div className="message-content px-4 py-3 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 max-w-[90%] sm:max-w-[85%] md:max-w-[80%]">
+            <div className={`message ai-message flex justify-start px-0 transition-opacity duration-150 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
+              <div className="message-content px-4 py-3 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 max-w-[90%] sm:max-w-[85%] md:max-w-[80%] ml-4 sm:ml-6 md:ml-8">
                 <div className="w-full markdown-body text-left flex flex-col items-start ai-response-text">
                   <MarkdownRenderer 
                     content={displayed} 
