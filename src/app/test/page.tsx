@@ -1542,7 +1542,7 @@ export default function TestChat() {
 
             {/* Input form */}
             <form
-              className="w-full flex flex-col gap-2 rounded-2xl shadow-lg px-4 py-2 mx-4 mb-3 bg-[#232323] border border-white/20"
+              className="flex flex-col gap-2 rounded-2xl shadow-lg py-2 mx-4 sm:mx-4 md:mx-8 lg:mx-auto mb-3 bg-[#232323] border border-white/20"
               style={{ boxShadow: '0 4px 32px 0 rgba(0,0,0,0.32)' }}
               onSubmit={handleSend}
             >
