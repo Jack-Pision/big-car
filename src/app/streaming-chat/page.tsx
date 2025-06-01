@@ -527,10 +527,11 @@ CONVERSATION GUIDELINES:
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-white px-4 sm:px-6 md:px-8" 
+    <div className="min-h-screen flex flex-col bg-white px-6 sm:px-6 md:px-6 lg:px-4" 
          style={{ 
-           paddingLeft: 'max(env(safe-area-inset-left), 1rem)', 
-           paddingRight: 'max(env(safe-area-inset-right), 1rem)' 
+           paddingLeft: 'max(env(safe-area-inset-left), 1.5rem)', 
+           paddingRight: 'max(env(safe-area-inset-right), 1.5rem)',
+           paddingBottom: 'env(safe-area-inset-bottom)'
          }}>
       {/* Hamburger menu and sidebar */}
       <div className="fixed top-4 left-4 z-50 md:static md:z-10">
@@ -551,7 +552,7 @@ CONVERSATION GUIDELINES:
         </span>
       </div>
       {/* Chat area fills all available space, scrollbar at window edge */}
-      <div className="flex-1 w-full overflow-y-auto px-1 sm:px-2 md:px-4" ref={chatRef}>
+      <div className="flex-1 w-full overflow-y-auto px-2 sm:px-3 md:px-2" ref={chatRef}>
         <div className="max-w-[850px] mx-auto pb-4 space-y-4">
           {messages.map((message, i) => (
             <MessageComponent 
@@ -562,7 +563,7 @@ CONVERSATION GUIDELINES:
           ))}
           {/* If AI is currently typing, show the streamed content with fade effect */}
           {aiTyping && (
-            <div className={`message ai-message px-2 sm:px-4 md:px-6 transition-opacity duration-150 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
+            <div className={`message ai-message px-3 sm:px-4 md:px-6 transition-opacity duration-150 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
               <div className="message-content px-4 py-3 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 max-w-[92%] md:max-w-[85%]">
                 <div className="w-full markdown-body text-left flex flex-col items-start ai-response-text">
                   <MarkdownRenderer 
@@ -581,12 +582,12 @@ CONVERSATION GUIDELINES:
       </div>
       {/* Input bar fixed at bottom */}
       <form
-        className="w-full flex justify-center fixed bottom-0 left-0 right-0 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] pt-2 px-4 z-10 bg-gradient-to-t from-white via-white to-transparent"
+        className="w-full flex justify-center fixed bottom-0 left-0 right-0 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] pt-2 px-6 sm:px-6 md:px-6 lg:px-4 z-10 bg-gradient-to-t from-white via-white to-transparent"
         autoComplete="off"
         onSubmit={handleSend}
         aria-label="Chat input form"
       >
-        <div className="bg-white rounded-2xl shadow-lg w-full max-w-[850px] mx-auto flex items-center px-4 sm:px-6 md:px-8 py-2 gap-2 sm:gap-3 transition-all duration-200 focus-within:ring-2 focus-within:ring-black/10">
+        <div className="bg-white rounded-2xl shadow-lg w-full max-w-[850px] mx-auto flex items-center px-4 sm:px-6 md:px-6 py-2 gap-2 sm:gap-3 transition-all duration-200 focus-within:ring-2 focus-within:ring-black/10">
           {/* Action buttons */}
           <button type="button" aria-label="Search" className="w-9 h-9 flex items-center justify-center rounded-full border border-gray-200 bg-white hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/20">
             <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
