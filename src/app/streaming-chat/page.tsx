@@ -62,14 +62,14 @@ const cacheResponse = (query: string, response: string) => {
   responseCache.set(query, response);
 };
 
-// Fix MessageComponent to better handle responsive spacing
+// Fix MessageComponent to be fully responsive
 const MessageComponent = React.memo(({ message, queryContext }: { message: Message, queryContext: QueryContext }) => {
   return (
-    <div className={`message px-2 sm:px-4 md:px-6 ${message.role === 'user' ? 'user-message flex justify-end' : 'ai-message'}`}>
+    <div className={`message px-3 sm:px-4 md:px-5 lg:px-2 ${message.role === 'user' ? 'user-message flex justify-end' : 'ai-message'}`}>
       <div className={`message-content px-4 py-3 rounded-xl overflow-hidden ${
         message.role === 'user' 
-          ? 'ml-auto bg-blue-600 text-white max-w-[85%] md:max-w-[75%]' 
-          : 'bg-gray-100 dark:bg-gray-800 max-w-[92%] md:max-w-[85%]'
+          ? 'ml-auto bg-blue-600 text-white max-w-[80%] sm:max-w-[75%] md:max-w-[70%]' 
+          : 'bg-gray-100 dark:bg-gray-800 max-w-[90%] sm:max-w-[85%] md:max-w-[80%]'
       }`}>
         {message.role === 'user' ? (
           <div className="whitespace-pre-wrap break-words">{message.content}</div>
@@ -527,9 +527,9 @@ CONVERSATION GUIDELINES:
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-white px-6 sm:px-6 md:px-6 lg:px-4" 
+    <div className="min-h-screen flex flex-col bg-white" 
          style={{ 
-           paddingLeft: 'max(env(safe-area-inset-left), 1.5rem)', 
+           paddingLeft: 'max(env(safe-area-inset-left), 1.5rem)',
            paddingRight: 'max(env(safe-area-inset-right), 1.5rem)',
            paddingBottom: 'env(safe-area-inset-bottom)'
          }}>
@@ -545,15 +545,15 @@ CONVERSATION GUIDELINES:
         onSelectSession={handleSelectChat}
       />
       {/* Welcoming message with fade-out animation */}
-      <div className={`w-full flex justify-center items-center relative h-24 md:h-28 transition-opacity duration-500 px-4 ${hasUserMessage ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+      <div className={`w-full flex justify-center items-center relative h-24 md:h-28 transition-opacity duration-500 ${hasUserMessage ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
         style={{ minHeight: '4rem' }}>
         <span className="text-2xl md:text-3xl font-semibold text-neutral-700 text-center block select-none">
           Seek and You&apos;ll find
         </span>
       </div>
       {/* Chat area fills all available space, scrollbar at window edge */}
-      <div className="flex-1 w-full overflow-y-auto px-2 sm:px-3 md:px-2" ref={chatRef}>
-        <div className="max-w-[850px] mx-auto pb-4 space-y-4">
+      <div className="flex-1 w-full overflow-y-auto" ref={chatRef}>
+        <div className="max-w-[850px] mx-auto px-2 sm:px-3 md:px-4 lg:px-0 pb-4 space-y-4">
           {messages.map((message, i) => (
             <MessageComponent 
               key={message.id} 
@@ -563,8 +563,8 @@ CONVERSATION GUIDELINES:
           ))}
           {/* If AI is currently typing, show the streamed content with fade effect */}
           {aiTyping && (
-            <div className={`message ai-message px-3 sm:px-4 md:px-6 transition-opacity duration-150 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
-              <div className="message-content px-4 py-3 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 max-w-[92%] md:max-w-[85%]">
+            <div className={`message ai-message px-3 sm:px-4 md:px-5 lg:px-2 transition-opacity duration-150 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
+              <div className="message-content px-4 py-3 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 max-w-[90%] sm:max-w-[85%] md:max-w-[80%]">
                 <div className="w-full markdown-body text-left flex flex-col items-start ai-response-text">
                   <MarkdownRenderer 
                     content={displayed} 
@@ -580,27 +580,33 @@ CONVERSATION GUIDELINES:
           )}
         </div>
       </div>
-      {/* Input bar fixed at bottom */}
+      {/* Input bar fixed at bottom with responsive padding */}
       <form
-        className="w-full flex justify-center fixed bottom-0 left-0 right-0 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] pt-2 px-6 sm:px-6 md:px-6 lg:px-4 z-10 bg-gradient-to-t from-white via-white to-transparent"
+        className="w-full flex justify-center fixed bottom-0 left-0 right-0 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] pt-2 z-10 bg-gradient-to-t from-white via-white to-transparent"
+        style={{ 
+          paddingLeft: 'max(env(safe-area-inset-left), 1.5rem)',
+          paddingRight: 'max(env(safe-area-inset-right), 1.5rem)'
+        }}
         autoComplete="off"
         onSubmit={handleSend}
         aria-label="Chat input form"
       >
-        <div className="bg-white rounded-2xl shadow-lg w-full max-w-[850px] mx-auto flex items-center px-4 sm:px-6 md:px-6 py-2 gap-2 sm:gap-3 transition-all duration-200 focus-within:ring-2 focus-within:ring-black/10">
-          {/* Action buttons */}
-          <button type="button" aria-label="Search" className="w-9 h-9 flex items-center justify-center rounded-full border border-gray-200 bg-white hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/20">
-            <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          </button>
-          <button type="button" aria-label="Reason" className="w-9 h-9 flex items-center justify-center rounded-full border border-gray-200 bg-white hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/20">
-            <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8M12 8v8"/></svg>
-          </button>
-          <button type="button" aria-label="Deep research" className="w-9 h-9 flex items-center justify-center rounded-full border border-gray-200 bg-white hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/20">
-            <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-          </button>
-          <button type="button" aria-label="Create image" className="w-9 h-9 flex items-center justify-center rounded-full border border-gray-200 bg-white hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/20">
-            <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
-          </button>
+        <div className="bg-white rounded-2xl shadow-lg w-full max-w-[850px] mx-auto flex items-center px-4 py-2 gap-2 sm:gap-3 transition-all duration-200 focus-within:ring-2 focus-within:ring-black/10">
+          {/* Action buttons with responsive visibility */}
+          <div className="flex space-x-1 sm:space-x-2">
+            <button type="button" aria-label="Search" className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-full border border-gray-200 bg-white hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/20">
+              <svg width="16" height="16" className="sm:w-[18px] sm:h-[18px]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </button>
+            <button type="button" aria-label="Reason" className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-full border border-gray-200 bg-white hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/20">
+              <svg width="16" height="16" className="sm:w-[18px] sm:h-[18px]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8M12 8v8"/></svg>
+            </button>
+            <button type="button" aria-label="Deep research" className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-full border border-gray-200 bg-white hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/20 hidden sm:flex">
+              <svg width="16" height="16" className="sm:w-[18px] sm:h-[18px]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+            </button>
+            <button type="button" aria-label="Create image" className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-full border border-gray-200 bg-white hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/20 hidden md:flex">
+              <svg width="16" height="16" className="sm:w-[18px] sm:h-[18px]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+            </button>
+          </div>
           {/* Input */}
           <input
             ref={inputRef}
@@ -608,7 +614,7 @@ CONVERSATION GUIDELINES:
             value={input}
             onChange={e => setInput(e.target.value)}
             placeholder="Ask anything"
-            className="flex-1 bg-transparent outline-none border-none text-base text-neutral-900 placeholder-gray-400 px-2 py-2 focus:ring-0"
+            className="flex-1 bg-transparent outline-none border-none text-sm sm:text-base text-neutral-900 placeholder-gray-400 px-2 py-2 focus:ring-0"
             aria-label="Ask anything"
             disabled={isLoading || aiTyping}
             onKeyDown={e => {
@@ -619,16 +625,16 @@ CONVERSATION GUIDELINES:
           <button
             type={isStopActive ? "button" : "submit"}
             aria-label={isStopActive ? "Stop AI response" : "Send"}
-            className="w-10 h-10 flex items-center justify-center rounded-full bg-black text-white hover:bg-neutral-800 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/30"
+            className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-black text-white hover:bg-neutral-800 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/30"
             disabled={!isStopActive && (isLoading || aiTyping || !input.trim())}
             onClick={isStopActive ? handleStop : undefined}
           >
             {isStopActive ? (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <svg width="14" height="14" className="sm:w-[16px] sm:h-[16px]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor" />
               </svg>
             ) : (
-              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <svg width="18" height="18" className="sm:w-[20px] sm:h-[20px]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                 <path d="M5 12h14M12 5l7 7-7 7"/>
               </svg>
             )}
