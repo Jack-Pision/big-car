@@ -239,12 +239,11 @@ function postProcessAIChatResponse(text: string): string {
   });
 
   // 2. Fix Markdown Formatting
-  // (REMOVED: Do not strip markdown bold/italic formatting here)
   // Remove all markdown formatting (asterisks and underscores for bold/italic) for default chat
-  // processedText = processedText.replace(/\*\*([^*]+)\*\*/g, '$1'); // Remove **bold**
-  // processedText = processedText.replace(/\*([^*]+)\*/g, '$1');     // Remove *italic*
-  // processedText = processedText.replace(/__([^_]+)__/g, '$1');     // Remove __bold__
-  // processedText = processedText.replace(/_([^_]+)_/g, '$1');       // Remove _italic_
+  processedText = processedText.replace(/\*\*([^*]+)\*\*/g, '$1'); // Remove **bold**
+  processedText = processedText.replace(/\*([^*]+)\*/g, '$1');     // Remove *italic*
+  processedText = processedText.replace(/__([^_]+)__/g, '$1');     // Remove __bold__
+  processedText = processedText.replace(/_([^_]+)_/g, '$1');       // Remove _italic_
 
   // Fix broken lists (ensure proper space after list markers)
   processedText = processedText.replace(/^(\s*[-*]|\s*[0-9]+\.)(?!\s)/gm, '$1 ');
@@ -338,13 +337,6 @@ function postProcessAIChatResponse(text: string): string {
   // Clean up multiple consecutive line breaks again after formatting changes
   processedText = processedText.replace(/\n{3,}/g, '\n\n');
   
-  // 8. Bold labels ending with a colon (e.g., 'Test:')
-  processedText = processedText.replace(/(^|\s)([A-Za-z0-9 _\-]+:)/g, (match, p1, p2) => {
-    // Avoid double-wrapping if already bold
-    if (p2.startsWith('**') && p2.endsWith('**')) return match;
-    return `${p1}**${p2.trim()}**`;
-  });
-
   return processedText;
 }
 
@@ -1028,65 +1020,65 @@ export default function TestChat() {
     const messageId = uuidv4();
 
     try {
-      if (!currentInput && !currentSelectedFiles.length) return;
+    if (!currentInput && !currentSelectedFiles.length) return;
 
-      let currentActiveSessionId = activeSessionId;
+    let currentActiveSessionId = activeSessionId;
 
-      if (!currentActiveSessionId) {
-        const newSession = createNewSession(currentInput || (currentSelectedFiles.length > 0 ? "Image Upload" : undefined));
-        setActiveSessionId(newSession.id);
-        saveActiveSessionId(newSession.id);
-        currentActiveSessionId = newSession.id;
-        setMessages([]);
-      }
+    if (!currentActiveSessionId) {
+      const newSession = createNewSession(currentInput || (currentSelectedFiles.length > 0 ? "Image Upload" : undefined));
+      setActiveSessionId(newSession.id);
+      saveActiveSessionId(newSession.id);
+      currentActiveSessionId = newSession.id;
+      setMessages([]);
+    }
 
-      if (!hasInteracted) setHasInteracted(true);
-      setCurrentQuery(currentInput);
+    if (!hasInteracted) setHasInteracted(true);
+    setCurrentQuery(currentInput);
 
-      if (showAdvanceSearchUI) {
-        setIsAdvanceSearchActive(true);
-        const researchId = uuidv4();
-        setMessages(prev => [
-          ...prev,
-          { role: "user", content: currentInput, id: uuidv4(), timestamp: Date.now() },
-          { role: "deep-research", content: currentInput, researchId, id: uuidv4(), timestamp: Date.now() }
-        ]);
-        setInput("");
-        setImagePreviewUrls([]);
-        setSelectedFilesForUpload([]);
+    if (showAdvanceSearchUI) {
+      setIsAdvanceSearchActive(true);
+      const researchId = uuidv4();
+      setMessages(prev => [
+        ...prev,
+        { role: "user", content: currentInput, id: uuidv4(), timestamp: Date.now() },
+        { role: "deep-research", content: currentInput, researchId, id: uuidv4(), timestamp: Date.now() }
+      ]);
+      setInput("");
+      setImagePreviewUrls([]);
+      setSelectedFilesForUpload([]);
         setIsLoading(false);
-        setIsAiResponding(false);
-        return;
-      }
+      setIsAiResponding(false);
+      return;
+    }
 
-      setIsAiResponding(true);
+    setIsAiResponding(true);
       setIsLoading(true);
-      if (showHeading) setShowHeading(false);
+    if (showHeading) setShowHeading(false);
 
-      const queryType = classifyQuery(currentInput) as keyof typeof SCHEMAS;
-      const responseSchema = SCHEMAS[queryType] || SCHEMAS.conversation;
+    const queryType = classifyQuery(currentInput) as keyof typeof SCHEMAS;
+    const responseSchema = SCHEMAS[queryType] || SCHEMAS.conversation;
 
-      console.log("[handleSend] Query:", currentInput);
-      console.log("[handleSend] Classified Query Type:", queryType);
-      console.log("[handleSend] Selected Response Schema Name:", queryType);
+    console.log("[handleSend] Query:", currentInput);
+    console.log("[handleSend] Classified Query Type:", queryType);
+    console.log("[handleSend] Selected Response Schema Name:", queryType);
 
-      aiStreamAbortController.current = new AbortController();
+    aiStreamAbortController.current = new AbortController();
 
       const userMessageForDisplay: Message = {
-        role: "user" as const,
-        content: currentInput,
-        id: messageId,
-        timestamp: Date.now()
-      };
+      role: "user" as const,
+      content: currentInput,
+      id: messageId,
+      timestamp: Date.now()
+    };
 
-      if (currentSelectedFiles.length > 0 && !currentInput) {
-        userMessageForDisplay.content = "Image selected for analysis.";
-      }
-      if (currentSelectedFiles.length > 0) {
-        userMessageForDisplay.imageUrls = imagePreviewUrls || undefined;
-      }
-      setMessages((prev) => [...prev, userMessageForDisplay]);
-      setInput("");
+    if (currentSelectedFiles.length > 0 && !currentInput) {
+      userMessageForDisplay.content = "Image selected for analysis.";
+    }
+    if (currentSelectedFiles.length > 0) {
+      userMessageForDisplay.imageUrls = imagePreviewUrls || undefined;
+    }
+    setMessages((prev) => [...prev, userMessageForDisplay]);
+    setInput("");
 
       if (currentSelectedFiles.length > 0) {
         const clientSideSupabase = createSupabaseClient();
@@ -1358,18 +1350,18 @@ export default function TestChat() {
                     } else if (hasActualContent) {
                       // Update the message content only if we're already showing it
                       aiMsg.content = contentBuffer;
-                      setMessages((prev) => {
-                        const updatedMessages = [...prev];
+                    setMessages((prev) => {
+                      const updatedMessages = [...prev];
                         const aiIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
                         if (aiIndex !== -1) {
                           updatedMessages[aiIndex] = {
                             ...updatedMessages[aiIndex],
                             content: contentBuffer,
-                            webSources: aiMsg.webSources
-                          };
-                        }
-                        return updatedMessages;
-                      });
+                          webSources: aiMsg.webSources
+                        };
+                      }
+                      return updatedMessages;
+                    });
                     }
                   }
                 } catch (err) {
@@ -1598,7 +1590,7 @@ export default function TestChat() {
       <div
         ref={scrollRef}
         className="flex-1 overflow-y-auto w-full flex flex-col items-center justify-center relative px-4 sm:px-4 md:px-8 lg:px-0 pt-14"
-        style={{ paddingBottom: `${isChatEmpty && !hasInteracted ? 0 : inputBarHeight + EXTRA_GAP}px` }}
+          style={{ paddingBottom: `${isChatEmpty && !hasInteracted ? 0 : inputBarHeight + EXTRA_GAP}px` }}
       >
           {/* Centered wrapper for heading and input */}
         <div
