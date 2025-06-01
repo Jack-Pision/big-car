@@ -1542,7 +1542,7 @@ export default function TestChat() {
 
             {/* Input form */}
             <form
-              className="flex flex-col gap-2 rounded-2xl shadow-lg py-2 sm:py-3 md:py-4 mx-4 sm:mx-4 md:mx-8 lg:mx-auto mb-3 bg-[#232323] border border-white/20 max-w-3xl w-full"
+              className="flex flex-col gap-2 rounded-2xl shadow-lg py-2 mx-4 sm:mx-4 md:mx-8 lg:mx-auto mb-3 bg-[#232323] border border-white/20"
               style={{ boxShadow: '0 4px 32px 0 rgba(0,0,0,0.32)' }}
               onSubmit={handleSend}
             >
@@ -1578,7 +1578,7 @@ export default function TestChat() {
                         if (!isLoading) handleSend();
                       }
                     }}
-                    className="w-full border-none outline-none bg-transparent px-2 py-1 sm:py-2 md:py-3 text-gray-200 text-base sm:text-lg placeholder-gray-500 resize-none overflow-auto self-center rounded-lg"
+                    className="w-full border-none outline-none bg-transparent px-2 py-1 text-gray-200 text-sm placeholder-gray-500 resize-none overflow-auto self-center rounded-lg"
                     placeholder="Ask anything..."
             disabled={isLoading}
             rows={1}
@@ -1794,7 +1794,7 @@ export default function TestChat() {
         {/* Fixed Footer Bar Behind Input */}
         <div
           className={`fixed left-0 right-0 bottom-0 z-40 transition-opacity duration-300 ${isChatEmpty && !hasInteracted ? 'opacity-0' : 'opacity-100'}`}
-          style={{ height: `${inputBarHeight + 16}px`, background: '#161618', pointerEvents: 'none' }}
+          style={{ height: `${inputBarHeight}px`, background: '#161618', pointerEvents: 'none' }}
           aria-hidden="true"
         />
 
