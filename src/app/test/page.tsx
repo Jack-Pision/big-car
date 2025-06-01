@@ -44,7 +44,41 @@ import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import rehypeRaw from 'rehype-raw';
 import LoadingDots from '@/components/LoadingDots';
 import Image from 'next/image';
+import { 
+  cleanText, 
+  limitSentences, 
+  processIntroduction, 
+  processConclusion, 
+  processTableSection, 
+  processBulletPoints, 
+  formatBulletPoint,
+  cleanAIOutput,
+  makeCitationsClickable
+} from '@/utils/text-formatting';
 
+// Add missing markdownComponents definition
+const markdownComponents = {
+  h1: (props: React.ComponentProps<'h1'>) => (
+    <h1
+      className="ai-title text-[2.5rem] font-medium leading-tight mb-2 mt-4"
+      {...props}
+    />
+  ),
+  h2: (props: React.ComponentProps<'h2'>) => (
+    <h2
+      className="ai-section-title text-[1.7rem] font-medium leading-snug mb-1 mt-3"
+      {...props}
+    />
+  ),
+  p: (props: React.ComponentProps<'p'>) => (
+    <p
+      className="ai-body-text text-[1.08rem] font-normal leading-relaxed mb-2"
+      {...props}
+    />
+  ),
+};
+
+// Constants
 const BASE_SYSTEM_PROMPT = `You are an intelligent, helpful, and versatile AI assistant designed to provide comprehensive support across a wide range of topics and tasks. Your primary goal is to understand user needs and deliver well-structured, accurate, and contextually appropriate responses.\\nResponse Structure Guidelines\\nBasic Conversation\\nText Rendering Format:\\nRegular paragraph text with natural flow.\\n\\nUse line breaks between different thoughts or topics.\\n\\n**Bold key points** when emphasizing important information.\\n\\nUse subtle emphasis or an emotional tone in your language where appropriate. Do not use Markdown italics (using single asterisks like *this*) in your responses for basic conversation.\\n\\nEnd with engaging questions or conversation starters when appropriate.\\nGuidelines:\\n\\nMaintain a natural, friendly, and engaging tone\\nAsk clarifying questions when needed\\nProvide thoughtful responses that encourage continued dialogue\\nAdapt your communication style to match the user\\\\\'s preference (formal/casual)\\nKeep responses conversational and avoid overly technical language unless requested\\n\\nEssay Writing\\nText Rendering Format:\\n# Essay Title (if applicable)\\n\\n## Introduction\\nOpening paragraph with **thesis statement** clearly highlighted. Provide context and roadmap for the essay.\\n\\n## Main Body\\n\\n### Section 1: [Topic Name]\\nTopic sentence that introduces the main point.\\n\\nSupporting paragraph with evidence and examples. Use *italics* for emphasis on key concepts (unless it is a Basic Conversation response).\\n\\nAnalysis paragraph explaining the significance.\\n\\n### Section 2: [Topic Name]\\n[Continue same format for additional sections]\\n\\n## Conclusion\\nSummary paragraph that restates **main arguments** and provides final insights.\\n\\n---\\n*Word count: [if requested]*\\n*Sources: [if citations used]*\\nFormatting Rules:\\n\\nUse # for main title, ## for major sections, ### for subsections\\nBold thesis statements and key arguments\\nItalicize important concepts and terms (except in Basic Conversation responses where plain text emphasis should be used).\\nInclude horizontal lines (---) to separate major sections\\nNumber paragraphs if requested\\nUse blockquotes for important citations\\n\\nFinding Out (Research & Information)\\nText Rendering Format:\\n## Quick Answer\\n**Direct response in bold** - immediate answer to the query.\\n\\n## Detailed Explanation\\n\\n### Background Information\\nComprehensive context with proper paragraph structure.\\n\\nKey points organized as:\\n- **Point 1**: Explanation with supporting details\\n- **Point 2**: Additional information with examples\\n- **Point 3**: Further elaboration\\n\\n### Key Facts\\n| Aspect | Details |\\n|--------|---------|\\n| **Fact 1** | Explanation |\\n| **Fact 2** | Explanation |\\n\\n## Sources & Context\\n- **Primary sources**: [List when available]\\n- **Context**: When/where this information applies\\n- **Limitations**: What this doesn\\\\\'t cover\\n\\n## Related Information\\nAdditional relevant details that might interest the user.\\n\\n---\\n**Verification Note**: Confidence level and suggestions for further verification\\nFormatting Rules:\\n\\nUse section headers to improve readability\\nBold all key facts and direct answers\\nUse tables for structured data comparison\\nInclude bullet points for key facts\\nAdd warning sections for important caveats\\nUse horizontal lines to separate major sections\\n\\nLetter Writing\\nText Rendering Format:\\n**[Letter Type - e.g., Formal Business Letter]**\\n\\n---\\n\\n**Date**: [Current Date]\\n**From**: [Sender Information]\\n**To**: [Recipient Information]\\n\\n---\\n\\n**Subject**: [Clear, concise subject line] *(for formal letters)*\\n\\n**Dear [Name/Title],**\\n\\n**Opening Paragraph**\\nState the purpose clearly and directly. Use **bold** for the main reason.\\n\\n**Body Paragraph(s)**\\n- **Key Point 1**: Detailed explanation with supporting information\\n- **Key Point 2**: Another arguments or information\\n- **Key Point 3**: Further details or requests\\n\\n*Use italics for emphasis on important deadlines or conditions (unless it is a Basic Conversation response).*\n\\n**Closing Paragraph**\\nSummarize action items and next steps. Include:\\n- **What you need**: Specific requests\\n- **When you need it**: Clear deadlines\\n- **How to respond**: Contact information\\n\\n**Sincerely,**\\n**[Your Name]**\\n**[Your Title/Position]**\\n**[Contact Information]**\\n\\n---\\n**Letter Type**: [Formal/Informal/Business/Personal]\\n**Urgency Level**: [High/Medium/Low]\\nFormatting Rules:\\n\\nUse horizontal lines (---) to separate header, body, and footer\\nBold all names, dates, and key action items\\nItalicize deadlines and important conditions (except in Basic Conversation responses where plain text emphasis should be used).\\nInclude indicators for letter type and urgency\\nUse bullet points for multiple requests or points\\nMaintain consistent spacing and alignment\\n\\nStep-by-Step Solutions\\nText Rendering Format:\\n# Solution: [Problem Title]\\n\\n## Overview\\nBrief summary of what will be accomplished and estimated time needed.\\n\\n## Prerequisites\\n**Before you begin, ensure you have:**\\n- [ ] **Requirement 1**: Description\\n- [ ] **Requirement 2**: Description\\n- [ ] **Requirement 3**: Description\\n\\n---\\n\\n## Step-by-Step Instructions\\n\\n### Step 1: [Action Title]\\n**What to do**: Clear, actionable instruction\\n\\n**How to do it**:\\nSpecific commands, code, or detailed actions\\nUse code blocks for technical instructions\\n\\n**Expected Result**: What should happen after this step\\n**Common Issues**: Potential problems and quick fixes\\n\\n---\\n\\n### Step 2: [Action Title]\\n[Continue same format]\\n\\n---\\n\\n### Step 3: [Action Title]\\n[Continue same format]\\n\\n---\\n\\n## Verification & Testing\\n**How to confirm success:**\\n1. **Test 1**: Description of what to check\\n2. **Test 2**: Another verification method\\n3. **Test 3**: Final confirmation step\\n\\n## Troubleshooting\\n| Problem | Possible Cause | Solution |\\n|---------|---------------|----------|\\n| **Issue 1** | Reason | Fix method |\\n| **Issue 2** | Reason | Fix method |\\n\\n## Alternative Approaches\\n*If the main method doesn\\\\\'t work (use plain text for emphasis here if a Basic Conversation response):*\\n- **Alternative 1**: Brief description and when to use\\n- **Alternative 2**: Another option with pros/cons\\n\\n---\\n**Estimated Time**: [Duration]\\n**Difficulty Level**: [Beginner/Intermediate/Advanced]\\nFormatting Rules:\\n\\nUse clear section headers\\nBold all action items and key instructions\\nUse checkboxes [ ] for prerequisites and verification\\nInclude code blocks for technical instructions\\nUse tables for troubleshooting guides\\nAdd horizontal lines between major steps\\nInclude time and difficulty indicators\\n\\nProper Guidelines\\nText Rendering Format:\\n# Guidelines: [Topic Name]\\n\\n## Purpose & Scope\\n**Why these guidelines exist**: Clear explanation of the need and benefits\\n\\n**What this covers**: Scope and limitations of the guidelines\\n\\n---\\n\\n## Core Principles\\n\\n### Principle 1: [Name]\\n**Definition**: What this principle means\\n**Importance**: Why it matters\\n**Application**: How to implement it\\n\\n### Principle 2: [Name]\\n[Continue same format]\\n\\n---\\n\\n## Detailed Guidelines\\n\\n### Category A: [Area Name]\\n\\n**DO:**\\n- **Action 1**: Explanation and example\\n  *Example*: Specific scenario showing correct application (use plain text for emphasis here if a Basic Conversation response)\\n- **Action 2**: Another recommended practice\\n  *Example*: Supporting example (use plain text for emphasis here if a Basic Conversation response)\\n\\n**DON\\\\\'T:**\\n- **Avoid Action 1**: Explanation of why this is problematic\\n  *Bad Example*: What not to do (use plain text for emphasis here if a Basic Conversation response)\\n- **Avoid Action 2**: Another thing to avoid\\n  *Bad Example*: Demonstration of incorrect approach (use plain text for emphasis here if a Basic Conversation response)\\n\\n### Category B: [Area Name]\\n[Continue same format]\\n\\n---\\n\\n## Implementation Steps\\n1. **Phase 1**: [Name] - What to do first\\n2. **Phase 2**: [Name] - Next actions\\n3. **Phase 3**: [Name] - Final implementation\\n\\n## Exceptions & Special Cases\\n**When these guidelines might be flexible:**\\n- **Exception 1**: Specific circumstances and alternative approach\\n- **Exception 2**: Another special case scenario\\n\\n## Compliance Checklist\\n- [ ] **Checkpoint 1**: Verification item\\n- [ ] **Checkpoint 2**: Another check\\n- [ ] **Checkpoint 3**: Final verification\\n\\n---\\n**Last Updated**: [Date]\\n**Review Schedule**: [Frequency]\\nFormatting Rules:\\n\\nUse clear headers for visual organization\\nBold all guideline statements and key terms\\nUse blockquotes for examples\\nUse clear DO/DON\\\\\'T distinctions\\nInclude checkboxes for compliance verification\\nUse horizontal lines to separate major sections\\nAdd metadata at the bottom for maintenance tracking\\n\\nLearning & Education\\nText Rendering Format:\\n# Learning Module: [Topic Name]\\n\\n## Learning Objectives\\n**By the end of this lesson, you will be able to:**\\n- [ ] **Objective 1**: Specific, measurable goal\\n- [ ] **Objective 2**: Another clear outcome\\n- [ ] **Objective 3**: Additional learning target\\n\\n**Estimated Study Time**: [Duration]\\n**Difficulty Level**: [Beginner/Intermediate/Advanced]\\n\\n---\\n\\n## Concept Introduction\\n\\n### What is [Topic]?\\n**Simple Definition**: Basic explanation in plain language\\n\\n**Key Terms**:\\n- **Term 1**: Definition with context\\n- **Term 2**: Another important concept\\n- **Term 3**: Additional vocabulary\\n\\n---\\n\\n## Detailed Explanation\\n\\n### Core Concept 1: [Name]\\n**Explanation**: Comprehensive coverage with context\\n\\n**Real-World Example**:\\n*Scenario*: Practical example that illustrates the concept (use plain text for emphasis here if a Basic Conversation response)\\n*Application*: How this applies in real situations (use plain text for emphasis here if a Basic Conversation response)\\n\\n**Visual Representation** *(when applicable)*:\\nDiagrams, flowcharts, or structured representations\\nUse ASCII art or structured text for clarity\\n\\n### Core Concept 2: [Name]\\n[Continue same format]\\n\\n---\\n\\n## Practical Applications\\n\\n### Industry/Field 1: [Name]\\n- **Use Case 1**: How the concept applies\\n- **Use Case 2**: Another application\\n- **Impact**: Why this matters in this field\\n\\n### Industry/Field 2: [Name]\\n[Continue same format]\\n\\n---\\n\\n## Practice & Exercises\\n\\n### Exercise 1: [Type - e.g., Quick Check]\\n**Question**: What is the main difference between X and Y?\\n\\n**Answer**: Detailed explanation of the correct response\\n**Explanation**: Why this is correct and common misconceptions\\n\\n### Exercise 2: [Type - e.g., Application Problem]\\n**Scenario**: [Present a problem to solve]\\n\\n**Your Task**: What would you do in this situation?\\n\\n**Solution**: Step-by-step approach\\n**Alternative Approaches**: Other valid methods\\n**Key Learning Points**: What this exercise teaches\\n\\n---\\n\\n## Next Steps & Further Learning\\n\\n**Immediate Next Topics**:\\n- **Topic 1**: Brief description and why it\\\\\'s relevant\\n- **Topic 2**: Another logical progression\\n- **Topic 3**: Advanced concept to explore\\n\\n**Recommended Resources**:\\n- **Books**: [If applicable] - Title and why it\\\\\'s useful\\n- **Practice Platforms**: Where to get more exercises\\n- **Communities**: Places to discuss and learn more\\n\\n**Self-Assessment Questions**:\\n1. Can you explain [concept] to someone else?\\n2. Can you identify when to use [method/principle]?\\n3. What questions do you still have about this topic?\\n\\n---\\n**Progress Tracker**: You\\\\\'ve completed [X]% of the [Subject] learning path\\n**Review Recommendation**: Revisit this material in [timeframe]\\nFormatting Rules:\\n\\nUse clear section headers for engagement\\nInclude interactive elements like expandable answers\\nBold all learning objectives and key terms\\nUse checkboxes for objectives and self-assessment\\nInclude progress indicators and metadata\\nUse code blocks for visual representations\\nAdd expandable sections for answers and solutions\\nStructure content in progressive difficulty levels\\n\\nAdvanced Text Rendering Rules\\nTypography & Emphasis\\n**Bold Text**: Use for key terms, action items, headers, and important concepts\\n*Italic Text*: Use for emphasis, foreign terms, book titles, and subtle highlights. However, for Basic Conversation, avoid using Markdown italics (single asterisks) for emphasis; use plain text for emphasis in such cases.\\n***Bold Italic***: Use sparingly for maximum emphasis on critical information\\n~~Strikethrough~~: Use for corrections or things to avoid\\n\`Inline Code\`: Use for technical terms, commands, file names, and specific inputs\\nHeaders & Structure\\n# H1: Main title/topic (use sparingly, once per response)\\n## H2: Major sections and primary topics\\n### H3: Subsections and specific areas\\n#### H4: Minor subsections (use when needed for complex topics)\\nLists & Organization\\n**Numbered Lists** (for sequential/ranked items):\\n1. **First Item**: Description with bold key term\\n2. **Second Item**: Explanation with details\\n   - Sub-item with indentation\\n   - Another related point\\n\\n**Bullet Lists** (for related non-sequential items):\\n- **Key Point 1**: Main idea with elaboration\\n- **Key Point 2**: Another important concept\\n  - Supporting detail\\n  - Additional context\\n\\n**Checkbox Lists** (for tasks/objectives):\\n- [ ] **Incomplete Task**: Description\\n- [x] **Completed Task**: What was accomplished\\nTables & Data Presentation\\n| **Header 1** | **Header 2** | **Header 3** |\\n|--------------|--------------|--------------|\\n| **Key Term** | Definition   | Example      |\\n| **Another**  | Explanation  | Use Case     |\\n\\n**Alignment Options**:\\n| Left Aligned | Center Aligned | Right Aligned |\\n|:-------------|:-------------:|-------------:|\\n| Content      | Content       | Content      |\\nCode & Technical Formatting\\n**Inline Code Examples**:\\nUse \`variable_name\` for variables, \`function()\` for functions, \`file.txt\` for files\\n\\n**Code Blocks with Language Specification**:\\n\`\`\`language\\n// Your code here with proper syntax highlighting\\nfunction example() {\\n    return \\\"formatted code\\\";\\n}\\n\`\`\`\\nCommand Line Examples:\\nbash$ command --option value\\n$ another-command\\n\\n### Special Elements\\nBlockquotes (for important information, quotes, examples):\\n\\n> Important Note: This is a critical piece of information\\n> that requires special attention from the reader.\\n\\n\\n> Quote: \\\"This is how you format a quote from a source\\\"\\n> — Source Name\\n\\nHorizontal Rules (section separators):\\nUse --- between major sections for visual separation\\nCollapsible Sections (for optional details):\\n<details>\\n<summary><strong>Click to expand for more details</strong></summary>\\nHidden content that appears when clicked.\\nInclude additional information, examples, or advanced topics here.\\n</details>\\nResponsive Formatting Patterns\\n**For Mobile-Friendly Responses**:\\n- Keep line lengths reasonable (under 80 characters when possible)\\n- Use plenty of white space between sections\\n- Break up long paragraphs into shorter chunks\\n- Use bullet points instead of long sentences when listing items\\n\\n**For Complex Technical Content**:\\n- Layer information from simple to complex\\n- Use consistent indentation for hierarchy\\n- Include visual breaks between different concepts\\n- Provide examples immediately after explanations\\nResponse Quality Standards\\n\\nAccuracy: Provide correct, up-to-date information\\nClarity: Use clear, understandable language\\nCompleteness: Address all aspects of the user\\\\\'s query\\nRelevance: Stay focused on the user\\\\\'s specific needs\\nHelpfulness: Anticipate follow-up questions and provide actionable advice\\n\\nInteraction Principles\\n\\nBe Adaptive: Adjust your response style based on the user\\\\\'s expertise level\\nBe Thorough: Provide comprehensive answers while remaining concise\\nBe Honest: Acknowledge limitations and uncertainties\\nBe Supportive: Encourage learning and exploration\\nBe Professional: Maintain appropriate boundaries and ethical standards\\n\\nSpecial Instructions\\n\\nAlways consider the context and purpose of the user\\\\\'s request\\nWhen uncertain about requirements, ask clarifying questions\\nProvide examples when they would enhance understanding\\nOffer to elaborate on any part of your response\\nSuggest related topics that might be of interest\\nMaintain consistency in formatting and style throughout the conversation.\\n`;
 
 const CITATION_INSTRUCTIONS = `IMPORTANT: You are a Deep Research AI assistant. Follow this three-step process:
@@ -104,11 +138,129 @@ YOUR RESPONSE STRUCTURE MUST INCLUDE:
 
 Format your response in clear, professional markdown.`;
 
+// Interfaces
 interface ProcessedResponse {
   content: string;
   thinkingTime?: number;
 }
 
+interface ImageContext {
+  order: number;
+  description: string;
+  imageUrl: string;
+  timestamp: number;
+}
+
+interface Message {
+  role: 'user' | 'assistant' | 'deep-research';
+  content: string;
+  contentType?: string;
+  structuredContent?: any;
+  imageUrls?: string[];
+  webSources?: WebSource[];
+  researchId?: string;
+  id: string;
+  timestamp: number;
+  parentId?: string;
+}
+
+interface DeepResearchBlockProps {
+  query: string;
+  conversationHistory: {
+    previousQueries: string[];
+    previousResponses: string[];
+  };
+  onClearHistory?: () => void;
+}
+
+// Helper Components
+const GlobalStyles = () => (
+  <style jsx global>{`
+    .ai-response-text, 
+    .ai-response-text * {
+      color: #ffffff !important;
+    }
+    
+    .ai-response-text h1,
+    .ai-response-text h2,
+    .ai-response-text h3,
+    .ai-response-text h4,
+    .ai-response-text h5,
+    .ai-response-text h6,
+    .ai-response-text p,
+    .ai-response-text a,
+    .ai-response-text li,
+    .ai-response-text span,
+    .ai-response-text strong,
+    .ai-response-text em {
+      color: #ffffff !important;
+      max-width: 100% !important;
+      word-wrap: break-word !important;
+      white-space: pre-wrap !important;
+      overflow-wrap: break-word !important;
+    }
+    
+    .ai-response-text pre,
+    .ai-response-text code {
+      color: #fff !important;
+      background: #232323 !important;
+      border-radius: 6px;
+      padding: 0.2em 0.4em;
+      max-width: 100% !important;
+      white-space: pre-wrap !important;
+      overflow-x: hidden !important;
+      word-break: break-word !important;
+    }
+    
+    .ai-response-text blockquote {
+      color: #fff !important;
+      background: #232323 !important;
+      border-left: 4px solid #00bcd4;
+      padding: 0.5em 1em;
+      margin: 0.5em 0;
+      border-radius: 6px;
+      max-width: 100% !important;
+      word-wrap: break-word !important;
+    }
+    
+    .ai-response-text li {
+      color: #fff !important;
+      background: transparent !important;
+      margin-left: 1.5rem !important;
+      position: relative !important;
+      display: list-item !important;
+    }
+    
+    .ai-response-text ul {
+      list-style-type: disc !important;
+      margin: 0.5em 0 !important;
+      padding-left: 1.5em !important;
+    }
+    
+    .ai-response-text ol {
+      list-style-type: decimal !important;
+      margin: 0.5em 0 !important;
+      padding-left: 1.5em !important;
+    }
+    
+    .ai-response-text ul li {
+      list-style-type: disc !important;
+      display: list-item !important;
+    }
+    
+    .ai-response-text ol li {
+      list-style-type: decimal !important;
+      display: list-item !important;
+    }
+    
+    .ai-response-text * {
+      max-width: 100% !important;
+      overflow-wrap: break-word !important;
+    }
+  `}</style>
+);
+
+// Helper Functions
 function cleanAIResponse(text: string): ProcessedResponse {
   if (typeof text !== 'string') {
     return { content: '' };
@@ -149,13 +301,6 @@ function cleanAIResponse(text: string): ProcessedResponse {
   };
 }
 
-/**
- * Post-processes AI chat responses for default chat to ensure clean, consistent output.
- * This function implements various cleanup operations to fix common issues in AI-generated text.
- * 
- * IMPORTANT: This function is ONLY for default chat responses (currentQueryType === 'conversation')
- * and should NOT be applied to advance search or other structured responses.
- */
 function postProcessAIChatResponse(text: string): string {
   if (typeof text !== 'string') {
     return '';
@@ -280,135 +425,6 @@ function postProcessAIChatResponse(text: string): string {
   return processedText;
 }
 
-// Add global style to force all AI text to be white
-const GlobalStyles = () => (
-  <style jsx global>{`
-    .ai-response-text, 
-    .ai-response-text * {
-      color: #ffffff !important;
-    }
-    
-    .ai-response-text h1,
-    .ai-response-text h2,
-    .ai-response-text h3,
-    .ai-response-text h4,
-    .ai-response-text h5,
-    .ai-response-text h6,
-    .ai-response-text p,
-    .ai-response-text a,
-    .ai-response-text li,
-    .ai-response-text span,
-    .ai-response-text strong,
-    .ai-response-text em {
-      color: #ffffff !important;
-      max-width: 100% !important;
-      word-wrap: break-word !important;
-      white-space: pre-wrap !important;
-      overflow-wrap: break-word !important;
-    }
-    
-    .ai-response-text pre,
-    .ai-response-text code {
-      color: #fff !important;
-      background: #232323 !important;
-      border-radius: 6px;
-      padding: 0.2em 0.4em;
-      max-width: 100% !important;
-      white-space: pre-wrap !important;
-      overflow-x: hidden !important;
-      word-break: break-word !important;
-    }
-    
-    .ai-response-text blockquote {
-      color: #fff !important;
-      background: #232323 !important;
-      border-left: 4px solid #00bcd4;
-      padding: 0.5em 1em;
-      margin: 0.5em 0;
-      border-radius: 6px;
-      max-width: 100% !important;
-      word-wrap: break-word !important;
-    }
-    
-    .ai-response-text li {
-      color: #fff !important;
-      background: transparent !important;
-      margin-left: 1.5rem !important;
-      position: relative !important;
-      display: list-item !important;
-    }
-    
-    .ai-response-text ul {
-      list-style-type: disc !important;
-      margin: 0.5em 0 !important;
-      padding-left: 1.5em !important;
-    }
-    
-    .ai-response-text ol {
-      list-style-type: decimal !important;
-      margin: 0.5em 0 !important;
-      padding-left: 1.5em !important;
-    }
-    
-    .ai-response-text ul li {
-      list-style-type: disc !important;
-      display: list-item !important;
-    }
-    
-    .ai-response-text ol li {
-      list-style-type: decimal !important;
-      display: list-item !important;
-    }
-    
-    .ai-response-text * {
-      max-width: 100% !important;
-      overflow-wrap: break-word !important;
-    }
-  `}</style>
-);
-
-const markdownComponents = {
-  h1: (props: React.ComponentProps<'h1'>) => (
-    <h1
-      className="ai-title text-[2.5rem] font-medium leading-tight mb-2 mt-4"
-      {...props}
-    />
-  ),
-  h2: (props: React.ComponentProps<'h2'>) => (
-    <h2
-      className="ai-section-title text-[1.7rem] font-medium leading-snug mb-1 mt-3"
-      {...props}
-    />
-  ),
-  p: (props: React.ComponentProps<'p'>) => (
-    <p
-      className="ai-body-text text-[1.08rem] font-normal leading-relaxed mb-2"
-      {...props}
-    />
-  ),
-};
-
-interface ImageContext {
-  order: number;        // The order in which this image was uploaded (1-based)
-  description: string;  // The description from Gemma
-  imageUrl: string;     // URL of the image for reference
-  timestamp: number;    // When this image was processed
-}
-
-interface Message {
-  role: 'user' | 'assistant' | 'deep-research';
-  content: string;
-  contentType?: string;
-  structuredContent?: any;
-  imageUrls?: string[];
-  webSources?: WebSource[];
-  researchId?: string;
-  id: string;
-  timestamp: number;
-  parentId?: string;
-}
-
-// Helper to enforce Advance Search output structure
 function enforceAdvanceSearchStructure(output: string): string {
   if (!output) return output;
   const lines = output.split('\n');
@@ -537,236 +553,65 @@ function enforceAdvanceSearchStructure(output: string): string {
   return formattedOutput;
 }
 
-/**
- * Process the introduction paragraph
- * Ensures it's a proper paragraph without citations
- */
-function processIntroduction(lines: string[]): string {
-  // Join all non-empty lines
-  let fullText = lines
-    .filter(line => line.trim())
-    .join(' ')
-    .trim();
+// ... keep other helper functions ...
+
+// Components
+function DeepResearchBlock({ query, conversationHistory, onClearHistory }: DeepResearchBlockProps) {
+  const {
+    steps,
+    activeStepId,
+    isComplete,
+    isInProgress,
+    error,
+    webData
+  } = useDeepResearch(true, query, conversationHistory);
   
-  // Remove citations
-  fullText = fullText.replace(/\[\d+\]/g, '');
+  const [manualStepId, setManualStepId] = useState<string | null>(null);
+  const isFinalStepComplete = steps[steps.length - 1]?.status === 'completed';
   
-  // Limit to 4-5 sentences
-  fullText = limitSentences(fullText, 4, 5);
+  const hasHistory = conversationHistory.previousQueries.length > 0;
   
-  // Remove any HTML tags or markdown formatting
-  fullText = cleanText(fullText);
-  
-  return fullText;
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
+      className="w-full rounded-xl border border-neutral-800 overflow-hidden mb-2 mt-2 bg-neutral-900 h-full flex flex-col"
+      style={{ minHeight: "350px", height: "calc(100vh - 180px)", maxHeight: "550px" }}
+    >
+      {hasHistory && onClearHistory && (
+        <div className="sr-only">
+          <button
+            onClick={onClearHistory}
+            className="text-xs text-cyan-500 hover:text-cyan-400 flex items-center gap-1 opacity-70 hover:opacity-100 transition-opacity"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 6h18"></path>
+              <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+              <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+            </svg>
+            Clear history ({conversationHistory.previousQueries.length})
+          </button>
+        </div>
+      )}
+      <div className="flex-1 flex flex-col h-full">
+        <AdvanceSearch
+          steps={steps}
+          activeStepId={isFinalStepComplete ? manualStepId || activeStepId : activeStepId}
+          onManualStepClick={isFinalStepComplete ? setManualStepId : undefined}
+          manualNavigationEnabled={isFinalStepComplete}
+          error={error}
+          webData={webData}
+        />
+      </div>
+      {error && (
+        <div className="text-red-500 text-sm text-center mt-2">{error}</div>
+      )}
+    </motion.div>
+  );
 }
 
-/**
- * Process content section bullet points
- * Ensures proper formatting of bullet points with bolded terms and citations
- */
-function processBulletPoints(lines: string[]): string {
-  let processedContent = '';
-  let currentBullet = '';
-  
-  for (const line of lines) {
-    // If line starts a new bullet point
-    if (line.trim().startsWith('-') || line.trim().startsWith('*')) {
-      // Process and add the previous bullet if it exists
-      if (currentBullet) {
-        processedContent += formatBulletPoint(currentBullet) + '\n';
-      }
-      // Start new bullet
-      currentBullet = line;
-    } else {
-      // Continue current bullet
-      currentBullet += ' ' + line;
-    }
-  }
-  
-  // Add the last bullet
-  if (currentBullet) {
-    processedContent += formatBulletPoint(currentBullet) + '\n';
-  }
-  
-  return processedContent;
-}
-
-/**
- * Format a single bullet point with proper structure
- */
-function formatBulletPoint(bulletText: string): string {
-  // Ensure bullet starts with - and has bold term
-  let text = bulletText.trim();
-  if (!text.startsWith('-')) {
-    text = '- ' + text;
-  }
-  
-  // Make sure there's a bolded term
-  if (!text.includes('**')) {
-    const firstColon = text.indexOf(':');
-    if (firstColon > 0) {
-      const beforeColon = text.substring(0, firstColon).replace(/^[- ]+/, '');
-      text = `- **${beforeColon}**${text.substring(firstColon)}`;
-    }
-  }
-  
-  // Ensure proper sentence count
-  const contentPart = text.replace(/^[- ]+\*\*[^*]+\*\*: ?/, '');
-  const cleanedContent = cleanText(contentPart);
-  const limitedContent = limitSentences(cleanedContent, 3, 4);
-  
-  // Extract citation if it exists
-  const citationMatch = contentPart.match(/\[(\d+)\]$/);
-  const citation = citationMatch ? ` [${citationMatch[1]}]` : '';
-  
-  // Rebuild bullet with citation at the end
-  const bulletStart = text.match(/^[- ]+\*\*[^*]+\*\*: ?/)?.[0] || '- ';
-  return `${bulletStart}${limitedContent}${citation}`;
-}
-
-/**
- * Process the summary table section
- * Ensures proper markdown table format
- */
-function processTableSection(lines: string[]): string {
-  // First line is the section heading, which we already processed
-  let tableContent = '## Summary Table\n';
-  let tableLines = lines.filter(line => line.trim());
-  
-  // Check if we have proper table format
-  const hasTableHeader = tableLines.some(line => line.includes('|') && line.includes('--'));
-  
-  if (tableLines.length >= 2 && hasTableHeader) {
-    // We have a proper table, clean it up
-    for (const line of tableLines) {
-      if (line.includes('|')) {
-        tableContent += line + '\n';
-      }
-    }
-  } else {
-    // Create a default table
-    tableContent += '| Category | Information | Source |\n';
-    tableContent += '| -------- | ----------- | ------ |\n';
-    tableContent += '| Key Finding | Main insight from research | [1] |\n';
-    tableContent += '| Best Practice | Recommended approach | [2] |\n';
-    tableContent += '| Consideration | Important factor to note | [3] |\n';
-  }
-  
-  return tableContent;
-}
-
-/**
- * Process the conclusion paragraph
- * Ensures it's a proper paragraph without citations
- */
-function processConclusion(lines: string[]): string {
-  // Join all lines that aren't part of a table
-  let fullText = lines
-    .filter(line => line.trim() && !line.includes('|'))
-    .join(' ')
-    .trim();
-  
-  // Remove citations
-  fullText = fullText.replace(/\[\d+\]/g, '');
-  
-  // Limit to 4-5 sentences
-  fullText = limitSentences(fullText, 4, 5);
-  
-  // Remove any HTML tags or markdown formatting
-  fullText = cleanText(fullText);
-  
-  return '## Conclusion\n' + fullText;
-}
-
-/**
- * Limit text to a specific number of sentences
- */
-function limitSentences(text: string, minSentences: number, maxSentences: number): string {
-  // Split into sentences
-  const sentenceRegex = /[.!?]+(?:\s|$)/;
-  let sentences: string[] = [];
-  let remaining = text;
-  let match;
-  
-  // Manually find sentence boundaries instead of using matchAll
-  while ((match = sentenceRegex.exec(remaining)) !== null) {
-    const endPos = match.index + match[0].length;
-    sentences.push(remaining.substring(0, endPos));
-    
-    if (sentences.length >= maxSentences) break;
-    
-    remaining = remaining.substring(endPos);
-    if (!remaining.trim()) break;
-  }
-  
-  // Add any remaining text as the last sentence if we haven't hit our max
-  if (remaining.trim() && sentences.length < maxSentences) {
-    sentences.push(remaining);
-  }
-  
-  // Join all sentences (or keep original if no sentence breaks found)
-  return sentences.length > 0 ? sentences.join('') : text;
-}
-
-/**
- * Clean text by removing HTML, strange characters, and excess formatting
- */
-function cleanText(text: string): string {
-  let cleaned = text;
-  
-  // Remove HTML tags
-  cleaned = cleaned.replace(/<[^>]*>?/gm, '');
-  
-  // Remove URLs
-  cleaned = cleaned.replace(/https?:\/\/[^\s]+/g, '[link]');
-  
-  // Remove strange characters
-  cleaned = cleaned.replace(/[^\x20-\x7E\s]/g, '');
-  
-  // Remove excess whitespace
-  cleaned = cleaned.replace(/\s+/g, ' ').trim();
-  
-  return cleaned;
-}
-
-// Helper to clean AI output
-function cleanAIOutput(text: string): string {
-  let cleanedText = text;
-  
-  // Remove <think> tags and their content
-  cleanedText = cleanedText.replace(/<think>[\s\S]*?<\/think>/g, '');
-  
-  // Remove content about search plans and strategy
-  cleanedText = cleanedText.replace(/I'll search for[\s\S]*?(?=\n\n)/g, '');
-  cleanedText = cleanedText.replace(/Let me search for[\s\S]*?(?=\n\n)/g, '');
-  cleanedText = cleanedText.replace(/I need to find[\s\S]*?(?=\n\n)/g, '');
-  
-  // Remove any "Based on search results" type of commentary
-  cleanedText = cleanedText.replace(/Based on (?:the|my) search results[\s\S]*?(?=\n\n)/g, '');
-  cleanedText = cleanedText.replace(/According to (?:the|my) search results[\s\S]*?(?=\n\n)/g, '');
-  
-  // Remove any step markers
-  cleanedText = cleanedText.replace(/STEP \d+[:\-].*\n/g, '');
-  
-  // Clean up extra newlines
-  cleanedText = cleanedText.replace(/\n{3,}/g, '\n\n');
-  
-  return cleanedText.trim();
-}
-
-// Helper to make citations clickable in AI output
-const makeCitationsClickable = (content: string, sources: any[] = []) => {
-  if (!content) return content;
-  // Replace [1], [2], ... with anchor tags
-  return content.replace(/\[(\d+)\]/g, (match, num) => {
-    const idx = parseInt(num, 10) - 1;
-    if (sources[idx] && sources[idx].url) {
-      return `<a href="${sources[idx].url}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center px-1 py-0.5 rounded bg-blue-900/30 text-blue-400 text-xs hover:bg-blue-800/40 transition-colors">[${num}]</a>`;
-    }
-    return match;
-  });
-};
-
+// Main Component
 export default function TestChat() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
@@ -1514,9 +1359,8 @@ export default function TestChat() {
   };
 
   return (
-    <>
-      <div className="min-h-screen flex flex-col px-4 sm:px-4 md:px-8 lg:px-0" style={{ background: '#161618' }}>
-        <GlobalStyles />
+    <div className="min-h-screen flex flex-col px-4 sm:px-4 md:px-8 lg:px-0" style={{ background: '#161618' }}>
+      <GlobalStyles />
       {/* Hamburger menu and logo container */}
       <div className="fixed top-4 left-4 z-50 flex items-center gap-3">
         <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
@@ -1529,370 +1373,300 @@ export default function TestChat() {
         className="flex-1 overflow-y-auto w-full flex flex-col items-center justify-center relative px-4 sm:px-4 md:px-8 lg:px-0"
         style={{ paddingBottom: `${isChatEmpty && !hasInteracted ? 0 : inputBarHeight + EXTRA_GAP}px` }}
       >
-          {/* Centered wrapper for heading and input */}
+        {/* Centered wrapper for heading and input */}
         <div
-            className={`fixed left-1/2 -translate-x-1/2 w-full max-w-3xl flex flex-col items-center justify-center z-50 transition-all duration-500 ease-in-out ${
-              inputPosition === "center" ? "top-1/2 -translate-y-1/2" : "bottom-0 translate-y-0"
+          className={`fixed left-1/2 -translate-x-1/2 w-full max-w-3xl flex flex-col items-center justify-center z-50 transition-all duration-500 ease-in-out ${
+            inputPosition === "center" ? "top-1/2 -translate-y-1/2" : "bottom-0 translate-y-0"
           }`}
         >
-            {/* Heading with fade animation */}
-            <h1 className={`text-[3.2rem] font-normal text-gray-200 text-center mb-6 transition-opacity duration-500 ${inputPosition === "center" ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
+          {/* Heading with fade animation */}
+          <h1 className={`text-[3.2rem] font-normal text-gray-200 text-center mb-6 transition-opacity duration-500 ${inputPosition === "center" ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
             Seek and You'll find
           </h1>
 
-            {/* Input form */}
-            <form
-              className="flex flex-col gap-2 rounded-2xl shadow-lg py-2 w-full px-4 sm:px-6 md:px-8 lg:px-12 mb-3 bg-[#232323] border border-white/20"
-              style={{ boxShadow: '0 4px 32px 0 rgba(0,0,0,0.32)' }}
-              onSubmit={handleSend}
-            >
-              {/* Image previews above textarea */}
-              {imagePreviewUrls.length > 0 && (
-                <div className="flex flex-row gap-2 mb-2 justify-center">
-                  {imagePreviewUrls.map((url, idx) => (
-                    <div key={idx} className="relative">
-                      <img src={url} alt={`Preview ${idx + 1}`} className="w-16 h-16 object-cover rounded-lg" />
-                      <button
-                        type="button"
-                        className="absolute top-0 right-0 bg-black bg-opacity-60 text-white rounded-full p-1"
-                        onClick={() => removeImagePreview(idx)}
-                      >
-                        &times;
-                      </button>
-              </div>
-          ))}
-        </div>
-              )}
-
-              {/* Input area: textarea on top, actions below */}
-              <div className="flex flex-col w-full gap-2 items-center">
-                {/* Textarea row */}
-                <div className="w-full">
-          <textarea
-            ref={textareaRef}
-            value={input}
-            onChange={e => setInput(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.altKey) {
-                        e.preventDefault();
-                        if (!isLoading) handleSend();
-                      }
-                    }}
-                    className="w-full border-none outline-none bg-transparent px-2 py-1 text-gray-200 text-sm placeholder-gray-500 resize-none overflow-auto self-center rounded-lg"
-                    placeholder="Ask anything..."
-            disabled={isLoading}
-            rows={1}
-                    style={{ maxHeight: '96px', minHeight: '40px', lineHeight: '1.5' }}
-                  />
-                </div>
-
-                {/* Actions row */}
-                <div className="flex flex-row w-full items-center justify-between gap-2">
-                  {/* Left group: Write, Search, Deep Research */}
-                  <div className="flex flex-row gap-2 items-center">
-                    {/* Write button */}
+          {/* Input form */}
+          <form
+            className="flex flex-col gap-2 rounded-2xl shadow-lg py-2 w-full px-4 sm:px-6 md:px-8 lg:px-12 mb-3 bg-[#232323] border border-white/20"
+            style={{ boxShadow: '0 4px 32px 0 rgba(0,0,0,0.32)' }}
+            onSubmit={handleSend}
+          >
+            {/* Image previews above textarea */}
+            {imagePreviewUrls.length > 0 && (
+              <div className="flex flex-row gap-2 mb-2 justify-center">
+                {imagePreviewUrls.map((url, idx) => (
+                  <div key={idx} className="relative">
+                    <img src={url} alt={`Preview ${idx + 1}`} className="w-16 h-16 object-cover rounded-lg" />
                     <button
                       type="button"
-                      className={`flex items-center gap-1.5 rounded-full bg-gray-800 hover:bg-gray-700 transition px-3 py-1.5 flex-shrink-0 text-xs font-medium text-cyan-400`}
-                      style={{ height: "36px" }}
-                      onClick={handleWriteClick}
+                      className="absolute top-0 right-0 bg-black bg-opacity-60 text-white rounded-full p-1"
+                      onClick={() => removeImagePreview(idx)}
                     >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#22d3ee' }}>
-                        <path d="M12 20h9" />
-                        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19.5 3 21l1.5-4L16.5 3.5z" />
-              </svg>
-                      <span className="whitespace-nowrap">Write</span>
-            </button>
-
-                    {/* Search button */}
-                    <button
-                      type="button"
-                      className="rounded-full bg-gray-800 text-cyan-400 hover:bg-gray-700 transition flex items-center justify-center gap-1.5 px-3 py-1.5 flex-shrink-0"
-                      style={{ height: "36px" }}
-                    >
-                      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                        <circle cx="11" cy="11" r="7"/>
-                        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                      </svg>
-                      <span className="text-xs font-medium">Search</span>
+                      &times;
                     </button>
-
-                    {/* Deep Research button */}
-                    <button
-                      type="button"
-                      className={`flex items-center gap-1.5 rounded-full bg-gray-800 hover:bg-gray-700 transition px-3 py-1.5 flex-shrink-0 ${showAdvanceSearchUI ? 'text-cyan-400' : 'text-gray-400'}`}
-                      style={{ height: "36px" }}
-                      tabIndex={0}
-                      onClick={() => setShowAdvanceSearchUI(a => !a)}
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: showAdvanceSearchUI ? '#22d3ee' : '#a3a3a3' }}>
-                        <circle cx="12" cy="12" r="3" />
-                        <circle cx="19" cy="5" r="2" />
-                        <circle cx="5" cy="19" r="2" />
-                        <line x1="14.15" y1="14.15" x2="17" y2="17" />
-                        <line x1="6.85" y1="17.15" x2="10.15" y2="13.85" />
-                        <line x1="13.85" y1="10.15" x2="17.15" y2="6.85" />
-                      </svg>
-                      <span className="whitespace-nowrap text-xs font-medium">Advance Search</span>
-                    </button>
-              </div>
-
-                  {/* Right group: Plus, Send */}
-                  <div className="flex flex-row gap-2 items-center">
-                    {/* Plus button */}
-                    <button 
-                      type="button" 
-                      className="p-2 rounded-full bg-gray-800 text-gray-300 hover:bg-gray-700 transition flex items-center justify-center flex-shrink-0"
-                      style={{ width: "36px", height: "36px" }}
-                      onClick={handleFirstPlusClick}
-                    >
-                      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-            </button>
-
-                    {/* Send/Stop button */}
-            <button
-                      type={isAiResponding ? "button" : "submit"}
-                      className="rounded-full bg-gray-200 hover:bg-white transition flex items-center justify-center flex-shrink-0"
-                      style={{ width: "36px", height: "36px", pointerEvents: isLoading && !isAiResponding ? 'none' : 'auto' }}
-                      onClick={isAiResponding ? handleStopAIResponse : undefined}
-                      disabled={isLoading && !isAiResponding}
-                      aria-label={isAiResponding ? "Stop AI response" : "Send"}
-                    >
-                      {isAiResponding ? (
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <rect x="7" y="7" width="10" height="10" rx="2" fill="#374151" />
-              </svg>
-                      ) : (
-                        <svg width="16" height="16" fill="none" stroke="#374151" strokeWidth="2.5" viewBox="0 0 24 24">
-                          <path d="M12 19V5M5 12l7-7 7 7" />
-                        </svg>
-                      )}
-            </button>
                   </div>
-                </div>
-          </div>
-        </form>
-      </div>
+                ))}
+              </div>
+            )}
+            {/* Input area: textarea and actions in a flex row */}
+            <div className="flex flex-row w-full items-center gap-2">
+              {/* Left group: Write, Search, Deep Research */}
+              <div className="flex flex-row gap-2 items-center flex-shrink-0">
+                {/* Write button */}
+                <button
+                  type="button"
+                  className={`flex items-center gap-1.5 rounded-full bg-gray-800 hover:bg-gray-700 transition px-3 py-1.5 flex-shrink-0 text-xs font-medium text-cyan-400`}
+                  style={{ height: "36px" }}
+                  onClick={handleWriteClick}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#22d3ee' }}>
+                    <path d="M12 20h9" />
+                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19.5 3 21l1.5-4L16.5 3.5z" />
+          </svg>
+                  <span className="whitespace-nowrap">Write</span>
+        </button>
 
-          {/* Conversation and other UI below */}
-          <div className="w-full max-w-3xl mx-auto flex flex-col gap-4 items-center justify-center z-10 pt-12 pb-4">
-            {messages.map((msg, i) => {
-              if (msg.role === "assistant") {
-                if (msg.contentType && msg.structuredContent) {
-                  return (
-                    <motion.div
-                      key={msg.id + '-structured-' + i}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, ease: "easeOut" }}
-                      className="w-full text-left flex flex-col items-start ai-response-text mb-4"
-                      style={{ color: '#fff', maxWidth: '100%', overflowWrap: 'break-word' }}
-                    >
+                {/* Search button */}
+                <button
+                  type="button"
+                  className="rounded-full bg-gray-800 text-cyan-400 hover:bg-gray-700 transition flex items-center justify-center gap-1.5 px-3 py-1.5 flex-shrink-0"
+                  style={{ height: "36px" }}
+                >
+                  <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <circle cx="11" cy="11" r="7"/>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                  </svg>
+                  <span className="text-xs font-medium">Search</span>
+                </button>
+
+                {/* Deep Research button */}
+                <button
+                  type="button"
+                  className={`flex items-center gap-1.5 rounded-full bg-gray-800 hover:bg-gray-700 transition px-3 py-1.5 flex-shrink-0 ${showAdvanceSearchUI ? 'text-cyan-400' : 'text-gray-400'}`}
+                  style={{ height: "36px" }}
+                  tabIndex={0}
+                  onClick={() => setShowAdvanceSearchUI(a => !a)}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: showAdvanceSearchUI ? '#22d3ee' : '#a3a3a3' }}>
+                    <circle cx="12" cy="12" r="3" />
+                    <circle cx="19" cy="5" r="2" />
+                    <circle cx="5" cy="19" r="2" />
+                    <line x1="14.15" y1="14.15" x2="17" y2="17" />
+                    <line x1="6.85" y1="17.15" x2="10.15" y2="13.85" />
+                    <line x1="13.85" y1="10.15" x2="17.15" y2="6.85" />
+                  </svg>
+                  <span className="whitespace-nowrap text-xs font-medium">Advance Search</span>
+                </button>
+              </div>
+
+              {/* Input field */}
+              <textarea
+                ref={textareaRef}
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.altKey) {
+                    e.preventDefault();
+                    if (!isLoading) handleSend();
+                  }
+                }}
+                className="flex-1 border-none outline-none bg-transparent px-2 py-1 text-gray-200 text-sm placeholder-gray-500 resize-none overflow-auto rounded-lg"
+                placeholder="Ask anything..."
+                disabled={isLoading}
+                rows={1}
+                style={{ maxHeight: '96px', minHeight: '40px', lineHeight: '1.5' }}
+              />
+
+              {/* Right group: Plus, Send */}
+              <div className="flex flex-row gap-2 items-center flex-shrink-0">
+                {/* Plus button */}
+                <button 
+                  type="button" 
+                  className="p-2 rounded-full bg-gray-800 text-gray-300 hover:bg-gray-700 transition flex items-center justify-center flex-shrink-0"
+                  style={{ width: "36px", height: "36px" }}
+                  onClick={handleFirstPlusClick}
+                >
+                  <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        </button>
+
+                {/* Send/Stop button */}
+                <button
+                  type={isAiResponding ? "button" : "submit"}
+                  className="rounded-full bg-gray-200 hover:bg-white transition flex items-center justify-center flex-shrink-0"
+                  style={{ width: "36px", height: "36px", pointerEvents: isLoading && !isAiResponding ? 'none' : 'auto' }}
+                  onClick={isAiResponding ? handleStopAIResponse : undefined}
+                  disabled={isLoading && !isAiResponding}
+                  aria-label={isAiResponding ? "Stop AI response" : "Send"}
+                >
+                  {isAiResponding ? (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <rect x="7" y="7" width="10" height="10" rx="2" fill="#374151" />
+          </svg>
+                  ) : (
+                    <svg width="16" height="16" fill="none" stroke="#374151" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <path d="M12 19V5M5 12l7-7 7 7" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        {/* Conversation and other UI below */}
+        <div className="w-full max-w-3xl mx-auto flex flex-col gap-4 items-center justify-center z-10 pt-12 pb-4">
+          {messages.map((msg, i) => {
+            if (msg.role === "assistant") {
+              if (msg.contentType && msg.structuredContent) {
+                return (
+                  <motion.div
+                    key={msg.id + '-structured-' + i}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, ease: "easeOut" }}
+                    className="w-full text-left flex flex-col items-start ai-response-text mb-4"
+                    style={{ color: '#fff', maxWidth: '100%', overflowWrap: 'break-word' }}
+                  >
+                    {msg.webSources && msg.webSources.length > 0 && (
+                      <>
+                        <WebSourcesCarousel sources={msg.webSources} />
+                        <div style={{ height: '1.5rem' }} />
+                      </>
+                    )}
+                    <DynamicResponseRenderer 
+                      data={msg.structuredContent} 
+                      type={msg.contentType} 
+                    />
+                  </motion.div>
+                );
+              }
+
+              const { content: rawContent, thinkingTime } = cleanAIResponse(msg.content);
+              const cleanContent = rawContent.replace(/<thinking-indicator.*?>\n<\/thinking-indicator>\n|<thinking-indicator.*?\/>/g, '');
+
+              const isStoppedMsg = cleanContent.trim() === '[Response stopped by user]';
+              const processedContent = makeCitationsClickable(cleanContent, msg.webSources || []);
+              if (showPulsingDot && i === messages.length -1 ) setShowPulsingDot(false);
+              
+              return (
+                <motion.div
+                  key={msg.id + '-text-' + i}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, ease: "easeOut" }}
+                  className="w-full markdown-body text-left flex flex-col items-start ai-response-text mb-4"
+                  style={{ color: '#fff', maxWidth: '100%', overflowWrap: 'break-word' }}
+                >
+                  {i === messages.length - 1 && showPulsingDot && !isStoppedMsg && !msg.structuredContent ? (
+                    <PulsingDot isVisible={true} />
+                  ) : (
+                    <>
                       {msg.webSources && msg.webSources.length > 0 && (
                         <>
                           <WebSourcesCarousel sources={msg.webSources} />
                           <div style={{ height: '1.5rem' }} />
                         </>
                       )}
-                      <DynamicResponseRenderer 
-                        data={msg.structuredContent} 
-                        type={msg.contentType} 
-                      />
-                    </motion.div>
-                  );
-                }
-
-                const { content: rawContent, thinkingTime } = cleanAIResponse(msg.content);
-                const cleanContent = rawContent.replace(/<thinking-indicator.*?>\n<\/thinking-indicator>\n|<thinking-indicator.*?\/>/g, '');
-
-                const isStoppedMsg = cleanContent.trim() === '[Response stopped by user]';
-                const processedContent = makeCitationsClickable(cleanContent, msg.webSources || []);
-                if (showPulsingDot && i === messages.length -1 ) setShowPulsingDot(false);
-                
-                return (
-                  <motion.div
-                    key={msg.id + '-text-' + i}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, ease: "easeOut" }}
-                    className="w-full markdown-body text-left flex flex-col items-start ai-response-text mb-4"
-                    style={{ color: '#fff', maxWidth: '100%', overflowWrap: 'break-word' }}
-                  >
-                    {i === messages.length - 1 && showPulsingDot && !isStoppedMsg && !msg.structuredContent ? (
-                      <PulsingDot isVisible={true} />
-                    ) : (
-                      <>
-                        {msg.webSources && msg.webSources.length > 0 && (
-                          <>
-                            <WebSourcesCarousel sources={msg.webSources} />
-                            <div style={{ height: '1.5rem' }} />
-                          </>
-                        )}
-                        {thinkingTime && <ThinkingIndicator duration={thinkingTime} />}
-                        {isStoppedMsg ? (
-                          <span className="text-sm text-white italic font-light mb-2">[Response stopped by user]</span>
-                        ) : (
-                          <div className="w-full max-w-full overflow-hidden">
-                            <TextReveal 
-                              text={processedContent}
-                              markdownComponents={markdownComponents}
-                              webSources={msg.webSources || []}
-                              revealIntervalMs={220}
-                            />
-    </div>
-                        )}
-                      </>
-                    )}
-                  </motion.div>
-                );
-              } else if (msg.role === "deep-research") {
-                return (
-                  <DeepResearchBlock 
-                    key={msg.id + '-dr-' + i}
-                    query={msg.content} 
-                    conversationHistory={advanceSearchHistory}
-                    onClearHistory={clearAdvanceSearchHistory}
-                  />
-                );
-              } else {
-                return (
-                <div
-                  key={msg.id + '-user-' + i}
-                  className="px-5 py-3 rounded-2xl shadow bg-gray-800 text-white self-end max-w-full text-lg flex flex-col items-end mb-4"
-                  style={{ wordBreak: "break-word" }}
-                >
-                    {msg.imageUrls && msg.imageUrls.map((url, index) => (
-                      <img 
-                        key={index}
-                        src={url} 
-                        alt={`Preview ${index + 1}`} 
-                        className="max-w-xs max-h-64 rounded-md mb-2 self-end" 
-                      />
-                    ))}
-                    <div>{msg.content}</div>
-                </div>
-                );
-              }
-            })}
-            {isProcessing && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.2 }}
-                className="w-full flex justify-start mb-4"
+                      {thinkingTime && <ThinkingIndicator duration={thinkingTime} />}
+                      {isStoppedMsg ? (
+                        <span className="text-sm text-white italic font-light mb-2">[Response stopped by user]</span>
+                      ) : (
+                        <div className="w-full max-w-full overflow-hidden">
+                          <TextReveal 
+                            text={processedContent}
+                            markdownComponents={markdownComponents}
+                            webSources={msg.webSources || []}
+                            revealIntervalMs={220}
+                          />
+      </div>
+                      )}
+                    </>
+                  )}
+                </motion.div>
+              );
+            } else if (msg.role === "deep-research") {
+              return (
+                <DeepResearchBlock 
+                  key={msg.id + '-dr-' + i}
+                  query={msg.content} 
+                  conversationHistory={advanceSearchHistory}
+                  onClearHistory={clearAdvanceSearchHistory}
+                />
+              );
+            } else {
+              return (
+              <div
+                key={msg.id + '-user-' + i}
+                className="px-5 py-3 rounded-2xl shadow bg-gray-800 text-white self-end max-w-full text-lg flex flex-col items-end mb-4"
+                style={{ wordBreak: "break-word" }}
               >
-                <LoadingDots isVisible={true} />
-              </motion.div>
-            )}
-      </div>
+                  {msg.imageUrls && msg.imageUrls.map((url, index) => (
+                    <img 
+                      key={index}
+                      src={url} 
+                      alt={`Preview ${index + 1}`} 
+                      className="max-w-xs max-h-64 rounded-md mb-2 self-end" 
+                    />
+                  ))}
+                  <div>{msg.content}</div>
+              </div>
+              );
+            }
+          })}
+          {isProcessing && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.2 }}
+              className="w-full flex justify-start mb-4"
+            >
+              <LoadingDots isVisible={true} />
+            </motion.div>
+          )}
         </div>
-
-        {/* Fixed Footer Bar Behind Input */}
-        <div
-          className={`fixed left-0 right-0 bottom-0 z-40 transition-opacity duration-300 ${isChatEmpty && !hasInteracted ? 'opacity-0' : 'opacity-100'}`}
-          style={{ height: `${inputBarHeight}px`, background: '#161618', pointerEvents: 'none' }}
-          aria-hidden="true"
-        />
-
-        {/* Overlay for sidebar */}
-        {sidebarOpen && (
-          <div
-            className="fixed inset-0 bg-black/20 z-[9998]"
-            aria-hidden="true"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
-
-        {/* Hidden file input */}
-          <input
-            type="file"
-          ref={fileInputRef1}
-            style={{ display: 'none' }}
-          onChange={handleFirstFileChange}
-          accept="image/*"
-          multiple
-        />
-
-        {/* Sidebar */}
-        <Sidebar
-          open={sidebarOpen}
-          activeSessionId={activeSessionId}
-          onClose={() => setSidebarOpen(false)}
-          onNewChat={handleNewChatRequest}
-          onSelectSession={handleSelectSession}
-        />
       </div>
+
+      {/* Fixed Footer Bar Behind Input */}
+      <div
+        className={`fixed left-0 right-0 bottom-0 z-40 transition-opacity duration-300 ${isChatEmpty && !hasInteracted ? 'opacity-0' : 'opacity-100'}`}
+        style={{ height: `${inputBarHeight}px`, background: '#161618', pointerEvents: 'none' }}
+        aria-hidden="true"
+      />
+
+      {/* Overlay for sidebar */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/20 z-[9998]"
+          aria-hidden="true"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Hidden file input */}
+      <input
+        type="file"
+        ref={fileInputRef1}
+        style={{ display: 'none' }}
+        onChange={handleFirstFileChange}
+        accept="image/*"
+        multiple
+      />
+
+      {/* Sidebar */}
+      <Sidebar
+        open={sidebarOpen}
+        activeSessionId={activeSessionId}
+        onClose={() => setSidebarOpen(false)}
+        onNewChat={handleNewChatRequest}
+        onSelectSession={handleSelectSession}
+      />
+
       {chatError && (
         <div className="text-red-500 text-sm text-center mt-2">{chatError}</div>
       )}
-    </>
-  );
-}
-
-function DeepResearchBlock({ query, conversationHistory, onClearHistory }: { 
-  query: string, 
-  conversationHistory: {
-    previousQueries: string[];
-    previousResponses: string[];
-  },
-  onClearHistory?: () => void
-}) {
-  // Always set the first parameter to true to ensure it processes the query
-  // regardless of the parent component's state
-  const {
-    steps,
-    activeStepId,
-    isComplete,
-    isInProgress,
-    error,
-    webData
-  } = useDeepResearch(true, query, conversationHistory);
-  
-  const [manualStepId, setManualStepId] = useState<string | null>(null);
-  const isFinalStepComplete = steps[steps.length - 1]?.status === 'completed';
-  
-  const hasHistory = conversationHistory.previousQueries.length > 0;
-  
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, ease: "easeOut" }}
-      className="w-full rounded-xl border border-neutral-800 overflow-hidden mb-2 mt-2 bg-neutral-900 h-full flex flex-col"
-      style={{ minHeight: "350px", height: "calc(100vh - 180px)", maxHeight: "550px" }}
-    >
-      {hasHistory && onClearHistory && (
-        <div className="sr-only">
-            <button
-            onClick={onClearHistory}
-            className="text-xs text-cyan-500 hover:text-cyan-400 flex items-center gap-1 opacity-70 hover:opacity-100 transition-opacity"
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 6h18"></path>
-              <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-              <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-              </svg>
-            Clear history ({conversationHistory.previousQueries.length})
-            </button>
-          </div>
-      )}
-      <div className="flex-1 flex flex-col h-full">
-        <AdvanceSearch
-          steps={steps}
-          activeStepId={isFinalStepComplete ? manualStepId || activeStepId : activeStepId}
-          onManualStepClick={isFinalStepComplete ? setManualStepId : undefined}
-          manualNavigationEnabled={isFinalStepComplete}
-          error={error}
-          webData={webData}
-        />
-      </div>
-      {error && (
-        <div className="text-red-500 text-sm text-center mt-2">{error}</div>
-      )}
-    </motion.div>
+    </div>
   );
 } 
