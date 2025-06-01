@@ -239,11 +239,12 @@ function postProcessAIChatResponse(text: string): string {
   });
 
   // 2. Fix Markdown Formatting
+  // (REMOVED: Do not strip markdown bold/italic formatting here)
   // Remove all markdown formatting (asterisks and underscores for bold/italic) for default chat
-  processedText = processedText.replace(/\*\*([^*]+)\*\*/g, '$1'); // Remove **bold**
-  processedText = processedText.replace(/\*([^*]+)\*/g, '$1');     // Remove *italic*
-  processedText = processedText.replace(/__([^_]+)__/g, '$1');     // Remove __bold__
-  processedText = processedText.replace(/_([^_]+)_/g, '$1');       // Remove _italic_
+  // processedText = processedText.replace(/\*\*([^*]+)\*\*/g, '$1'); // Remove **bold**
+  // processedText = processedText.replace(/\*([^*]+)\*/g, '$1');     // Remove *italic*
+  // processedText = processedText.replace(/__([^_]+)__/g, '$1');     // Remove __bold__
+  // processedText = processedText.replace(/_([^_]+)_/g, '$1');       // Remove _italic_
 
   // Fix broken lists (ensure proper space after list markers)
   processedText = processedText.replace(/^(\s*[-*]|\s*[0-9]+\.)(?!\s)/gm, '$1 ');
