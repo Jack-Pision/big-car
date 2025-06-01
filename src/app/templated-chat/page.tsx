@@ -376,7 +376,7 @@ Example of a good list:
       >
         <div className="bg-white rounded-2xl shadow-lg py-2 w-full px-4 sm:px-6 md:px-8 lg:px-0 flex items-center gap-2 sm:gap-3 mb-6 transition-all duration-200 focus-within:ring-2 focus-within:ring-black/10">
           {/* Action buttons */}
-          <div className="flex flex-row gap-2 items-center ml-auto pr-2 lg:pr-0">
+          <div className="flex flex-row gap-2 items-center ml-auto pr-4">
             <button type="button" aria-label="Search" className="w-9 h-9 flex items-center justify-center rounded-full border border-gray-200 bg-white hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/20">
               <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             </button>
@@ -405,7 +405,7 @@ Example of a good list:
             }}
           />
           {/* Plus and Send buttons go here, move all right-aligned buttons inside this div */}
-          <div className="flex flex-row gap-2 items-center ml-auto pr-2">
+          <div className="flex flex-row gap-2 items-center ml-auto pr-4">
             <button
               type="submit"
               aria-label="Send"

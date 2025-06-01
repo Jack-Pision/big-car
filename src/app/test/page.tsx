@@ -1638,7 +1638,7 @@ export default function TestChat() {
               </div>
 
                   {/* Right group: Plus, Send */}
-                  <div className="flex flex-row gap-2 items-center ml-auto pr-2 lg:pr-0">
+                  <div className="flex flex-row gap-2 items-center ml-auto pr-4">
                     {/* Plus button */}
                     <button 
                       type="button" 
