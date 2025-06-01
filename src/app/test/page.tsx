@@ -95,7 +95,11 @@ YOUR RESPONSE STRUCTURE MUST INCLUDE:
 - ## Summary Table with markdown table
 - ## Conclusion paragraph
 
-Format your response in clear, professional markdown.`;
+Format your response in clear, professional markdown.
+
+Before answering, think step-by-step and include your reasoning inside <think>...</think> tags. Only after the <think> section, provide your final answer. Example:
+<think>Thinking through the problem step by step...</think>
+Final answer here.`;
 
 const CITATION_INSTRUCTIONS = `IMPORTANT: You are a Deep Research AI assistant. Follow this three-step process:
 
