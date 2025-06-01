@@ -62,8 +62,24 @@ const cacheResponse = (query: string, response: string) => {
   responseCache.set(query, response);
 };
 
+// Helper function to check if a string is valid JSON
+function isValidJson(str: string) {
+  try {
+    const obj = JSON.parse(str);
+    // Only treat as JSON if it's an object or array
+    return typeof obj === 'object' && obj !== null;
+  } catch (e) {
+    return false;
+  }
+}
+
 // Fix MessageComponent to add right margin to user messages and left margin to AI messages on mobile
 const MessageComponent = React.memo(({ message, queryContext }: { message: Message, queryContext: QueryContext }) => {
+  // Detect if the message content is JSON and render as a code block if so
+  let contentToRender = message.content;
+  if (isValidJson(message.content)) {
+    contentToRender = '```json\n' + JSON.stringify(JSON.parse(message.content), null, 2) + '\n```';
+  }
   return (
     <div className={`message flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} px-0`}>
       <div className={`message-content px-4 py-3 rounded-xl overflow-hidden ${
@@ -72,11 +88,11 @@ const MessageComponent = React.memo(({ message, queryContext }: { message: Messa
           : 'bg-gray-100 dark:bg-gray-800 max-w-[90%] sm:max-w-[85%] md:max-w-[80%] ml-4 sm:ml-6 md:ml-8'
       }`}>
         {message.role === 'user' ? (
-          <div className="whitespace-pre-wrap break-words">{message.content}</div>
+          <div className="whitespace-pre-wrap break-words">{contentToRender}</div>
         ) : (
           <div className="w-full markdown-body text-left flex flex-col items-start ai-response-text">
             <MarkdownRenderer 
-              content={message.content} 
+              content={contentToRender} 
               userQuery={message.userQuery || ''} 
               context={queryContext}
             />
