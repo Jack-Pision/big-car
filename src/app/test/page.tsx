@@ -1806,11 +1806,11 @@ export default function TestChat() {
                           <span className="text-sm text-white italic font-light mb-2">[Response stopped by user]</span>
                         ) : (
                           <div className="w-full max-w-full overflow-hidden">
-                            <TextReveal 
-                              text={processedContent}
-                              markdownComponents={markdownComponents}
-                              webSources={msg.webSources || []}
-                              revealIntervalMs={220}
+                            <ReactMarkdown 
+                              remarkPlugins={[remarkGfm]} 
+                              rehypePlugins={[rehypeRaw]} 
+                              className="prose dark:prose-invert max-w-none"
+                              children={processedContent}
                             />
     </div>
                         )}
