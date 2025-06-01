@@ -283,8 +283,8 @@ body {
 .markdown-body table {
   border-collapse: collapse;
   width: 100%;
-  max-width: 700px;
-  font-size: 0.92rem;
+  max-width: 600px;
+  font-size: 0.88rem;
   background: transparent;
   color: #f3f4f6;
   border: none;
@@ -297,15 +297,15 @@ body {
   border-right: none !important;
   background: transparent;
   color: #f3f4f6;
-  padding: 0.45em 0.9em;
-  font-size: 0.92rem;
+  padding: 0.3em 0.7em;
+  font-size: 0.88rem;
   vertical-align: middle;
 }
 .markdown-body th {
   font-weight: 700;
   background: transparent;
   color: #fff;
-  font-size: 0.98rem;
+  font-size: 0.88rem;
   text-align: left;
 }
 .markdown-body td {
