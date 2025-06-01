@@ -1794,7 +1794,7 @@ export default function TestChat() {
         {/* Fixed Footer Bar Behind Input */}
         <div
           className={`fixed left-0 right-0 bottom-0 z-40 transition-opacity duration-300 ${isChatEmpty && !hasInteracted ? 'opacity-0' : 'opacity-100'}`}
-          style={{ height: `${inputBarHeight}px`, background: '#161618', pointerEvents: 'none' }}
+          style={{ height: `${inputBarHeight + 16}px`, background: '#161618', pointerEvents: 'none' }}
           aria-hidden="true"
         />
 
