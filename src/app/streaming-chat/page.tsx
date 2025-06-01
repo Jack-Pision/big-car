@@ -527,10 +527,10 @@ CONVERSATION GUIDELINES:
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-white" 
+    <div className="min-h-screen flex flex-col bg-white px-4 sm:px-4 md:px-8 lg:px-0" 
          style={{ 
-           paddingLeft: 'max(env(safe-area-inset-left), 1.5rem)',
-           paddingRight: 'max(env(safe-area-inset-right), 1.5rem)',
+           paddingLeft: 'max(env(safe-area-inset-left), 1rem)',
+           paddingRight: 'max(env(safe-area-inset-right), 1rem)',
            paddingBottom: 'env(safe-area-inset-bottom)'
          }}>
       {/* Hamburger menu and sidebar */}
@@ -545,15 +545,15 @@ CONVERSATION GUIDELINES:
         onSelectSession={handleSelectChat}
       />
       {/* Welcoming message with fade-out animation */}
-      <div className={`w-full flex justify-center items-center relative h-24 md:h-28 transition-opacity duration-500 ${hasUserMessage ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+      <div className={`w-full flex justify-center items-center relative h-24 md:h-28 transition-opacity duration-500 px-4 ${hasUserMessage ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
         style={{ minHeight: '4rem' }}>
         <span className="text-2xl md:text-3xl font-semibold text-neutral-700 text-center block select-none">
           Seek and You&apos;ll find
         </span>
       </div>
       {/* Chat area fills all available space, scrollbar at window edge */}
-      <div className="flex-1 w-full overflow-y-auto" ref={chatRef}>
-        <div className="max-w-[850px] mx-auto px-2 sm:px-3 md:px-4 lg:px-0 pb-4 space-y-4">
+      <div className="flex-1 w-full overflow-y-auto px-4 sm:px-4 md:px-8 lg:px-0" ref={chatRef}>
+        <div className="max-w-[850px] mx-auto pb-4 space-y-4">
           {messages.map((message, i) => (
             <MessageComponent 
               key={message.id} 
@@ -563,7 +563,7 @@ CONVERSATION GUIDELINES:
           ))}
           {/* If AI is currently typing, show the streamed content with fade effect */}
           {aiTyping && (
-            <div className={`message ai-message px-3 sm:px-4 md:px-5 lg:px-2 transition-opacity duration-150 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
+            <div className={`message ai-message px-4 transition-opacity duration-150 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
               <div className="message-content px-4 py-3 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 max-w-[90%] sm:max-w-[85%] md:max-w-[80%]">
                 <div className="w-full markdown-body text-left flex flex-col items-start ai-response-text">
                   <MarkdownRenderer 
@@ -582,10 +582,10 @@ CONVERSATION GUIDELINES:
       </div>
       {/* Input bar fixed at bottom with responsive padding */}
       <form
-        className="w-full flex justify-center fixed bottom-0 left-0 right-0 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] pt-2 z-10 bg-gradient-to-t from-white via-white to-transparent"
+        className="w-full flex justify-center fixed bottom-0 left-0 right-0 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] pt-2 px-4 sm:px-4 md:px-8 lg:px-0 z-10 bg-gradient-to-t from-white via-white to-transparent"
         style={{ 
-          paddingLeft: 'max(env(safe-area-inset-left), 1.5rem)',
-          paddingRight: 'max(env(safe-area-inset-right), 1.5rem)'
+          paddingLeft: 'max(env(safe-area-inset-left), 1rem)',
+          paddingRight: 'max(env(safe-area-inset-right), 1rem)'
         }}
         autoComplete="off"
         onSubmit={handleSend}
