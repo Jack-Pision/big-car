@@ -1,5 +1,12 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { MathJaxContext, MathJax } from 'better-react-mathjax';
+
+// Add MathJax to window type for TypeScript
+declare global {
+  interface Window {
+    MathJax?: any;
+  }
+}
 
 // Comprehensive MathJax config that mimics Grok's rendering style
 const config = {
@@ -65,6 +72,12 @@ export const EnhancedMathRenderer: React.FC<EnhancedMathRendererProps> = ({
   className = ""
 }) => {
   const processedContent = prepareMathContent(content);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.MathJax && window.MathJax.typesetPromise) {
+      window.MathJax.typesetPromise();
+    }
+  }, [processedContent]);
   
   return (
     <MathJaxContext config={config}>
