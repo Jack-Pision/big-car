@@ -45,61 +45,23 @@ import rehypeRaw from 'rehype-raw';
 import LoadingDots from '@/components/LoadingDots';
 import Image from 'next/image';
 
-const BASE_SYSTEM_PROMPT = `IMPORTANT: For all lists, sections, and tables, use only standard markdown formatting (e.g., 1., 2., -, | Table |). Do NOT use circled numbers, circled letters, or custom symbols (like ⓵ⓇⓉⓐⓢ) for section headers or list items. Do not repeat numbers or dashes. Use clear, simple markdown for structure.
+const BASE_SYSTEM_PROMPT = `You are Tehom AI, a helpful and intelligent assistant.
+Always respond in clean, structured Markdown format.
 
-You are an intelligent, helpful, and versatile AI assistant designed to provide comprehensive support across a wide range of topics and tasks. Your primary goal is to understand user needs and deliver well-structured, accurate, and contextually appropriate responses.
-Response Structure Guidelines
-Basic Conversation
-Text Rendering Format:
-Regular paragraph text with natural flow.
+Use:
 
-Use line breaks between different thoughts or topics.
+#, ##, etc. for headings
 
-**Bold key points** when emphasizing important information.
+**bold**, *italic*, bullet points, and numbered lists where appropriate
 
-Use subtle emphasis or an emotional tone in your language where appropriate. Do not use Markdown italics (using single asterisks like *this*) in your responses for basic conversation.
+Triple backticks (\`\`\`) for code blocks with proper language tags
 
-End with engaging questions or conversation starters when appropriate.
-Guidelines:
+[text](url) for links
 
-Maintain a natural, friendly, and engaging tone
-Ask clarifying questions when needed
-Provide thoughtful responses that encourage continued dialogue
-Adapt your communication style to match the user's preference (formal/casual)
-Keep responses conversational and avoid overly technical language unless requested
-
-Essay Writing
-Text Rendering Format:
-# Essay Title (if applicable)
-
-## Introduction
-Opening paragraph with **thesis statement** clearly highlighted. Provide context and roadmap for the essay.
-
-## Main Body
-
-### Section 1: [Topic Name]
-Topic sentence that introduces the main point.
-
-4. CONCLUSION:
-   End with a "## Conclusion" paragraph that summarizes the main points and provides final thoughts.
-
-5. WEB CITATIONS:
-   - Cite ALL sources using [1], [2], etc.
-   - Each citation should correspond to the search results provided
-   - Don't add fake sources or URLs
-   - Don't include the URL itself in your answer
-
-YOUR RESPONSE STRUCTURE MUST INCLUDE:
-- Introduction paragraph (no heading)
-- Main content sections with ## headers
-- ## Summary Table with markdown table
-- ## Conclusion paragraph
-
-Format your response in clear, professional markdown.
-
-Before answering, think step-by-step and include your reasoning inside <think>...</think> tags. Only after the <think> section, provide your final answer. Example:
-<think>Thinking through the problem step by step...</think>
-Final answer here.`;
+For math:
+Use $...$ for inline math
+Use $$...$$ for display math
+`;
 
 const CITATION_INSTRUCTIONS = `IMPORTANT: You are a Deep Research AI assistant. Follow this three-step process:
 
@@ -1382,22 +1344,21 @@ export default function TestChat() {
         
         // Apply post-processing after streaming is complete
         if (queryType === 'conversation' || !queryType) {
-          const processedContent = postProcessAIChatResponse(contentBuffer);
-          
+          // Removed post-processing for default chat (render raw AI output as-is)
           setMessages((prev) => {
             const updatedMessages = [...prev];
             const lastMsgIndex = updatedMessages.length - 1;
-            if(updatedMessages[lastMsgIndex] && updatedMessages[lastMsgIndex].role === 'assistant'){
-              updatedMessages[lastMsgIndex] = { 
-                ...updatedMessages[lastMsgIndex], 
-                content: processedContent,
+            if (lastMsgIndex >= 0 && updatedMessages[lastMsgIndex].role === 'assistant') {
+              updatedMessages[lastMsgIndex] = {
+                ...updatedMessages[lastMsgIndex],
+                content: contentBuffer,
                 contentType: 'conversation'
               };
             }
             return updatedMessages;
           });
           
-          aiMsg.content = processedContent;
+          aiMsg.content = contentBuffer;
           aiMsg.contentType = 'conversation';
         } else if (showAdvanceSearchUI || currentQuery.includes('@AdvanceSearch')) {
           const processedResearch = enforceAdvanceSearchStructure(contentBuffer);
