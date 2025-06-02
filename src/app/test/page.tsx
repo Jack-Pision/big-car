@@ -1520,6 +1520,7 @@ export default function TestChat() {
   };
 
   const renderMessageContent = (msg: Message) => {
+    // If structuredContent is present, use the existing logic
     if (msg.contentType && msg.structuredContent) {
       switch (msg.contentType) {
         case 'tutorial':
@@ -1528,20 +1529,40 @@ export default function TestChat() {
           return <ComparisonDisplay data={msg.structuredContent as ComparisonData} />;
         case 'informational_summary':
           return <InformationalSummaryDisplay data={msg.structuredContent as InformationalSummaryData} />;
-        case 'conversation': // Added case for conversation schema
+        case 'conversation':
           return <ConversationDisplay data={msg.structuredContent as string} />;
         default:
-          // Fallback for unknown structured content types or if content is just a string
           if (typeof msg.structuredContent === 'string') {
             return <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="prose dark:prose-invert max-w-none">{msg.structuredContent}</ReactMarkdown>;
           }
-          // If structuredContent is an object but not a known type, display its string representation
           return <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="prose dark:prose-invert max-w-none">{`Unsupported structured content: ${JSON.stringify(msg.structuredContent)}`}</ReactMarkdown>;
       }
-    } else if (msg.content) { // Fallback for simple text content or streamed content
-        return <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="prose dark:prose-invert max-w-none">{msg.content}</ReactMarkdown>;
+    } else if (msg.content) {
+      // Try to detect and parse JSON string
+      const content = msg.content.trim();
+      if ((content.startsWith('{') && content.endsWith('}')) || (content.startsWith('[') && content.endsWith(']'))) {
+        try {
+          const parsed = JSON.parse(content);
+          // Try to detect known structures
+          if (parsed && typeof parsed === 'object') {
+            if (parsed.title && parsed.steps) {
+              return <TutorialDisplay data={parsed as TutorialData} />;
+            } else if (parsed.title && parsed.item1_name && parsed.item2_name) {
+              return <ComparisonDisplay data={parsed as ComparisonData} />;
+            } else if (parsed.main_title && parsed.sections) {
+              return <InformationalSummaryDisplay data={parsed as InformationalSummaryData} />;
+            }
+          }
+          // If not a known structure, render as formatted JSON
+          return <pre className="bg-neutral-900 text-white rounded p-4 overflow-x-auto"><code>{JSON.stringify(parsed, null, 2)}</code></pre>;
+        } catch (e) {
+          // Not valid JSON, fall through to markdown rendering
+        }
+      }
+      // Fallback for simple text content or streamed content
+      return <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="prose dark:prose-invert max-w-none">{msg.content}</ReactMarkdown>;
     }
-    return null; // Or some placeholder for empty messages
+    return null;
   };
 
   return (
