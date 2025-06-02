@@ -120,8 +120,8 @@ export default function TemplatedChat() {
         try {
           // Use a safe error-catching wrapper
           window.MathJax.typesetPromise()
-            .catch(err => console.error('MathJax typesetting error:', err));
-        } catch (e) {
+            .catch((err: Error) => console.error('MathJax typesetting error:', err));
+        } catch (e: unknown) {
           console.error('MathJax error:', e);
         }
       }
