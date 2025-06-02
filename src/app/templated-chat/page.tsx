@@ -93,11 +93,18 @@ export default function TemplatedChat() {
     return () => clearInterval(interval);
   }, [streamedContent, aiTyping]);
 
-  // MathJax instant rendering for streaming output
+  // Debounced MathJax instant rendering for streaming output
+  const mathJaxDebounceRef = useRef<NodeJS.Timeout | null>(null);
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.MathJax && window.MathJax.typesetPromise) {
-      window.MathJax.typesetPromise();
-    }
+    if (mathJaxDebounceRef.current) clearTimeout(mathJaxDebounceRef.current);
+    mathJaxDebounceRef.current = setTimeout(() => {
+      if (typeof window !== 'undefined' && window.MathJax && window.MathJax.typesetPromise) {
+        window.MathJax.typesetPromise();
+      }
+    }, 200); // 200ms debounce
+    return () => {
+      if (mathJaxDebounceRef.current) clearTimeout(mathJaxDebounceRef.current);
+    };
   }, [displayed]);
 
   // Chat management functions
