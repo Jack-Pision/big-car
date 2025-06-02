@@ -6,8 +6,6 @@ import rehypeRaw from 'rehype-raw';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import { safe } from '../utils/SafeAccess';
-import { MathJaxProvider } from './MathJaxProvider';
-import { MathRenderer } from './MathRenderer';
 import { EnhancedMathRenderer } from './EnhancedMathRenderer';
 
 interface ResponseRendererProps {
