@@ -28,6 +28,11 @@ const markdownComponents = {
   li: (props: React.ComponentProps<'li'>) => <li className="markdown-body-li mb-1" {...props} />,
 };
 
+// Helper to remove <think>...</think> blocks
+function stripThinking(content: string): string {
+  return content.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+}
+
 export default function TemplatedChat() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
@@ -349,7 +354,7 @@ Example of a good list:
                 ) : (
                   <div className="w-full markdown-body text-left flex flex-col items-start ai-response-text">
                     <EnhancedMarkdownRenderer 
-                      content={message.content} 
+                      content={stripThinking(message.content)} 
                       userQuery={message.userQuery || ''} 
                       context={queryContext}
                     />
@@ -364,7 +369,7 @@ Example of a good list:
               <div className="message-content px-4 py-3 rounded-xl max-w-full overflow-hidden bg-gray-100 dark:bg-gray-800">
                 <div className="w-full markdown-body text-left flex flex-col items-start ai-response-text">
                   <EnhancedMarkdownRenderer 
-                    content={displayed} 
+                    content={stripThinking(displayed)} 
                     userQuery={currentUserQuery} 
                     context={queryContext}
                   />
