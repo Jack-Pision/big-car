@@ -48,6 +48,17 @@ const markdownComponents = {
   // Add other markdown component overrides if needed
 };
 
+// Enhanced KaTeX options
+const katexOptions = {
+  strict: false,
+  trust: true,
+  macros: {
+    "\\implies": "\\Rightarrow",
+    "\\cancel": "\\not",
+    "\\mathbf": "\\boldsymbol"
+  }
+};
+
 function BasicRenderer({ data }: { data: any }): ReactNode {
   // Always treat data as a string for display
   let contentToRender = '';
@@ -59,22 +70,31 @@ function BasicRenderer({ data }: { data: any }): ReactNode {
     contentToRender = 'No content provided';
   }
   
-  // Pre-process content to ensure math blocks are properly formatted
+  // Enhanced pre-processing for math blocks
   contentToRender = unescapeString(contentToRender)
     // Convert [ ... ] to $$ ... $$ if it looks like math
     .replace(/\[([\s\S]*?)\]/g, (match, content) => {
-      // Check if content looks like math (contains common math symbols)
-      if (/[\\\^_{}\[\]]/.test(content)) {
+      // Check if content looks like math (contains common math symbols or LaTeX commands)
+      if (/[\\\^_{}\[\]]|\\[a-zA-Z]+/.test(content)) {
         return `$$${content}$$`;
       }
       return match;
-    });
+    })
+    // Fix common LaTeX command issues
+    .replace(/\\cancel\{([^}]+)\}/g, "\\not{$1}")
+    .replace(/\\implies/g, "\\Rightarrow")
+    // Fix for inline math that might be using incorrect delimiters
+    .replace(/\\mathbf\{([^}]+)\}/g, "\\boldsymbol{$1}")
+    // Convert \[ ... \] to $$ ... $$ for display math
+    .replace(/\\\[([\s\S]*?)\\\]/g, "$$$$1$$")
+    // Convert \( ... \) to $ ... $ for inline math
+    .replace(/\\\(([\s\S]*?)\\\)/g, "$$1$");
 
   return (
     <ReactMarkdown 
       components={markdownComponents} 
       remarkPlugins={[remarkGfm, remarkMath]}
-      rehypePlugins={[rehypeRaw, rehypeKatex]}
+      rehypePlugins={[[rehypeKatex, katexOptions], rehypeRaw]}
     >
       {contentToRender}
     </ReactMarkdown>
