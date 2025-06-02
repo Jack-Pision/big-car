@@ -78,8 +78,8 @@ export const EnhancedMathRenderer: React.FC<EnhancedMathRendererProps> = ({
       try {
         // Wrap in a try-catch to prevent errors from causing page reloads
         window.MathJax.typesetPromise()
-          .catch(err => console.error('MathJax typesetting error:', err));
-      } catch (e) {
+          .catch((err: Error) => console.error('MathJax typesetting error:', err));
+      } catch (e: unknown) {
         console.error('MathJax error:', e);
       }
     }
