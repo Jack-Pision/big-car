@@ -61,7 +61,8 @@ Triple backticks (\`\`\`) for code blocks with proper language tags
 For math:
 Use $...$ for inline math
 Use $$...$$ for display math
-`;
+
+IMPORTANT: For all equations and math, ALWAYS use LaTeX syntax. Wrap display math in double dollar signs ($$...$$) and inline math in single dollar signs ($...$). Do NOT use square brackets or other symbols for math. Only use $...$ or $$...$$ for math so it renders beautifully.`;
 
 const CITATION_INSTRUCTIONS = `IMPORTANT: You are a Deep Research AI assistant. Follow this three-step process:
 
