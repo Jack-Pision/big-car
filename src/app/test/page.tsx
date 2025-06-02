@@ -1538,12 +1538,17 @@ export default function TestChat() {
           return <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="prose dark:prose-invert max-w-none">{`Unsupported structured content: ${JSON.stringify(msg.structuredContent)}`}</ReactMarkdown>;
       }
     } else if (msg.content) {
-      // Robust JSON detection and extraction
+      // Math-specific post-processing: convert [ ... ] to $$...$$ if it looks like math
       let content = msg.content.trim();
       // 1. Strip code block fences if present
       if (content.startsWith('```')) {
         content = content.replace(/^```[a-zA-Z]*\n?/, '').replace(/```$/, '').trim();
       }
+      // Convert [ ... ] to $$...$$ if it looks like math
+      content = content.replace(/\[([\s\S]*?)\]/g, (match, p1) => {
+        if (/[=+\-*/^\\]/.test(p1)) return `$$${p1.trim()}$$`;
+        return match;
+      });
       // 2. Extract first JSON object or array from the string
       let jsonMatch = content.match(/({[\s\S]*}|\[[\s\S]*\])/);
       if (jsonMatch) {
@@ -1566,7 +1571,7 @@ export default function TestChat() {
         }
       }
       // Fallback for simple text content or streamed content
-      return <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="prose dark:prose-invert max-w-none">{msg.content}</ReactMarkdown>;
+      return <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex]} className="prose dark:prose-invert max-w-none">{content}</ReactMarkdown>;
     }
     return null;
   };
