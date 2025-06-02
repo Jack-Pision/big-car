@@ -93,6 +93,13 @@ export default function TemplatedChat() {
     return () => clearInterval(interval);
   }, [streamedContent, aiTyping]);
 
+  // MathJax instant rendering for streaming output
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.MathJax && window.MathJax.typesetPromise) {
+      window.MathJax.typesetPromise();
+    }
+  }, [displayed]);
+
   // Chat management functions
   function handleNewChat() {
     router.push('/test'); // Redirect to default page
