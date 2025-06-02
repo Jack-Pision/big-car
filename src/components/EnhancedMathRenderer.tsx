@@ -75,7 +75,13 @@ export const EnhancedMathRenderer: React.FC<EnhancedMathRendererProps> = ({
 
   useEffect(() => {
     if (typeof window !== 'undefined' && window.MathJax && window.MathJax.typesetPromise) {
-      window.MathJax.typesetPromise();
+      try {
+        // Wrap in a try-catch to prevent errors from causing page reloads
+        window.MathJax.typesetPromise()
+          .catch(err => console.error('MathJax typesetting error:', err));
+      } catch (e) {
+        console.error('MathJax error:', e);
+      }
     }
   }, [processedContent]);
   

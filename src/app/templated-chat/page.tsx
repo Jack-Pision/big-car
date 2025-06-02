@@ -79,7 +79,11 @@ export default function TemplatedChat() {
     const interval = setInterval(() => {
       // Remove <think>...</think> tags from the displayed content
       const filteredDisplayed = streamedContent.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-      setDisplayed(filteredDisplayed.slice(0, i + 1));
+      // Use a safe update method that doesn't trigger a full re-render
+      setDisplayed(prev => {
+        const newContent = filteredDisplayed.slice(0, i + 1);
+        return newContent;
+      });
       i++;
       if (i >= streamedContent.length) {
         clearInterval(interval);
@@ -98,15 +102,31 @@ export default function TemplatedChat() {
     return () => clearInterval(interval);
   }, [streamedContent, aiTyping]);
 
-  // Debounced MathJax instant rendering for streaming output
+  // Modify the MathJax debouncing effect to prevent unnecessary reloads
   const mathJaxDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const prevDisplayedRef = useRef<string>("");
+
   useEffect(() => {
+    // Only process if the content has actually changed
+    if (displayed === prevDisplayedRef.current) return;
+    
+    prevDisplayedRef.current = displayed;
+    
     if (mathJaxDebounceRef.current) clearTimeout(mathJaxDebounceRef.current);
+    
+    // Use a longer debounce time to prevent frequent reprocessing
     mathJaxDebounceRef.current = setTimeout(() => {
       if (typeof window !== 'undefined' && window.MathJax && window.MathJax.typesetPromise) {
-        window.MathJax.typesetPromise();
+        try {
+          // Use a safe error-catching wrapper
+          window.MathJax.typesetPromise()
+            .catch(err => console.error('MathJax typesetting error:', err));
+        } catch (e) {
+          console.error('MathJax error:', e);
+        }
       }
-    }, 200); // 200ms debounce
+    }, 500); // Increase to 500ms to reduce frequency
+    
     return () => {
       if (mathJaxDebounceRef.current) clearTimeout(mathJaxDebounceRef.current);
     };
