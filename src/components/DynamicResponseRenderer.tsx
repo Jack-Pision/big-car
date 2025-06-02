@@ -6,6 +6,8 @@ import rehypeRaw from 'rehype-raw';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import { safe } from '../utils/SafeAccess';
+import { MathJaxProvider } from './MathJaxProvider';
+import { MathRenderer } from './MathRenderer';
 
 interface ResponseRendererProps {
   data: any;
@@ -48,7 +50,7 @@ const markdownComponents = {
   // Add other markdown component overrides if needed
 };
 
-// Enhanced KaTeX options
+// Enhanced KaTeX options - keeping for backwards compatibility
 const katexOptions = {
   strict: false,
   trust: true,
@@ -57,6 +59,11 @@ const katexOptions = {
     "\\cancel": "\\not",
     "\\mathbf": "\\boldsymbol"
   }
+};
+
+// Determine if the content has math expressions
+const containsMath = (content: string): boolean => {
+  return /\$(.*?)\$|\$\$(.*?)\$\$|\\\((.*?)\\\)|\\\[(.*?)\\\]|\\\begin\{(.*?)\}|\\\end\{(.*?)\}/.test(content);
 };
 
 function BasicRenderer({ data }: { data: any }): ReactNode {
@@ -70,35 +77,32 @@ function BasicRenderer({ data }: { data: any }): ReactNode {
     contentToRender = 'No content provided';
   }
   
-  // Enhanced pre-processing for math blocks
-  contentToRender = unescapeString(contentToRender)
-    // Convert [ ... ] to $$ ... $$ if it looks like math
-    .replace(/\[([\s\S]*?)\]/g, (match, content) => {
-      // Check if content looks like math (contains common math symbols or LaTeX commands)
-      if (/[\\\^_{}\[\]]|\\[a-zA-Z]+/.test(content)) {
-        return `$$${content}$$`;
-      }
-      return match;
-    })
-    // Fix common LaTeX command issues
-    .replace(/\\cancel\{([^}]+)\}/g, "\\not{$1}")
-    .replace(/\\implies/g, "\\Rightarrow")
-    // Fix for inline math that might be using incorrect delimiters
-    .replace(/\\mathbf\{([^}]+)\}/g, "\\boldsymbol{$1}")
-    // Convert \[ ... \] to $$ ... $$ for display math
-    .replace(/\\\[([\s\S]*?)\\\]/g, "$$$$1$$")
-    // Convert \( ... \) to $ ... $ for inline math
-    .replace(/\\\(([\s\S]*?)\\\)/g, "$$1$");
-
-  return (
-    <ReactMarkdown 
-      components={markdownComponents} 
-      remarkPlugins={[remarkGfm, remarkMath]}
-      rehypePlugins={[[rehypeKatex, katexOptions], rehypeRaw]}
-    >
-      {contentToRender}
-    </ReactMarkdown>
-  );
+  // Unescape content first
+  contentToRender = unescapeString(contentToRender);
+  
+  // Check if the content has math expressions
+  const hasMath = containsMath(contentToRender) || 
+                  /\\cancel|\\boxed|\\mathbf|\\text|\\frac|\\sqrt|\\sum|\\int/.test(contentToRender);
+  
+  // If it has math, use MathJax renderer, otherwise use regular markdown
+  if (hasMath) {
+    return (
+      <MathJaxProvider>
+        <MathRenderer content={contentToRender} />
+      </MathJaxProvider>
+    );
+  } else {
+    // Use the existing renderer for non-math content
+    return (
+      <ReactMarkdown 
+        components={markdownComponents} 
+        remarkPlugins={[remarkGfm, remarkMath]}
+        rehypePlugins={[[rehypeKatex, katexOptions], rehypeRaw]}
+      >
+        {contentToRender}
+      </ReactMarkdown>
+    );
+  }
 }
 
 function TutorialRenderer({ data }: { data: any }): ReactNode {

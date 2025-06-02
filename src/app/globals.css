@@ -521,4 +521,38 @@ textarea::-webkit-scrollbar-thumb,
   margin: 2rem 0;
   background: none;
   height: 0;
-} 
+}
+
+/* === MathJax Styling === */
+.math-renderer {
+  font-size: 1.02rem;
+  line-height: 1.5;
+}
+
+.MathJax_Display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  margin: 1.6em 0 !important;
+  padding: 0.5em 0;
+}
+
+.MathJax {
+  font-size: 1.15em !important;
+}
+
+.MathJax:hover {
+  background-color: rgba(45, 45, 48, 0.4);
+  border-radius: 4px;
+}
+
+/* Make sure inline math aligns properly with text */
+.MathJax[display="inline"] {
+  vertical-align: middle !important;
+}
+
+/* Make sure the math is readable in dark mode */
+.math-renderer .MathJax {
+  color: #f8f8f8 !important;
+}
+
+/* === Keep existing KaTeX styling for backwards compatibility === */ 
