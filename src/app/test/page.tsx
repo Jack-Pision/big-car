@@ -44,6 +44,8 @@ import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import rehypeRaw from 'rehype-raw';
 import LoadingDots from '@/components/LoadingDots';
 import Image from 'next/image';
+import dynamic from 'next/dynamic';
+const MathTestPreview = dynamic(() => import('@/components/MathTestPreview').then(mod => mod.MathTestPreview), { ssr: false });
 
 const BASE_SYSTEM_PROMPT = `You are Tehom AI, a helpful and intelligent assistant.
 Always respond in clean, structured Markdown format.
@@ -1893,6 +1895,7 @@ export default function TestChat() {
       {chatError && (
         <div className="text-red-500 text-sm text-center mt-2">{chatError}</div>
       )}
+      <MathTestPreview />
     </>
   );
 }

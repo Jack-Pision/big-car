@@ -37,6 +37,8 @@ const config = {
 // Clean and prepare math content
 const prepareMathContent = (content: string): string => {
   return content
+    // Fix double-escaping: convert \\ to \
+    .replace(/\\\\/g, "\\")
     // Replace raw square brackets with display math
     .replace(/\[([\s\S]*?)\]/g, (match, formula) => {
       if (/[\\\^_{}\[\]]|\\[a-zA-Z]+/.test(formula)) {
