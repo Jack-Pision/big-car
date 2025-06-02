@@ -1538,11 +1538,17 @@ export default function TestChat() {
           return <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="prose dark:prose-invert max-w-none">{`Unsupported structured content: ${JSON.stringify(msg.structuredContent)}`}</ReactMarkdown>;
       }
     } else if (msg.content) {
-      // Try to detect and parse JSON string
-      const content = msg.content.trim();
-      if ((content.startsWith('{') && content.endsWith('}')) || (content.startsWith('[') && content.endsWith(']'))) {
+      // Robust JSON detection and extraction
+      let content = msg.content.trim();
+      // 1. Strip code block fences if present
+      if (content.startsWith('```')) {
+        content = content.replace(/^```[a-zA-Z]*\n?/, '').replace(/```$/, '').trim();
+      }
+      // 2. Extract first JSON object or array from the string
+      let jsonMatch = content.match(/({[\s\S]*}|\[[\s\S]*\])/);
+      if (jsonMatch) {
         try {
-          const parsed = JSON.parse(content);
+          const parsed = JSON.parse(jsonMatch[0]);
           // Try to detect known structures
           if (parsed && typeof parsed === 'object') {
             if (parsed.title && parsed.steps) {
