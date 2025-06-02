@@ -8,6 +8,7 @@ import 'katex/dist/katex.min.css';
 import { safe } from '../utils/SafeAccess';
 import { MathJaxProvider } from './MathJaxProvider';
 import { MathRenderer } from './MathRenderer';
+import { EnhancedMathRenderer } from './EnhancedMathRenderer';
 
 interface ResponseRendererProps {
   data: any;
@@ -61,9 +62,9 @@ const katexOptions = {
   }
 };
 
-// Determine if the content has math expressions
+// Determine if the content has math expressions - enhanced detection
 const containsMath = (content: string): boolean => {
-  return /\$(.*?)\$|\$\$(.*?)\$\$|\\\((.*?)\\\)|\\\[(.*?)\\\]|\\\begin\{(.*?)\}|\\\end\{(.*?)\}/.test(content);
+  return /\$(.*?)\$|\$\$(.*?)\$\$|\\\((.*?)\\\)|\\\[(.*?)\\\]|\\\begin\{(.*?)\}|\\\end\{(.*?)\}|\\frac|\\sqrt|\\sum|\\int|\\lim|\\prod|\\alpha|\\beta|\\gamma|\\delta|\\epsilon|\\zeta|\\eta|\\theta|\\iota|\\kappa|\\lambda|\\mu|\\nu|\\xi|\\pi|\\rho|\\sigma|\\tau|\\upsilon|\\phi|\\chi|\\psi|\\omega|\\Gamma|\\Delta|\\Theta|\\Lambda|\\Xi|\\Pi|\\Sigma|\\Upsilon|\\Phi|\\Psi|\\Omega/.test(content);
 };
 
 function BasicRenderer({ data }: { data: any }): ReactNode {
@@ -80,24 +81,19 @@ function BasicRenderer({ data }: { data: any }): ReactNode {
   // Unescape content first
   contentToRender = unescapeString(contentToRender);
   
-  // Check if the content has math expressions
-  const hasMath = containsMath(contentToRender) || 
-                  /\\cancel|\\boxed|\\mathbf|\\text|\\frac|\\sqrt|\\sum|\\int/.test(contentToRender);
+  // Check if the content has math expressions - use an improved detection regex
+  const hasMath = containsMath(contentToRender);
   
-  // If it has math, use MathJax renderer, otherwise use regular markdown
+  // If it has math, use EnhancedMathRenderer, otherwise use regular markdown
   if (hasMath) {
-    return (
-      <MathJaxProvider>
-        <MathRenderer content={contentToRender} />
-      </MathJaxProvider>
-    );
+    return <EnhancedMathRenderer content={contentToRender} />;
   } else {
     // Use the existing renderer for non-math content
     return (
       <ReactMarkdown 
         components={markdownComponents} 
-        remarkPlugins={[remarkGfm, remarkMath]}
-        rehypePlugins={[[rehypeKatex, katexOptions], rehypeRaw]}
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={[rehypeRaw]}
       >
         {contentToRender}
       </ReactMarkdown>

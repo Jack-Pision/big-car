@@ -555,4 +555,71 @@ textarea::-webkit-scrollbar-thumb,
   color: #f8f8f8 !important;
 }
 
-/* === Keep existing KaTeX styling for backwards compatibility === */ 
+/* === Keep existing KaTeX styling for backwards compatibility === */
+
+/* === Enhanced Math Rendering Styles === */
+.enhanced-math-renderer {
+  width: 100%;
+  overflow-x: auto;
+  font-size: 1.05rem;
+}
+
+/* Beautiful styling for math display blocks */
+.MJX-TEX {
+  font-size: 1.1em !important;
+}
+
+/* Display math ($$...$$) */
+mjx-container[jax="CHTML"][display="true"] {
+  margin: 1.5em 0 !important;
+  padding: 0.5em 0;
+  min-width: auto !important;
+  overflow-x: auto;
+  overflow-y: hidden;
+  width: 100%;
+  text-align: center;
+}
+
+/* Inline math ($...$) */
+mjx-container[jax="CHTML"][display="false"] {
+  vertical-align: middle;
+  margin: 0 0.1em;
+  white-space: normal;
+}
+
+/* Better readability in dark mode */
+mjx-container mjx-mtext {
+  color: #e0e0e0 !important;
+}
+
+/* Highlight equations with subtle background on hover */
+mjx-container[jax="CHTML"][display="true"]:hover {
+  background-color: rgba(45, 45, 48, 0.4);
+  border-radius: 4px;
+}
+
+/* Better spacing for fractions */
+mjx-container mjx-frac {
+  line-height: 1.8;
+}
+
+/* Improve matrix rendering */
+mjx-container mjx-mtable {
+  padding: 0.4em 0;
+}
+
+/* Nice styling for boxed formulas */
+mjx-container mjx-menclose {
+  border-radius: 3px;
+}
+
+/* Styling for error messages */
+mjx-merror {
+  color: #ff5555 !important;
+  background-color: rgba(255, 85, 85, 0.1) !important;
+  border: 1px solid rgba(255, 85, 85, 0.2) !important;
+  padding: 0.1em 0.3em !important;
+  border-radius: 3px !important;
+}
+
+/* Preserve existing KaTeX styling for backward compatibility */ 
