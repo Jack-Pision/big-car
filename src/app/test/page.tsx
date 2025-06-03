@@ -1082,7 +1082,10 @@ export default function TestChat() {
       let turnSpecificSystemPrompt = BASE_SYSTEM_PROMPT;
 
       // Inject NVIDIA AI thinking mode instructions for every message
-      turnSpecificSystemPrompt += `\n\nIMPORTANT: For every response, before answering, think step-by-step and include your reasoning inside <think>...</think> tags. Only after the <think> section, provide your final answer. Example:\n<think>Thinking through the problem step by step...</think>\nFinal answer here.`;
+      // Only add thinking mode for non-conversation (non-default) chat types
+      if (queryType !== 'conversation') {
+        turnSpecificSystemPrompt += `\n\nIMPORTANT: For every response, before answering, think step-by-step and include your reasoning inside <think>...</think> tags. Only after the <think> section, provide your final answer. Example:\n<think>Thinking through the problem step by step...</think>\nFinal answer here.`;
+      }
 
       if (uploadedImageUrls.length === 0 && queryType !== 'conversation') {
         turnSpecificSystemPrompt += `\n\nIMPORTANT: For this query, classified as '${queryType}', your entire response MUST be a single JSON object that strictly conforms to the following JSON schema. Do NOT include any text, markdown, or explanations outside of this JSON object. Adhere to all field types and requirements specified in the schema.\nSchema:\n${JSON.stringify(responseSchema, null, 2)}`;
