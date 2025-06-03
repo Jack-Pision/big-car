@@ -8,7 +8,6 @@ import SearchPopup from '../../components/SearchPopup';
 import { useRouter } from 'next/navigation';
 import { EnhancedMarkdownRenderer } from '../../components/EnhancedMarkdownRenderer';
 import { QueryContext } from '../../utils/template-utils';
-import ThinkingAnimation from '../../components/ThinkingAnimation';
 
 const NVIDIA_API_URL = "/api/nvidia";
 
@@ -29,11 +28,6 @@ const markdownComponents = {
   li: (props: React.ComponentProps<'li'>) => <li className="markdown-body-li mb-1" {...props} />,
 };
 
-// Helper to remove <think>...</think> blocks
-function stripThinking(content: string): string {
-  return content.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-}
-
 export default function TemplatedChat() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
@@ -43,11 +37,6 @@ export default function TemplatedChat() {
   const [error, setError] = useState("");
   const chatRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  
-  // New state for thinking animation and response collection
-  const [showThinking, setShowThinking] = useState(false);
-  const [isResponseComplete, setIsResponseComplete] = useState(false);
-  const [finalResponse, setFinalResponse] = useState("");
   
   // New state for templating
   const [currentUserQuery, setCurrentUserQuery] = useState("");
@@ -72,69 +61,37 @@ export default function TemplatedChat() {
   // Scroll to bottom on new message
   useEffect(() => {
     chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior: 'smooth' });
-  }, [messages, finalResponse, showThinking]);
+  }, [messages, streamedContent]);
 
-  // Modified typewriter effect for streamed AI response
+  // Typewriter effect for streamed AI response
   const [displayed, setDisplayed] = useState("");
   useEffect(() => {
-    if (!aiTyping || !isResponseComplete) return;
-    if (!finalResponse) return;
-    
+    if (!aiTyping) return;
+    if (!streamedContent) return;
     let i = 0;
     setDisplayed("");
     setIsLoading(false);
     const interval = setInterval(() => {
-      setDisplayed(prev => {
-        const newContent = finalResponse.slice(0, i + 1);
-        return newContent;
-      });
+      // Remove <think>...</think> tags from the displayed content
+      const filteredDisplayed = streamedContent.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+      setDisplayed(filteredDisplayed.slice(0, i + 1));
       i++;
-      if (i >= finalResponse.length) {
+      if (i >= streamedContent.length) {
         clearInterval(interval);
         setAiTyping(false);
         setMessages((prev) => [
           ...prev.slice(0, -1),
           { 
             ...prev[prev.length - 1], 
-            content: finalResponse
+            content: streamedContent
+            // Preserve userQuery from the previous placeholder message
           },
         ]);
-        setFinalResponse("");
-        setIsResponseComplete(false);
+        setStreamedContent("");
       }
     }, 12);
     return () => clearInterval(interval);
-  }, [finalResponse, aiTyping, isResponseComplete]);
-
-  // Modify the MathJax debouncing effect to prevent unnecessary reloads
-  const mathJaxDebounceRef = useRef<NodeJS.Timeout | null>(null);
-  const prevDisplayedRef = useRef<string>("");
-
-  useEffect(() => {
-    // Only process if the content has actually changed
-    if (displayed === prevDisplayedRef.current) return;
-    
-    prevDisplayedRef.current = displayed;
-    
-    if (mathJaxDebounceRef.current) clearTimeout(mathJaxDebounceRef.current);
-    
-    // Use a longer debounce time to prevent frequent reprocessing
-    mathJaxDebounceRef.current = setTimeout(() => {
-      if (typeof window !== 'undefined' && window.MathJax && window.MathJax.typesetPromise) {
-        try {
-          // Use a safe error-catching wrapper
-          window.MathJax.typesetPromise()
-            .catch((err: Error) => console.error('MathJax typesetting error:', err));
-        } catch (e: unknown) {
-          console.error('MathJax error:', e);
-        }
-      }
-    }, 500); // Increase to 500ms to reduce frequency
-    
-    return () => {
-      if (mathJaxDebounceRef.current) clearTimeout(mathJaxDebounceRef.current);
-    };
-  }, [displayed]);
+  }, [streamedContent, aiTyping]);
 
   // Chat management functions
   function handleNewChat() {
@@ -216,10 +173,8 @@ export default function TemplatedChat() {
 
   async function streamAI(msgs: Message[]) {
     setAiTyping(true);
-    setShowThinking(true);
     setStreamedContent("");
     setDisplayed("");
-    setIsResponseComplete(false);
     let didRespond = false;
     let fullText = "";
     let timeoutId: NodeJS.Timeout | null = null;
@@ -293,7 +248,6 @@ Example of a good list:
           setError("AI did not respond. Please try again.");
           setIsLoading(false);
           setAiTyping(false);
-          setShowThinking(false);
           setStreamedContent("");
           setDisplayed("");
           setMessages((prev) => prev.slice(0, -1)); // Remove empty AI message
@@ -314,8 +268,9 @@ Example of a good list:
             if (delta) {
               didRespond = true;
               fullText += delta;
-              // Store the content but don't display it yet
-              setStreamedContent(fullText);
+              // Remove <think>...</think> tags from the streamed content
+              const filteredText = fullText.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+              setStreamedContent(filteredText);
             }
             if (data.error) {
               setError("Failed to connect to AI. " + (typeof data.error === "object" && data.error && "message" in data.error ? (data.error as any).message : String(data.error)));
@@ -329,29 +284,10 @@ Example of a good list:
           }
         }
       }
-      
-      // When streaming is complete, identify the final answer from the full response
-      if (didRespond) {
-        try {
-          // Clean up the response by removing thinking content
-          const filteredText = stripThinking(fullText.trim());
-          
-          // Use the full filtered response as the final answer
-          setFinalResponse(filteredText);
-          setShowThinking(false);
-          setIsResponseComplete(true);
-        } catch (error) {
-          console.error("Error processing AI response:", error);
-          setError("Error processing the AI response. Please try again.");
-          setIsLoading(false);
-          setAiTyping(false);
-          setShowThinking(false);
-        }
-      } else {
+      if (!didRespond) {
         setError("AI did not respond. Please try again.");
         setIsLoading(false);
         setAiTyping(false);
-        setShowThinking(false);
         setStreamedContent("");
         setDisplayed("");
         setMessages((prev) => prev.slice(0, -1));
@@ -360,7 +296,6 @@ Example of a good list:
       setError("Failed to connect to AI. " + (typeof err === "object" && err && "message" in err ? (err as any).message : String(err)));
       setIsLoading(false);
       setAiTyping(false);
-      setShowThinking(false);
       setStreamedContent("");
       setDisplayed("");
       setMessages((prev) => prev.slice(0, -1));
@@ -400,7 +335,7 @@ Example of a good list:
                 ) : (
                   <div className="w-full markdown-body text-left flex flex-col items-start ai-response-text">
                     <EnhancedMarkdownRenderer 
-                      content={stripThinking(message.content)} 
+                      content={message.content} 
                       userQuery={message.userQuery || ''} 
                       context={queryContext}
                     />
@@ -409,18 +344,8 @@ Example of a good list:
               </div>
             </div>
           ))}
-          
-          {/* Thinking animation while AI is processing - no text shown here */}
-          {showThinking && (
-            <div className="message ai-message">
-              <div className="message-content px-4 py-3 rounded-xl max-w-full overflow-hidden bg-gray-100 dark:bg-gray-800">
-                <ThinkingAnimation isVisible={true} />
-              </div>
-            </div>
-          )}
-          
-          {/* Show typewriter effect only after response is complete */}
-          {aiTyping && isResponseComplete && (
+          {/* If AI is currently typing, show the streamed content */}
+          {aiTyping && (
             <div className="message ai-message">
               <div className="message-content px-4 py-3 rounded-xl max-w-full overflow-hidden bg-gray-100 dark:bg-gray-800">
                 <div className="w-full markdown-body text-left flex flex-col items-start ai-response-text">
@@ -433,7 +358,6 @@ Example of a good list:
               </div>
             </div>
           )}
-          
           {error && (
             <div className="text-red-500 text-sm text-center mt-2">{error}</div>
           )}

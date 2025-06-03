@@ -5,17 +5,6 @@ import rehypeKatex from 'rehype-katex';
 import React from 'react';
 import { selectTemplate, structureAIResponse, applyTemplate, TemplateType, QueryContext } from './template-utils';
 
-// Enhanced KaTeX options
-const katexOptions = {
-  strict: false,
-  trust: true,
-  macros: {
-    "\\implies": "\\Rightarrow",
-    "\\cancel": "\\not",
-    "\\mathbf": "\\boldsymbol"
-  }
-};
-
 // Exported shared markdown components for consistent styling
 export const markdownComponents = {
   h1: (props: React.ComponentProps<'h1'>) => <h1 className="markdown-body-heading markdown-body-h1" {...props} />,
@@ -58,14 +47,11 @@ export function MarkdownRenderer({
       const templatedMarkdown = applyTemplate(structuredContent, templateType);
       
       // 4. Clean the markdown for consistent rendering
-      const cleanedMarkdown = cleanMarkdown(templatedMarkdown);
-      
-      // 5. Process math notation
-      return processMathNotation(cleanedMarkdown);
+      return cleanMarkdown(templatedMarkdown);
     }
     
-    // If no user query, just clean the markdown and process math
-    return processMathNotation(cleanMarkdown(content));
+    // If no user query, just clean the markdown
+    return cleanMarkdown(content);
   }, [content, userQuery, context]);
 
   return (
@@ -73,7 +59,7 @@ export function MarkdownRenderer({
       className={`markdown-body ${className}`}
       components={markdownComponents}
       remarkPlugins={[remarkGfm, remarkMath]}
-      rehypePlugins={[[rehypeKatex, katexOptions]]}
+      rehypePlugins={[rehypeKatex]}
     >
       {processedContent}
     </ReactMarkdown>
@@ -202,28 +188,4 @@ export function cleanMarkdown(md: string): string {
   cleaned = cleaned.replace(/^\*\s+|\s+\*$/gm, ''); 
   
   return cleaned;
-}
-
-// Pre-process math notation
-const processMathNotation = (content: string): string => {
-  if (!content) return '';
-  
-  return content
-    // Convert [ ... ] to $$ ... $$ if it looks like math
-    .replace(/\[([\s\S]*?)\]/g, (match, content) => {
-      // Check if content looks like math (contains common math symbols or LaTeX commands)
-      if (/[\\\^_{}\[\]]|\\[a-zA-Z]+/.test(content)) {
-        return `$$${content}$$`;
-      }
-      return match;
-    })
-    // Fix common LaTeX command issues
-    .replace(/\\cancel\{([^}]+)\}/g, "\\not{$1}")
-    .replace(/\\implies/g, "\\Rightarrow")
-    // Fix for inline math that might be using incorrect delimiters
-    .replace(/\\mathbf\{([^}]+)\}/g, "\\boldsymbol{$1}")
-    // Convert \[ ... \] to $$ ... $$ for display math
-    .replace(/\\\[([\s\S]*?)\\\]/g, "$$$$1$$")
-    // Convert \( ... \) to $ ... $ for inline math
-    .replace(/\\\(([\s\S]*?)\\\)/g, "$$1$");
-}; 
+} 

@@ -5,18 +5,6 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import { MarkdownRenderer } from '../../utils/markdown-utils';
 import { QueryContext } from '../../utils/template-utils';
-import 'katex/dist/katex.min.css';
-
-// Enhanced KaTeX options
-const katexOptions = {
-  strict: false,
-  trust: true,
-  macros: {
-    "\\implies": "\\Rightarrow",
-    "\\cancel": "\\not",
-    "\\mathbf": "\\boldsymbol"
-  }
-};
 
 // Shared markdown components
 export const markdownComponents = {

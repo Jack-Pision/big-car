@@ -44,8 +44,6 @@ import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import rehypeRaw from 'rehype-raw';
 import LoadingDots from '@/components/LoadingDots';
 import Image from 'next/image';
-import dynamic from 'next/dynamic';
-const MathTestPreview = dynamic(() => import('@/components/MathTestPreview').then(mod => mod.MathTestPreview), { ssr: false });
 
 const BASE_SYSTEM_PROMPT = `You are Tehom AI, a helpful and intelligent assistant.
 Always respond in clean, structured Markdown format.
@@ -63,8 +61,7 @@ Triple backticks (\`\`\`) for code blocks with proper language tags
 For math:
 Use $...$ for inline math
 Use $$...$$ for display math
-
-IMPORTANT: For all equations and math, ALWAYS use LaTeX syntax. Wrap display math in double dollar signs ($$...$$) and inline math in single dollar signs ($...$). Do NOT use square brackets or other symbols for math. Only use $...$ or $$...$$ for math so it renders beautifully.`;
+`;
 
 const CITATION_INSTRUCTIONS = `IMPORTANT: You are a Deep Research AI assistant. Follow this three-step process:
 
@@ -132,8 +129,40 @@ function cleanAIResponse(text: string): ProcessedResponse {
   if (typeof text !== 'string') {
     return { content: '' };
   }
-  // Do not strip or replace <think> tags; just return the content as-is
-  return { content: text };
+
+  let cleanedText = text;
+  let thinkingTime = 0;
+
+  // Find and process <think> tags
+  const thinkTagRegex = /<think>([\s\S]*?)<\/think>/gi;
+  let match;
+  let lastIndex = 0;
+  let processedContent = '';
+
+  while ((match = thinkTagRegex.exec(cleanedText)) !== null) {
+    // Add the text before the think tag
+    processedContent += cleanedText.slice(lastIndex, match.index);
+    
+    // Calculate thinking time based on content length
+    const tagContent = match[1];
+    const tagLength = tagContent.length;
+    // Estimate thinking time: 50ms per character, min 1s, max 5s
+    const estimatedTime = Math.max(1000, Math.min(5000, tagLength * 50));
+    thinkingTime += estimatedTime;
+
+    // Add a marker for the thinking indicator
+    processedContent += `\n<thinking-indicator duration="${estimatedTime}" />\n`;
+    
+    lastIndex = match.index + match[0].length;
+  }
+
+  // Add any remaining text
+  processedContent += cleanedText.slice(lastIndex);
+
+  return {
+    content: processedContent.trim(),
+    thinkingTime: thinkingTime > 0 ? thinkingTime : undefined
+  };
 }
 
 /**
@@ -276,7 +305,7 @@ function postProcessAIChatResponse(text: string): string {
 
   // 8. Fix bullet point gaps: join bullet and text if separated by blank line
   processedText = processedText.replace(/(^[-*]\s*)\n+([^\n*-].*)/gm, '$1$2');
-
+  
   return processedText;
 }
 
@@ -1320,8 +1349,8 @@ export default function TestChat() {
             const updatedMessages = [...prev];
             const lastMsgIndex = updatedMessages.length - 1;
             if (lastMsgIndex >= 0 && updatedMessages[lastMsgIndex].role === 'assistant') {
-              updatedMessages[lastMsgIndex] = {
-                ...updatedMessages[lastMsgIndex],
+              updatedMessages[lastMsgIndex] = { 
+                ...updatedMessages[lastMsgIndex], 
                 content: contentBuffer,
                 contentType: 'conversation'
               };
@@ -1509,17 +1538,12 @@ export default function TestChat() {
           return <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="prose dark:prose-invert max-w-none">{`Unsupported structured content: ${JSON.stringify(msg.structuredContent)}`}</ReactMarkdown>;
       }
     } else if (msg.content) {
-      // Math-specific post-processing: convert [ ... ] to $$...$$ if it looks like math
+      // Robust JSON detection and extraction
       let content = msg.content.trim();
       // 1. Strip code block fences if present
       if (content.startsWith('```')) {
         content = content.replace(/^```[a-zA-Z]*\n?/, '').replace(/```$/, '').trim();
       }
-      // Convert [ ... ] to $$...$$ if it looks like math
-      content = content.replace(/\[([\s\S]*?)\]/g, (match, p1) => {
-        if (/[=+\-*/^\\]/.test(p1)) return `$$${p1.trim()}$$`;
-        return match;
-      });
       // 2. Extract first JSON object or array from the string
       let jsonMatch = content.match(/({[\s\S]*}|\[[\s\S]*\])/);
       if (jsonMatch) {
@@ -1542,7 +1566,7 @@ export default function TestChat() {
         }
       }
       // Fallback for simple text content or streamed content
-      return <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex]} className="prose dark:prose-invert max-w-none">{content}</ReactMarkdown>;
+        return <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="prose dark:prose-invert max-w-none">{msg.content}</ReactMarkdown>;
     }
     return null;
   };
@@ -1739,10 +1763,11 @@ export default function TestChat() {
                   );
                 }
 
-                // Render the raw content, including <think> tags
-                const { content: rawContent } = cleanAIResponse(msg.content);
-                const isStoppedMsg = rawContent.trim() === '[Response stopped by user]';
-                const processedContent = makeCitationsClickable(rawContent, msg.webSources || []);
+                const { content: rawContent, thinkingTime } = cleanAIResponse(msg.content);
+                const cleanContent = rawContent.replace(/<thinking-indicator.*?>\n<\/thinking-indicator>\n|<thinking-indicator.*?\/>/g, '');
+
+                const isStoppedMsg = cleanContent.trim() === '[Response stopped by user]';
+                const processedContent = makeCitationsClickable(cleanContent, msg.webSources || []);
                 if (showPulsingDot && i === messages.length -1 ) setShowPulsingDot(false);
                 
                 return (
@@ -1764,6 +1789,7 @@ export default function TestChat() {
                             <div style={{ height: '1.5rem' }} />
                           </>
                         )}
+                        {thinkingTime && <ThinkingIndicator duration={thinkingTime} />}
                         {isStoppedMsg ? (
                           <span className="text-sm text-white italic font-light mb-2">[Response stopped by user]</span>
                         ) : (
@@ -1861,7 +1887,6 @@ export default function TestChat() {
       {chatError && (
         <div className="text-red-500 text-sm text-center mt-2">{chatError}</div>
       )}
-      <MathTestPreview />
     </>
   );
 }
