@@ -132,40 +132,8 @@ function cleanAIResponse(text: string): ProcessedResponse {
   if (typeof text !== 'string') {
     return { content: '' };
   }
-
-  let cleanedText = text;
-  let thinkingTime = 0;
-
-  // Find and process <think> tags
-  const thinkTagRegex = /<think>([\s\S]*?)<\/think>/gi;
-  let match;
-  let lastIndex = 0;
-  let processedContent = '';
-
-  while ((match = thinkTagRegex.exec(cleanedText)) !== null) {
-    // Add the text before the think tag
-    processedContent += cleanedText.slice(lastIndex, match.index);
-    
-    // Calculate thinking time based on content length
-    const tagContent = match[1];
-    const tagLength = tagContent.length;
-    // Estimate thinking time: 50ms per character, min 1s, max 5s
-    const estimatedTime = Math.max(1000, Math.min(5000, tagLength * 50));
-    thinkingTime += estimatedTime;
-
-    // Add a marker for the thinking indicator
-    processedContent += `\n<thinking-indicator duration="${estimatedTime}" />\n`;
-    
-    lastIndex = match.index + match[0].length;
-  }
-
-  // Add any remaining text
-  processedContent += cleanedText.slice(lastIndex);
-
-  return {
-    content: processedContent.trim(),
-    thinkingTime: thinkingTime > 0 ? thinkingTime : undefined
-  };
+  // Do not strip or replace <think> tags; just return the content as-is
+  return { content: text };
 }
 
 /**
@@ -1771,11 +1739,10 @@ export default function TestChat() {
                   );
                 }
 
-                const { content: rawContent, thinkingTime } = cleanAIResponse(msg.content);
-                const cleanContent = rawContent.replace(/<thinking-indicator.*?>\n<\/thinking-indicator>\n|<thinking-indicator.*?\/>/g, '');
-
-                const isStoppedMsg = cleanContent.trim() === '[Response stopped by user]';
-                const processedContent = makeCitationsClickable(cleanContent, msg.webSources || []);
+                // Render the raw content, including <think> tags
+                const { content: rawContent } = cleanAIResponse(msg.content);
+                const isStoppedMsg = rawContent.trim() === '[Response stopped by user]';
+                const processedContent = makeCitationsClickable(rawContent, msg.webSources || []);
                 if (showPulsingDot && i === messages.length -1 ) setShowPulsingDot(false);
                 
                 return (
@@ -1797,7 +1764,6 @@ export default function TestChat() {
                             <div style={{ height: '1.5rem' }} />
                           </>
                         )}
-                        {thinkingTime && <ThinkingIndicator duration={thinkingTime} />}
                         {isStoppedMsg ? (
                           <span className="text-sm text-white italic font-light mb-2">[Response stopped by user]</span>
                         ) : (
