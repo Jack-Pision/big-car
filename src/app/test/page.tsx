@@ -42,6 +42,13 @@ import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import Image from 'next/image';
 import rehypeRaw from 'rehype-raw';
 
+// Define a type that includes all possible query types (including the ones in SCHEMAS and 'conversation')
+type QueryType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversation' | 'deep-research';
+
+// Define types for query classification and content display
+type QueryClassificationType = keyof typeof SCHEMAS;
+type ContentDisplayType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversation' | 'deep-research';
+
 const BASE_SYSTEM_PROMPT = `You are tehom AI, a helpful and intelligent assistant. Use markdown dynamically based on user input.`;
 
 const CITATION_INSTRUCTIONS = `IMPORTANT: You are a Deep Research AI assistant. Follow this three-step process:
@@ -394,7 +401,7 @@ interface ImageContext {
 interface Message {
   role: 'user' | 'assistant' | 'deep-research';
   content: string;
-  contentType?: string;
+  contentType?: ContentDisplayType;
   structuredContent?: any;
   imageUrls?: string[];
   webSources?: WebSource[];
@@ -998,7 +1005,7 @@ export default function TestChat() {
       setIsLoading(true);
     if (showHeading) setShowHeading(false);
 
-    const queryType = classifyQuery(currentInput) as keyof typeof SCHEMAS;
+    const queryType = classifyQuery(currentInput) as QueryClassificationType;
     const responseSchema = SCHEMAS[queryType] || SCHEMAS.conversation;
 
     console.log("[handleSend] Query:", currentInput);
@@ -1136,7 +1143,7 @@ export default function TestChat() {
         console.log("[handleSend] Raw AI JSON Response Text:", rawResponseText);
 
         let structuredData;
-        let parsedQueryType = queryType; // Use a mutable variable for potentially overriding
+        let parsedQueryType: ContentDisplayType = queryType as unknown as ContentDisplayType; // Use a mutable variable for potentially overriding
 
         try {
           // Attempt to parse the raw response first
@@ -1150,7 +1157,7 @@ export default function TestChat() {
             } catch (innerParseError) {
               // If the inner parse fails, it means the string was not a JSON string literal.
               // Treat the original string as the content if it was intended for conversation.
-              if (parsedQueryType === 'conversation') {
+              if (queryType === 'conversation') {
                 structuredData = { content: parsedResponse }; // Use the string directly
               } else {
                 // For other types, this is an error, pass it through to outer catch.
@@ -1162,7 +1169,7 @@ export default function TestChat() {
           structuredData = parsedResponse; // Assign potentially re-parsed object
           
           // Handle conversation schema validation and fallbacks more robustly
-          if (parsedQueryType === 'conversation') {
+          if (queryType === 'conversation') {
             // Case A: structuredData is an object with a valid 'content' string.
             if (structuredData && typeof structuredData === 'object' && structuredData.content && typeof structuredData.content === 'string') {
               // Potentially, structuredData.content itself could be a stringified JSON.
@@ -1230,11 +1237,11 @@ export default function TestChat() {
             // otherwise, display the raw response text.
             if (structuredData && typeof structuredData === 'object' && structuredData.content && typeof structuredData.content === 'string'){
                 // It has a content field, treat as conversation
-                parsedQueryType = 'conversation'; // Will be handled by conversation logic above if re-processed or use as is.
+                parsedQueryType = 'conversation' as ContentDisplayType; // Will be handled by conversation logic above if re-processed or use as is.
                 structuredData.content = postProcessAIChatResponse(structuredData.content);
             } else {
                 structuredData = { content: "AI responded with an unrecognized data structure. Raw response: \n\n```json\n" + rawResponseText + "\n```" };
-                parsedQueryType = 'conversation';
+                parsedQueryType = 'conversation' as ContentDisplayType;
             }
           }
           // For non-conversation schemas, we assume `structuredData` is now the correctly parsed object for that schema.
@@ -1246,7 +1253,7 @@ export default function TestChat() {
           structuredData = { 
             content: "I apologize for the formatting error. Here's my response:\n\n" + postProcessAIChatResponse(rawResponseText)
           };
-          parsedQueryType = 'conversation';
+          parsedQueryType = 'conversation' as ContentDisplayType;
         }
 
         const aiMsg: Message = {
