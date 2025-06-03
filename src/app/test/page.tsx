@@ -296,10 +296,6 @@ function postProcessAIChatResponse(text: string): string {
 const GlobalStyles = () => (
   <style jsx global>{`
     .ai-response-text, 
-    .ai-response-text * {
-      color: #ffffff !important;
-    }
-    
     .ai-response-text h1,
     .ai-response-text h2,
     .ai-response-text h3,
@@ -318,10 +314,9 @@ const GlobalStyles = () => (
       white-space: pre-wrap !important;
       overflow-wrap: break-word !important;
     }
-    
+    // Remove color override for pre and code to allow syntax highlighting
     .ai-response-text pre,
     .ai-response-text code {
-      color: #fff !important;
       background: #232323 !important;
       border-radius: 6px;
       padding: 0.2em 0.4em;
@@ -330,7 +325,6 @@ const GlobalStyles = () => (
       overflow-x: hidden !important;
       word-break: break-word !important;
     }
-    
     .ai-response-text blockquote {
       color: #fff !important;
       background: #232323 !important;
@@ -341,7 +335,6 @@ const GlobalStyles = () => (
       max-width: 100% !important;
       word-wrap: break-word !important;
     }
-    
     .ai-response-text li {
       color: #fff !important;
       background: transparent !important;
@@ -349,29 +342,24 @@ const GlobalStyles = () => (
       position: relative !important;
       display: list-item !important;
     }
-    
     .ai-response-text ul {
       list-style-type: disc !important;
       margin: 0.5em 0 !important;
       padding-left: 1.5em !important;
     }
-    
     .ai-response-text ol {
       list-style-type: decimal !important;
       margin: 0.5em 0 !important;
       padding-left: 1.5em !important;
     }
-    
     .ai-response-text ul li {
       list-style-type: disc !important;
       display: list-item !important;
     }
-    
     .ai-response-text ol li {
       list-style-type: decimal !important;
       display: list-item !important;
     }
-    
     .ai-response-text * {
       max-width: 100% !important;
       overflow-wrap: break-word !important;
