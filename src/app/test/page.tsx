@@ -1143,122 +1143,36 @@ export default function TestChat() {
         console.log("[handleSend] Raw AI JSON Response Text:", rawResponseText);
 
         let structuredData;
-        let parsedQueryType: ContentDisplayType = queryType as unknown as ContentDisplayType; // Use a mutable variable for potentially overriding
+        let parsedQueryType: ContentDisplayType = queryType as unknown as ContentDisplayType;
 
         try {
-          // Attempt to parse the raw response first
-          let parsedResponse = JSON.parse(rawResponseText);
+          let parsedJson = JSON.parse(rawResponseText);
 
-          // If parsedResponse is a string, it means the AI might have sent a JSON string literal.
-          // Try to parse it again.
-          if (typeof parsedResponse === 'string') {
+          if (typeof parsedJson === 'string') {
             try {
-              parsedResponse = JSON.parse(parsedResponse);
-            } catch (innerParseError) {
-              // If the inner parse fails, it means the string was not a JSON string literal.
-              // Treat the original string as the content if it was intended for conversation.
-              if (queryType === 'conversation') {
-                structuredData = { content: parsedResponse }; // Use the string directly
-              } else {
-                // For other types, this is an error, pass it through to outer catch.
-                throw innerParseError;
-              }
+              parsedJson = JSON.parse(parsedJson);
+            } catch (e) {
+              console.warn("[handleSend] AI returned a string literal that could not be parsed as further JSON. String:", parsedJson, e);
+              throw e; // Propagate to outer catch, which will set parsedQueryType to 'conversation'
             }
           }
-
-          structuredData = parsedResponse; // Assign potentially re-parsed object
-          
-          // Handle conversation schema validation and fallbacks more robustly
-          if (queryType === 'conversation') {
-            // Case A: structuredData is an object with a valid 'content' string.
-            if (structuredData && typeof structuredData === 'object' && structuredData.content && typeof structuredData.content === 'string') {
-              // Potentially, structuredData.content itself could be a stringified JSON.
-              // This is common if the AI mistakenly nests JSON.
-              let currentContent = structuredData.content;
-              if (currentContent.trim().startsWith('{') && currentContent.trim().endsWith('}')) {
-                try {
-                  const nestedContent = JSON.parse(currentContent);
-                  // If nestedContent is an object and has its own 'content' field, use that.
-                  if (nestedContent && typeof nestedContent === 'object' && nestedContent.content && typeof nestedContent.content === 'string') {
-                    structuredData.content = nestedContent.content; // Replace with deeply nested content
-                  }
-                  // If nestedContent is just a string (AI returned { "content": "{\"actual_text\": \"Hi!\"}"})
-                  // This scenario is less likely if the outer parse worked, but good to be aware of.
-                  // The current logic for BasicRenderer should handle displaying stringified JSON if it reaches there.
-                } catch (e) {
-                  // If parsing the nested content string fails, leave structuredData.content as is.
-                  // BasicRenderer will display it (which might be the raw JSON string).
-                  console.warn("[handleSend] structuredData.content looked like JSON, but failed to parse:", e);
-                }
-              }
-              // At this point, structuredData.content should be the actual text string.
-              // Ensure key_takeaway is also a string if present.
-              if (structuredData.key_takeaway && typeof structuredData.key_takeaway !== 'string') {
-                structuredData.key_takeaway = String(structuredData.key_takeaway);
-              }
-              
-              // Apply post-processing to the conversation content
-              if (structuredData.content && typeof structuredData.content === 'string') {
-                structuredData.content = postProcessAIChatResponse(structuredData.content);
-              }
-            } 
-            // Case B: structuredData itself is just a string (AI didn't use JSON format at all for conversation)
-            else if (typeof structuredData === 'string') {
-              structuredData = { content: postProcessAIChatResponse(structuredData) };
-            } 
-            // Case C: structuredData is an object, but no 'content' field, or 'content' is not a string.
-            // Try to find other string fields or fallback.
-            else if (structuredData && typeof structuredData === 'object') {
-              let foundContent = '';
-              if (typeof structuredData.message === 'string') foundContent = structuredData.message;
-              else if (typeof structuredData.response === 'string') foundContent = structuredData.response;
-              else if (typeof structuredData.text === 'string') foundContent = structuredData.text;
-              // Add more common fields if necessary
-
-              if (foundContent) {
-                structuredData = { content: postProcessAIChatResponse(foundContent) };
-              } else {
-                // Last resort for an object without usable fields - stringify it or show error.
-                console.warn("[handleSend] Conversation schema object missing 'content' or usable fields. Raw:", rawResponseText);
-                structuredData = { 
-                  content: "I apologize, I couldn't understand the format of my response. Here's what I received: \n\n```json\n" + 
-                           JSON.stringify(structuredData, null, 2).substring(0, 500) + 
-                           (JSON.stringify(structuredData, null, 2).length > 500 ? "..." : "") + "\n```"
-                };
-              }
-            } else {
-                // Fallback for completely unexpected structuredData type for conversation.
-                console.warn("[handleSend] Unexpected structuredData type for conversation. Raw:", rawResponseText);
-                structuredData = { content: "I apologize, my response was in an unexpected format. Raw data: " + String(structuredData).substring(0,200) };
-            }
-          } else if (!SCHEMAS[parsedQueryType]) { // Non-conversation types
-            console.warn(`[handleSend] Unknown schema type '${parsedQueryType}'. Defaulting to conversation display.`);
-            // For unknown schemas, attempt to extract content if it looks like our conversation schema,
-            // otherwise, display the raw response text.
-            if (structuredData && typeof structuredData === 'object' && structuredData.content && typeof structuredData.content === 'string'){
-                // It has a content field, treat as conversation
-                parsedQueryType = 'conversation' as ContentDisplayType; // Will be handled by conversation logic above if re-processed or use as is.
-                structuredData.content = postProcessAIChatResponse(structuredData.content);
-            } else {
-                structuredData = { content: "AI responded with an unrecognized data structure. Raw response: \n\n```json\n" + rawResponseText + "\n```" };
-                parsedQueryType = 'conversation' as ContentDisplayType;
-            }
-          }
-          // For non-conversation schemas, we assume `structuredData` is now the correctly parsed object for that schema.
-          // No additional manipulation needed here; the specific renderers (TutorialRenderer etc.) expect the full object.
+          structuredData = parsedJson;
+          // If parsing succeeded, structuredData is set.
+          // parsedQueryType remains its initial value (derived from queryType) at this point.
+          // No complex re-classification or schema checking here;
+          // that's handled by the DynamicResponseRenderer or if parseError occurs.
 
         } catch (parseError) {
-          console.error("[handleSend] Outer error parsing AI JSON response:", parseError, "Raw content:", rawResponseText);
-          // If parsing fails completely, treat the raw text as conversational content with an apology
-          structuredData = { 
-            content: "I apologize for the formatting error. Here's my response:\n\n" + postProcessAIChatResponse(rawResponseText)
+          console.error("[handleSend] Error parsing AI JSON response:", parseError, "Raw content:", rawResponseText);
+          structuredData = {
+            content: "I apologize for the formatting error. Here's my response:\\n\\n" + postProcessAIChatResponse(rawResponseText)
           };
-          parsedQueryType = 'conversation' as ContentDisplayType;
+          parsedQueryType = 'conversation' as ContentDisplayType; // Fallback to conversation display
         }
 
         const aiMsg: Message = {
         role: "assistant" as const,
-          content: '', 
+          content: '', // Content will be from structuredData, this is a placeholder
           contentType: parsedQueryType,
           structuredContent: structuredData,
           id: uuidv4(),
@@ -1340,41 +1254,38 @@ export default function TestChat() {
         }
         
         // Apply post-processing after streaming is complete
-        if (queryType === 'conversation' || !queryType) {
-          // Removed post-processing for default chat (render raw AI output as-is)
-          setMessages((prev) => {
-            const updatedMessages = [...prev];
-            const lastMsgIndex = updatedMessages.length - 1;
-            if (lastMsgIndex >= 0 && updatedMessages[lastMsgIndex].role === 'assistant') {
-              updatedMessages[lastMsgIndex] = { 
-                ...updatedMessages[lastMsgIndex], 
-                content: contentBuffer,
-                contentType: 'conversation'
-              };
-            }
-            return updatedMessages;
-          });
-          
-          aiMsg.content = contentBuffer;
-          aiMsg.contentType = 'conversation';
-        } else if (showAdvanceSearchUI || currentQuery.includes('@AdvanceSearch')) {
+        if (showAdvanceSearchUI || currentQuery.includes('@AdvanceSearch')) {
           const processedResearch = enforceAdvanceSearchStructure(contentBuffer);
-          
           setMessages((prev) => {
             const updatedMessages = [...prev];
-            const lastMsgIndex = updatedMessages.length - 1;
-            if(updatedMessages[lastMsgIndex] && updatedMessages[lastMsgIndex].role === 'assistant'){
-              updatedMessages[lastMsgIndex] = { 
-                ...updatedMessages[lastMsgIndex], 
+            const msgIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
+            if (msgIndex !== -1) {
+              updatedMessages[msgIndex] = {
+                ...updatedMessages[msgIndex],
                 content: processedResearch,
                 contentType: 'deep-research'
               };
             }
             return updatedMessages;
           });
-          
           aiMsg.content = processedResearch;
           aiMsg.contentType = 'deep-research';
+        } else {
+          // Default for other streamed content (e.g., image descriptions, unexpected text streams)
+          setMessages((prev) => {
+            const updatedMessages = [...prev];
+            const msgIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
+            if (msgIndex !== -1) {
+              updatedMessages[msgIndex] = {
+                ...updatedMessages[msgIndex],
+                content: contentBuffer,
+                contentType: 'conversation'
+              };
+            }
+            return updatedMessages;
+          });
+          aiMsg.content = contentBuffer;
+          aiMsg.contentType = 'conversation';
         }
         
         if (uploadedImageUrls.length > 0) {
