@@ -42,23 +42,7 @@ import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import Image from 'next/image';
 import rehypeRaw from 'rehype-raw';
 
-const BASE_SYSTEM_PROMPT = `You are Tehom AI, a helpful and intelligent assistant.
-Always respond in clean, structured Markdown format.
-
-Use:
-
-#, ##, etc. for headings
-
-**bold**, *italic*, bullet points, and numbered lists where appropriate
-
-Triple backticks (\`\`\`) for code blocks with proper language tags
-
-[text](url) for links
-
-For math:
-Use $...$ for inline math
-Use $$...$$ for display math
-`;
+const BASE_SYSTEM_PROMPT = `You are tehom AI, a helpful and intelligent assistant. Use markdown dynamically based on user input.`;
 
 const CITATION_INSTRUCTIONS = `IMPORTANT: You are a Deep Research AI assistant. Follow this three-step process:
 
