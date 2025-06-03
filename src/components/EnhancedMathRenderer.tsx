@@ -29,7 +29,6 @@ const config = {
     mtextInheritFont: true,
     minScale: 0.5,
     matchFontHeight: true,
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif"
   },
   options: {
     skipHtmlTags: ["noscript", "style", "textarea", "pre", "code"],
