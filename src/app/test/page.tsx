@@ -38,7 +38,7 @@ import InformationalSummaryDisplay, { InformationalSummaryData } from '@/compone
 import ConversationDisplay from '@/components/ConversationDisplay';
 import { Bot, User, Paperclip, Send, XCircle, Search, Trash2, PlusCircle, Settings, Zap, ExternalLink, AlertTriangle } from 'lucide-react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { dracula } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import Image from 'next/image';
 import rehypeRaw from 'rehype-raw';
 
@@ -296,6 +296,10 @@ function postProcessAIChatResponse(text: string): string {
 const GlobalStyles = () => (
   <style jsx global>{`
     .ai-response-text, 
+    .ai-response-text * {
+      color: #ffffff !important;
+    }
+    
     .ai-response-text h1,
     .ai-response-text h2,
     .ai-response-text h3,
@@ -314,9 +318,11 @@ const GlobalStyles = () => (
       white-space: pre-wrap !important;
       overflow-wrap: break-word !important;
     }
-    // Remove background property for pre and code to allow syntax highlighter theme
+    
     .ai-response-text pre,
     .ai-response-text code {
+      color: #fff !important;
+      background: #232323 !important;
       border-radius: 6px;
       padding: 0.2em 0.4em;
       max-width: 100% !important;
@@ -324,6 +330,7 @@ const GlobalStyles = () => (
       overflow-x: hidden !important;
       word-break: break-word !important;
     }
+    
     .ai-response-text blockquote {
       color: #fff !important;
       background: #232323 !important;
@@ -334,6 +341,7 @@ const GlobalStyles = () => (
       max-width: 100% !important;
       word-wrap: break-word !important;
     }
+    
     .ai-response-text li {
       color: #fff !important;
       background: transparent !important;
@@ -341,24 +349,29 @@ const GlobalStyles = () => (
       position: relative !important;
       display: list-item !important;
     }
+    
     .ai-response-text ul {
       list-style-type: disc !important;
       margin: 0.5em 0 !important;
       padding-left: 1.5em !important;
     }
+    
     .ai-response-text ol {
       list-style-type: decimal !important;
       margin: 0.5em 0 !important;
       padding-left: 1.5em !important;
     }
+    
     .ai-response-text ul li {
       list-style-type: disc !important;
       display: list-item !important;
     }
+    
     .ai-response-text ol li {
       list-style-type: decimal !important;
       display: list-item !important;
     }
+    
     .ai-response-text * {
       max-width: 100% !important;
       overflow-wrap: break-word !important;
@@ -1045,7 +1058,10 @@ export default function TestChat() {
       const context = buildConversationContext(messages);
       let turnSpecificSystemPrompt = BASE_SYSTEM_PROMPT;
 
-      // Inject NVIDIA AI thinking mode instructions for every message
+      // Only add thinking mode instructions for non-conversation queries
+      if (queryType !== 'conversation') {
+        turnSpecificSystemPrompt += `\n\nIMPORTANT: For every response, before answering, think step-by-step and include your reasoning inside <think>...</think> tags. Only after the <think> section, provide your final answer. Example:\n<think>Thinking through the problem step by step...</think>\nFinal answer here.`;
+      }
 
       if (uploadedImageUrls.length === 0 && queryType !== 'conversation') {
         turnSpecificSystemPrompt += `\n\nIMPORTANT: For this query, classified as '${queryType}', your entire response MUST be a single JSON object that strictly conforms to the following JSON schema. Do NOT include any text, markdown, or explanations outside of this JSON object. Adhere to all field types and requirements specified in the schema.\nSchema:\n${JSON.stringify(responseSchema, null, 2)}`;
@@ -1495,45 +1511,9 @@ export default function TestChat() {
           return <ConversationDisplay data={msg.structuredContent as string} />;
         default:
           if (typeof msg.structuredContent === 'string') {
-            return <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              rehypePlugins={[rehypeRaw]}
-              className="prose dark:prose-invert max-w-none"
-              components={{
-                code({className, children}) {
-                  const match = /language-(\w+)/.exec(className || '');
-                  return match ? (
-                    <SyntaxHighlighter style={dracula} language={match[1]}>
-                      {String(children).replace(/\n$/, '')}
-                    </SyntaxHighlighter>
-                  ) : (
-                    <code className={className}>{children}</code>
-                  );
-                }
-              }}
-            >
-              {msg.structuredContent}
-            </ReactMarkdown>;
+            return <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="prose dark:prose-invert max-w-none">{msg.structuredContent}</ReactMarkdown>;
           }
-          return <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            rehypePlugins={[rehypeRaw]}
-            className="prose dark:prose-invert max-w-none"
-            components={{
-              code({className, children}) {
-                const match = /language-(\w+)/.exec(className || '');
-                return match ? (
-                  <SyntaxHighlighter style={dracula} language={match[1]}>
-                    {String(children).replace(/\n$/, '')}
-                  </SyntaxHighlighter>
-                ) : (
-                  <code className={className}>{children}</code>
-                );
-              }
-            }}
-          >
-            {`Unsupported structured content: ${JSON.stringify(msg.structuredContent)}`}
-          </ReactMarkdown>;
+          return <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="prose dark:prose-invert max-w-none">{`Unsupported structured content: ${JSON.stringify(msg.structuredContent)}`}</ReactMarkdown>;
       }
     } else if (msg.content) {
       // Robust JSON detection and extraction
@@ -1564,25 +1544,7 @@ export default function TestChat() {
         }
       }
       // Fallback for simple text content or streamed content
-        return <ReactMarkdown
-          remarkPlugins={[remarkGfm]}
-          rehypePlugins={[rehypeRaw]}
-          className="prose dark:prose-invert max-w-none"
-          components={{
-            code({className, children}) {
-              const match = /language-(\w+)/.exec(className || '');
-              return match ? (
-                <SyntaxHighlighter style={dracula} language={match[1]}>
-                  {String(children).replace(/\n$/, '')}
-                </SyntaxHighlighter>
-              ) : (
-                <code className={className}>{children}</code>
-              );
-            }
-          }}
-        >
-          {msg.content}
-        </ReactMarkdown>;
+        return <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="prose dark:prose-invert max-w-none">{msg.content}</ReactMarkdown>;
     }
     return null;
   };
@@ -1794,36 +1756,23 @@ export default function TestChat() {
                     className="w-full markdown-body text-left flex flex-col items-start ai-response-text mb-4"
                     style={{ color: '#fff', maxWidth: '100%', overflowWrap: 'break-word' }}
                   >
-                    {msg.webSources && msg.webSources.length > 0 && (
-                      <>
-                        <WebSourcesCarousel sources={msg.webSources} />
-                        <div style={{ height: '1.5rem' }} />
-                      </>
-                    )}
-                    {isStoppedMsg ? (
-                      <span className="text-sm text-white italic font-light mb-2">[Response stopped by user]</span>
-                    ) : (
-                      <div className="w-full max-w-full overflow-hidden">
-                        <ReactMarkdown
-                          remarkPlugins={[remarkGfm]}
-                          rehypePlugins={[rehypeRaw]}
+                        {msg.webSources && msg.webSources.length > 0 && (
+                          <>
+                            <WebSourcesCarousel sources={msg.webSources} />
+                            <div style={{ height: '1.5rem' }} />
+                          </>
+                        )}
+                        {isStoppedMsg ? (
+                          <span className="text-sm text-white italic font-light mb-2">[Response stopped by user]</span>
+                        ) : (
+                          <div className="w-full max-w-full overflow-hidden">
+                        <ReactMarkdown 
+                          remarkPlugins={[remarkGfm]} 
+                          rehypePlugins={[rehypeRaw]} 
                           className="prose dark:prose-invert max-w-none"
-                          components={{
-                            code({className, children}) {
-                              const match = /language-(\w+)/.exec(className || '');
-                              return match ? (
-                                <SyntaxHighlighter style={dracula} language={match[1]}>
-                                  {String(children).replace(/\n$/, '')}
-                                </SyntaxHighlighter>
-                              ) : (
-                                <code className={className}>{children}</code>
-                              );
-                            }
-                          }}
-                        >
-                          {processedContent}
-                        </ReactMarkdown>
-                      </div>
+                          children={processedContent}
+                            />
+    </div>
                     )}
                   </motion.div>
                 );
