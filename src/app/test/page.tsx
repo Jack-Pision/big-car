@@ -1527,7 +1527,12 @@ export default function TestChat() {
           return <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="prose dark:prose-invert max-w-none">{`Unsupported structured content: ${JSON.stringify(msg.structuredContent)}`}</ReactMarkdown>;
       }
     } else if (msg.content) {
-      // Robust JSON detection and extraction
+      // For default chat (conversation), always render as markdown without JSON detection
+      if (msg.contentType === 'conversation' || (msg.role === 'assistant' && !msg.contentType)) {
+        return <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="prose dark:prose-invert max-w-none">{msg.content}</ReactMarkdown>;
+      }
+      
+      // Only perform JSON detection for non-conversation messages (advance search, etc.)
       let content = msg.content.trim();
       // 1. Strip code block fences if present
       if (content.startsWith('```')) {
@@ -1555,7 +1560,7 @@ export default function TestChat() {
         }
       }
       // Fallback for simple text content or streamed content
-        return <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="prose dark:prose-invert max-w-none">{msg.content}</ReactMarkdown>;
+      return <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="prose dark:prose-invert max-w-none">{msg.content}</ReactMarkdown>;
     }
     return null;
   };
