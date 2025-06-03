@@ -26,6 +26,7 @@ export default function Sidebar({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [showDeleteId, setShowDeleteId] = useState<string | null>(null);
+  const [showMenuId, setShowMenuId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const router = useRouter();
 
@@ -126,22 +127,75 @@ export default function Sidebar({
                     aria-label={`Open session: ${session.title}`}
                   >
                     <span className="flex-1 truncate" title={session.title}>
-                      {session.title}
+                      {editingId === session.id ? (
+                        <input
+                          className="bg-gray-800 text-white rounded px-2 py-1 text-sm w-32 focus:outline-none border border-gray-600"
+                          value={editValue}
+                          autoFocus
+                          onChange={e => setEditValue(e.target.value)}
+                          onBlur={() => {
+                            if (editValue.trim() && editValue !== session.title) {
+                              const updatedSessions = sessions.map(s => s.id === session.id ? { ...s, title: editValue.trim() } : s);
+                              setSessions(updatedSessions);
+                              // Save to localStorage or backend if needed
+                              localStorage.setItem('chatSessions', JSON.stringify(updatedSessions));
+                            }
+                            setEditingId(null);
+                          }}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') {
+                              e.currentTarget.blur();
+                            } else if (e.key === 'Escape') {
+                              setEditingId(null);
+                            }
+                          }}
+                        />
+                      ) : (
+                        session.title
+                      )}
                     </span>
-                    <button
-                      className="p-1 rounded opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity text-gray-400 hover:text-red-400"
-                      onClick={e => {
-                        e.stopPropagation();
-                        setShowDeleteId(session.id);
-                      }}
-                      aria-label="Delete session"
-                      title="Delete"
-                    >
-                      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                        <path d="M3 6h18M9 6v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2V6" />
-                        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
-                      </svg>
-                    </button>
+                    <div className="relative flex items-center">
+                      <button
+                        className="p-1 rounded hover:bg-gray-600 focus:bg-gray-600 transition-colors text-gray-400"
+                        onClick={e => {
+                          e.stopPropagation();
+                          setShowDeleteId(null);
+                          setEditingId(null);
+                          setEditValue(session.title);
+                          setShowMenuId(session.id === showMenuId ? null : session.id);
+                        }}
+                        aria-label="Session options"
+                        title="Session options"
+                      >
+                        {/* Three-dot icon */}
+                        <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                          <circle cx="5" cy="12" r="2"/>
+                          <circle cx="12" cy="12" r="2"/>
+                          <circle cx="19" cy="12" r="2"/>
+                        </svg>
+                      </button>
+                      {showMenuId === session.id && (
+                        <div className="absolute right-0 top-8 z-50 bg-[#232323] border border-gray-700 rounded shadow-lg py-1 w-32">
+                          <button
+                            className="block w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-700"
+                            onClick={e => {
+                              e.stopPropagation();
+                              setEditingId(session.id);
+                              setEditValue(session.title);
+                              setShowMenuId(null);
+                            }}
+                          >Edit name</button>
+                          <button
+                            className="block w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-gray-700"
+                            onClick={e => {
+                              e.stopPropagation();
+                              setShowDeleteId(session.id);
+                              setShowMenuId(null);
+                            }}
+                          >Delete</button>
+                        </div>
+                      )}
+                    </div>
                     <AnimatePresence>
                       {showDeleteId === session.id && (
                         <motion.div
