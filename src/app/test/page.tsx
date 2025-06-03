@@ -1119,76 +1119,57 @@ export default function TestChat() {
         throw new Error(`API request failed with status ${res.status}: ${errorData}`);
       }
       
-      // Only for default chat (conversation), do not stream, just await the full response
-      if (queryType === 'conversation') {
-        const rawResponseText = await res.text();
-        const aiMsg: Message = {
-          role: "assistant" as const,
-          content: postProcessAIChatResponse(rawResponseText),
-          id: uuidv4(),
-          timestamp: Date.now(),
-          parentId: messageId,
-          webSources: [],
-          imageUrls: uploadedImageUrls.length > 0 ? uploadedImageUrls : undefined,
-        };
-        setMessages((prev) => [...prev, aiMsg]);
-        setIsProcessing(false);
-        setIsLoading(false);
-        setIsAiResponding(false);
-        return;
-      }
+      // REMOVED: Non-streaming block for 'conversation' as server always streams.
+      // if (queryType === 'conversation') { ... } 
       
-      if (res.headers.get('content-type')?.includes('application/json') && uploadedImageUrls.length === 0) {
+      // All responses from /api/nvidia are now handled as either JSON or stream.
+      // The server always sends 'text/event-stream', so this 'application/json' check
+      // for non-image uploads will likely not be met directly from /api/nvidia.
+      // This block might be relevant if other API routes returned direct JSON.
+      if (res.headers.get('content-type')?.includes('application/json') && uploadedImageUrls.length === 0 && queryType !== 'conversation') {
         const rawResponseText = await res.text();
-        console.log("[handleSend] Raw AI JSON Response Text:", rawResponseText);
+        console.log("[handleSend] Raw AI JSON Response Text (for non-conversation, non-image):", rawResponseText);
 
         let structuredData;
-        let parsedQueryType: ContentDisplayType = queryType as unknown as ContentDisplayType;
+        // Ensure parsedQueryType is correctly initialized for this path.
+        // It should be a type that expects structured data (not 'conversation' or 'deep-research' which are handled differently).
+        let parsedQueryType: ContentDisplayType = queryType as unknown as ContentDisplayType; 
 
         try {
           let parsedJson = JSON.parse(rawResponseText);
-
-          if (typeof parsedJson === 'string') {
-            try {
-              parsedJson = JSON.parse(parsedJson);
-            } catch (e) {
-              console.warn("[handleSend] AI returned a string literal that could not be parsed as further JSON. String:", parsedJson, e);
-              throw e; // Propagate to outer catch, which will set parsedQueryType to 'conversation'
-            }
+          if (typeof parsedJson === 'string') { // Handle double-encoded JSON
+            parsedJson = JSON.parse(parsedJson);
           }
           structuredData = parsedJson;
-          // If parsing succeeded, structuredData is set.
-          // parsedQueryType remains its initial value (derived from queryType) at this point.
-          // No complex re-classification or schema checking here;
-          // that's handled by the DynamicResponseRenderer or if parseError occurs.
-
         } catch (parseError) {
-          console.error("[handleSend] Error parsing AI JSON response:", parseError, "Raw content:", rawResponseText);
-          structuredData = {
-            content: "I apologize for the formatting error. Here's my response:\\n\\n" + postProcessAIChatResponse(rawResponseText)
+          console.error("[handleSend] Error parsing AI JSON response (for non-conversation, non-image):", parseError, "Raw content:", rawResponseText);
+          structuredData = { 
+            content: "I apologize for the formatting error in structured data. Here's the raw response:\\n\\n" + rawResponseText 
           };
-          parsedQueryType = 'conversation' as ContentDisplayType; // Fallback to conversation display
+          parsedQueryType = 'conversation'; // Fallback to conversation display for the error
         }
 
         const aiMsg: Message = {
-        role: "assistant" as const,
-          content: '', // Content will be from structuredData, this is a placeholder
+          role: "assistant" as const,
+          content: '', 
           contentType: parsedQueryType,
           structuredContent: structuredData,
           id: uuidv4(),
           timestamp: Date.now(),
           parentId: messageId,
-          webSources: []
-      };
-      setMessages((prev) => [...prev, aiMsg]);
-
-      } else {
+          webSources: [] 
+        };
+        setMessages((prev) => [...prev, aiMsg]);
+      } else { // Default to streaming logic for all other cases (including 'conversation')
         const reader = res.body!.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
         let done = false;
         let contentBuffer = ''; // Buffer to accumulate content
         let hasActualContent = false; // Flag to track if we have meaningful content
+        
+        // Initialize aiMsg for the streaming case. 
+        // We'll set its contentType more definitively after the stream.
         let aiMsg: Message = { 
           role: "assistant" as const,
           content: "", 
@@ -1196,7 +1177,8 @@ export default function TestChat() {
           timestamp: Date.now(),
           parentId: messageId,
           imageUrls: uploadedImageUrls.length > 0 ? uploadedImageUrls : undefined,
-          webSources: []
+          webSources: [],
+          contentType: 'conversation' // Default to conversation, will be confirmed/overridden after stream
         };
 
         while (!done) {
@@ -1254,6 +1236,8 @@ export default function TestChat() {
         }
         
         // Apply post-processing after streaming is complete
+        // If it was an advance search, it would have been handled by its specific UI state.
+        // Otherwise, it's treated as a conversation, potentially needing post-processing.
         if (showAdvanceSearchUI || currentQuery.includes('@AdvanceSearch')) {
           const processedResearch = enforceAdvanceSearchStructure(contentBuffer);
           setMessages((prev) => {
@@ -1263,28 +1247,28 @@ export default function TestChat() {
               updatedMessages[msgIndex] = {
                 ...updatedMessages[msgIndex],
                 content: processedResearch,
-                contentType: 'deep-research'
+                contentType: 'deep-research' // Explicitly set for advance search
               };
             }
             return updatedMessages;
           });
           aiMsg.content = processedResearch;
           aiMsg.contentType = 'deep-research';
-        } else {
-          // Default for other streamed content (e.g., image descriptions, unexpected text streams)
+        } else { // Handles conversation and image description streams
+          const cleanedContent = postProcessAIChatResponse(contentBuffer);
           setMessages((prev) => {
             const updatedMessages = [...prev];
             const msgIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
             if (msgIndex !== -1) {
               updatedMessages[msgIndex] = {
                 ...updatedMessages[msgIndex],
-                content: contentBuffer,
-                contentType: 'conversation'
+                content: cleanedContent,
+                contentType: 'conversation' // Confirmed as conversation
               };
             }
             return updatedMessages;
           });
-          aiMsg.content = contentBuffer;
+          aiMsg.content = cleanedContent;
           aiMsg.contentType = 'conversation';
         }
         
