@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { MathJaxContext, MathJax } from 'better-react-mathjax';
 
 // Add MathJax to window type for TypeScript
@@ -43,6 +43,15 @@ const config = {
 
 // Clean and prepare math content
 const prepareMathContent = (content: string): string => {
+  // Check if the content is too large, if so, process in chunks
+  if (content.length > 5000) {
+    // For very large content, simplify the processing to avoid browser hangs
+    return content
+      .replace(/\\\\/g, "\\")
+      .replace(/\\\[([\s\S]*?)\\\]/g, "$$$$1$$")
+      .replace(/\\\(([\s\S]*?)\\\)/g, "$$1$");
+  }
+  
   return content
     // Fix double-escaping: convert \\ to \
     .replace(/\\\\/g, "\\")
@@ -71,19 +80,55 @@ export const EnhancedMathRenderer: React.FC<EnhancedMathRendererProps> = ({
   content, 
   className = ""
 }) => {
-  const processedContent = prepareMathContent(content);
+  const [processedContent, setProcessedContent] = useState("");
+  const [renderAttempted, setRenderAttempted] = useState(false);
+  const [renderError, setRenderError] = useState(false);
 
+  // Process content in a separate effect to avoid blocking the UI
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.MathJax && window.MathJax.typesetPromise) {
-      try {
-        // Wrap in a try-catch to prevent errors from causing page reloads
-        window.MathJax.typesetPromise()
-          .catch((err: Error) => console.error('MathJax typesetting error:', err));
-      } catch (e: unknown) {
-        console.error('MathJax error:', e);
-      }
+    try {
+      const processed = prepareMathContent(content);
+      setProcessedContent(processed);
+      setRenderError(false);
+    } catch (e) {
+      console.error('Error processing math content:', e);
+      setProcessedContent(content); // Fallback to original content
+      setRenderError(true);
     }
-  }, [processedContent]);
+  }, [content]);
+
+  // Trigger MathJax rendering with error handling
+  useEffect(() => {
+    if (!processedContent || renderAttempted) return;
+    
+    const timeoutId = setTimeout(() => {
+      if (typeof window !== 'undefined' && window.MathJax && window.MathJax.typesetPromise) {
+        try {
+          // Wrap in a try-catch to prevent errors from causing page reloads
+          window.MathJax.typesetPromise()
+            .catch((err: Error) => {
+              console.error('MathJax typesetting error:', err);
+              setRenderError(true);
+            });
+          setRenderAttempted(true);
+        } catch (e: unknown) {
+          console.error('MathJax error:', e);
+          setRenderError(true);
+        }
+      }
+    }, 100); // Small delay to ensure component is mounted
+    
+    return () => clearTimeout(timeoutId);
+  }, [processedContent, renderAttempted]);
+  
+  // If there was a render error, show a simpler version without MathJax
+  if (renderError) {
+    return (
+      <div className={`enhanced-math-renderer plain-text ${className}`}>
+        {processedContent}
+      </div>
+    );
+  }
   
   return (
     <MathJaxContext config={config}>

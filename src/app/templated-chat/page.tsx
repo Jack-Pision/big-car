@@ -314,6 +314,7 @@ Example of a good list:
             if (delta) {
               didRespond = true;
               fullText += delta;
+              // Store the content but don't display it yet
               setStreamedContent(fullText);
             }
             if (data.error) {
@@ -331,13 +332,21 @@ Example of a good list:
       
       // When streaming is complete, identify the final answer from the full response
       if (didRespond) {
-        // Clean up the response by removing thinking content
-        const filteredText = stripThinking(fullText.trim());
-        
-        // Use the full filtered response as the final answer
-        setFinalResponse(filteredText);
-        setShowThinking(false);
-        setIsResponseComplete(true);
+        try {
+          // Clean up the response by removing thinking content
+          const filteredText = stripThinking(fullText.trim());
+          
+          // Use the full filtered response as the final answer
+          setFinalResponse(filteredText);
+          setShowThinking(false);
+          setIsResponseComplete(true);
+        } catch (error) {
+          console.error("Error processing AI response:", error);
+          setError("Error processing the AI response. Please try again.");
+          setIsLoading(false);
+          setAiTyping(false);
+          setShowThinking(false);
+        }
       } else {
         setError("AI did not respond. Please try again.");
         setIsLoading(false);
@@ -401,7 +410,7 @@ Example of a good list:
             </div>
           ))}
           
-          {/* Thinking animation while AI is processing */}
+          {/* Thinking animation while AI is processing - no text shown here */}
           {showThinking && (
             <div className="message ai-message">
               <div className="message-content px-4 py-3 rounded-xl max-w-full overflow-hidden bg-gray-100 dark:bg-gray-800">
