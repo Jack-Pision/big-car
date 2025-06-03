@@ -38,7 +38,7 @@ import InformationalSummaryDisplay, { InformationalSummaryData } from '@/compone
 import ConversationDisplay from '@/components/ConversationDisplay';
 import { Bot, User, Paperclip, Send, XCircle, Search, Trash2, PlusCircle, Settings, Zap, ExternalLink, AlertTriangle } from 'lucide-react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { dracula } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import Image from 'next/image';
 import rehypeRaw from 'rehype-raw';
 
@@ -1059,7 +1059,6 @@ export default function TestChat() {
       let turnSpecificSystemPrompt = BASE_SYSTEM_PROMPT;
 
       // Inject NVIDIA AI thinking mode instructions for every message
-      turnSpecificSystemPrompt += `\n\nIMPORTANT: For every response, before answering, think step-by-step and include your reasoning inside <think>...</think> tags. Only after the <think> section, provide your final answer. Example:\n<think>Thinking through the problem step by step...</think>\nFinal answer here.`;
 
       if (uploadedImageUrls.length === 0 && queryType !== 'conversation') {
         turnSpecificSystemPrompt += `\n\nIMPORTANT: For this query, classified as '${queryType}', your entire response MUST be a single JSON object that strictly conforms to the following JSON schema. Do NOT include any text, markdown, or explanations outside of this JSON object. Adhere to all field types and requirements specified in the schema.\nSchema:\n${JSON.stringify(responseSchema, null, 2)}`;
@@ -1509,9 +1508,45 @@ export default function TestChat() {
           return <ConversationDisplay data={msg.structuredContent as string} />;
         default:
           if (typeof msg.structuredContent === 'string') {
-            return <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="prose dark:prose-invert max-w-none">{msg.structuredContent}</ReactMarkdown>;
+            return <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              rehypePlugins={[rehypeRaw]}
+              className="prose dark:prose-invert max-w-none"
+              components={{
+                code({className, children}) {
+                  const match = /language-(\w+)/.exec(className || '');
+                  return match ? (
+                    <SyntaxHighlighter style={dracula} language={match[1]}>
+                      {String(children).replace(/\n$/, '')}
+                    </SyntaxHighlighter>
+                  ) : (
+                    <code className={className}>{children}</code>
+                  );
+                }
+              }}
+            >
+              {msg.structuredContent}
+            </ReactMarkdown>;
           }
-          return <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="prose dark:prose-invert max-w-none">{`Unsupported structured content: ${JSON.stringify(msg.structuredContent)}`}</ReactMarkdown>;
+          return <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            rehypePlugins={[rehypeRaw]}
+            className="prose dark:prose-invert max-w-none"
+            components={{
+              code({className, children}) {
+                const match = /language-(\w+)/.exec(className || '');
+                return match ? (
+                  <SyntaxHighlighter style={dracula} language={match[1]}>
+                    {String(children).replace(/\n$/, '')}
+                  </SyntaxHighlighter>
+                ) : (
+                  <code className={className}>{children}</code>
+                );
+              }
+            }}
+          >
+            {`Unsupported structured content: ${JSON.stringify(msg.structuredContent)}`}
+          </ReactMarkdown>;
       }
     } else if (msg.content) {
       // Robust JSON detection and extraction
@@ -1542,7 +1577,25 @@ export default function TestChat() {
         }
       }
       // Fallback for simple text content or streamed content
-        return <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="prose dark:prose-invert max-w-none">{msg.content}</ReactMarkdown>;
+        return <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          rehypePlugins={[rehypeRaw]}
+          className="prose dark:prose-invert max-w-none"
+          components={{
+            code({className, children}) {
+              const match = /language-(\w+)/.exec(className || '');
+              return match ? (
+                <SyntaxHighlighter style={dracula} language={match[1]}>
+                  {String(children).replace(/\n$/, '')}
+                </SyntaxHighlighter>
+              ) : (
+                <code className={className}>{children}</code>
+              );
+            }
+          }}
+        >
+          {msg.content}
+        </ReactMarkdown>;
     }
     return null;
   };
@@ -1764,12 +1817,25 @@ export default function TestChat() {
                       <span className="text-sm text-white italic font-light mb-2">[Response stopped by user]</span>
                     ) : (
                       <div className="w-full max-w-full overflow-hidden">
-                        <ReactMarkdown 
-                          remarkPlugins={[remarkGfm]} 
-                          rehypePlugins={[rehypeRaw]} 
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          rehypePlugins={[rehypeRaw]}
                           className="prose dark:prose-invert max-w-none"
-                          children={processedContent}
-                        />
+                          components={{
+                            code({className, children}) {
+                              const match = /language-(\w+)/.exec(className || '');
+                              return match ? (
+                                <SyntaxHighlighter style={dracula} language={match[1]}>
+                                  {String(children).replace(/\n$/, '')}
+                                </SyntaxHighlighter>
+                              ) : (
+                                <code className={className}>{children}</code>
+                              );
+                            }
+                          }}
+                        >
+                          {processedContent}
+                        </ReactMarkdown>
                       </div>
                     )}
                   </motion.div>
