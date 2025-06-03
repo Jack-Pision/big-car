@@ -48,19 +48,20 @@ import Image from 'next/image';
 const BASE_SYSTEM_PROMPT = `You are Tehom AI, a helpful and intelligent assistant.
 Always respond in clean, structured Markdown format.
 
-IMPORTANT: Do NOT include your reasoning, thought process, or step-by-step explanation. Only provide the final answer in clear, concise markdown.
-
 Use:
 
 #, ##, etc. for headings
 
 **bold**, *italic*, bullet points, and numbered lists where appropriate
 
-Triple backticks for code blocks with proper language tags
+Triple backticks (\`\`\`) for code blocks with proper language tags
 
 [text](url) for links
 
-For math: Use $...$ for inline math. Use $$...$$ for display math.`;
+For math:
+Use $...$ for inline math
+Use $$...$$ for display math
+`;
 
 const CITATION_INSTRUCTIONS = `IMPORTANT: You are a Deep Research AI assistant. Follow this three-step process:
 
@@ -1082,10 +1083,7 @@ export default function TestChat() {
       let turnSpecificSystemPrompt = BASE_SYSTEM_PROMPT;
 
       // Inject NVIDIA AI thinking mode instructions for every message
-      // Only add thinking mode for non-conversation (non-default) chat types
-      if (queryType !== 'conversation') {
-        turnSpecificSystemPrompt += `\n\nIMPORTANT: For every response, before answering, think step-by-step and include your reasoning inside <think>...</think> tags. Only after the <think> section, provide your final answer. Example:\n<think>Thinking through the problem step by step...</think>\nFinal answer here.`;
-      }
+      turnSpecificSystemPrompt += `\n\nIMPORTANT: For every response, before answering, think step-by-step and include your reasoning inside <think>...</think> tags. Only after the <think> section, provide your final answer. Example:\n<think>Thinking through the problem step by step...</think>\nFinal answer here.`;
 
       if (uploadedImageUrls.length === 0 && queryType !== 'conversation') {
         turnSpecificSystemPrompt += `\n\nIMPORTANT: For this query, classified as '${queryType}', your entire response MUST be a single JSON object that strictly conforms to the following JSON schema. Do NOT include any text, markdown, or explanations outside of this JSON object. Adhere to all field types and requirements specified in the schema.\nSchema:\n${JSON.stringify(responseSchema, null, 2)}`;
