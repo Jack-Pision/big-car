@@ -314,10 +314,9 @@ const GlobalStyles = () => (
       white-space: pre-wrap !important;
       overflow-wrap: break-word !important;
     }
-    // Remove color override for pre and code to allow syntax highlighting
+    // Remove background property for pre and code to allow syntax highlighter theme
     .ai-response-text pre,
     .ai-response-text code {
-      background: #232323 !important;
       border-radius: 6px;
       padding: 0.2em 0.4em;
       max-width: 100% !important;
