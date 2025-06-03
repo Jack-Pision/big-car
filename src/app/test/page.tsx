@@ -1083,11 +1083,6 @@ export default function TestChat() {
         top_p: 0.9,
         frequency_penalty: 0.2,
         presence_penalty: 0.2,
-        ...(uploadedImageUrls.length === 0 && queryType !== 'conversation' && {
-          response_format: {
-            type: "json_object", 
-          }
-        })
       };
       
       if (uploadedImageUrls.length > 0) {
