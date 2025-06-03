@@ -928,26 +928,40 @@ export default function TestChat() {
         let cleanedOutput = cleanAIOutput(synthesisStep.output);
         cleanedOutput = enforceAdvanceSearchStructure(cleanedOutput);
         
+        // Add console log to debug
+        console.log("[AdvanceSearch] Processing completed synthesis:", { 
+          isComplete, 
+          synthesisStep: synthesisStep.id,
+          hasOutput: !!synthesisStep.output,
+          outputLength: synthesisStep.output?.length || 0
+        });
+        
         const alreadyPresent = messages.some(m => m.role === 'assistant' && m.content === cleanedOutput);
         if (!alreadyPresent) {
-          setTimeout(() => {
-            setMessages(prev => [
-              ...prev,
-              { 
-                role: 'assistant', 
-                content: cleanedOutput,
-                webSources: webData?.sources || [],
-                id: uuidv4(),
-                timestamp: Date.now()
-              }
-            ]);
-            
-            setAdvanceSearchHistory(prev => ({
-              previousQueries: [...prev.previousQueries, currentQuery],
-              previousResponses: [...prev.previousResponses, cleanedOutput]
-            }));
-          }, 500);
+          // Removed setTimeout to make message appear immediately
+          setMessages(prev => [
+            ...prev,
+            { 
+              role: 'assistant', 
+              content: cleanedOutput,
+              webSources: webData?.sources || [],
+              id: uuidv4(),
+              timestamp: Date.now()
+            }
+          ]);
+          
+          setAdvanceSearchHistory(prev => ({
+            previousQueries: [...prev.previousQueries, currentQuery],
+            previousResponses: [...prev.previousResponses, cleanedOutput]
+          }));
+          
+          // Add console log for confirmation
+          console.log("[AdvanceSearch] Added synthesized response to messages");
+        } else {
+          console.log("[AdvanceSearch] Message already present, not adding duplicate");
         }
+      } else {
+        console.log("[AdvanceSearch] Synthesis step has no output yet");
       }
     }
   }, [isComplete, currentQuery, steps, messages, webData?.sources]);
