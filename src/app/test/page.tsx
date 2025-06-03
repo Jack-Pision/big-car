@@ -1113,7 +1113,7 @@ export default function TestChat() {
       }
       
       // Only for default chat (conversation), do not stream, just await the full response
-      if (queryType === 'conversation' && uploadedImageUrls.length === 0) {
+      if (queryType === 'conversation') {
         const rawResponseText = await res.text();
         const aiMsg: Message = {
           role: "assistant" as const,
@@ -1121,7 +1121,8 @@ export default function TestChat() {
           id: uuidv4(),
           timestamp: Date.now(),
           parentId: messageId,
-          webSources: []
+          webSources: [],
+          imageUrls: uploadedImageUrls.length > 0 ? uploadedImageUrls : undefined,
         };
         setMessages((prev) => [...prev, aiMsg]);
         setIsProcessing(false);
