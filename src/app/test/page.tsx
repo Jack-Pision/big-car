@@ -1112,6 +1112,24 @@ export default function TestChat() {
         throw new Error(`API request failed with status ${res.status}: ${errorData}`);
       }
       
+      // Only for default chat (conversation), do not stream, just await the full response
+      if (queryType === 'conversation' && uploadedImageUrls.length === 0) {
+        const rawResponseText = await res.text();
+        const aiMsg: Message = {
+          role: "assistant" as const,
+          content: postProcessAIChatResponse(rawResponseText),
+          id: uuidv4(),
+          timestamp: Date.now(),
+          parentId: messageId,
+          webSources: []
+        };
+        setMessages((prev) => [...prev, aiMsg]);
+        setIsProcessing(false);
+        setIsLoading(false);
+        setIsAiResponding(false);
+        return;
+      }
+      
       if (res.headers.get('content-type')?.includes('application/json') && uploadedImageUrls.length === 0) {
         const rawResponseText = await res.text();
         console.log("[handleSend] Raw AI JSON Response Text:", rawResponseText);
