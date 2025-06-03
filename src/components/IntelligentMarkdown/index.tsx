@@ -275,14 +275,6 @@ const IntelligentMarkdown: React.FC<IntelligentMarkdownProps> = ({
         userQuery={userQuery}
         context={context}
       />
-      {/* Optional: Add a typing indicator when blocks are loading */}
-      {isStreaming && specialBlocks.some(block => !block.complete && block.start < currentIndex) && (
-        <div className="typing-indicator mt-2">
-          <span className="dot"></span>
-          <span className="dot"></span>
-          <span className="dot"></span>
-        </div>
-      )}
     </div>
   );
 };

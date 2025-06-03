@@ -10,9 +10,7 @@ import HamburgerMenu from '../../components/HamburgerMenu';
 import { useRouter } from 'next/navigation';
 import { supabase, createSupabaseClient } from '@/lib/supabase-client';
 import { motion } from 'framer-motion';
-import PulsingDot from '@/components/PulsingDot';
 import TextReveal from '@/components/TextReveal';
-import ThinkingIndicator from '@/components/ThinkingIndicator';
 import AdvanceSearch from '@/components/AdvanceSearch';
 import { useDeepResearch } from '@/hooks/useDeepResearch';
 import { WebSource } from '@/utils/source-utils/index';
@@ -41,9 +39,9 @@ import ConversationDisplay from '@/components/ConversationDisplay';
 import { Bot, User, Paperclip, Send, XCircle, Search, Trash2, PlusCircle, Settings, Zap, ExternalLink, AlertTriangle } from 'lucide-react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import rehypeRaw from 'rehype-raw';
 import LoadingDots from '@/components/LoadingDots';
 import Image from 'next/image';
+import rehypeRaw from 'rehype-raw';
 
 const BASE_SYSTEM_PROMPT = `You are Tehom AI, a helpful and intelligent assistant.
 Always respond in clean, structured Markdown format.
@@ -122,7 +120,6 @@ Format your response in clear, professional markdown.`;
 
 interface ProcessedResponse {
   content: string;
-  thinkingTime?: number;
 }
 
 function cleanAIResponse(text: string): ProcessedResponse {
@@ -131,28 +128,16 @@ function cleanAIResponse(text: string): ProcessedResponse {
   }
 
   let cleanedText = text;
-  let thinkingTime = 0;
+  let processedContent = '';
 
   // Find and process <think> tags
   const thinkTagRegex = /<think>([\s\S]*?)<\/think>/gi;
   let match;
   let lastIndex = 0;
-  let processedContent = '';
 
   while ((match = thinkTagRegex.exec(cleanedText)) !== null) {
     // Add the text before the think tag
     processedContent += cleanedText.slice(lastIndex, match.index);
-    
-    // Calculate thinking time based on content length
-    const tagContent = match[1];
-    const tagLength = tagContent.length;
-    // Estimate thinking time: 50ms per character, min 1s, max 5s
-    const estimatedTime = Math.max(1000, Math.min(5000, tagLength * 50));
-    thinkingTime += estimatedTime;
-
-    // Add a marker for the thinking indicator
-    processedContent += `\n<thinking-indicator duration="${estimatedTime}" />\n`;
-    
     lastIndex = match.index + match[0].length;
   }
 
@@ -160,8 +145,7 @@ function cleanAIResponse(text: string): ProcessedResponse {
   processedContent += cleanedText.slice(lastIndex);
 
   return {
-    content: processedContent.trim(),
-    thinkingTime: thinkingTime > 0 ? thinkingTime : undefined
+    content: processedContent.trim()
   };
 }
 
@@ -942,18 +926,14 @@ export default function TestChat() {
     if (isComplete && currentQuery) {
       const synthesisStep = steps.find(step => step.id === 'synthesize');
       if (synthesisStep?.output) {
-        setShowPulsingDot(true);
         let cleanedOutput = cleanAIOutput(synthesisStep.output);
-        
-        // Apply our improved structure enforcement
         cleanedOutput = enforceAdvanceSearchStructure(cleanedOutput);
         
         const alreadyPresent = messages.some(m => m.role === 'assistant' && m.content === cleanedOutput);
         if (!alreadyPresent) {
           setTimeout(() => {
-            // Add the AI response to the messages - KEEP ALL PREVIOUS MESSAGES
             setMessages(prev => [
-              ...prev, // Keep all previous messages instead of filtering
+              ...prev,
               { 
                 role: 'assistant', 
                 content: cleanedOutput,
@@ -963,13 +943,10 @@ export default function TestChat() {
               }
             ]);
             
-            // Update the conversation history for future follow-up questions
             setAdvanceSearchHistory(prev => ({
               previousQueries: [...prev.previousQueries, currentQuery],
               previousResponses: [...prev.previousResponses, cleanedOutput]
             }));
-            
-            setShowPulsingDot(false);
           }, 500);
         }
       }
@@ -1763,9 +1740,8 @@ export default function TestChat() {
                   );
                 }
 
-                const { content: rawContent, thinkingTime } = cleanAIResponse(msg.content);
+                const { content: rawContent } = cleanAIResponse(msg.content);
                 const cleanContent = rawContent.replace(/<thinking-indicator.*?>\n<\/thinking-indicator>\n|<thinking-indicator.*?\/>/g, '');
-
                 const isStoppedMsg = cleanContent.trim() === '[Response stopped by user]';
                 const processedContent = makeCitationsClickable(cleanContent, msg.webSources || []);
                 if (showPulsingDot && i === messages.length -1 ) setShowPulsingDot(false);
@@ -1779,30 +1755,23 @@ export default function TestChat() {
                     className="w-full markdown-body text-left flex flex-col items-start ai-response-text mb-4"
                     style={{ color: '#fff', maxWidth: '100%', overflowWrap: 'break-word' }}
                   >
-                    {i === messages.length - 1 && showPulsingDot && !isStoppedMsg && !msg.structuredContent ? (
-                      <PulsingDot isVisible={true} />
-                    ) : (
+                    {msg.webSources && msg.webSources.length > 0 && (
                       <>
-                        {msg.webSources && msg.webSources.length > 0 && (
-                          <>
-                            <WebSourcesCarousel sources={msg.webSources} />
-                            <div style={{ height: '1.5rem' }} />
-                          </>
-                        )}
-                        {thinkingTime && <ThinkingIndicator duration={thinkingTime} />}
-                        {isStoppedMsg ? (
-                          <span className="text-sm text-white italic font-light mb-2">[Response stopped by user]</span>
-                        ) : (
-                          <div className="w-full max-w-full overflow-hidden">
-                            <ReactMarkdown 
-                              remarkPlugins={[remarkGfm]} 
-                              rehypePlugins={[rehypeRaw]} 
-                              className="prose dark:prose-invert max-w-none"
-                              children={processedContent}
-                            />
-    </div>
-                        )}
+                        <WebSourcesCarousel sources={msg.webSources} />
+                        <div style={{ height: '1.5rem' }} />
                       </>
+                    )}
+                    {isStoppedMsg ? (
+                      <span className="text-sm text-white italic font-light mb-2">[Response stopped by user]</span>
+                    ) : (
+                      <div className="w-full max-w-full overflow-hidden">
+                        <ReactMarkdown 
+                          remarkPlugins={[remarkGfm]} 
+                          rehypePlugins={[rehypeRaw]} 
+                          className="prose dark:prose-invert max-w-none"
+                          children={processedContent}
+                        />
+                      </div>
                     )}
                   </motion.div>
                 );
