@@ -39,7 +39,6 @@ import ConversationDisplay from '@/components/ConversationDisplay';
 import { Bot, User, Paperclip, Send, XCircle, Search, Trash2, PlusCircle, Settings, Zap, ExternalLink, AlertTriangle } from 'lucide-react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import LoadingDots from '@/components/LoadingDots';
 import Image from 'next/image';
 import rehypeRaw from 'rehype-raw';
 
@@ -1804,17 +1803,6 @@ export default function TestChat() {
                 );
               }
             })}
-            {isProcessing && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.2 }}
-                className="w-full flex justify-start mb-4"
-              >
-                <LoadingDots isVisible={true} />
-              </motion.div>
-            )}
       </div>
         </div>
 
