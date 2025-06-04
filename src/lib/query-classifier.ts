@@ -9,12 +9,20 @@ export function classifyQuery(query: string): string {
       lowerQuery.includes("guide to") ||
       lowerQuery.includes("tutorial for") ||
       lowerQuery.includes("explain how")) && 
-      // Exclude conversation-like phrases that might include "how to"
+      // Enhanced exclusions for conversation-like phrases that might include "how to"
       !lowerQuery.startsWith("do you know how to") &&
       !lowerQuery.includes("can you tell me how to") &&
       !lowerQuery.includes("wondering how to") &&
+      !lowerQuery.startsWith("how to the") &&  // Add exclusion for phrases like "How to the president"
+      !lowerQuery.startsWith("oh") &&  // Exclude phrases that start with "oh" like "oh ok, how to..."
+      !lowerQuery.startsWith("oh ok") && 
+      !lowerQuery.includes("i'm ") &&  // Exclude personal statements
+      !lowerQuery.includes("btw") &&   // Exclude conversation with "btw"
+      !lowerQuery.includes("by the way") &&
+      !lowerQuery.includes("?") &&     // Questions with question marks are often conversational
       // More specific criteria for tutorial classification
-      (lowerQuery.length > 15)) {  // Ensure it's a substantive query
+      (lowerQuery.length > 15) &&      // Ensure it's a substantive query
+      (lowerQuery.split(' ').length > 4)) {  // Real tutorials usually have several words
     return "tutorial";
   }
   

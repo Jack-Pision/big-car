@@ -213,14 +213,57 @@ function handlePotentialJsonInConversation(text: string): string {
         return plainText;
       }
       
+      // Handle informational summary JSON
+      if (parsed.main_title && parsed.sections) {
+        let plainText = `# ${parsed.main_title}\n\n`;
+        
+        if (parsed.introduction) {
+          plainText += `${parsed.introduction}\n\n`;
+        }
+        
+        if (Array.isArray(parsed.sections)) {
+          parsed.sections.forEach((section: any) => {
+            if (section.section_title) {
+              plainText += `## ${section.section_title}\n\n`;
+              
+              if (Array.isArray(section.content_items)) {
+                section.content_items.forEach((item: any) => {
+                  if (item.item_type === "paragraph" && item.text_content) {
+                    plainText += `${item.text_content}\n\n`;
+                  } else if (item.item_type === "bullet_list" && Array.isArray(item.list_items)) {
+                    item.list_items.forEach((bullet: string) => {
+                      plainText += `- ${bullet}\n`;
+                    });
+                    plainText += "\n";
+                  } else if (item.item_type === "key_value_list" && Array.isArray(item.key_value_pairs)) {
+                    item.key_value_pairs.forEach((pair: any) => {
+                      if (pair.key && pair.value) {
+                        plainText += `**${pair.key}**: ${pair.value}\n`;
+                      }
+                    });
+                    plainText += "\n";
+                  }
+                });
+              }
+            }
+          });
+        }
+        
+        if (parsed.conclusion) {
+          plainText += `## Conclusion\n\n${parsed.conclusion}`;
+        }
+        
+        return plainText;
+      }
+      
       // Handle any JSON with a content field (fallback)
       if (parsed.content) {
         return parsed.content;
       }
       
       // Generic JSON handler - just convert to string representation
-      return "Received a JSON response. Here's the content in plain text format:\n\n" + 
-             JSON.stringify(parsed, null, 2);
+      return "I found this information:\n\n" + 
+             JSON.stringify(parsed, null, 2).replace(/"([^"]+)":/g, '$1:');
     } catch (e) {
       // Not valid JSON, return original text
       return text;
@@ -297,10 +340,6 @@ function postProcessAIChatResponse(text: string): string {
   const overconfidentPhrases = [
     /\bI'm (100% )?certain\b/gi,
     /\bI guarantee\b/gi,
-    /\bwithout any doubt\b/gi,
-    /\babsolutely (certain|sure)\b/gi,
-    /\bI can assure you\b/gi,
-    /\bI promise\b/gi,
   ];
 
   overconfidentPhrases.forEach(phrase => {
@@ -1005,70 +1044,77 @@ function processStreamBuffer(buffer: string): {
   processedContent: string;
   hasCompletedReasoning: boolean;
 } {
-  // Default values
-  let showContent = false;
-  let hasCompletedReasoning = false;
-  
-  // First, apply the cleaning function to remove think tags if present
-  const { content: cleanedContent } = cleanAIResponse(buffer);
-  
-  // Quick check for completely empty content
-  if (!cleanedContent || cleanedContent.trim().length === 0) {
+  // Don't show anything until we have some content
+  if (!buffer || buffer.length < 5) {
     return { 
       showContent: false, 
-      processedContent: cleanedContent,
+      processedContent: '',
       hasCompletedReasoning: false
     };
   }
-  
-  // Check if the current content appears to be reasoning
-  const currentlyReasoning = isReasoningContent(cleanedContent);
-  
-  // Detect transition from reasoning to final answer
-  // This pattern looks for reasoning followed by a clear separation and then an answer
-  // Using multiline mode with [\s\S]* instead of dotall flag
-  const transitionPatterns = [
-    // Common separation patterns
-    /reasoning[\s\S]*?\n\n([\s\S]*)/i,
-    /analyzing[\s\S]*?\n\n([\s\S]*)/i,
-    /let me think[\s\S]*?\n\n([\s\S]*)/i,
-    /step by step[\s\S]*?\n\n([\s\S]*)/i,
-    /to summarize:?\s+([\s\S]*)/i,
-    /in conclusion:?\s+([\s\S]*)/i,
-    /therefore,?\s+([\s\S]*)/i,
-    /final answer:?\s+([\s\S]*)/i,
-    /based on (the|my|this) (analysis|reasoning),?\s+([\s\S]*)/i
-  ];
-  
-  // Look for a transition from reasoning to answer
-  for (const pattern of transitionPatterns) {
-    const match = cleanedContent.match(pattern);
-    if (match && match[1]) {
-      // We found a transition to the final answer
-      hasCompletedReasoning = true;
-      // Extract the answer part (after the transition)
-      return {
-        showContent: true,
-        processedContent: match[1].trim(),
+
+  // First, check if the entire buffer is JSON
+  if ((buffer.trim().startsWith('{') && buffer.trim().endsWith('}')) ||
+      (buffer.trim().startsWith('[') && buffer.trim().endsWith(']'))) {
+    try {
+      // Try to parse as JSON
+      JSON.parse(buffer.trim());
+      // If successful, process it through our JSON handler
+      return { 
+        showContent: true, 
+        processedContent: handlePotentialJsonInConversation(buffer),
         hasCompletedReasoning: true
       };
+    } catch (e) {
+      // Not complete JSON yet, continue with normal processing
     }
   }
-  
-  // If the content is substantial and doesn't appear to be reasoning, show it
-  // The minimum length threshold helps avoid showing small fragments
-  const isSubstantialContent = cleanedContent.length > 50;
-  
-  if (!currentlyReasoning && isSubstantialContent) {
-    showContent = true;
-    // If not currently reasoning and content is substantial, consider reasoning complete
-    hasCompletedReasoning = true;
+
+  // Remove thinking tags
+  const processedBuffer = buffer.replace(/<think>[\s\S]*?<\/think>/gi, '');
+
+  // If buffer only contained thinking tags and nothing else, don't show yet
+  if (!processedBuffer.trim()) {
+    return { 
+      showContent: false, 
+      processedContent: '',
+      hasCompletedReasoning: false
+    };
   }
+
+  // Check if we detect reasoning content (heuristic)
+  const isCurrentlyReasoning = isReasoningContent(processedBuffer);
+  
+  // Has the reasoning phase been completed? (i.e. we have content after reasoning)
+  // We look for signs of a transition from reasoning to final content
+  const reasoningPatterns = [
+    /thinking through this step[\s\S]*?Let me provide|thinking[\s\S]*?Here's|reasoning[\s\S]*?Therefore|analyzing[\s\S]*?In conclusion/i,
+    /Let me think[\s\S]*?Based on this|Let me analyze[\s\S]*?So the answer|Let me solve[\s\S]*?Thus|Let me work[\s\S]*?Hence/i,
+    /I'll approach[\s\S]*?The answer is|I need to consider[\s\S]*?In summary|step by step[\s\S]*?In conclusion/i,
+    /first[\s\S]*?second[\s\S]*?third[\s\S]*?therefore/i,
+    /thinking aloud[\s\S]*?to summarize/i,
+  ];
+
+  // Check if we've completed the reasoning phase based on our patterns
+  const hasCompletedReasoning = reasoningPatterns.some(pattern => pattern.test(processedBuffer));
+  
+  // Length-based heuristics for showing content
+  const hasSubstantialContent = processedBuffer.length > 40;
+  
+  // If we've completed reasoning or have substantial non-reasoning content, show it
+  // Prioritize showing completed reasoning, but fallback to showing substantial content
+  const shouldShow = hasCompletedReasoning || (hasSubstantialContent && !isCurrentlyReasoning);
+
+  // Final content cleaning for display
+  let cleanedContent = processedBuffer;
+  
+  // Always apply postProcessAIChatResponse and handlePotentialJsonInConversation to the content
+  cleanedContent = postProcessAIChatResponse(cleanedContent);
   
   return {
-    showContent,
-    processedContent: cleanedContent,
-    hasCompletedReasoning
+    showContent: shouldShow,
+    processedContent: cleanedContent.trim(),
+    hasCompletedReasoning: hasCompletedReasoning
   };
 }
 
@@ -1803,13 +1849,14 @@ export default function TestChat() {
           return <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="prose dark:prose-invert max-w-none">{`Unsupported structured content: ${JSON.stringify(msg.structuredContent)}`}</ReactMarkdown>;
       }
     } else if (msg.content) {
-      // For default chat (conversation), always render as markdown without JSON detection
+      // For default chat (conversation), always try handling JSON first
       if (msg.contentType === 'conversation' || (msg.role === 'assistant' && !msg.contentType)) {
-        // Skip JSON detection entirely for conversation messages to avoid accidentally parsing JSON-like content
-        return <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="prose dark:prose-invert max-w-none">{msg.content}</ReactMarkdown>;
+        // Process content to handle any potential JSON responses, even in conversation mode
+        const processedContent = handlePotentialJsonInConversation(msg.content);
+        return <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="prose dark:prose-invert max-w-none">{processedContent}</ReactMarkdown>;
       }
       
-      // Only perform JSON detection for non-conversation messages (advance search, etc.)
+      // Only perform further JSON detection for non-conversation messages (advance search, etc.)
       let content = msg.content.trim();
       // 1. Strip code block fences if present
       if (content.startsWith('```')) {
