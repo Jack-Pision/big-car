@@ -255,7 +255,7 @@ async function fetchNvidiaText(messages: any[], options: any = {}) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(payload),
-  }, 30000); // 30-second timeout for NVIDIA Nemotron
+  }, 12000); // 12-second timeout for NVIDIA Nemotron
 
     if (!res.ok) {
       const errorText = await res.text();
