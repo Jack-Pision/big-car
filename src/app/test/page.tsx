@@ -501,6 +501,7 @@ interface Message {
   id: string;
   timestamp: number;
   parentId?: string;
+  isProcessed?: boolean; // Flag to indicate messages that have been processed and shouldn't trigger new API calls
 }
 
 // Helper to enforce Advance Search output structure
@@ -1009,7 +1010,15 @@ export default function TestChat() {
     if (savedSessionId) {
       // Load the saved session
       setActiveSessionId(savedSessionId);
-      setMessages(getSessionMessages(savedSessionId));
+      
+      // Get messages and ensure they're marked as processed
+      const sessionMessages = getSessionMessages(savedSessionId);
+      const processedMessages = sessionMessages.map(msg => ({
+        ...msg,
+        isProcessed: true // Mark all loaded messages as processed
+      }));
+      
+      setMessages(processedMessages);
       setShowHeading(false);
       setHasInteracted(true);
     } else {
@@ -1037,7 +1046,8 @@ export default function TestChat() {
         role: "user" as const, 
         content: `${content} <img src=\"${imgSrc}\" />`,
         id: uuidv4(),
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        isProcessed: true // Mark as processed
       },
     ]);
   };
@@ -1100,7 +1110,8 @@ export default function TestChat() {
               content: cleanedOutput,
               webSources: webData?.sources || [],
               id: uuidv4(),
-              timestamp: Date.now()
+              timestamp: Date.now(),
+              isProcessed: true // Mark Advance Search messages as processed
             }
           ]);
           
@@ -1123,6 +1134,15 @@ export default function TestChat() {
   async function handleSend(e?: React.FormEvent) {
     if (e) e.preventDefault();
     if (!input.trim() || isLoading || isAiResponding) return;
+    
+    // If a user is just loading a previous session, don't make new API calls
+    // Check if there are any unprocessed messages - if not, we don't need to do anything
+    const unprocessedMessages = messages.filter(msg => !msg.isProcessed);
+    if (unprocessedMessages.length === 0 && !input.trim()) {
+      // All messages are already processed, no new input, so no need to call API
+      return;
+    }
+    
     setIsLoading(true);
     setChatError("");
     setIsProcessing(true);
@@ -1153,8 +1173,8 @@ export default function TestChat() {
       const researchId = uuidv4();
       setMessages(prev => [
         ...prev,
-        { role: "user", content: currentInput, id: uuidv4(), timestamp: Date.now() },
-        { role: "deep-research", content: currentInput, researchId, id: uuidv4(), timestamp: Date.now() }
+        { role: "user", content: currentInput, id: uuidv4(), timestamp: Date.now(), isProcessed: true },
+        { role: "deep-research", content: currentInput, researchId, id: uuidv4(), timestamp: Date.now(), isProcessed: true }
       ]);
       setInput("");
       setImagePreviewUrls([]);
@@ -1181,7 +1201,8 @@ export default function TestChat() {
       role: "user" as const,
       content: currentInput,
       id: messageId,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      isProcessed: true // Mark the user message as processed
     };
 
     if (currentSelectedFiles.length > 0 && !currentInput) {
@@ -1320,7 +1341,8 @@ export default function TestChat() {
           id: uuidv4(),
           timestamp: Date.now(),
           parentId: messageId,
-          webSources: [] 
+          webSources: [],
+          isProcessed: true // Mark message as processed
         };
         setMessages((prev) => [...prev, aiMsg]);
       } else { // Default to streaming logic for all other cases (including 'conversation')
@@ -1341,7 +1363,8 @@ export default function TestChat() {
           parentId: messageId,
           imageUrls: uploadedImageUrls.length > 0 ? uploadedImageUrls : undefined,
           webSources: [],
-          contentType: 'conversation' // Default to conversation, will be confirmed/overridden after stream
+          contentType: 'conversation', // Default to conversation, will be confirmed/overridden after stream
+          isProcessed: true // Mark the assistant message as processed
         };
 
         while (!done) {
@@ -1382,11 +1405,12 @@ export default function TestChat() {
                           updatedMessages[aiIndex] = {
                             ...updatedMessages[aiIndex],
                             content: contentBuffer,
-                          webSources: aiMsg.webSources
-                        };
-                      }
-                      return updatedMessages;
-                    });
+                            webSources: aiMsg.webSources,
+                            isProcessed: true // Ensure isProcessed is set when updating
+                          };
+                        }
+                        return updatedMessages;
+                      });
                     }
                   }
                 } catch (err) {
@@ -1462,7 +1486,8 @@ export default function TestChat() {
             id: uuidv4(),
             timestamp: Date.now(),
             parentId: messageId, 
-            imageUrls: uploadedImageUrls.length > 0 ? uploadedImageUrls : undefined
+            imageUrls: uploadedImageUrls.length > 0 ? uploadedImageUrls : undefined,
+            isProcessed: true // Mark as processed
           },
         ]);
       } else {
@@ -1474,7 +1499,8 @@ export default function TestChat() {
             id: uuidv4(),
             timestamp: Date.now(),
             parentId: messageId, 
-            imageUrls: uploadedImageUrls.length > 0 ? uploadedImageUrls : undefined
+            imageUrls: uploadedImageUrls.length > 0 ? uploadedImageUrls : undefined,
+            isProcessed: true // Mark as processed
           },
         ]);
       }
@@ -1545,7 +1571,15 @@ export default function TestChat() {
     }
     setActiveSessionId(sessionId);
     saveActiveSessionId(sessionId); // Save the active session
-    setMessages(getSessionMessages(sessionId));
+    
+    // Get messages and ensure they're marked as processed
+    const sessionMessages = getSessionMessages(sessionId);
+    const processedMessages = sessionMessages.map(msg => ({
+      ...msg,
+      isProcessed: true // Mark all loaded messages as processed
+    }));
+    
+    setMessages(processedMessages);
     setInput('');
     setImagePreviewUrls([]);
     setSelectedFilesForUpload([]);
