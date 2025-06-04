@@ -770,6 +770,77 @@ const makeCitationsClickable = (content: string, sources: any[] = []) => {
   });
 };
 
+// Add a simple Stack component for vertical spacing
+const Stack = ({ spacing = 20, children }: { spacing?: number; children: React.ReactNode }) => (
+  <div style={{ display: 'flex', flexDirection: 'column', gap: spacing }}>
+    {children}
+  </div>
+);
+
+function DeepResearchBlock({ query, conversationHistory, onClearHistory }: { 
+  query: string, 
+  conversationHistory: {
+    previousQueries: string[];
+    previousResponses: string[];
+  },
+  onClearHistory?: () => void
+}) {
+  // Always set the first parameter to true to ensure it processes the query
+  // regardless of the parent component's state
+  const {
+    steps,
+    activeStepId,
+    isComplete,
+    isInProgress,
+    error,
+    webData
+  } = useDeepResearch(true, query, conversationHistory);
+  
+  const [manualStepId, setManualStepId] = useState<string | null>(null);
+  const isFinalStepComplete = steps[steps.length - 1]?.status === 'completed';
+  
+  const hasHistory = conversationHistory.previousQueries.length > 0;
+  
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
+      className="w-full rounded-xl border border-neutral-800 overflow-hidden mb-2 mt-2 bg-neutral-900 h-full flex flex-col"
+      style={{ minHeight: "350px", height: "calc(100vh - 180px)", maxHeight: "550px" }}
+    >
+      {hasHistory && onClearHistory && (
+        <div className="sr-only">
+            <button
+            onClick={onClearHistory}
+            className="text-xs text-cyan-500 hover:text-cyan-400 flex items-center gap-1 opacity-70 hover:opacity-100 transition-opacity"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 6h18"></path>
+              <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+              <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+              </svg>
+            Clear history ({conversationHistory.previousQueries.length})
+            </button>
+          </div>
+      )}
+      <div className="flex-1 flex flex-col h-full">
+        <AdvanceSearch
+          steps={steps}
+          activeStepId={isFinalStepComplete ? manualStepId || activeStepId : activeStepId}
+          onManualStepClick={isFinalStepComplete ? setManualStepId : undefined}
+          manualNavigationEnabled={isFinalStepComplete}
+          error={error}
+          webData={webData}
+        />
+      </div>
+      {error && (
+        <div className="text-red-500 text-sm text-center mt-2">{error}</div>
+      )}
+    </motion.div>
+  );
+}
+
 export default function TestChat() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
@@ -1766,69 +1837,5 @@ export default function TestChat() {
         <div className="text-red-500 text-sm text-center mt-2">{chatError}</div>
       )}
     </>
-  );
-}
-
-function DeepResearchBlock({ query, conversationHistory, onClearHistory }: { 
-  query: string, 
-  conversationHistory: {
-    previousQueries: string[];
-    previousResponses: string[];
-  },
-  onClearHistory?: () => void
-}) {
-  // Always set the first parameter to true to ensure it processes the query
-  // regardless of the parent component's state
-  const {
-    steps,
-    activeStepId,
-    isComplete,
-    isInProgress,
-    error,
-    webData
-  } = useDeepResearch(true, query, conversationHistory);
-  
-  const [manualStepId, setManualStepId] = useState<string | null>(null);
-  const isFinalStepComplete = steps[steps.length - 1]?.status === 'completed';
-  
-  const hasHistory = conversationHistory.previousQueries.length > 0;
-  
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, ease: "easeOut" }}
-      className="w-full rounded-xl border border-neutral-800 overflow-hidden mb-2 mt-2 bg-neutral-900 h-full flex flex-col"
-      style={{ minHeight: "350px", height: "calc(100vh - 180px)", maxHeight: "550px" }}
-    >
-      {hasHistory && onClearHistory && (
-        <div className="sr-only">
-            <button
-            onClick={onClearHistory}
-            className="text-xs text-cyan-500 hover:text-cyan-400 flex items-center gap-1 opacity-70 hover:opacity-100 transition-opacity"
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 6h18"></path>
-              <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-              <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-              </svg>
-            Clear history ({conversationHistory.previousQueries.length})
-            </button>
-          </div>
-      )}
-      <div className="flex-1 flex flex-col h-full">
-        <AdvanceSearch
-          steps={steps}
-          activeStepId={isFinalStepComplete ? manualStepId || activeStepId : activeStepId}
-          onManualStepClick={isFinalStepComplete ? setManualStepId : undefined}
-          manualNavigationEnabled={isFinalStepComplete}
-          error={error}
-          webData={webData}
-        />
-      </div>
-      {error && (
-        <div className="text-red-500 text-sm text-center mt-2">{error}</div>
-      )}
-    </motion.div>
   );
 } 
