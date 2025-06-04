@@ -49,7 +49,9 @@ type QueryType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversa
 type QueryClassificationType = keyof typeof SCHEMAS;
 type ContentDisplayType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversation' | 'deep-research';
 
-const BASE_SYSTEM_PROMPT = `You are tehom AI, a helpful and intelligent assistant. Use markdown dynamically based on user input.`;
+const BASE_SYSTEM_PROMPT = `You are tehom AI, a helpful and intelligent assistant. Use markdown dynamically based on user input.
+
+IMPORTANT: For general conversation, do NOT format your responses as JSON structures. Always provide plain text or simple markdown responses. Never return JSON objects or arrays in your replies unless specifically requested to do so.`;
 
 const CITATION_INSTRUCTIONS = `IMPORTANT: You are a Deep Research AI assistant. Follow this three-step process:
 
@@ -140,6 +142,95 @@ function cleanAIResponse(text: string): ProcessedResponse {
 }
 
 /**
+ * Detects and handles potential JSON responses in conversation mode.
+ * If the text appears to be JSON, it extracts and formats the content as plain text.
+ */
+function handlePotentialJsonInConversation(text: string): string {
+  if (!text || typeof text !== 'string') return text;
+  
+  // Check if the entire text looks like a JSON object
+  if ((text.trim().startsWith('{') && text.trim().endsWith('}')) ||
+      (text.trim().startsWith('[') && text.trim().endsWith(']'))) {
+    try {
+      const parsed = JSON.parse(text.trim());
+      
+      // Handle tutorial-style JSON
+      if (parsed.title && parsed.steps) {
+        let plainText = `# ${parsed.title}\n\n`;
+        if (parsed.introduction) plainText += `${parsed.introduction}\n\n`;
+        
+        if (Array.isArray(parsed.steps)) {
+          parsed.steps.forEach((step: any, index: number) => {
+            plainText += `## ${index + 1}. ${step.step_title || 'Step'}\n`;
+            plainText += `${step.instruction || ''}\n\n`;
+          });
+        }
+        
+        if (parsed.conclusion) plainText += `${parsed.conclusion}`;
+        return plainText;
+      }
+      
+      // Handle comparison-style JSON
+      if (parsed.title && parsed.item1_name && parsed.item2_name) {
+        let plainText = `# ${parsed.title}\n\n`;
+        if (parsed.introduction) plainText += `${parsed.introduction}\n\n`;
+        
+        plainText += `## ${parsed.item1_name}\n`;
+        if (parsed.item1_description) plainText += `${parsed.item1_description}\n\n`;
+        if (Array.isArray(parsed.item1_pros)) {
+          plainText += "Pros:\n";
+          parsed.item1_pros.forEach((pro: string) => {
+            plainText += `- ${pro}\n`;
+          });
+          plainText += "\n";
+        }
+        if (Array.isArray(parsed.item1_cons)) {
+          plainText += "Cons:\n";
+          parsed.item1_cons.forEach((con: string) => {
+            plainText += `- ${con}\n`;
+          });
+          plainText += "\n";
+        }
+        
+        plainText += `## ${parsed.item2_name}\n`;
+        if (parsed.item2_description) plainText += `${parsed.item2_description}\n\n`;
+        if (Array.isArray(parsed.item2_pros)) {
+          plainText += "Pros:\n";
+          parsed.item2_pros.forEach((pro: string) => {
+            plainText += `- ${pro}\n`;
+          });
+          plainText += "\n";
+        }
+        if (Array.isArray(parsed.item2_cons)) {
+          plainText += "Cons:\n";
+          parsed.item2_cons.forEach((con: string) => {
+            plainText += `- ${con}\n`;
+          });
+          plainText += "\n";
+        }
+        
+        if (parsed.summary) plainText += `## Summary\n${parsed.summary}`;
+        return plainText;
+      }
+      
+      // Handle any JSON with a content field (fallback)
+      if (parsed.content) {
+        return parsed.content;
+      }
+      
+      // Generic JSON handler - just convert to string representation
+      return "Received a JSON response. Here's the content in plain text format:\n\n" + 
+             JSON.stringify(parsed, null, 2);
+    } catch (e) {
+      // Not valid JSON, return original text
+      return text;
+    }
+  }
+  
+  return text;
+}
+
+/**
  * Post-processes AI chat responses for default chat to ensure clean, consistent output.
  * This function implements various cleanup operations to fix common issues in AI-generated text.
  * 
@@ -150,8 +241,9 @@ function postProcessAIChatResponse(text: string): string {
   if (typeof text !== 'string') {
     return '';
   }
-
-  let processedText = text;
+  
+  // First, handle potential JSON responses
+  let processedText = handlePotentialJsonInConversation(text);
 
   // 1. Remove Raw Output Artifacts
   // Remove common AI meta-language and instructional artifacts
@@ -1503,6 +1595,7 @@ export default function TestChat() {
     } else if (msg.content) {
       // For default chat (conversation), always render as markdown without JSON detection
       if (msg.contentType === 'conversation' || (msg.role === 'assistant' && !msg.contentType)) {
+        // Skip JSON detection entirely for conversation messages to avoid accidentally parsing JSON-like content
         return <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="prose dark:prose-invert max-w-none">{msg.content}</ReactMarkdown>;
       }
       
