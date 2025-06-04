@@ -934,6 +934,144 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory }: {
   );
 }
 
+/**
+ * Advanced detection of AI reasoning/thinking content.
+ * This function identifies text patterns that indicate the AI is still in its reasoning process
+ * rather than providing a final answer.
+ */
+function isReasoningContent(text: string): boolean {
+  if (!text) return false;
+  
+  // Simple keyword matching
+  const reasoningKeywords = [
+    'thinking', 'processing', 'let me think', 'let me analyze', 
+    'reasoning:', 'first,', 'let\'s break this down', 'step by step',
+    'let\'s think about', 'analyzing', 'i need to consider',
+    'thinking through', 'breaking down', 'step 1', 'step 2',
+    'first step', 'second step', 'let me understand',
+    'let me approach this', 'reasoning through'
+  ];
+  
+  const lowerText = text.toLowerCase();
+  
+  // Check for reasoning keywords
+  for (const keyword of reasoningKeywords) {
+    if (lowerText.includes(keyword)) {
+      return true;
+    }
+  }
+  
+  // Check for typical reasoning structures
+  const reasoningPatterns = [
+    /^(I'll|I will|Let me) (think|analyze|break|approach|consider)/i,
+    /^(First|To start|Let's start|To begin|Beginning|Initially)/i,
+    /^(Step \d|[1-9]\.)/i,
+    /^(Looking at|Analyzing|Examining|Considering) (this|the|your)/i,
+    /^(I need to|I should|I must) (analyze|consider|think|examine|understand)/i,
+    /^(Let's|I'll) (break|take|work|go|reason) (this|it) (down|through|step by step)/i
+  ];
+  
+  for (const pattern of reasoningPatterns) {
+    if (pattern.test(lowerText)) {
+      return true;
+    }
+  }
+  
+  // Check for thinking tag remnants even if they're being filtered elsewhere
+  if (lowerText.includes("<think>") || lowerText.includes("</think>")) {
+    return true;
+  }
+  
+  // Check for sequential reasoning indicators
+  const hasSequentialIndicators = 
+    (lowerText.includes("first") && lowerText.includes("second")) ||
+    (lowerText.includes("1.") && lowerText.includes("2.")) ||
+    (lowerText.includes("step 1") && lowerText.includes("step 2"));
+  
+  if (hasSequentialIndicators) {
+    return true;
+  }
+  
+  return false;
+}
+
+/**
+ * Smart content buffer processor that determines when the AI has finished reasoning
+ * and is providing its final answer. This helps prevent showing the reasoning process
+ * to the user and only displays the final output.
+ */
+function processStreamBuffer(buffer: string): {
+  showContent: boolean;
+  processedContent: string;
+  hasCompletedReasoning: boolean;
+} {
+  // Default values
+  let showContent = false;
+  let hasCompletedReasoning = false;
+  
+  // First, apply the cleaning function to remove think tags if present
+  const { content: cleanedContent } = cleanAIResponse(buffer);
+  
+  // Quick check for completely empty content
+  if (!cleanedContent || cleanedContent.trim().length === 0) {
+    return { 
+      showContent: false, 
+      processedContent: cleanedContent,
+      hasCompletedReasoning: false
+    };
+  }
+  
+  // Check if the current content appears to be reasoning
+  const currentlyReasoning = isReasoningContent(cleanedContent);
+  
+  // Detect transition from reasoning to final answer
+  // This pattern looks for reasoning followed by a clear separation and then an answer
+  // Using multiline mode with [\s\S]* instead of dotall flag
+  const transitionPatterns = [
+    // Common separation patterns
+    /reasoning[\s\S]*?\n\n([\s\S]*)/i,
+    /analyzing[\s\S]*?\n\n([\s\S]*)/i,
+    /let me think[\s\S]*?\n\n([\s\S]*)/i,
+    /step by step[\s\S]*?\n\n([\s\S]*)/i,
+    /to summarize:?\s+([\s\S]*)/i,
+    /in conclusion:?\s+([\s\S]*)/i,
+    /therefore,?\s+([\s\S]*)/i,
+    /final answer:?\s+([\s\S]*)/i,
+    /based on (the|my|this) (analysis|reasoning),?\s+([\s\S]*)/i
+  ];
+  
+  // Look for a transition from reasoning to answer
+  for (const pattern of transitionPatterns) {
+    const match = cleanedContent.match(pattern);
+    if (match && match[1]) {
+      // We found a transition to the final answer
+      hasCompletedReasoning = true;
+      // Extract the answer part (after the transition)
+      return {
+        showContent: true,
+        processedContent: match[1].trim(),
+        hasCompletedReasoning: true
+      };
+    }
+  }
+  
+  // If the content is substantial and doesn't appear to be reasoning, show it
+  // The minimum length threshold helps avoid showing small fragments
+  const isSubstantialContent = cleanedContent.length > 50;
+  
+  if (!currentlyReasoning && isSubstantialContent) {
+    showContent = true;
+    // If not currently reasoning and content is substantial, consider reasoning complete
+    hasCompletedReasoning = true;
+  }
+  
+  return {
+    showContent,
+    processedContent: cleanedContent,
+    hasCompletedReasoning
+  };
+}
+
 export default function TestChat() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
@@ -1352,6 +1490,8 @@ export default function TestChat() {
         let done = false;
         let contentBuffer = ''; // Buffer to accumulate content
         let hasActualContent = false; // Flag to track if we have meaningful content
+        let isReasoningPhase = false; // Flag to track if we're in the reasoning phase
+        let hasProcessedFinalContent = false; // Flag to know if we've already shown final content
         
         // Initialize aiMsg for the streaming case. 
         // We'll set its contentType more definitively after the stream.
@@ -1387,31 +1527,61 @@ export default function TestChat() {
                   if (delta) {
                     contentBuffer += delta; // Accumulate in buffer instead of showing immediately
                     
-                    // Check if we have meaningful content (not just whitespace or processing text)
-                    if (!hasActualContent && contentBuffer.trim().length > 0 && !contentBuffer.includes('thinking') && !contentBuffer.includes('processing')) {
-                      hasActualContent = true;
-                      aiMsg.content = contentBuffer;
+                    // Use the new stream buffer processor to intelligently detect final content
+                    const { showContent, processedContent, hasCompletedReasoning } = processStreamBuffer(contentBuffer);
+                    
+                    // If we've detected final content to show
+                    if (showContent && !hasProcessedFinalContent) {
+                      if (!hasActualContent) {
+                        // First time showing content - initialize
+                        hasActualContent = true;
+                        aiMsg.content = processedContent;
+                        
+                        // Only now add the message to chat and hide loading
+                        setIsProcessing(false);
+                        setMessages((prev) => [...prev, { ...aiMsg }]);
+                      } else {
+                        // Update existing content
+                        aiMsg.content = processedContent;
+                        setMessages((prev) => {
+                          const updatedMessages = [...prev];
+                          const aiIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
+                          if (aiIndex !== -1) {
+                            updatedMessages[aiIndex] = {
+                              ...updatedMessages[aiIndex],
+                              content: processedContent,
+                              webSources: aiMsg.webSources,
+                              isProcessed: true
+                            };
+                          }
+                          return updatedMessages;
+                        });
+                      }
                       
-                      // Only now add the message to chat and hide loading
-                      setIsProcessing(false);
-                      setMessages((prev) => [...prev, { ...aiMsg }]);
-                    } else if (hasActualContent) {
-                      // Update the message content only if we're already showing it
-                      aiMsg.content = contentBuffer;
-                    setMessages((prev) => {
-                      const updatedMessages = [...prev];
+                      // If we've definitively detected the transition from reasoning to final content,
+                      // mark that we've processed it, so we don't flip back
+                      if (hasCompletedReasoning) {
+                        hasProcessedFinalContent = true;
+                      }
+                    } else if (hasActualContent && showContent) {
+                      // We've already started showing content, continue updating
+                      aiMsg.content = processedContent;
+                      setMessages((prev) => {
+                        const updatedMessages = [...prev];
                         const aiIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
                         if (aiIndex !== -1) {
                           updatedMessages[aiIndex] = {
                             ...updatedMessages[aiIndex],
-                            content: contentBuffer,
+                            content: processedContent,
                             webSources: aiMsg.webSources,
-                            isProcessed: true // Ensure isProcessed is set when updating
+                            isProcessed: true
                           };
                         }
                         return updatedMessages;
                       });
                     }
+                    // Note: If showContent is false (we detect we're still in reasoning),
+                    // we don't update the display
                   }
                 } catch (err) {
                   // Skip malformed chunks silently
@@ -1426,6 +1596,7 @@ export default function TestChat() {
         // If it was an advance search, it would have been handled by its specific UI state.
         // Otherwise, it's treated as a conversation, potentially needing post-processing.
         if (showAdvanceSearchUI || currentQuery.includes('@AdvanceSearch')) {
+          // Keep the Advance Search processing intact
           const processedResearch = enforceAdvanceSearchStructure(contentBuffer);
           setMessages((prev) => {
             const updatedMessages = [...prev];
@@ -1442,20 +1613,25 @@ export default function TestChat() {
           aiMsg.content = processedResearch;
           aiMsg.contentType = 'deep-research';
         } else { // Handles conversation and image description streams
-          const cleanedContent = postProcessAIChatResponse(contentBuffer);
+          // First, try our smart processing to extract final content from the full response
+          const { showContent, processedContent, hasCompletedReasoning } = processStreamBuffer(contentBuffer);
+          
+          // If smart processing found a clear final answer, use that
+          const finalContent = hasCompletedReasoning ? processedContent : postProcessAIChatResponse(contentBuffer);
+          
           setMessages((prev) => {
             const updatedMessages = [...prev];
             const msgIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
             if (msgIndex !== -1) {
               updatedMessages[msgIndex] = {
                 ...updatedMessages[msgIndex],
-                content: cleanedContent,
+                content: finalContent,
                 contentType: 'conversation' // Confirmed as conversation
               };
             }
             return updatedMessages;
           });
-          aiMsg.content = cleanedContent;
+          aiMsg.content = finalContent;
           aiMsg.contentType = 'conversation';
         }
         
