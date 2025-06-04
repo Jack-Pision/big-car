@@ -1098,8 +1098,8 @@ function processStreamBuffer(buffer: string): {
   // Check if we've completed the reasoning phase based on our patterns
   const hasCompletedReasoning = reasoningPatterns.some(pattern => pattern.test(processedBuffer));
   
-  // Length-based heuristics for showing content
-  const hasSubstantialContent = processedBuffer.length > 40;
+  // Length-based heuristics for showing content - OPTIMIZATION 1: Reduce threshold from 40 to 20
+  const hasSubstantialContent = processedBuffer.length > 20;
   
   // If we've completed reasoning or have substantial non-reasoning content, show it
   // Prioritize showing completed reasoning, but fallback to showing substantial content
@@ -1453,11 +1453,11 @@ export default function TestChat() {
 
       const apiPayload: any = {
         messages: formattedMessages,
-        temperature: 0.6,
+        temperature: 0.7,        // OPTIMIZATION 3: Increased from 0.6 for faster initial responses
         max_tokens: 3500,
         top_p: 0.9,
-        frequency_penalty: 0.2,
-        presence_penalty: 0.2,
+        frequency_penalty: 0.2,  // OPTIMIZATION 3: Decreased from 0.5 
+        presence_penalty: 0.2,   // OPTIMIZATION 3: Decreased from 0.8
       };
       
       if (uploadedImageUrls.length > 0) {
@@ -1577,7 +1577,7 @@ export default function TestChat() {
                     const { showContent, processedContent, hasCompletedReasoning } = processStreamBuffer(contentBuffer);
                     
                     // If we've detected final content to show
-                    if (showContent && !hasProcessedFinalContent) {
+                    if ((showContent || contentBuffer.length > 15) && !hasProcessedFinalContent) {
                       if (!hasActualContent) {
                         // First time showing content - initialize
                         hasActualContent = true;
