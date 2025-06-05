@@ -2310,25 +2310,6 @@ export default function TestChat() {
                             />
     </div>
                     )}
-                    {/* Three dots menu for assistant */}
-                    <div style={{ position: 'absolute', top: 8, right: 8, zIndex: 10 }}>
-                      <button
-                        onClick={() => handleMenuToggle(msg.id)}
-                        className="p-1 rounded-full hover:bg-gray-700 focus:outline-none"
-                        aria-label="Open menu"
-                      >
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <circle cx="12" cy="5" r="1.5" />
-                          <circle cx="12" cy="12" r="1.5" />
-                          <circle cx="12" cy="19" r="1.5" />
-                        </svg>
-                      </button>
-                      {menuOpenId === msg.id && (
-                        <div className="absolute right-0 mt-2 w-24 bg-white text-black rounded shadow-lg z-50 flex flex-col text-sm">
-                          <button className="px-3 py-2 hover:bg-gray-200 text-left" onClick={() => handleDelete(msg.id)}>Delete</button>
-                        </div>
-                      )}
-                    </div>
                   </motion.div>
                 );
               } else if (msg.role === "deep-research") {
@@ -2362,7 +2343,6 @@ export default function TestChat() {
                     </button>
                     {menuOpenId === msg.id && (
                       <div className="absolute right-0 mt-2 w-24 bg-white text-black rounded shadow-lg z-50 flex flex-col text-sm">
-                        <button className="px-3 py-2 hover:bg-gray-200 text-left" onClick={() => handleEdit(msg)}>Edit</button>
                         <button className="px-3 py-2 hover:bg-gray-200 text-left" onClick={() => handleDelete(msg.id)}>Delete</button>
                       </div>
                     )}
