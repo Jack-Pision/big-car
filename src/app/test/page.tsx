@@ -280,137 +280,89 @@ function handlePotentialJsonInConversation(text: string): string {
  * IMPORTANT: This function is ONLY for default chat responses (currentQueryType === 'conversation')
  * and should NOT be applied to advance search or other structured responses.
  */
-function postProcessAIChatResponse(text: string): string {
+function postProcessAIChatResponse(text: string, isDefaultChat: boolean): string {
   if (typeof text !== 'string') {
     return '';
   }
-
-  // First, handle potential JSON responses
   let processedText = handlePotentialJsonInConversation(text);
-
-  // 1. Remove Raw Output Artifacts
-  // Remove common AI meta-language and instructional artifacts
-  const artifactPatterns = [
-    /\[Your response here\]/gi,
-    /\[End of response\]/gi,
-    /\[AI response continues\]/gi,
-    /\[AI Assistant\]/gi,
-    /\[I'll create a (.*?) for you\]/gi,
-    /\[Let me help you with that\]/gi,
-    /\[I understand you're asking about\]/gi,
-    /As an AI assistant[,.]/gi,
-    /As an AI language model[,.]/gi,
-    /I'm an AI assistant and /gi,
-    /I'll generate /gi,
-    /I'll create /gi,
-    /Here's (a|an|the) (answer|response|information|summary)/gi,
-    /Thank you for your question/gi,
-    /AI: /g,
-    /User: /g,
-  ];
-
-  artifactPatterns.forEach(pattern => {
-    processedText = processedText.replace(pattern, '');
-  });
-
-  // 2. Fix Markdown Formatting
-  // Remove all markdown formatting (asterisks and underscores for bold/italic) for default chat
-  processedText = processedText.replace(/\*\*([^*]+)\*\*/g, '$1'); // Remove **bold**
-  processedText = processedText.replace(/\*([^*]+)\*/g, '$1');     // Remove *italic*
-  processedText = processedText.replace(/__([^_]+)__/g, '$1');     // Remove __bold__
-  processedText = processedText.replace(/_([^_]+)_/g, '$1');       // Remove _italic_
-
-  // Fix broken lists (ensure proper space after list markers)
-  processedText = processedText.replace(/^(\s*[-*]|\s*[0-9]+\.)(?!\s)/gm, '$1 ');
-  
-  // Remove circled numbers/letters and custom symbols (e.g., ⓵ⓇⓉⓐⓢ)
-  processedText = processedText.replace(/[⓵⓶⓷⓸⓹⓺⓻⓼⓽⓾ⓇⓉⓐⓢⓑⓒⓓⓔⓕⓖⓗⓘⓙⓚⓛⓜⓝⓞⓟⓠⓡⓢⓣⓤⓥⓦⓧⓨⓩ]/g, '');
-
-  // Collapse repeated numbers/dashes (e.g., 20K–20K–20K–50K => 20K–50K)
-  processedText = processedText.replace(/(\b\d+[KkMm]\b[–-])(?:\1)+/g, '$1');
-  // Remove accidental number/letter repetition at the start of lines (e.g., 2 2 Solution: => 2 Solution:)
-  processedText = processedText.replace(/^(\d+)\s+\1\s+/gm, '$1 ');
-  // Remove accidental dash repetition (e.g., - - - Item => - Item)
-  processedText = processedText.replace(/^(?:-\s+)+(-\s+)/gm, '$1');
-  
-  // Normalize multiple consecutive blank lines to at most two
-  processedText = processedText.replace(/\n{3,}/g, '\n\n');
-
-  // 3. Remove Biased or Overconfident Phrasing
-  const overconfidentPhrases = [
-    /\bI'm (100% )?certain\b/gi,
-    /\bI guarantee\b/gi,
-  ];
-
-  overconfidentPhrases.forEach(phrase => {
-    processedText = processedText.replace(phrase, match => {
-      // Replace with more measured alternatives
-      const alternatives = {
-        "I'm certain": "I believe",
-        "I'm 100% certain": "I believe",
-        "I guarantee": "I think",
-        "without any doubt": "based on available information",
-        "absolutely certain": "confident",
-        "absolutely sure": "confident",
-        "I can assure you": "It appears that",
-        "I promise": "I expect"
-      };
-      
-      const key = match.toLowerCase();
-      for (const [pattern, replacement] of Object.entries(alternatives)) {
-        if (key.includes(pattern.toLowerCase())) {
-          return replacement;
-        }
-      }
-      return "I believe"; // Default fallback
+  if (isDefaultChat) {
+    const artifactPatterns = [
+      /\[Your response here\]/gi,
+      /\[End of response\]/gi,
+      /\[AI response continues\]/gi,
+      /\[AI Assistant\]/gi,
+      /\[I'll create a (.*?) for you\]/gi,
+      /\[Let me help you with that\]/gi,
+      /\[I understand you're asking about\]/gi,
+      /As an AI assistant[,.]/gi,
+      /As an AI language model[,.]/gi,
+      /I'm an AI assistant and /gi,
+      /I'll generate /gi,
+      /I'll create /gi,
+      /Here's (a|an|the) (answer|response|information|summary)/gi,
+      /Thank you for your question/gi,
+      /AI: /g,
+      /User: /g,
+    ];
+    artifactPatterns.forEach(pattern => {
+      processedText = processedText.replace(pattern, '');
     });
-  });
-
-  // 4. Fix Incomplete or Broken Text
-  // Close unclosed code blocks
-  const codeBlockFence = '```';
-  let openFenceCount = 0;
-  let lastFenceIndex = -1;
-  let fenceIndex = processedText.indexOf(codeBlockFence);
-  
-  while (fenceIndex !== -1) {
-    openFenceCount++;
-    lastFenceIndex = fenceIndex;
-    fenceIndex = processedText.indexOf(codeBlockFence, lastFenceIndex + codeBlockFence.length);
+    processedText = processedText.replace(/\*\*([^*]+)\*\*/g, '$1');
+    processedText = processedText.replace(/\*([^*]+)\*/g, '$1');
+    processedText = processedText.replace(/__([^_]+)__/g, '$1');
+    processedText = processedText.replace(/_([^_]+)_/g, '$1');
+    processedText = processedText.replace(/^(\s*[-*]|\s*[0-9]+\.)(?!\s)/gm, '$1 ');
+    processedText = processedText.replace(/[⓵⓶⓷⓸⓹⓺⓻⓼⓽⓾ⓇⓉⓐⓢⓑⓒⓓⓔⓕⓖⓗⓘⓙⓚⓛⓜⓝⓞⓟⓠⓡⓢⓣⓤⓥⓦⓧⓨⓩ]/g, '');
+    processedText = processedText.replace(/(\b\d+[KkMm]\b[–-])(?:\1)+/g, '$1');
+    processedText = processedText.replace(/^(\d+)\s+\1\s+/gm, '$1 ');
+    processedText = processedText.replace(/^(?:-\s+)+(-\s+)/gm, '$1');
+    processedText = processedText.replace(/\n{3,}/g, '\n\n');
+    const overconfidentPhrases = [
+      /\bI'm (100% )?certain\b/gi,
+      /\bI guarantee\b/gi,
+    ];
+    overconfidentPhrases.forEach(phrase => {
+      processedText = processedText.replace(phrase, match => {
+        const alternatives = {
+          "I'm certain": "I believe",
+          "I'm 100% certain": "I believe",
+          "I guarantee": "I think",
+          "without any doubt": "based on available information",
+          "absolutely certain": "confident",
+          "absolutely sure": "confident",
+          "I can assure you": "It appears that",
+          "I promise": "I expect"
+        };
+        const key = match.toLowerCase();
+        for (const [pattern, replacement] of Object.entries(alternatives)) {
+          if (key.includes(pattern.toLowerCase())) {
+            return replacement;
+          }
+        }
+        return "I believe";
+      });
+    });
+    const codeBlockFence = '```';
+    let openFenceCount = 0;
+    let lastFenceIndex = -1;
+    let fenceIndex = processedText.indexOf(codeBlockFence);
+    while (fenceIndex !== -1) {
+      openFenceCount++;
+      lastFenceIndex = fenceIndex;
+      fenceIndex = processedText.indexOf(codeBlockFence, lastFenceIndex + codeBlockFence.length);
+    }
+    if (openFenceCount % 2 !== 0) {
+      processedText += `\n${codeBlockFence}`;
+    }
+    processedText = processedText.replace(/([a-z])(\s*\n|\s*$)/g, '$1.$2');
+    processedText = processedText.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+    processedText = processedText.replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '');
+    processedText = processedText.split('\n').map(line => line.trimRight()).join('\n');
+    processedText = processedText.trim();
+    processedText = processedText.replace(/\.([A-Z])/g, '.\n$1');
+    processedText = processedText.replace(/\n{3,}/g, '\n\n');
+    processedText = processedText.replace(/(^[-*]\s*)\n+([^\n*-].*)/gm, '$1$2');
   }
-  
-  // If odd number of fences, add a closing fence
-  if (openFenceCount % 2 !== 0) {
-    processedText += `\n${codeBlockFence}`;
-  }
-  
-  // Fix sentences that end abruptly
-  processedText = processedText.replace(/([a-z])(\s*\n|\s*$)/g, '$1.$2');
-
-  // 5. Filter Unsafe or Sensitive Content
-  // Basic HTML script tag removal
-  processedText = processedText.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
-  // Filter other potentially unsafe HTML
-  processedText = processedText.replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '');
-  
-  // 6. Final Cleanup
-  // Trim trailing whitespace from each line
-  processedText = processedText.split('\n').map(line => line.trimRight()).join('\n');
-  
-  // Remove trailing line breaks and spaces
-  processedText = processedText.trim();
-  
-  // 7. Visual Formatting & Readability
-  // Add a line break after every full stop followed by a capital letter if no line break exists
-  // This helps break up dense text paragraphs
-  processedText = processedText.replace(/\.([A-Z])/g, '.\n$1');
-  
-  // Clean up multiple consecutive line breaks again after formatting changes
-  processedText = processedText.replace(/\n{3,}/g, '\n\n');
-
-  // 8. Fix bullet point gaps: join bullet and text if separated by blank line
-  processedText = processedText.replace(/(^[-*]\s*)\n+([^\n*-].*)/gm, '$1$2');
-  
   return processedText;
 }
 
@@ -497,6 +449,60 @@ const GlobalStyles = () => (
     .ai-response-text * {
       max-width: 100% !important;
       overflow-wrap: break-word !important;
+    }
+    .default-chat-markdown {
+      h1, h2, h3, h4, h5, h6 {
+        margin-top: 1.5em;
+        margin-bottom: 0.75em;
+        line-height: 1.3;
+        color: #e5e5e5;
+      }
+      p {
+        margin-bottom: 1em;
+        line-height: 1.7;
+        color: #e5e5e5;
+      }
+      ul, ol {
+        margin: 0.5em 0 1em 2em;
+        padding-left: 1.5em;
+      }
+      li {
+        margin-bottom: 0.5em;
+        color: #e5e5e5;
+      }
+      code {
+        background: #232323;
+        color: #fff;
+        border-radius: 6px;
+        padding: 0.2em 0.4em;
+        font-size: 0.95em;
+      }
+      pre {
+        background: #232323;
+        color: #fff;
+        border-radius: 8px;
+        padding: 1em;
+        overflow-x: auto;
+        margin: 1em 0;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 1.5em 0;
+      }
+      th, td {
+        border: 1px solid #333;
+        padding: 0.5em 1em;
+        text-align: left;
+      }
+      blockquote {
+        border-left: 4px solid #00bcd4;
+        background: #232323;
+        color: #fff;
+        padding: 0.5em 1em;
+        margin: 1em 0;
+        border-radius: 6px;
+      }
     }
   `}</style>
 );
@@ -1269,7 +1275,7 @@ function processStreamBuffer(buffer: string): {
   }
   
   // Always apply postProcessAIChatResponse and handlePotentialJsonInConversation to the content
-  cleanedContent = postProcessAIChatResponse(cleanedContent);
+  cleanedContent = postProcessAIChatResponse(cleanedContent, true);
   
   return {
     showContent: shouldShow,
@@ -1828,7 +1834,7 @@ export default function TestChat() {
           const { showContent, processedContent, hasCompletedReasoning } = processStreamBuffer(contentBuffer);
           
           // If smart processing found a clear final answer, use that
-          const finalContent = hasCompletedReasoning ? processedContent : postProcessAIChatResponse(contentBuffer);
+          const finalContent = hasCompletedReasoning ? processedContent : postProcessAIChatResponse(contentBuffer, true);
           
           setMessages((prev) => {
             const updatedMessages = [...prev];
@@ -1996,7 +2002,6 @@ export default function TestChat() {
   };
 
   const renderMessageContent = (msg: Message) => {
-    // If structuredContent is present, use the existing logic
     if (msg.contentType && msg.structuredContent) {
       switch (msg.contentType) {
         case 'tutorial':
@@ -2014,25 +2019,43 @@ export default function TestChat() {
           return <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="prose dark:prose-invert max-w-none">{`Unsupported structured content: ${JSON.stringify(msg.structuredContent)}`}</ReactMarkdown>;
       }
     } else if (msg.content) {
-      // For default chat (conversation), always try handling JSON first
-      if (msg.contentType === 'conversation' || (msg.role === 'assistant' && !msg.contentType)) {
-        // Process content to handle any potential JSON responses, even in conversation mode
-        const processedContent = handlePotentialJsonInConversation(msg.content);
-        return <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="prose dark:prose-invert max-w-none">{processedContent}</ReactMarkdown>;
+      const isDefaultChat = msg.contentType === 'conversation' || (msg.role === 'assistant' && !msg.contentType);
+      if (isDefaultChat) {
+        const processedContent = postProcessAIChatResponse(msg.content, true);
+        return (
+          <ReactMarkdown 
+            remarkPlugins={[remarkGfm]} 
+            rehypePlugins={[rehypeRaw]} 
+            className="prose dark:prose-invert max-w-none default-chat-markdown"
+            components={{
+              h1: ({node, ...props}) => <h1 className="text-2xl font-bold mb-4 mt-6" {...props} />, 
+              h2: ({node, ...props}) => <h2 className="text-xl font-semibold mb-3 mt-5" {...props} />, 
+              h3: ({node, ...props}) => <h3 className="text-lg font-semibold mb-2 mt-4" {...props} />, 
+              h4: ({node, ...props}) => <h4 className="text-base font-semibold mb-2 mt-3" {...props} />, 
+              p: ({node, ...props}) => <p className="mb-2 leading-relaxed" {...props} />, 
+              ul: ({node, ...props}) => <ul className="list-disc ml-6 mb-2" {...props} />, 
+              ol: ({node, ...props}) => <ol className="list-decimal ml-6 mb-2" {...props} />, 
+              li: ({node, ...props}) => <li className="mb-1" {...props} />, 
+              code: ({node, ...props}) => <code className="bg-neutral-900 text-white rounded px-1.5 py-1" {...props} />, 
+              pre: ({node, ...props}) => <pre className="bg-neutral-900 text-white rounded p-4 overflow-x-auto my-2" {...props} />, 
+              table: ({node, ...props}) => <table className="min-w-full border-collapse my-4" {...props} />, 
+              th: ({node, ...props}) => <th className="border-b border-gray-700 px-4 py-2 text-left" {...props} />, 
+              td: ({node, ...props}) => <td className="border-b border-gray-800 px-4 py-2" {...props} />, 
+              blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-cyan-400 pl-4 italic my-2" {...props} />,
+            }}
+          >
+            {processedContent}
+          </ReactMarkdown>
+        );
       }
-      
-      // Only perform further JSON detection for non-conversation messages (advance search, etc.)
       let content = msg.content.trim();
-      // 1. Strip code block fences if present
       if (content.startsWith('```')) {
         content = content.replace(/^```[a-zA-Z]*\n?/, '').replace(/```$/, '').trim();
       }
-      // 2. Extract first JSON object or array from the string
       let jsonMatch = content.match(/({[\s\S]*}|\[[\s\S]*\])/);
       if (jsonMatch) {
         try {
           const parsed = JSON.parse(jsonMatch[0]);
-          // Try to detect known structures
           if (parsed && typeof parsed === 'object') {
             if (parsed.title && parsed.steps) {
               return <TutorialDisplay data={parsed as TutorialData} />;
@@ -2042,14 +2065,10 @@ export default function TestChat() {
               return <InformationalSummaryDisplay data={parsed as InformationalSummaryData} />;
             }
           }
-          // If not a known structure, render as formatted JSON
           return <pre className="bg-neutral-900 text-white rounded p-4 overflow-x-auto"><code>{JSON.stringify(parsed, null, 2)}</code></pre>;
-        } catch (e) {
-          // Not valid JSON, fall through to markdown rendering
-        }
+        } catch (e) {}
       }
-      // Fallback for simple text content or streamed content
-        return <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="prose dark:prose-invert max-w-none">{msg.content}</ReactMarkdown>;
+      return <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="prose dark:prose-invert max-w-none">{msg.content}</ReactMarkdown>;
     }
     return null;
   };
