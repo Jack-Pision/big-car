@@ -2089,9 +2089,9 @@ export default function TestChat() {
             >
               {/* Image previews above textarea */}
               {imagePreviewUrls.length > 0 && (
-                <div className="flex flex-row gap-2 mb-2 justify-center">
+                <div className="flex flex-row gap-2 mb-2 justify-start overflow-x-auto max-w-full">
                   {imagePreviewUrls.map((url, idx) => (
-                    <div key={idx} className="relative">
+                    <div key={idx} className="relative flex-shrink-0">
                       <img src={url} alt={`Preview ${idx + 1}`} className="w-16 h-16 object-cover rounded-lg" />
                       <button
                         type="button"
@@ -2100,9 +2100,9 @@ export default function TestChat() {
                       >
                         &times;
                       </button>
-              </div>
-          ))}
-        </div>
+                    </div>
+                  ))}
+                </div>
               )}
 
               {/* Input area: textarea on top, actions below */}
