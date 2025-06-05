@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { Session } from '@/lib/types';
@@ -27,6 +27,8 @@ export default function Sidebar({
   const [editValue, setEditValue] = useState('');
   const [showDeleteId, setShowDeleteId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const editInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -56,6 +58,37 @@ export default function Sidebar({
     session =>
       session.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Handler for menu toggle
+  const handleMenuToggle = (id: string) => {
+    setMenuOpenId(menuOpenId === id ? null : id);
+  };
+
+  // Handler for edit
+  const handleEdit = (session: Session) => {
+    setEditingId(session.id);
+    setEditValue(session.title);
+    setMenuOpenId(null);
+    setTimeout(() => {
+      editInputRef.current?.focus();
+    }, 100);
+  };
+
+  // Handler for save edit
+  const handleEditSave = (id: string) => {
+    setSessions((prev) => prev.map(s => s.id === id ? { ...s, title: editValue } : s));
+    // Persist the change
+    const updatedSessions = getSessions().map(s => s.id === id ? { ...s, title: editValue } : s);
+    localStorage.setItem('sessions', JSON.stringify(updatedSessions));
+    setEditingId(null);
+    setEditValue('');
+  };
+
+  // Handler for cancel edit
+  const handleEditCancel = () => {
+    setEditingId(null);
+    setEditValue('');
+  };
 
   return (
     <AnimatePresence>
@@ -125,23 +158,49 @@ export default function Sidebar({
                     tabIndex={0}
                     aria-label={`Open session: ${session.title}`}
                   >
-                    <span className="flex-1 truncate" title={session.title}>
-                      {session.title}
-                    </span>
-                    <button
-                      className="p-1 rounded opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity text-gray-400 hover:text-red-400"
-                      onClick={e => {
-                        e.stopPropagation();
-                        setShowDeleteId(session.id);
-                      }}
-                      aria-label="Delete session"
-                      title="Delete"
-                    >
-                      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                        <path d="M3 6h18M9 6v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2V6" />
-                        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
-                      </svg>
-                    </button>
+                    {editingId === session.id ? (
+                      <input
+                        ref={editInputRef}
+                        className="flex-1 truncate bg-gray-800 text-white rounded px-2 py-1 outline-none border border-blue-400"
+                        value={editValue}
+                        onChange={e => setEditValue(e.target.value)}
+                        onClick={e => e.stopPropagation()}
+                        onBlur={() => handleEditSave(session.id)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') handleEditSave(session.id);
+                          if (e.key === 'Escape') handleEditCancel();
+                        }}
+                      />
+                    ) : (
+                      <span className="flex-1 truncate" title={session.title}>
+                        {session.title}
+                      </span>
+                    )}
+                    {/* Three dots menu */}
+                    <div style={{ position: 'relative' }}>
+                      <button
+                        className="p-1 rounded hover:bg-gray-600 focus:outline-none"
+                        onClick={e => {
+                          e.stopPropagation();
+                          handleMenuToggle(session.id);
+                        }}
+                        aria-label="Open menu"
+                        title="Session options"
+                      >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="5" r="1.5" />
+                          <circle cx="12" cy="12" r="1.5" />
+                          <circle cx="12" cy="19" r="1.5" />
+                        </svg>
+                      </button>
+                      {menuOpenId === session.id && (
+                        <div className="absolute right-0 mt-2 w-28 bg-white text-black rounded shadow-lg z-50 flex flex-col text-sm">
+                          <button className="px-3 py-2 hover:bg-gray-200 text-left" onClick={e => { e.stopPropagation(); handleEdit(session); }}>Edit</button>
+                          <button className="px-3 py-2 hover:bg-gray-200 text-left" onClick={e => { e.stopPropagation(); setShowDeleteId(session.id); setMenuOpenId(null); }}>Delete</button>
+                        </div>
+                      )}
+                    </div>
+                    {/* Existing delete modal remains unchanged */}
                     <AnimatePresence>
                       {showDeleteId === session.id && (
                         <motion.div
