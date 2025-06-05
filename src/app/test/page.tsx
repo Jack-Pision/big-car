@@ -1742,7 +1742,7 @@ export default function TestChat() {
                     const { showContent, processedContent, hasCompletedReasoning } = processStreamBuffer(contentBuffer);
                     
                     // If we've detected final content to show
-                    if ((showContent || contentBuffer.length > 15) && !hasProcessedFinalContent) {
+                    if ((showContent) && !hasProcessedFinalContent) {
                       if (!hasActualContent) {
                         // First time showing content - initialize
                         hasActualContent = true;
