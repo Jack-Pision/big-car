@@ -284,7 +284,7 @@ function postProcessAIChatResponse(text: string): string {
   if (typeof text !== 'string') {
     return '';
   }
-  
+
   // First, handle potential JSON responses
   let processedText = handlePotentialJsonInConversation(text);
 
@@ -314,48 +314,15 @@ function postProcessAIChatResponse(text: string): string {
   });
 
   // 2. Fix Markdown Formatting
-  // --- Robust Markdown Normalization ---
-  // Normalize list markers and ensure space after them
-  processedText = processedText.replace(/^(\s*[-*])(?=\S)/gm, '$1 '); // -item -> - item
-  processedText = processedText.replace(/^(\s*\d+\.)(?=\S)/gm, '$1 '); // 1.item -> 1. item
-  // Normalize bullet list markers to '-'
-  processedText = processedText.replace(/^(\s*)[•‣‣·]/gm, '$1-');
-  // Fix broken numbered lists (ensure numbers increment)
-  processedText = processedText.replace(/^(\d+)\.\s+/gm, (m, n) => `${n}. `);
-  // Remove duplicate list markers
-  processedText = processedText.replace(/^(\s*[-*]\s*){2,}/gm, '- ');
-  // Ensure one blank line before and after lists
-  processedText = processedText.replace(/([^\n])\n([-*] )/g, '$1\n\n$2');
-  processedText = processedText.replace(/([-*] .+)(?!\n\n)/g, '$1\n');
+  // Remove all markdown formatting (asterisks and underscores for bold/italic) for default chat
+  processedText = processedText.replace(/\*\*([^*]+)\*\*/g, '$1'); // Remove **bold**
+  processedText = processedText.replace(/\*([^*]+)\*/g, '$1');     // Remove *italic*
+  processedText = processedText.replace(/__([^_]+)__/g, '$1');     // Remove __bold__
+  processedText = processedText.replace(/_([^_]+)_/g, '$1');       // Remove _italic_
 
-  // Fix bold/italic: close unclosed tags (simple heuristic)
-  // Add closing ** if odd number
-  const boldCount = (processedText.match(/\*\*/g) || []).length;
-  if (boldCount % 2 !== 0) processedText += '**';
-  // Add closing * if odd number
-  const italicCount = (processedText.match(/\*/g) || []).length - 2 * (boldCount);
-  if (italicCount % 2 !== 0) processedText += '*';
-  // Add closing __ if odd number
-  const uCount = (processedText.match(/__/g) || []).length;
-  if (uCount % 2 !== 0) processedText += '__';
-  // Add closing _ if odd number
-  const iCount = (processedText.match(/_/g) || []).length - 2 * (uCount);
-  if (iCount % 2 !== 0) processedText += '_';
-
-  // Normalize headings: ensure space after #
-  processedText = processedText.replace(/^(#+)([^ #])/gm, '$1 $2');
-  // Remove extra # in headings (e.g., ###### -> ###)
-  processedText = processedText.replace(/^(#{4,})/gm, '###');
-
-  // Fix tables: ensure pipes at start/end and consistent columns
-  processedText = processedText.replace(/^(\s*\|[^|]+\|\s*)$/gm, (line) => {
-    // Add leading/trailing pipe if missing
-    let l = line.trim();
-    if (!l.startsWith('|')) l = '|' + l;
-    if (!l.endsWith('|')) l = l + '|';
-    return l;
-  });
-
+  // Fix broken lists (ensure proper space after list markers)
+  processedText = processedText.replace(/^(\s*[-*]|\s*[0-9]+\.)(?!\s)/gm, '$1 ');
+  
   // Remove circled numbers/letters and custom symbols (e.g., ⓵ⓇⓉⓐⓢ)
   processedText = processedText.replace(/[⓵⓶⓷⓸⓹⓺⓻⓼⓽⓾ⓇⓉⓐⓢⓑⓒⓓⓔⓕⓖⓗⓘⓙⓚⓛⓜⓝⓞⓟⓠⓡⓢⓣⓤⓥⓦⓧⓨⓩ]/g, '');
 
@@ -365,7 +332,7 @@ function postProcessAIChatResponse(text: string): string {
   processedText = processedText.replace(/^(\d+)\s+\1\s+/gm, '$1 ');
   // Remove accidental dash repetition (e.g., - - - Item => - Item)
   processedText = processedText.replace(/^(?:-\s+)+(-\s+)/gm, '$1');
-
+  
   // Normalize multiple consecutive blank lines to at most two
   processedText = processedText.replace(/\n{3,}/g, '\n\n');
 
@@ -1480,23 +1447,23 @@ export default function TestChat() {
         const alreadyPresent = messages.some(m => m.role === 'assistant' && m.content === cleanedOutput);
         if (!alreadyPresent) {
           // Removed setTimeout to make message appear immediately
-          setMessages(prev => [
+            setMessages(prev => [
             ...prev,
-            { 
-              role: 'assistant', 
-              content: cleanedOutput,
-              webSources: webData?.sources || [],
-              id: uuidv4(),
+              { 
+                role: 'assistant', 
+                content: cleanedOutput,
+                webSources: webData?.sources || [],
+                id: uuidv4(),
               timestamp: Date.now(),
               isProcessed: true // Mark Advance Search messages as processed
-            }
-          ]);
-          
-          setAdvanceSearchHistory(prev => ({
-            previousQueries: [...prev.previousQueries, currentQuery],
-            previousResponses: [...prev.previousResponses, cleanedOutput]
-          }));
-          
+              }
+            ]);
+            
+            setAdvanceSearchHistory(prev => ({
+              previousQueries: [...prev.previousQueries, currentQuery],
+              previousResponses: [...prev.previousResponses, cleanedOutput]
+            }));
+            
           // Add console log for confirmation
           console.log("[AdvanceSearch] Added synthesized response to messages");
         } else {
@@ -1716,7 +1683,7 @@ export default function TestChat() {
         }
 
         const aiMsg: Message = {
-          role: "assistant" as const,
+        role: "assistant" as const,
           content: '', 
           contentType: parsedQueryType,
           structuredContent: structuredData,
@@ -1725,8 +1692,8 @@ export default function TestChat() {
           parentId: messageId,
           webSources: [],
           isProcessed: true // Mark message as processed
-        };
-        setMessages((prev) => [...prev, aiMsg]);
+      };
+      setMessages((prev) => [...prev, aiMsg]);
       } else { // Default to streaming logic for all other cases (including 'conversation')
         const reader = res.body!.getReader();
         const decoder = new TextDecoder();
@@ -1787,8 +1754,8 @@ export default function TestChat() {
                       } else {
                         // Update existing content
                         aiMsg.content = processedContent;
-                        setMessages((prev) => {
-                          const updatedMessages = [...prev];
+                    setMessages((prev) => {
+                      const updatedMessages = [...prev];
                           const aiIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
                           if (aiIndex !== -1) {
                             updatedMessages[aiIndex] = {
@@ -1796,10 +1763,10 @@ export default function TestChat() {
                               content: processedContent,
                               webSources: aiMsg.webSources,
                               isProcessed: true
-                            };
-                          }
-                          return updatedMessages;
-                        });
+                        };
+                      }
+                      return updatedMessages;
+                    });
                       }
                       
                       // If we've definitively detected the transition from reasoning to final content,
@@ -2082,7 +2049,7 @@ export default function TestChat() {
         }
       }
       // Fallback for simple text content or streamed content
-      return <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="prose dark:prose-invert max-w-none">{msg.content}</ReactMarkdown>;
+        return <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="prose dark:prose-invert max-w-none">{msg.content}</ReactMarkdown>;
     }
     return null;
   };
@@ -2331,15 +2298,15 @@ export default function TestChat() {
                   style={{ wordBreak: "break-word" }}
                 >
                   {/* Only show message content and images, no menu */}
-                  {msg.imageUrls && msg.imageUrls.map((url, index) => (
-                    <img 
-                      key={index}
-                      src={url} 
-                      alt={`Preview ${index + 1}`} 
-                      className="max-w-xs max-h-64 rounded-md mb-2 self-end" 
-                    />
-                  ))}
-                  <div>{msg.content}</div>
+                    {msg.imageUrls && msg.imageUrls.map((url, index) => (
+                      <img 
+                        key={index}
+                        src={url} 
+                        alt={`Preview ${index + 1}`} 
+                        className="max-w-xs max-h-64 rounded-md mb-2 self-end" 
+                      />
+                    ))}
+                    <div>{msg.content}</div>
                 </div>
                 );
               }
