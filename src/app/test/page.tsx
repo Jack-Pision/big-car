@@ -314,15 +314,48 @@ function postProcessAIChatResponse(text: string): string {
   });
 
   // 2. Fix Markdown Formatting
-  // Remove all markdown formatting (asterisks and underscores for bold/italic) for default chat
-  processedText = processedText.replace(/\*\*([^*]+)\*\*/g, '$1'); // Remove **bold**
-  processedText = processedText.replace(/\*([^*]+)\*/g, '$1');     // Remove *italic*
-  processedText = processedText.replace(/__([^_]+)__/g, '$1');     // Remove __bold__
-  processedText = processedText.replace(/_([^_]+)_/g, '$1');       // Remove _italic_
+  // --- Robust Markdown Normalization ---
+  // Normalize list markers and ensure space after them
+  processedText = processedText.replace(/^(\s*[-*])(?=\S)/gm, '$1 '); // -item -> - item
+  processedText = processedText.replace(/^(\s*\d+\.)(?=\S)/gm, '$1 '); // 1.item -> 1. item
+  // Normalize bullet list markers to '-'
+  processedText = processedText.replace(/^(\s*)[•‣‣·]/gm, '$1-');
+  // Fix broken numbered lists (ensure numbers increment)
+  processedText = processedText.replace(/^(\d+)\.\s+/gm, (m, n) => `${n}. `);
+  // Remove duplicate list markers
+  processedText = processedText.replace(/^(\s*[-*]\s*){2,}/gm, '- ');
+  // Ensure one blank line before and after lists
+  processedText = processedText.replace(/([^\n])\n([-*] )/g, '$1\n\n$2');
+  processedText = processedText.replace(/([-*] .+)(?!\n\n)/g, '$1\n');
 
-  // Fix broken lists (ensure proper space after list markers)
-  processedText = processedText.replace(/^(\s*[-*]|\s*[0-9]+\.)(?!\s)/gm, '$1 ');
-  
+  // Fix bold/italic: close unclosed tags (simple heuristic)
+  // Add closing ** if odd number
+  const boldCount = (processedText.match(/\*\*/g) || []).length;
+  if (boldCount % 2 !== 0) processedText += '**';
+  // Add closing * if odd number
+  const italicCount = (processedText.match(/\*/g) || []).length - 2 * (boldCount);
+  if (italicCount % 2 !== 0) processedText += '*';
+  // Add closing __ if odd number
+  const uCount = (processedText.match(/__/g) || []).length;
+  if (uCount % 2 !== 0) processedText += '__';
+  // Add closing _ if odd number
+  const iCount = (processedText.match(/_/g) || []).length - 2 * (uCount);
+  if (iCount % 2 !== 0) processedText += '_';
+
+  // Normalize headings: ensure space after #
+  processedText = processedText.replace(/^(#+)([^ #])/gm, '$1 $2');
+  // Remove extra # in headings (e.g., ###### -> ###)
+  processedText = processedText.replace(/^(#{4,})/gm, '###');
+
+  // Fix tables: ensure pipes at start/end and consistent columns
+  processedText = processedText.replace(/^(\s*\|[^|]+\|\s*)$/gm, (line) => {
+    // Add leading/trailing pipe if missing
+    let l = line.trim();
+    if (!l.startsWith('|')) l = '|' + l;
+    if (!l.endsWith('|')) l = l + '|';
+    return l;
+  });
+
   // Remove circled numbers/letters and custom symbols (e.g., ⓵ⓇⓉⓐⓢ)
   processedText = processedText.replace(/[⓵⓶⓷⓸⓹⓺⓻⓼⓽⓾ⓇⓉⓐⓢⓑⓒⓓⓔⓕⓖⓗⓘⓙⓚⓛⓜⓝⓞⓟⓠⓡⓢⓣⓤⓥⓦⓧⓨⓩ]/g, '');
 
@@ -332,7 +365,7 @@ function postProcessAIChatResponse(text: string): string {
   processedText = processedText.replace(/^(\d+)\s+\1\s+/gm, '$1 ');
   // Remove accidental dash repetition (e.g., - - - Item => - Item)
   processedText = processedText.replace(/^(?:-\s+)+(-\s+)/gm, '$1');
-  
+
   // Normalize multiple consecutive blank lines to at most two
   processedText = processedText.replace(/\n{3,}/g, '\n\n');
 
