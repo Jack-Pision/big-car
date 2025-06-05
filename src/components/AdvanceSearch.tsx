@@ -100,6 +100,9 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
   const [displayingSteps, setDisplayingSteps] = useState<string[]>([]);
   const rightPanelRef = useRef<HTMLDivElement>(null);
   const [expandedSteps, setExpandedSteps] = useState<string[]>([]);
+  
+  // For mobile accordion view
+  const [expandedMobileStep, setExpandedMobileStep] = useState<string | null>(null);
 
   // Track which steps are being displayed with animation
   useEffect(() => {
@@ -128,6 +131,20 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
       });
       return newSteps;
     });
+    
+    // Set the active step as expanded in mobile view
+    const activeStep = steps.find(step => step.status === 'active');
+    if (activeStep) {
+      setExpandedMobileStep(activeStep.id);
+    } else {
+      // If no active step, expand the last completed step
+      const lastCompletedStep = [...steps]
+        .filter(step => step.status === 'completed')
+        .pop();
+      if (lastCompletedStep) {
+        setExpandedMobileStep(lastCompletedStep.id);
+      }
+    }
   }, [steps]);
 
   // Function to handle step click and scroll
@@ -157,6 +174,11 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
       }
       return [...prevSteps, stepId];
     });
+  };
+  
+  // Toggle mobile accordion step
+  const toggleMobileStep = (stepId: string) => {
+    setExpandedMobileStep(current => current === stepId ? null : stepId);
   };
 
   // Helper to render the understand step content
@@ -413,137 +435,270 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
     
     return null;
   };
-
-  return (
-    <div className="flex flex-col md:flex-row w-full mx-auto rounded-2xl border border-black/5 shadow-lg bg-neutral-900 overflow-hidden h-full min-h-[400px]" style={{ minHeight: '400px' }}>
-      {/* Left Panel - Step List */}
-      <div className="w-full md:w-80 md:min-w-[220px] md:max-w-xs flex-shrink-0 bg-neutral-950 p-4 md:p-6 overflow-y-auto md:h-full md:max-h-none md:border-b-0 md:border-r md:border-r-neutral-800 md:rounded-l-2xl h-[40vh] md:h-full flex flex-col">
-        <div className="flex items-center gap-2 mb-4 md:mb-6">
-          {/* New microchip icon with cyan color */}
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-400">
-            <rect x="7" y="7" width="10" height="10" rx="2"/>
-            <rect x="9.5" y="9.5" width="5" height="5" rx="1"/>
-            <path d="M2 9h3M2 15h3M19 9h3M19 15h3M9 2v3M15 2v3M9 19v3M15 19v3"/>
-          </svg>
-          <span className="text-xl text-neutral-200 font-normal">Advance Search</span>
-        </div>
-
-        {/* Add conversation mode indicator */}
-        {steps[0]?.status === 'active' && steps[0]?.content?.includes('follow-up') && (
-          <div className="mb-4 flex items-center gap-2 py-1.5 px-2.5 rounded-lg bg-cyan-900/20 border border-cyan-800/30">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-400">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+  
+  // Helper to get step status display text
+  const getStepStatusText = (step: ThinkingStep) => {
+    if (step.status === 'completed') return "Done";
+    if (step.status === 'active') return "Working...";
+    return "Waiting...";
+  };
+  
+  // Helper to get step status class
+  const getStepStatusClass = (step: ThinkingStep) => {
+    if (step.status === 'completed') return "text-cyan-400";
+    if (step.status === 'active') return "text-white";
+    return "text-neutral-500";
+  };
+  
+  // Render mobile view accordion
+  const renderMobileAccordion = () => {
+    return (
+      <div className="flex flex-col w-full space-y-2 sm:hidden">
+        {/* Header with summary */}
+        <div className="flex items-center justify-between px-4 py-3 bg-neutral-950 rounded-t-lg">
+          <div className="flex items-center gap-2">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-400">
+              <rect x="7" y="7" width="10" height="10" rx="2"/>
+              <rect x="9.5" y="9.5" width="5" height="5" rx="1"/>
+              <path d="M2 9h3M2 15h3M19 9h3M19 15h3M9 2v3M15 2v3M9 19v3M15 19v3"/>
             </svg>
-            <span className="text-xs text-cyan-300">Follow-up question mode</span>
+            <span className="text-lg text-neutral-200 font-normal">Advance Search</span>
           </div>
-        )}
-
-        <div className="flex flex-col relative flex-1">
-          {/* Timeline line connecting steps */}
-          <div className="absolute left-[10px] top-0 bottom-0 w-px bg-neutral-800"></div>
           
-          {/* Step list */}
-          {steps.map((step, index) => (
-            <div
+          {/* Summary stats */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-neutral-400">
+              {steps.filter(s => s.status === 'completed').length}/{steps.length} Steps
+            </span>
+            {webData && webData.serperArticles && (
+              <span className="text-xs bg-neutral-800 text-neutral-300 px-2 py-1 rounded-full">
+                {webData.serperArticles.length} Sources
+              </span>
+            )}
+          </div>
+        </div>
+        
+        {/* Accordion steps */}
+        <div className="flex flex-col space-y-2">
+          {steps.map((step) => (
+            <div 
               key={step.id}
-              ref={setStepRef(step.id)}
-              className={`relative flex flex-col ${index < steps.length - 1 ? 'mb-6' : ''}`}
+              className={`border border-neutral-800 rounded-lg overflow-hidden transition-colors ${
+                step.status === 'completed' ? 'bg-neutral-900' : 
+                step.status === 'active' ? 'bg-neutral-900' : 'bg-neutral-950'
+              }`}
             >
-              {/* Step timeline dot */}
-              <div
-                className={`absolute left-0 top-0 w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                  step.status === 'completed'
-                    ? 'bg-cyan-500 border-cyan-500'
-                    : step.status === 'active'
-                    ? 'bg-black border-cyan-500'
-                    : 'bg-black border-neutral-700'
-                }`}
-                style={{ zIndex: 1 }}
+              {/* Accordion header */}
+              <div 
+                className="flex items-center justify-between p-3 cursor-pointer"
+                onClick={() => toggleMobileStep(step.id)}
               >
-                {step.status === 'completed' && (
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                  </svg>
-                )}
-              </div>
-              
-              {/* Step content */}
-              <div className="pl-8 cursor-pointer" onClick={() => handleStepClick(step.id)}>
-                {/* Step Title */}
-                <div className="flex items-center gap-2 mb-1">
+                <div className="flex items-center gap-3">
+                  {/* Status indicator */}
                   <div 
-                    className={`text-base font-medium transition-colors ${
-                      step.status === 'completed'
-                        ? 'text-cyan-400'
+                    className={`w-4 h-4 rounded-full flex items-center justify-center ${
+                      step.status === 'completed' 
+                        ? 'bg-cyan-500' 
                         : step.status === 'active'
-                        ? 'text-white'
-                        : 'text-neutral-500'
+                        ? 'border-2 border-cyan-500'
+                        : 'border border-neutral-700'
                     }`}
                   >
-                    {step.title}
+                    {step.status === 'completed' && (
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                    )}
+                    {step.status === 'active' && (
+                      <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse"></div>
+                    )}
                   </div>
                   
-                  {/* Status indicator for active step */}
-                  {step.status === 'active' && (
-                    <div className="flex items-center gap-1 py-0.5 px-2 rounded-full bg-cyan-900/20 border border-cyan-900/30">
-                      <div className="animate-pulse w-2 h-2 rounded-full bg-cyan-500"></div>
-                      <span className="text-xs text-cyan-400">In progress</span>
-                    </div>
-                  )}
+                  {/* Step title */}
+                  <div className={getStepStatusClass(step)}>
+                    {step.title}
+                  </div>
                 </div>
                 
-                {/* Step Description/Status */}
-                <div 
-                  className={`text-sm transition-colors ${
-                    step.status === 'completed'
-                      ? 'text-neutral-400'
-                      : step.status === 'active'
-                      ? 'text-neutral-300'
-                      : 'text-neutral-600'
-                  }`}
-                >
-                  {step.status === 'completed' && "Done"}
-                  {step.status === 'active' && "Working..."}
-                  {step.status === 'pending' && "Waiting..."}
+                {/* Expand/collapse indicator */}
+                <div className="flex items-center gap-2">
+                  {step.status === 'active' && (
+                    <span className="text-xs text-cyan-400">In progress</span>
+                  )}
+                  <svg 
+                    width="16" 
+                    height="16" 
+                    viewBox="0 0 24 24" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="2" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    className={`text-neutral-400 transition-transform ${expandedMobileStep === step.id ? 'transform rotate-180' : ''}`}
+                  >
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
                 </div>
               </div>
+              
+              {/* Accordion content */}
+              {expandedMobileStep === step.id && (
+                <div className="p-4 border-t border-neutral-800">
+                  {step.id === 'understand' && renderUnderstandContent(step)}
+                  {step.id === 'research' && renderResearchContent(step)}
+                  {step.id === 'synthesize' && renderSynthesizeContent(step)}
+                </div>
+              )}
             </div>
           ))}
         </div>
-      </div>
-
-      {/* Right Panel - Content Area */}
-      <div ref={rightPanelRef} className="flex-1 overflow-y-auto p-4 md:p-8 bg-neutral-900 md:rounded-r-2xl hide-scrollbar h-[50vh] md:h-full flex flex-col">
-        <div className="space-y-6 md:space-y-10 flex-1">
-          {steps.map((step) => {
-            // Only show steps that are in the displayingSteps array
-            if (!displayingSteps.includes(step.id)) return null;
-            
-            return (
-            <motion.div
-              key={step.id}
-              ref={setStepRef(step.id)}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="pb-6 border-b border-neutral-800 last:border-b-0"
-            >
-              <h2 className="text-xl text-white mb-4">{step.title}</h2>
-              
-              {/* Step specific content */}
-              {step.id === 'understand' && renderUnderstandContent(step)}
-              {step.id === 'research' && renderResearchContent(step)}
-              {step.id === 'synthesize' && renderSynthesizeContent(step)}
-            </motion.div>
-            );
-          })}
-        </div>
         
+        {/* Error message */}
         {error && (
           <div className="mt-4 p-4 bg-red-900/20 border border-red-900/50 rounded-lg text-red-400">
             {error}
           </div>
         )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="w-full mx-auto rounded-2xl border border-black/5 shadow-lg bg-neutral-900 overflow-hidden h-full min-h-[400px]" style={{ minHeight: '400px' }}>
+      {/* Mobile accordion view */}
+      {renderMobileAccordion()}
+      
+      {/* Desktop/tablet split view */}
+      <div className="hidden sm:flex flex-col md:flex-row w-full h-full">
+        {/* Left Panel - Step List */}
+        <div className="w-full md:w-80 md:min-w-[220px] md:max-w-xs flex-shrink-0 bg-neutral-950 p-4 md:p-6 overflow-y-auto md:h-full md:max-h-none md:border-b-0 md:border-r md:border-r-neutral-800 md:rounded-l-2xl h-[40vh] md:h-full flex flex-col">
+          <div className="flex items-center gap-2 mb-4 md:mb-6">
+            {/* New microchip icon with cyan color */}
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-400">
+              <rect x="7" y="7" width="10" height="10" rx="2"/>
+              <rect x="9.5" y="9.5" width="5" height="5" rx="1"/>
+              <path d="M2 9h3M2 15h3M19 9h3M19 15h3M9 2v3M15 2v3M9 19v3M15 19v3"/>
+            </svg>
+            <span className="text-xl text-neutral-200 font-normal">Advance Search</span>
+          </div>
+
+          {/* Add conversation mode indicator */}
+          {steps[0]?.status === 'active' && steps[0]?.content?.includes('follow-up') && (
+            <div className="mb-4 flex items-center gap-2 py-1.5 px-2.5 rounded-lg bg-cyan-900/20 border border-cyan-800/30">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-400">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+              <span className="text-xs text-cyan-300">Follow-up question mode</span>
+            </div>
+          )}
+
+          <div className="flex flex-col relative flex-1">
+            {/* Timeline line connecting steps */}
+            <div className="absolute left-[10px] top-0 bottom-0 w-px bg-neutral-800"></div>
+            
+            {/* Step list */}
+            {steps.map((step, index) => (
+              <div
+                key={step.id}
+                ref={setStepRef(step.id)}
+                className={`relative flex flex-col ${index < steps.length - 1 ? 'mb-6' : ''}`}
+              >
+                {/* Step timeline dot */}
+                <div
+                  className={`absolute left-0 top-0 w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                    step.status === 'completed'
+                      ? 'bg-cyan-500 border-cyan-500'
+                      : step.status === 'active'
+                      ? 'bg-black border-cyan-500'
+                      : 'bg-black border-neutral-700'
+                  }`}
+                  style={{ zIndex: 1 }}
+                >
+                  {step.status === 'completed' && (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                  )}
+                </div>
+                
+                {/* Step content */}
+                <div className="pl-8 cursor-pointer" onClick={() => handleStepClick(step.id)}>
+                  {/* Step Title */}
+                  <div className="flex items-center gap-2 mb-1">
+                    <div 
+                      className={`text-base font-medium transition-colors ${
+                        step.status === 'completed'
+                          ? 'text-cyan-400'
+                          : step.status === 'active'
+                          ? 'text-white'
+                          : 'text-neutral-500'
+                      }`}
+                    >
+                      {step.title}
+                    </div>
+                    
+                    {/* Status indicator for active step */}
+                    {step.status === 'active' && (
+                      <div className="flex items-center gap-1 py-0.5 px-2 rounded-full bg-cyan-900/20 border border-cyan-900/30">
+                        <div className="animate-pulse w-2 h-2 rounded-full bg-cyan-500"></div>
+                        <span className="text-xs text-cyan-400">In progress</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Step Description/Status */}
+                  <div 
+                    className={`text-sm transition-colors ${
+                      step.status === 'completed'
+                        ? 'text-neutral-400'
+                        : step.status === 'active'
+                        ? 'text-neutral-300'
+                        : 'text-neutral-600'
+                    }`}
+                  >
+                    {step.status === 'completed' && "Done"}
+                    {step.status === 'active' && "Working..."}
+                    {step.status === 'pending' && "Waiting..."}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Right Panel - Content Area */}
+        <div ref={rightPanelRef} className="flex-1 overflow-y-auto p-4 md:p-8 bg-neutral-900 md:rounded-r-2xl hide-scrollbar h-[50vh] md:h-full flex flex-col">
+          <div className="space-y-6 md:space-y-10 flex-1">
+            {steps.map((step) => {
+              // Only show steps that are in the displayingSteps array
+              if (!displayingSteps.includes(step.id)) return null;
+              
+              return (
+              <motion.div
+                key={step.id}
+                ref={setStepRef(step.id)}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="pb-6 border-b border-neutral-800 last:border-b-0"
+              >
+                <h2 className="text-xl text-white mb-4">{step.title}</h2>
+                
+                {/* Step specific content */}
+                {step.id === 'understand' && renderUnderstandContent(step)}
+                {step.id === 'research' && renderResearchContent(step)}
+                {step.id === 'synthesize' && renderSynthesizeContent(step)}
+              </motion.div>
+              );
+            })}
+          </div>
+          
+          {error && (
+            <div className="mt-4 p-4 bg-red-900/20 border border-red-900/50 rounded-lg text-red-400">
+              {error}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
