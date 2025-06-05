@@ -1348,42 +1348,6 @@ export default function TestChat() {
   // This will control the position of the input box and heading (centered vs bottom)
   const inputPosition = isChatEmpty && !hasInteracted && !activeSessionId ? "center" : "bottom";
 
-  // Add at the top-level of TestChat component:
-  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState<string>("");
-
-  // Handler to open/close menu
-  const handleMenuToggle = (id: string) => {
-    setMenuOpenId(menuOpenId === id ? null : id);
-  };
-
-  // Handler to start editing
-  const handleEdit = (msg: Message) => {
-    setEditingId(msg.id);
-    setEditValue(msg.content);
-    setMenuOpenId(null);
-  };
-
-  // Handler to save edit
-  const handleEditSave = (id: string) => {
-    setMessages((prev) => prev.map(m => m.id === id ? { ...m, content: editValue } : m));
-    setEditingId(null);
-    setEditValue("");
-  };
-
-  // Handler to cancel edit
-  const handleEditCancel = () => {
-    setEditingId(null);
-    setEditValue("");
-  };
-
-  // Handler to delete message
-  const handleDelete = (id: string) => {
-    setMessages((prev) => prev.filter(m => m.id !== id));
-    setMenuOpenId(null);
-  };
-
   // Effect to load the last active session or create a new one on initial load
   useEffect(() => {
     const savedSessionId = getActiveSessionId();
@@ -2328,52 +2292,16 @@ export default function TestChat() {
                   className="px-5 py-3 rounded-2xl shadow bg-gray-800 text-white self-end max-w-full text-lg flex flex-col items-end mb-4 relative"
                   style={{ wordBreak: "break-word" }}
                 >
-                  {/* Three dots menu */}
-                  <div style={{ position: 'absolute', top: 8, right: 8, zIndex: 10 }}>
-                    <button
-                      onClick={() => handleMenuToggle(msg.id)}
-                      className="p-1 rounded-full hover:bg-gray-700 focus:outline-none"
-                      aria-label="Open menu"
-                    >
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="12" cy="5" r="1.5" />
-                        <circle cx="12" cy="12" r="1.5" />
-                        <circle cx="12" cy="19" r="1.5" />
-                      </svg>
-                    </button>
-                    {menuOpenId === msg.id && (
-                      <div className="absolute right-0 mt-2 w-24 bg-white text-black rounded shadow-lg z-50 flex flex-col text-sm">
-                        <button className="px-3 py-2 hover:bg-gray-200 text-left" onClick={() => handleDelete(msg.id)}>Delete</button>
-                      </div>
-                    )}
-                  </div>
-                  {/* Message content or edit input */}
-                  {editingId === msg.id ? (
-                    <div className="flex flex-col w-full gap-2">
-                      <textarea
-                        className="w-full rounded p-2 text-black"
-                        value={editValue}
-                        onChange={e => setEditValue(e.target.value)}
-                        rows={2}
-                      />
-                      <div className="flex gap-2 justify-end">
-                        <button className="px-2 py-1 bg-blue-600 text-white rounded" onClick={() => handleEditSave(msg.id)}>Save</button>
-                        <button className="px-2 py-1 bg-gray-400 text-white rounded" onClick={handleEditCancel}>Cancel</button>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      {msg.imageUrls && msg.imageUrls.map((url, index) => (
-                        <img 
-                          key={index}
-                          src={url} 
-                          alt={`Preview ${index + 1}`} 
-                          className="max-w-xs max-h-64 rounded-md mb-2 self-end" 
-                        />
-                      ))}
-                      <div>{msg.content}</div>
-                    </>
-                  )}
+                  {/* Only show message content and images, no menu */}
+                  {msg.imageUrls && msg.imageUrls.map((url, index) => (
+                    <img 
+                      key={index}
+                      src={url} 
+                      alt={`Preview ${index + 1}`} 
+                      className="max-w-xs max-h-64 rounded-md mb-2 self-end" 
+                    />
+                  ))}
+                  <div>{msg.content}</div>
                 </div>
                 );
               }
