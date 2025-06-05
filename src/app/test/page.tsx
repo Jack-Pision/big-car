@@ -1591,6 +1591,11 @@ export default function TestChat() {
       const context = buildConversationContext(messages);
       let turnSpecificSystemPrompt = BASE_SYSTEM_PROMPT;
 
+      // Add explicit instruction to never show reasoning
+      if (!showAdvanceSearchUI && !currentInput.includes('@AdvanceSearch')) {
+        turnSpecificSystemPrompt += `\n\nIMPORTANT: Provide direct answers without showing your reasoning or thinking process. Never include any step-by-step analysis in your response. Only provide the final answer in a clear, concise format.`;
+      }
+
       // Remove the thinking mode instructions that were causing reasoning text to appear
       // if (queryType !== 'conversation') {
       //   turnSpecificSystemPrompt += `\n\nIMPORTANT: For every response, before answering, think step-by-step and include your reasoning inside <think>...</think> tags. Only after the <think> section, provide your final answer. Example:\n<think>Thinking through the problem step by step...</think>\nFinal answer here.`;
