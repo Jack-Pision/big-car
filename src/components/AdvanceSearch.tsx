@@ -2,6 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 import 'katex/dist/katex.min.css';
 import { ThinkingStep } from '@/hooks/useDeepResearch';
 
@@ -374,23 +375,49 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
     }
 
     if (step.status === 'active') {
-      return null;
+      return (
+        <div className="flex items-center gap-2 text-neutral-300">
+          <div className="animate-pulse w-2 h-2 rounded-full bg-cyan-500"></div>
+          <span>Synthesizing final answer...</span>
+        </div>
+      );
     }
 
-    // For completed synthesize step, only show a status message
+    // For completed synthesize step, show the actual content
     if (step.status === 'completed') {
+      const synthesisContent = typeof step.output === 'string' ? step.output : '';
+      
+      if (!synthesisContent) {
         return (
-        <div className="text-cyan-400 text-base font-medium">
-          Response ready! See main chat for the full answer.
+          <div className="text-cyan-400 text-base font-medium">
+            Response ready! See main chat for the full answer.
           </div>
         );
+      }
+      
+      return (
+        <div className="space-y-4">
+          <div className="text-cyan-400 font-medium mb-2">
+            Final Answer:
+          </div>
+          <div className="text-neutral-300 text-base leading-relaxed">
+            <div className="prose prose-invert max-w-none">
+              <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
+                {synthesisContent}
+              </ReactMarkdown>
+            </div>
+          </div>
+        </div>
+      );
     }
+    
+    return null;
   };
 
   return (
     <div className="flex flex-col md:flex-row w-full mx-auto rounded-2xl border border-black/5 shadow-lg bg-neutral-900 overflow-hidden h-full min-h-[400px]" style={{ minHeight: '400px' }}>
       {/* Left Panel - Step List */}
-      <div className="w-full md:w-80 md:min-w-[220px] md:max-w-xs flex-shrink-0 bg-neutral-950 p-4 md:p-6 overflow-y-auto md:h-full md:max-h-none md:border-b-0 md:border-r md:border-r-neutral-800 md:rounded-l-2xl h-full flex flex-col">
+      <div className="w-full md:w-80 md:min-w-[220px] md:max-w-xs flex-shrink-0 bg-neutral-950 p-4 md:p-6 overflow-y-auto md:h-full md:max-h-none md:border-b-0 md:border-r md:border-r-neutral-800 md:rounded-l-2xl h-[40vh] md:h-full flex flex-col">
         <div className="flex items-center gap-2 mb-4 md:mb-6">
           {/* New microchip icon with cyan color */}
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-400">
@@ -441,47 +468,52 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
               </div>
               
               {/* Step content */}
-              <div
-                className={`pl-8 cursor-pointer ${
-                  step.status === 'completed' || step.status === 'active'
-                    ? 'opacity-100'
-                    : 'opacity-40'
-                }`}
-                onClick={() => {
-                  if (step.status === 'completed' || step.status === 'active') {
-                    handleStepClick(step.id);
-                  }
-                }}
-              >
-                {/* Step title */}
-                <div className="mb-1 font-medium text-sm flex items-center gap-2">
-                  <span className={step.status === 'completed' ? 'text-cyan-400' : step.status === 'active' ? 'text-cyan-400' : 'text-neutral-400'}>
-                {step.title}
-                  </span>
+              <div className="pl-8 cursor-pointer" onClick={() => handleStepClick(step.id)}>
+                {/* Step Title */}
+                <div className="flex items-center gap-2 mb-1">
+                  <div 
+                    className={`text-base font-medium transition-colors ${
+                      step.status === 'completed'
+                        ? 'text-cyan-400'
+                        : step.status === 'active'
+                        ? 'text-white'
+                        : 'text-neutral-500'
+                    }`}
+                  >
+                    {step.title}
+                  </div>
                   
-                  {/* Show active indicator */}
+                  {/* Status indicator for active step */}
                   {step.status === 'active' && (
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse"></div>
+                    <div className="flex items-center gap-1 py-0.5 px-2 rounded-full bg-cyan-900/20 border border-cyan-900/30">
+                      <div className="animate-pulse w-2 h-2 rounded-full bg-cyan-500"></div>
+                      <span className="text-xs text-cyan-400">In progress</span>
                     </div>
                   )}
                 </div>
                 
-                {/* Step description (only show for active/completed) */}
-                {(step.status === 'completed' || step.status === 'active') && (
-                  <div className="text-xs text-neutral-400">
-                    {step.content?.split('\n')[0]}
-                  </div>
-                )}
+                {/* Step Description/Status */}
+                <div 
+                  className={`text-sm transition-colors ${
+                    step.status === 'completed'
+                      ? 'text-neutral-400'
+                      : step.status === 'active'
+                      ? 'text-neutral-300'
+                      : 'text-neutral-600'
+                  }`}
+                >
+                  {step.status === 'completed' && "Done"}
+                  {step.status === 'active' && "Working..."}
+                  {step.status === 'pending' && "Waiting..."}
+                </div>
               </div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Right Panel - All Steps Content (Scrollable) */}
-      <div ref={rightPanelRef} className="flex-1 overflow-y-auto p-4 md:p-8 bg-neutral-900 md:rounded-r-2xl hide-scrollbar h-full flex flex-col">
-        {/* All steps in sequence */}
+      {/* Right Panel - Content Area */}
+      <div ref={rightPanelRef} className="flex-1 overflow-y-auto p-4 md:p-8 bg-neutral-900 md:rounded-r-2xl hide-scrollbar h-[50vh] md:h-full flex flex-col">
         <div className="space-y-6 md:space-y-10 flex-1">
           {steps.map((step) => {
             // Only show steps that are in the displayingSteps array
