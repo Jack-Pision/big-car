@@ -2116,6 +2116,47 @@ export default function TestChat() {
     return null;
   };
 
+  // Key for localStorage
+  const ADVANCE_SEARCH_STORAGE_KEY = 'advanceSearchState';
+
+  // Restore Advance Search state from localStorage on mount
+  useEffect(() => {
+    if (showAdvanceSearchUI && !isAdvanceSearchActive) {
+      const saved = localStorage.getItem(ADVANCE_SEARCH_STORAGE_KEY);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (parsed && parsed.steps && parsed.currentQuery) {
+            setCurrentQuery(parsed.currentQuery);
+            setAdvanceSearchHistory(parsed.advanceSearchHistory || { previousQueries: [], previousResponses: [] });
+          }
+        } catch {}
+      }
+    }
+  }, [showAdvanceSearchUI, isAdvanceSearchActive]);
+
+  // Save Advance Search state to localStorage whenever it changes
+  useEffect(() => {
+    if (showAdvanceSearchUI) {
+      const stateToSave = {
+        steps,
+        activeStepId,
+        isComplete,
+        webData,
+        currentQuery,
+        advanceSearchHistory
+      };
+      localStorage.setItem(ADVANCE_SEARCH_STORAGE_KEY, JSON.stringify(stateToSave));
+    }
+  }, [steps, activeStepId, isComplete, webData, currentQuery, advanceSearchHistory, showAdvanceSearchUI]);
+
+  // Clear Advance Search state from localStorage when a new search is started
+  useEffect(() => {
+    if (!showAdvanceSearchUI || !isAdvanceSearchActive) {
+      localStorage.removeItem(ADVANCE_SEARCH_STORAGE_KEY);
+    }
+  }, [showAdvanceSearchUI, isAdvanceSearchActive]);
+
   return (
     <>
       <div className="min-h-screen flex flex-col px-4 sm:px-4 md:px-8 lg:px-0" style={{ background: '#161618' }}>
