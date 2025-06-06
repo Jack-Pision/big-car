@@ -1545,11 +1545,14 @@ export default function TestChat() {
   async function handleSend(e?: React.FormEvent) {
     if (e) e.preventDefault();
     
+    // Initialize variables at the function scope level
+    let userMessageId = '';
+    let uploadedImageUrls: string[] = [];
+    
     try {
     if (!input.trim() || isLoading || isAiResponding) return;
 
     let currentActiveSessionId = activeSessionId;
-    let uploadedImageUrls: string[] = [];
 
     if (!currentActiveSessionId) {
       const newSession = createNewSession(input.trim() || (selectedFilesForUpload.length > 0 ? "Image Upload" : undefined));
@@ -1601,7 +1604,7 @@ export default function TestChat() {
     };
     
     // Store the user message ID to use as parentId for AI responses
-    const userMessageId = userMessageForDisplay.id;
+    userMessageId = userMessageForDisplay.id;
 
     if (selectedFilesForUpload.length > 0 && !input) {
       userMessageForDisplay.content = "Image selected for analysis.";
