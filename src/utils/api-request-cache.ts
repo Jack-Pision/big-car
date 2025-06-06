@@ -16,6 +16,10 @@ let requestCache: Record<string, {
   timestamp: number
 }> = {};
 
+// Global in-memory map for in-flight and cached requests
+const serperInFlight: Record<string, Promise<any>> = {};
+const serperCache: Record<string, { data: any, timestamp: number }> = {};
+
 // Initialize cache from localStorage
 const initializeCache = () => {
   if (typeof window !== 'undefined') {
@@ -149,23 +153,66 @@ export const dedupedApiRequest = async <T>(
 /**
  * Specifically for Serper API requests
  */
-export const dedupedSerperRequest = async (query: string, limit: number = 20): Promise<any> => {
-  const params = { query, limit };
-  
-  return dedupedApiRequest('/api/serper/search', params, async () => {
-    const response = await fetch('/api/serper/search', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(params)
+export function getSerperCacheKey(query: string, limit: number) {
+  return `${query.trim().toLowerCase()}::${limit}`;
+}
+
+// Load cache from localStorage on first use
+(function initializeSerperCache() {
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem(CACHE_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        Object.assign(serperCache, parsed);
+      }
+    } catch {}
+  }
+})();
+
+function saveSerperCache() {
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(CACHE_STORAGE_KEY, JSON.stringify(serperCache));
+    } catch {}
+  }
+}
+
+export async function dedupedSerperRequest(query: string, limit: number) {
+  const key = getSerperCacheKey(query, limit);
+
+  // Return cached result if not expired
+  const cached = serperCache[key];
+  if (cached && Date.now() - cached.timestamp < CACHE_EXPIRATION_MS) {
+    return cached.data;
+  }
+
+  // Return in-flight promise if exists
+  if (typeof serperInFlight[key] !== 'undefined') {
+    return serperInFlight[key];
+  }
+
+  // Otherwise, make the API call
+  const promise = fetch('/api/serper/search', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query, limit })
+  })
+    .then(res => res.json())
+    .then(data => {
+      serperCache[key] = { data, timestamp: Date.now() };
+      saveSerperCache();
+      delete serperInFlight[key];
+      return data;
+    })
+    .catch(err => {
+      delete serperInFlight[key];
+      throw err;
     });
-    
-    if (!response.ok) {
-      throw new Error(`Serper API request failed: ${response.statusText}`);
-    }
-    
-    return response.json();
-  });
-};
+
+  serperInFlight[key] = promise;
+  return promise;
+}
 
 /**
  * Clear all cache entries
