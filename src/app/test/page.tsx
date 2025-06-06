@@ -1634,6 +1634,11 @@ export default function TestChat() {
     }
 
     if (!hasInteracted) setHasInteracted(true);
+    // --- FIX: Always reset restoration state for new Advance Search queries ---
+    if (showAdvanceSearchUI) {
+      setIsRestoredFromStorage(false); // Always reset before new query
+      setRestoredDeepResearchState({}); // Clear any old state
+    }
     setCurrentQuery(input);
     setIsRestoredFromStorage(false); // Reset the restored flag when sending a new message
 
