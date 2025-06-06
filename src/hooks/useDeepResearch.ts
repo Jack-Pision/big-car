@@ -412,7 +412,7 @@ FORMATTING GUIDANCE:
         const data = await response.json();
         aiContent = data.content || data.choices?.[0]?.message?.content || data.generated_text || '';
       }
-      updateStepStatus('synthesize', 'completed', 'Response ready!', aiContent);
+      updateStepStatus('synthesize', 'completed', aiContent, aiContent);
       setIsComplete(true);
       setIsInProgress(false);
     } catch (err: any) {
