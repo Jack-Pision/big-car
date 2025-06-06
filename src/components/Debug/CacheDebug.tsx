@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect } from 'react';
 import { clearCacheForEndpoint, clearRequestCache } from '@/utils/api-request-cache';
 
