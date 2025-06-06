@@ -967,7 +967,7 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory }: {
   onClearHistory?: () => void
 }) {
   // State to track if content is restored from storage
-  const [isBlockRestoredFromStorage, setIsBlockRestoredFromStorage] = useState(true);
+  const [isBlockRestoredFromStorage, setIsBlockRestoredFromStorage] = useState(false);
   
   // State to hold restored deep research state
   const [restoredState, setRestoredState] = useState<{
@@ -989,7 +989,7 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory }: {
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
-          if (parsed && parsed.steps) {
+          if (parsed && parsed.steps && parsed.currentQuery === query) {
             setRestoredState({
               steps: parsed.steps,
               activeStepId: parsed.activeStepId,
@@ -997,13 +997,20 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory }: {
               isInProgress: parsed.isInProgress,
               webData: parsed.webData
             });
+            setIsBlockRestoredFromStorage(true);
+          } else {
+            // If the query doesn't match, don't restore
+            setIsBlockRestoredFromStorage(false);
           }
         } catch (err) {
           console.error("Error restoring deep research state:", err);
+          setIsBlockRestoredFromStorage(false);
         }
+      } else {
+        setIsBlockRestoredFromStorage(false);
       }
     }
-  }, []);
+  }, [query]);
   
   // Only reset isBlockRestoredFromStorage when a new query is detected
   useEffect(() => {
@@ -1023,6 +1030,21 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory }: {
     error,
     webData
   } = useDeepResearch(true, query, conversationHistory, isBlockRestoredFromStorage, restoredState);
+  
+  // Save state to localStorage when it changes
+  useEffect(() => {
+    if (steps.length > 0 && typeof window !== 'undefined') {
+      const stateToSave = {
+        steps,
+        activeStepId,
+        isComplete,
+        isInProgress,
+        webData,
+        currentQuery: query
+      };
+      localStorage.setItem('advanceSearchState', JSON.stringify(stateToSave));
+    }
+  }, [steps, activeStepId, isComplete, isInProgress, webData, query]);
   
   const [manualStepId, setManualStepId] = useState<string | null>(null);
   const isFinalStepComplete = steps[steps.length - 1]?.status === 'completed';
