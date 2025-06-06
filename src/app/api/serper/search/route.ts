@@ -14,7 +14,8 @@ async function searchSerperPage(query: string, page: number = 1) {
     },
     body: JSON.stringify({ 
       q: query,
-      page: page 
+      page: page,
+      num: 50  // Request 50 results per page
     })
   });
   if (!res.ok) return [];
@@ -52,7 +53,7 @@ async function searchSerperPage(query: string, page: number = 1) {
   });
 }
 
-async function searchSerper(query: string, limit: number = 20) {
+async function searchSerper(query: string, limit: number = 50) {  // Update default limit to 50
   // Make only one API call for page 1
   const page1Results = await searchSerperPage(query, 1);
   return page1Results.slice(0, limit);
@@ -65,7 +66,7 @@ export async function POST(req: NextRequest) {
     if (!query) {
       return new Response(JSON.stringify({ error: 'No query provided' }), { status: 400 });
     }
-    const results = await searchSerper(query, limit || 20);
+    const results = await searchSerper(query, limit || 50);  // Update default limit to 50
     if (!results.length) {
       return new Response(JSON.stringify({
         articles: [],
