@@ -41,6 +41,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import Image from 'next/image';
 import rehypeRaw from 'rehype-raw';
+import { isSearchCompleted, getCompletedSearch, saveCompletedSearch } from '@/utils/advance-search-state';
 
 // Define a type that includes all possible query types (including the ones in SCHEMAS and 'conversation')
 type QueryType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversation' | 'deep-research';
@@ -970,8 +971,15 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
   // State to track if content is restored from storage
   const [isBlockRestoredFromStorage, setIsBlockRestoredFromStorage] = useState(false);
   
+  // State to track if this search is already completed
+  const [isSearchAlreadyCompleted, setIsSearchAlreadyCompleted] = useState(false);
+  
   // Add ref to track initial load
   const isInitialLoadRef = useRef(true);
+  
+  // Store final answer for completed searches
+  const [completedSearchAnswer, setCompletedSearchAnswer] = useState<string | null>(null);
+  const [completedSearchSources, setCompletedSearchSources] = useState<any[] | null>(null);
   
   // State to hold restored deep research state
   const [restoredState, setRestoredState] = useState<{
@@ -980,19 +988,73 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
     isComplete?: boolean;
     isInProgress?: boolean;
     webData?: any | null;
+    isFullyCompleted?: boolean;
   }>({});
   
   // Store the previous query to detect changes
   const [previousQuery, setPreviousQuery] = useState(query);
   
-  // Restore state from localStorage when component mounts - do this only once
+  // First check if this search is already completed - do this once on mount
   useEffect(() => {
-    // Try to get saved state from localStorage
     if (typeof window !== 'undefined') {
+      // Check if this exact search was completed before
+      if (isSearchCompleted(query)) {
+        const completedSearch = getCompletedSearch(query);
+        if (completedSearch && completedSearch.finalAnswer) {
+          // Restore the completed search state
+          setRestoredState({
+            steps: completedSearch.steps,
+            activeStepId: completedSearch.activeStepId,
+            isComplete: true,
+            isInProgress: false,
+            webData: completedSearch.webData,
+            isFullyCompleted: true // Add this flag
+          });
+          
+          // Mark as restored and completed to prevent API calls
+          setIsBlockRestoredFromStorage(true);
+          setIsSearchAlreadyCompleted(true);
+          
+          // Store the final answer
+          setCompletedSearchAnswer(completedSearch.finalAnswer);
+          setCompletedSearchSources(completedSearch.webData?.sources || []);
+          
+          // If there's a final answer and onFinalAnswer callback, call it to display in main chat
+          if (completedSearch.finalAnswer && 
+              typeof completedSearch.finalAnswer === 'string' && 
+              completedSearch.finalAnswer !== null &&
+              completedSearch.finalAnswer !== undefined && 
+              onFinalAnswer) {
+            // Use setTimeout to ensure UI is ready
+            setTimeout(() => {
+              onFinalAnswer(completedSearch.finalAnswer as string, completedSearch.webData?.sources || []);
+            }, 100);
+          }
+          
+          return; // Skip the regular localStorage restore
+        }
+      }
+      
+      // Regular localStorage restore logic if not a completed search
       const saved = localStorage.getItem('advanceSearchState');
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
+          // Check for isFullyCompleted flag to prevent API calls
+          if (parsed && parsed.isFullyCompleted === true && parsed.currentQuery === query && parsed.finalAnswer) {
+            // This is a fully completed search
+            setIsSearchAlreadyCompleted(true);
+            setCompletedSearchAnswer(parsed.finalAnswer);
+            setCompletedSearchSources(parsed.webData?.sources || []);
+            
+            // Call onFinalAnswer to display in main chat
+            if (onFinalAnswer && parsed.finalAnswer) {
+              setTimeout(() => {
+                onFinalAnswer(parsed.finalAnswer, parsed.webData?.sources || []);
+              }, 100);
+            }
+          }
+          
           // Don't strictly check for query match on reload - focus on having valid steps
           if (parsed && parsed.steps) {
             setRestoredState({
@@ -1025,11 +1087,14 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
     if (!isInitialLoadRef.current && query !== previousQuery) {
       setPreviousQuery(query);
       setIsBlockRestoredFromStorage(false);
+      setIsSearchAlreadyCompleted(false);
+      setCompletedSearchAnswer(null);
+      setCompletedSearchSources(null);
     }
   }, [query, previousQuery]);
   
   // Always set the first parameter to true to ensure it processes the query
-  // regardless of the parent component's state
+  // regardless of the parent component's state, EXCEPT when the search is already completed
   const {
     steps,
     activeStepId,
@@ -1037,7 +1102,14 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
     isInProgress,
     error,
     webData
-  } = useDeepResearch(true, query, conversationHistory, isBlockRestoredFromStorage, restoredState);
+  } = useDeepResearch(
+    // Always activate the hook for UI, but pass in completed state
+    true, 
+    query, 
+    conversationHistory, 
+    isBlockRestoredFromStorage, 
+    restoredState
+  );
   
   // Save state to localStorage when it changes
   useEffect(() => {
@@ -1051,13 +1123,56 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
         currentQuery: query
       };
       localStorage.setItem('advanceSearchState', JSON.stringify(stateToSave));
+      
+      // If search is complete, save it to our completed searches registry
+      if (isComplete && steps[steps.length - 1]?.status === 'completed' && steps[steps.length - 1]?.output) {
+        // Get the final answer
+        const finalAnswer = steps[steps.length - 1].output;
+        
+        // Save to completed searches
+        saveCompletedSearch({
+          query,
+          steps,
+          activeStepId,
+          isComplete,
+          isInProgress,
+          webData,
+          finalAnswer,
+          timestamp: Date.now(),
+          conversationHistory
+        });
+      }
     }
-  }, [steps, activeStepId, isComplete, isInProgress, webData, query]);
+  }, [steps, activeStepId, isComplete, isInProgress, webData, query, conversationHistory]);
+  
+  // Handle onFinalAnswer callback for completed searches
+  useEffect(() => {
+    const synthStep = steps.find(s => s.id === 'synthesize');
+    if (synthStep && synthStep.status === 'completed' && typeof synthStep.output === 'string' && onFinalAnswer) {
+      // Save the final answer to our completed searches
+      saveCompletedSearch({
+        query,
+        steps,
+        activeStepId,
+        isComplete,
+        isInProgress,
+        webData,
+        finalAnswer: synthStep.output,
+        timestamp: Date.now(),
+        conversationHistory
+      });
+    }
+  }, [steps, isComplete, query, activeStepId, isInProgress, webData, conversationHistory, onFinalAnswer]);
   
   const [manualStepId, setManualStepId] = useState<string | null>(null);
   const isFinalStepComplete = steps[steps.length - 1]?.status === 'completed';
   
   const hasHistory = conversationHistory.previousQueries.length > 0;
+  
+  // Use completed search data or live data based on what's available
+  const displaySteps = isSearchAlreadyCompleted && restoredState.steps ? restoredState.steps : steps;
+  const displayActiveStepId = isSearchAlreadyCompleted ? null : (isFinalStepComplete ? manualStepId || activeStepId : activeStepId);
+  const displayWebData = isSearchAlreadyCompleted && restoredState.webData ? restoredState.webData : webData;
   
   return (
     <motion.div
@@ -1084,12 +1199,12 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
       )}
       <div className="flex-1 flex flex-col h-full">
         <AdvanceSearch
-          steps={steps}
-          activeStepId={isFinalStepComplete ? manualStepId || activeStepId : activeStepId}
+          steps={displaySteps}
+          activeStepId={displayActiveStepId}
           onManualStepClick={isFinalStepComplete ? setManualStepId : undefined}
           manualNavigationEnabled={isFinalStepComplete}
           error={error}
-          webData={webData}
+          webData={displayWebData}
           onFinalAnswer={onFinalAnswer}
         />
       </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { extractRedditUsername } from '@/utils/reddit-api';
 
 export interface ThinkingStep {
@@ -125,6 +125,7 @@ export const useDeepResearch = (
     isComplete?: boolean;
     isInProgress?: boolean;
     webData?: WebData | null;
+    isFullyCompleted?: boolean; // Add flag to indicate search is fully completed
   } = {} // Add optional restored state parameter
 ) => {
   // Initialize with restored state if provided, otherwise use defaults
@@ -144,9 +145,19 @@ export const useDeepResearch = (
     restoredState.webData || null
   );
   const [error, setError] = useState<string | null>(null);
+  
+  // New flag to determine if API calls should be skipped entirely
+  const isFullyCompleted = useMemo(() => {
+    return restoredState.isFullyCompleted === true;
+  }, [restoredState.isFullyCompleted]);
 
   // Reset everything when a new query starts
   useEffect(() => {
+    // Skip API calls if this is a fully completed search
+    if (isFullyCompleted) {
+      return;
+    }
+    
     // Only start the process if not restored from storage and other conditions are met
     if (query && isActive && !isInProgress && !isRestoredFromStorage) {
       setSteps([...DEFAULT_THINKING_STEPS]);
@@ -164,7 +175,7 @@ export const useDeepResearch = (
       setIsInProgress(false);
       setIsComplete(false);
     }
-  }, [query, isActive, conversationHistory, isRestoredFromStorage]);
+  }, [query, isActive, conversationHistory, isRestoredFromStorage, isFullyCompleted]);
 
   // Step 1: Understanding - Call AI to analyze the query
   const processUnderstandStep = async (query: string, conversationHistory: ResearchConversation) => {

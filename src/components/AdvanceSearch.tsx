@@ -154,7 +154,13 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
 
   useEffect(() => {
     const synthStep = steps.find(s => s.id === 'synthesize');
-    if (synthStep && synthStep.status === 'completed' && typeof synthStep.output === 'string' && onFinalAnswer && !finalAnswerSent) {
+    if (synthStep && 
+        synthStep.status === 'completed' && 
+        typeof synthStep.output === 'string' && 
+        synthStep.output !== null && 
+        synthStep.output !== undefined &&
+        onFinalAnswer && 
+        !finalAnswerSent) {
       onFinalAnswer(synthStep.output, webData?.sources || []);
       setFinalAnswerSent(true);
     }
