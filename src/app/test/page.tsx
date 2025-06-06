@@ -969,10 +969,49 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory }: {
   // State to track if content is restored from storage
   const [isBlockRestoredFromStorage, setIsBlockRestoredFromStorage] = useState(true);
   
-  // When query changes, set isRestoredFromStorage to false to allow processing
+  // State to hold restored deep research state
+  const [restoredState, setRestoredState] = useState<{
+    steps?: any[];
+    activeStepId?: string | null;
+    isComplete?: boolean;
+    isInProgress?: boolean;
+    webData?: any | null;
+  }>({});
+  
+  // Store the previous query to detect changes
+  const [previousQuery, setPreviousQuery] = useState(query);
+  
+  // Restore state from localStorage when component mounts
   useEffect(() => {
-    setIsBlockRestoredFromStorage(false);
-  }, [query]);
+    // Try to get saved state from localStorage
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('advanceSearchState');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (parsed && parsed.steps) {
+            setRestoredState({
+              steps: parsed.steps,
+              activeStepId: parsed.activeStepId,
+              isComplete: parsed.isComplete,
+              isInProgress: parsed.isInProgress,
+              webData: parsed.webData
+            });
+          }
+        } catch (err) {
+          console.error("Error restoring deep research state:", err);
+        }
+      }
+    }
+  }, []);
+  
+  // Only reset isBlockRestoredFromStorage when a new query is detected
+  useEffect(() => {
+    if (query !== previousQuery) {
+      setPreviousQuery(query);
+      setIsBlockRestoredFromStorage(false);
+    }
+  }, [query, previousQuery]);
   
   // Always set the first parameter to true to ensure it processes the query
   // regardless of the parent component's state
@@ -983,7 +1022,7 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory }: {
     isInProgress,
     error,
     webData
-  } = useDeepResearch(true, query, conversationHistory, isBlockRestoredFromStorage);
+  } = useDeepResearch(true, query, conversationHistory, isBlockRestoredFromStorage, restoredState);
   
   const [manualStepId, setManualStepId] = useState<string | null>(null);
   const isFinalStepComplete = steps[steps.length - 1]?.status === 'completed';
@@ -1383,6 +1422,15 @@ export default function TestChat() {
   // Add state to track if the chat was restored from storage
   const [isRestoredFromStorage, setIsRestoredFromStorage] = useState(false);
   
+  // Add state to hold the restored deep research state
+  const [restoredDeepResearchState, setRestoredDeepResearchState] = useState<{
+    steps?: any[];
+    activeStepId?: string | null;
+    isComplete?: boolean;
+    isInProgress?: boolean;
+    webData?: any | null;
+  }>({});
+  
   // Deep Research hook - now passing processing state instead of UI state
   const {
     steps,
@@ -1395,7 +1443,8 @@ export default function TestChat() {
     isAdvanceSearchActive, 
     currentQuery, 
     advanceSearchHistory,
-    isRestoredFromStorage // Pass the flag to control process start
+    isRestoredFromStorage, // Pass the flag to control process start
+    restoredDeepResearchState // Pass the restored state
   );
 
   const [manualStepId, setManualStepId] = useState<string | null>(null);
@@ -2131,19 +2180,39 @@ export default function TestChat() {
 
   // Restore Advance Search state from localStorage on mount
   useEffect(() => {
-    if (showAdvanceSearchUI && !isAdvanceSearchActive) {
+    if (showAdvanceSearchUI) {
       const saved = localStorage.getItem(ADVANCE_SEARCH_STORAGE_KEY);
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
           if (parsed && parsed.steps && parsed.currentQuery) {
+            // Restore all the necessary state from localStorage
             setCurrentQuery(parsed.currentQuery);
             setAdvanceSearchHistory(parsed.advanceSearchHistory || { previousQueries: [], previousResponses: [] });
+            
+            // Set the restored deep research state
+            setRestoredDeepResearchState({
+              steps: parsed.steps,
+              activeStepId: parsed.activeStepId,
+              isComplete: parsed.isComplete,
+              isInProgress: parsed.isInProgress,
+              webData: parsed.webData
+            });
+            
+            // Set the isRestoredFromStorage flag to true to prevent API calls
+            setIsRestoredFromStorage(true);
+            
+            // Check if we should also make the advance search active
+            if (parsed.isComplete) {
+              setIsAdvanceSearchActive(true);
+            }
           }
-        } catch {}
+        } catch (err) {
+          console.error("Error restoring advance search state:", err);
+        }
       }
     }
-  }, [showAdvanceSearchUI, isAdvanceSearchActive]);
+  }, [showAdvanceSearchUI]);
 
   // Save Advance Search state to localStorage whenever it changes
   useEffect(() => {
@@ -2152,13 +2221,14 @@ export default function TestChat() {
         steps,
         activeStepId,
         isComplete,
+        isInProgress,
         webData,
         currentQuery,
         advanceSearchHistory
       };
       localStorage.setItem(ADVANCE_SEARCH_STORAGE_KEY, JSON.stringify(stateToSave));
     }
-  }, [steps, activeStepId, isComplete, webData, currentQuery, advanceSearchHistory, showAdvanceSearchUI]);
+  }, [steps, activeStepId, isComplete, isInProgress, webData, currentQuery, advanceSearchHistory, showAdvanceSearchUI]);
 
   // Clear Advance Search state from localStorage when a new search is started
   useEffect(() => {

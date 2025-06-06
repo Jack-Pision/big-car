@@ -118,13 +118,31 @@ export const useDeepResearch = (
   isActive: boolean, 
   query: string = '', 
   conversationHistory: ResearchConversation = { previousQueries: [], previousResponses: [] },
-  isRestoredFromStorage: boolean = false // Add flag for restored from storage
+  isRestoredFromStorage: boolean = false, // Add flag for restored from storage
+  restoredState: {
+    steps?: ThinkingStep[];
+    activeStepId?: string | null;
+    isComplete?: boolean;
+    isInProgress?: boolean;
+    webData?: WebData | null;
+  } = {} // Add optional restored state parameter
 ) => {
-  const [steps, setSteps] = useState<ThinkingStep[]>([...DEFAULT_THINKING_STEPS]);
-  const [activeStepId, setActiveStepId] = useState<string | null>(null);
-  const [isComplete, setIsComplete] = useState(false);
-  const [isInProgress, setIsInProgress] = useState(false);
-  const [webData, setWebData] = useState<WebData | null>(null);
+  // Initialize with restored state if provided, otherwise use defaults
+  const [steps, setSteps] = useState<ThinkingStep[]>(
+    restoredState.steps || [...DEFAULT_THINKING_STEPS]
+  );
+  const [activeStepId, setActiveStepId] = useState<string | null>(
+    restoredState.activeStepId || null
+  );
+  const [isComplete, setIsComplete] = useState(
+    restoredState.isComplete || false
+  );
+  const [isInProgress, setIsInProgress] = useState(
+    restoredState.isInProgress || false
+  );
+  const [webData, setWebData] = useState<WebData | null>(
+    restoredState.webData || null
+  );
   const [error, setError] = useState<string | null>(null);
 
   // Reset everything when a new query starts
