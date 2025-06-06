@@ -965,10 +965,13 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
     previousResponses: string[];
   },
   onClearHistory?: () => void,
-  onFinalAnswer?: (answer: string, sources?: any[]) => void // NEW PROP
+  onFinalAnswer?: (answer: string, sources?: any[]) => void
 }) {
   // State to track if content is restored from storage
   const [isBlockRestoredFromStorage, setIsBlockRestoredFromStorage] = useState(false);
+  
+  // Add ref to track initial load
+  const isInitialLoadRef = useRef(true);
   
   // State to hold restored deep research state
   const [restoredState, setRestoredState] = useState<{
@@ -982,7 +985,7 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
   // Store the previous query to detect changes
   const [previousQuery, setPreviousQuery] = useState(query);
   
-  // Restore state from localStorage when component mounts
+  // Restore state from localStorage when component mounts - do this only once
   useEffect(() => {
     // Try to get saved state from localStorage
     if (typeof window !== 'undefined') {
@@ -990,7 +993,8 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
-          if (parsed && parsed.steps && parsed.currentQuery === query) {
+          // Don't strictly check for query match on reload - focus on having valid steps
+          if (parsed && parsed.steps) {
             setRestoredState({
               steps: parsed.steps,
               activeStepId: parsed.activeStepId,
@@ -999,9 +1003,6 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
               webData: parsed.webData
             });
             setIsBlockRestoredFromStorage(true);
-          } else {
-            // If the query doesn't match, don't restore
-            setIsBlockRestoredFromStorage(false);
           }
         } catch (err) {
           console.error("Error restoring deep research state:", err);
@@ -1010,12 +1011,18 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
       } else {
         setIsBlockRestoredFromStorage(false);
       }
+      
+      // Mark initial load as complete after a small delay
+      setTimeout(() => {
+        isInitialLoadRef.current = false;
+      }, 500);
     }
-  }, [query]);
+  }, []); // Only run once on component mount
   
   // Only reset isBlockRestoredFromStorage when a new query is detected
+  // and we're not in the initial load phase
   useEffect(() => {
-    if (query !== previousQuery) {
+    if (!isInitialLoadRef.current && query !== previousQuery) {
       setPreviousQuery(query);
       setIsBlockRestoredFromStorage(false);
     }
@@ -1083,7 +1090,7 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
           manualNavigationEnabled={isFinalStepComplete}
           error={error}
           webData={webData}
-          onFinalAnswer={onFinalAnswer} // NEW PROP
+          onFinalAnswer={onFinalAnswer}
         />
       </div>
       {error && (
@@ -1485,6 +1492,9 @@ export default function TestChat() {
 
   // This will control the position of the input box and heading (centered vs bottom)
   const inputPosition = isChatEmpty && !hasInteracted && !activeSessionId ? "center" : "bottom";
+
+  // Add ref to track initial load - put this near the top with other state
+  const isInitialLoadRef = useRef(true);
 
   // Effect to load the last active session or create a new one on initial load
   useEffect(() => {
@@ -2162,7 +2172,7 @@ export default function TestChat() {
 
   // Restore Advance Search state from localStorage on mount
   useEffect(() => {
-    if (showAdvanceSearchUI) {
+    if (typeof window !== 'undefined') {
       const saved = localStorage.getItem(ADVANCE_SEARCH_STORAGE_KEY);
       if (saved) {
         try {
@@ -2184,6 +2194,9 @@ export default function TestChat() {
             // Set the isRestoredFromStorage flag to true to prevent API calls
             setIsRestoredFromStorage(true);
             
+            // Also restore the UI state to show the advance search
+            setShowAdvanceSearchUI(true);
+            
             // Check if we should also make the advance search active
             if (parsed.isComplete) {
               setIsAdvanceSearchActive(true);
@@ -2193,8 +2206,13 @@ export default function TestChat() {
           console.error("Error restoring advance search state:", err);
         }
       }
+      
+      // Mark that initial load is complete after trying to restore
+      setTimeout(() => {
+        isInitialLoadRef.current = false;
+      }, 500);
     }
-  }, [showAdvanceSearchUI]);
+  }, []); // Only run once on mount
 
   // Save Advance Search state to localStorage whenever it changes
   useEffect(() => {
@@ -2214,7 +2232,14 @@ export default function TestChat() {
 
   // Clear Advance Search state from localStorage when a new search is started
   useEffect(() => {
+    // Don't clear during initial load phase
+    if (isInitialLoadRef.current) {
+      return;
+    }
+    
+    // Only clear if the user explicitly closed the UI or stopped the process
     if (!showAdvanceSearchUI || !isAdvanceSearchActive) {
+      // Only clear if this was an explicit action, not a page load
       localStorage.removeItem(ADVANCE_SEARCH_STORAGE_KEY);
     }
   }, [showAdvanceSearchUI, isAdvanceSearchActive]);
