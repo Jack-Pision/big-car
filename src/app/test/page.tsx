@@ -1549,9 +1549,10 @@ export default function TestChat() {
     if (!input.trim() || isLoading || isAiResponding) return;
 
     let currentActiveSessionId = activeSessionId;
+    let uploadedImageUrls: string[] = [];
 
     if (!currentActiveSessionId) {
-      const newSession = createNewSession(currentInput || (currentSelectedFiles.length > 0 ? "Image Upload" : undefined));
+      const newSession = createNewSession(input.trim() || (selectedFilesForUpload.length > 0 ? "Image Upload" : undefined));
       setActiveSessionId(newSession.id);
       saveActiveSessionId(newSession.id);
       currentActiveSessionId = newSession.id;
@@ -1599,20 +1600,20 @@ export default function TestChat() {
       isProcessed: true // Mark the user message as processed
     };
 
-    if (currentSelectedFiles.length > 0 && !input) {
+    if (selectedFilesForUpload.length > 0 && !input) {
       userMessageForDisplay.content = "Image selected for analysis.";
     }
-    if (currentSelectedFiles.length > 0) {
+    if (selectedFilesForUpload.length > 0) {
       userMessageForDisplay.imageUrls = imagePreviewUrls || undefined;
     }
     setMessages((prev) => [...prev, userMessageForDisplay]);
     setInput("");
 
-      if (currentSelectedFiles.length > 0) {
+      if (selectedFilesForUpload.length > 0) {
         const clientSideSupabase = createSupabaseClient();
         if (!clientSideSupabase) throw new Error('Supabase client not available');
         uploadedImageUrls = await Promise.all(
-          currentSelectedFiles.map(async (file) => {
+          selectedFilesForUpload.map(async (file: File) => {
             const fileExt = file.name.split('.').pop();
             const fileName = `${Math.random()}.${fileExt}`;
             const filePath = `${fileName}`;
@@ -1633,7 +1634,7 @@ export default function TestChat() {
             return urlData.publicUrl;
           })
         );
-        if (uploadedImageUrls.length === 0 && currentSelectedFiles.length > 0) {
+        if (uploadedImageUrls.length === 0 && selectedFilesForUpload.length > 0) {
           throw new Error('Failed to get public URLs for any of the uploaded images.');
         }
       }
