@@ -163,6 +163,17 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
         !finalAnswerSent) {
       onFinalAnswer(synthStep.output, webData?.sources || []);
       setFinalAnswerSent(true);
+      
+      // Store that we've sent this answer in localStorage to prevent duplicates on reload
+      if (typeof window !== 'undefined' && synthStep.output) {
+        try {
+          // Create a key based on the output content to identify this specific answer
+          const answerFingerprint = synthStep.output.substring(0, 100).trim().toLowerCase().replace(/[^a-z0-9]/g, '_');
+          localStorage.setItem(`advance_search_answer_sent_${answerFingerprint}`, 'true');
+        } catch (err) {
+          console.error("Error storing answer state:", err);
+        }
+      }
     }
     // Reset flag if synthesize step is not completed (for new queries)
     if (!synthStep || synthStep.status !== 'completed') {

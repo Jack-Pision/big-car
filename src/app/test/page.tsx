@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useLayoutEffect, useEffect } from "react";
+import { useState, useRef, useLayoutEffect, useEffect, useCallback } from "react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -977,6 +977,9 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
   // Add ref to track initial load
   const isInitialLoadRef = useRef(true);
   
+  // Track if answer has been added to the main chat to prevent duplicates
+  const [answerAddedToMainChat, setAnswerAddedToMainChat] = useState(false);
+  
   // Store final answer for completed searches
   const [completedSearchAnswer, setCompletedSearchAnswer] = useState<string | null>(null);
   const [completedSearchSources, setCompletedSearchSources] = useState<any[] | null>(null);
@@ -994,9 +997,32 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
   // Store the previous query to detect changes
   const [previousQuery, setPreviousQuery] = useState(query);
   
+  // Check if the main chat already contains this answer
+  const checkIfAnswerAlreadyInMainChat = useCallback(() => {
+    // We can use localStorage to track which answers have been added to the chat
+    const answerKey = `advance_search_answer_added_${query.trim().toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem(answerKey) === 'true';
+    }
+    return false;
+  }, [query]);
+  
+  // Mark an answer as added to the main chat
+  const markAnswerAddedToMainChat = useCallback(() => {
+    const answerKey = `advance_search_answer_added_${query.trim().toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(answerKey, 'true');
+      setAnswerAddedToMainChat(true);
+    }
+  }, [query]);
+  
   // First check if this search is already completed - do this once on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      // First check if this answer is already in the main chat
+      const alreadyInMainChat = checkIfAnswerAlreadyInMainChat();
+      setAnswerAddedToMainChat(alreadyInMainChat);
+      
       // Check if this exact search was completed before
       if (isSearchCompleted(query)) {
         const completedSearch = getCompletedSearch(query);
@@ -1020,14 +1046,17 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
           setCompletedSearchSources(completedSearch.webData?.sources || []);
           
           // If there's a final answer and onFinalAnswer callback, call it to display in main chat
+          // But ONLY if it hasn't been added to the main chat already
           if (completedSearch.finalAnswer && 
               typeof completedSearch.finalAnswer === 'string' && 
               completedSearch.finalAnswer !== null &&
               completedSearch.finalAnswer !== undefined && 
-              onFinalAnswer) {
+              onFinalAnswer && 
+              !alreadyInMainChat) {
             // Use setTimeout to ensure UI is ready
             setTimeout(() => {
               onFinalAnswer(completedSearch.finalAnswer as string, completedSearch.webData?.sources || []);
+              markAnswerAddedToMainChat();
             }, 100);
           }
           
@@ -1047,10 +1076,11 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
             setCompletedSearchAnswer(parsed.finalAnswer);
             setCompletedSearchSources(parsed.webData?.sources || []);
             
-            // Call onFinalAnswer to display in main chat
-            if (onFinalAnswer && parsed.finalAnswer) {
+            // Call onFinalAnswer to display in main chat only if not already shown
+            if (onFinalAnswer && parsed.finalAnswer && !alreadyInMainChat) {
               setTimeout(() => {
                 onFinalAnswer(parsed.finalAnswer, parsed.webData?.sources || []);
+                markAnswerAddedToMainChat();
               }, 100);
             }
           }
@@ -1079,7 +1109,7 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
         isInitialLoadRef.current = false;
       }, 500);
     }
-  }, []); // Only run once on component mount
+  }, [query, onFinalAnswer, checkIfAnswerAlreadyInMainChat, markAnswerAddedToMainChat]); // Include new dependencies
   
   // Only reset isBlockRestoredFromStorage when a new query is detected
   // and we're not in the initial load phase
@@ -1090,6 +1120,7 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
       setIsSearchAlreadyCompleted(false);
       setCompletedSearchAnswer(null);
       setCompletedSearchSources(null);
+      setAnswerAddedToMainChat(false);
     }
   }, [query, previousQuery]);
   
@@ -1145,10 +1176,22 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
     }
   }, [steps, activeStepId, isComplete, isInProgress, webData, query, conversationHistory]);
   
+  // Wrap the onFinalAnswer callback to prevent duplicate calls
+  const safeOnFinalAnswer = useCallback((answer: string, sources?: any[]) => {
+    if (!answerAddedToMainChat && onFinalAnswer) {
+      onFinalAnswer(answer, sources);
+      markAnswerAddedToMainChat();
+    }
+  }, [answerAddedToMainChat, onFinalAnswer, markAnswerAddedToMainChat]);
+  
   // Handle onFinalAnswer callback for completed searches
   useEffect(() => {
     const synthStep = steps.find(s => s.id === 'synthesize');
-    if (synthStep && synthStep.status === 'completed' && typeof synthStep.output === 'string' && onFinalAnswer) {
+    if (synthStep && 
+        synthStep.status === 'completed' && 
+        typeof synthStep.output === 'string' && 
+        synthStep.output !== null && 
+        !answerAddedToMainChat) {
       // Save the final answer to our completed searches
       saveCompletedSearch({
         query,
@@ -1162,7 +1205,7 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
         conversationHistory
       });
     }
-  }, [steps, isComplete, query, activeStepId, isInProgress, webData, conversationHistory, onFinalAnswer]);
+  }, [steps, isComplete, query, activeStepId, isInProgress, webData, conversationHistory, answerAddedToMainChat]);
   
   const [manualStepId, setManualStepId] = useState<string | null>(null);
   const isFinalStepComplete = steps[steps.length - 1]?.status === 'completed';
@@ -1205,7 +1248,7 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
           manualNavigationEnabled={isFinalStepComplete}
           error={error}
           webData={displayWebData}
-          onFinalAnswer={onFinalAnswer}
+          onFinalAnswer={safeOnFinalAnswer}
         />
       </div>
       {error && (
@@ -2594,18 +2637,28 @@ export default function TestChat() {
                     conversationHistory={advanceSearchHistory}
                     onClearHistory={clearAdvanceSearchHistory}
                     onFinalAnswer={(answer: string, sources?: any[]) => {
-                      setMessages(prev => [
-                        ...prev,
-                        {
-                          role: "assistant",
-                          content: makeCitationsClickable(answer, sources),
-                          id: uuidv4(),
-                          timestamp: Date.now(),
-                          isProcessed: true,
-                          contentType: 'deep-research',
-                          webSources: sources || []
-                        }
-                      ]);
+                      // Check if we already have this answer in messages to prevent duplicates
+                      const isDuplicate = messages.some(existingMsg => 
+                        existingMsg.role === "assistant" && 
+                        existingMsg.contentType === 'deep-research' && 
+                        existingMsg.content.includes(answer.substring(0, 100))
+                      );
+                      
+                      // Only add if not a duplicate
+                      if (!isDuplicate) {
+                        setMessages(prev => [
+                          ...prev,
+                          {
+                            role: "assistant",
+                            content: makeCitationsClickable(answer, sources),
+                            id: uuidv4(),
+                            timestamp: Date.now(),
+                            isProcessed: true,
+                            contentType: 'deep-research',
+                            webSources: sources || []
+                          }
+                        ]);
+                      }
                     }}
                   />
                 );
