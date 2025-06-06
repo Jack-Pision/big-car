@@ -966,6 +966,14 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory }: {
   },
   onClearHistory?: () => void
 }) {
+  // State to track if content is restored from storage
+  const [isBlockRestoredFromStorage, setIsBlockRestoredFromStorage] = useState(true);
+  
+  // When query changes, set isRestoredFromStorage to false to allow processing
+  useEffect(() => {
+    setIsBlockRestoredFromStorage(false);
+  }, [query]);
+  
   // Always set the first parameter to true to ensure it processes the query
   // regardless of the parent component's state
   const {
@@ -975,7 +983,7 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory }: {
     isInProgress,
     error,
     webData
-  } = useDeepResearch(true, query, conversationHistory);
+  } = useDeepResearch(true, query, conversationHistory, isBlockRestoredFromStorage);
   
   const [manualStepId, setManualStepId] = useState<string | null>(null);
   const isFinalStepComplete = steps[steps.length - 1]?.status === 'completed';
@@ -1372,6 +1380,9 @@ export default function TestChat() {
     previousResponses: []
   });
   
+  // Add state to track if the chat was restored from storage
+  const [isRestoredFromStorage, setIsRestoredFromStorage] = useState(false);
+  
   // Deep Research hook - now passing processing state instead of UI state
   const {
     steps,
@@ -1380,7 +1391,12 @@ export default function TestChat() {
     isInProgress,
     error,
     webData
-  } = useDeepResearch(isAdvanceSearchActive, currentQuery, advanceSearchHistory);
+  } = useDeepResearch(
+    isAdvanceSearchActive, 
+    currentQuery, 
+    advanceSearchHistory,
+    isRestoredFromStorage // Pass the flag to control process start
+  );
 
   const [manualStepId, setManualStepId] = useState<string | null>(null);
   const isFinalStepComplete = steps[steps.length - 1]?.status === 'completed';
@@ -1414,12 +1430,14 @@ export default function TestChat() {
       setMessages(processedMessages);
       setShowHeading(false);
       setHasInteracted(true);
+      setIsRestoredFromStorage(true); // Set the flag to indicate restoration from storage
     } else {
       // Show welcome page for new users
       setShowHeading(true);
       setHasInteracted(false);
       setActiveSessionId(null);
       setMessages([]);
+      setIsRestoredFromStorage(false); // Not restored from storage
     }
   }, []);
 
@@ -1526,27 +1544,9 @@ export default function TestChat() {
 
   async function handleSend(e?: React.FormEvent) {
     if (e) e.preventDefault();
-    if (!input.trim() || isLoading || isAiResponding) return;
     
-    // If a user is just loading a previous session, don't make new API calls
-    // Check if there are any unprocessed messages - if not, we don't need to do anything
-    const unprocessedMessages = messages.filter(msg => !msg.isProcessed);
-    if (unprocessedMessages.length === 0 && !input.trim()) {
-      // All messages are already processed, no new input, so no need to call API
-      return;
-    }
-    
-    setIsLoading(true);
-    setChatError("");
-    setIsProcessing(true);
-
-    const currentInput = input.trim();
-    const currentSelectedFiles = selectedFilesForUpload;
-    let uploadedImageUrls: string[] = [];
-    const messageId = uuidv4();
-
     try {
-    if (!currentInput && !currentSelectedFiles.length) return;
+    if (!input.trim() || isLoading || isAiResponding) return;
 
     let currentActiveSessionId = activeSessionId;
 
@@ -1559,15 +1559,16 @@ export default function TestChat() {
     }
 
     if (!hasInteracted) setHasInteracted(true);
-    setCurrentQuery(currentInput);
+    setCurrentQuery(input);
+    setIsRestoredFromStorage(false); // Reset the restored flag when sending a new message
 
     if (showAdvanceSearchUI) {
       setIsAdvanceSearchActive(true);
       const researchId = uuidv4();
       setMessages(prev => [
         ...prev,
-        { role: "user", content: currentInput, id: uuidv4(), timestamp: Date.now(), isProcessed: true },
-        { role: "deep-research", content: currentInput, researchId, id: uuidv4(), timestamp: Date.now(), isProcessed: true }
+        { role: "user", content: input, id: uuidv4(), timestamp: Date.now(), isProcessed: true },
+        { role: "deep-research", content: input, researchId, id: uuidv4(), timestamp: Date.now(), isProcessed: true }
       ]);
       setInput("");
       setImagePreviewUrls([]);
@@ -1581,10 +1582,10 @@ export default function TestChat() {
       setIsLoading(true);
     if (showHeading) setShowHeading(false);
 
-    const queryType = classifyQuery(currentInput) as QueryClassificationType;
+    const queryType = classifyQuery(input) as QueryClassificationType;
     const responseSchema = SCHEMAS[queryType] || SCHEMAS.conversation;
 
-    console.log("[handleSend] Query:", currentInput);
+    console.log("[handleSend] Query:", input);
     console.log("[handleSend] Classified Query Type:", queryType);
     console.log("[handleSend] Selected Response Schema Name:", queryType);
 
@@ -1592,13 +1593,13 @@ export default function TestChat() {
 
       const userMessageForDisplay: Message = {
       role: "user" as const,
-      content: currentInput,
-      id: messageId,
+      content: input,
+      id: uuidv4(),
       timestamp: Date.now(),
       isProcessed: true // Mark the user message as processed
     };
 
-    if (currentSelectedFiles.length > 0 && !currentInput) {
+    if (currentSelectedFiles.length > 0 && !input) {
       userMessageForDisplay.content = "Image selected for analysis.";
     }
     if (currentSelectedFiles.length > 0) {
@@ -1641,7 +1642,7 @@ export default function TestChat() {
       let turnSpecificSystemPrompt = BASE_SYSTEM_PROMPT;
 
       // Add explicit instruction to never show reasoning
-      if (!showAdvanceSearchUI && !currentInput.includes('@AdvanceSearch')) {
+      if (!showAdvanceSearchUI && !input.includes('@AdvanceSearch')) {
         turnSpecificSystemPrompt += `\n\nIMPORTANT: Provide direct answers without showing your reasoning or thinking process. Never include any step-by-step analysis in your response. Only provide the final answer in a clear, concise format.`;
       }
 
@@ -1656,12 +1657,12 @@ export default function TestChat() {
 
       console.log("[handleSend] Turn Specific System Prompt Length:", turnSpecificSystemPrompt.length);
 
-      const enhancedSystemPrompt = enhanceSystemPrompt(turnSpecificSystemPrompt, context, currentInput);
+      const enhancedSystemPrompt = enhanceSystemPrompt(turnSpecificSystemPrompt, context, input);
       
       const formattedMessages = formatMessagesForApi(
         enhancedSystemPrompt,
         messages,
-        currentInput,
+        input,
         true
       );
 
@@ -1855,7 +1856,7 @@ export default function TestChat() {
         // Apply post-processing after streaming is complete
         // If it was an advance search, it would have been handled by its specific UI state.
         // Otherwise, it's treated as a conversation, potentially needing post-processing.
-        if (showAdvanceSearchUI || currentQuery.includes('@AdvanceSearch')) {
+        if (showAdvanceSearchUI || input.includes('@AdvanceSearch')) {
           // Keep the Advance Search processing intact
           const processedResearch = enforceAdvanceSearchStructure(contentBuffer);
           setMessages((prev) => {
@@ -2026,6 +2027,7 @@ export default function TestChat() {
     setShowHeading(messages.length === 0); // Show heading if the loaded session is empty
     setHasInteracted(true); // Assume interaction when a session is selected
     setSidebarOpen(false); // Close sidebar
+    setIsRestoredFromStorage(true); // Set flag to indicate restoration from storage
   };
 
   const handleNewChatRequest = () => {
@@ -2042,6 +2044,7 @@ export default function TestChat() {
     setActiveSessionId(null);
     saveActiveSessionId(null); // Clear the active session
     setMessages([]);
+    setIsRestoredFromStorage(false); // Reset the restored flag
   };
 
   const renderMessageContent = (msg: Message) => {

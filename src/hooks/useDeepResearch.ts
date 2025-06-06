@@ -114,7 +114,12 @@ interface ResearchConversation {
   previousResponses: string[];
 }
 
-export const useDeepResearch = (isActive: boolean, query: string = '', conversationHistory: ResearchConversation = { previousQueries: [], previousResponses: [] }) => {
+export const useDeepResearch = (
+  isActive: boolean, 
+  query: string = '', 
+  conversationHistory: ResearchConversation = { previousQueries: [], previousResponses: [] },
+  isRestoredFromStorage: boolean = false // Add flag for restored from storage
+) => {
   const [steps, setSteps] = useState<ThinkingStep[]>([...DEFAULT_THINKING_STEPS]);
   const [activeStepId, setActiveStepId] = useState<string | null>(null);
   const [isComplete, setIsComplete] = useState(false);
@@ -124,7 +129,8 @@ export const useDeepResearch = (isActive: boolean, query: string = '', conversat
 
   // Reset everything when a new query starts
   useEffect(() => {
-    if (query && isActive && !isInProgress) {
+    // Only start the process if not restored from storage and other conditions are met
+    if (query && isActive && !isInProgress && !isRestoredFromStorage) {
       setSteps([...DEFAULT_THINKING_STEPS]);
       setActiveStepId(null);
       setIsComplete(false);
@@ -140,7 +146,7 @@ export const useDeepResearch = (isActive: boolean, query: string = '', conversat
       setIsInProgress(false);
       setIsComplete(false);
     }
-  }, [query, isActive, conversationHistory]);
+  }, [query, isActive, conversationHistory, isRestoredFromStorage]);
 
   // Step 1: Understanding - Call AI to analyze the query
   const processUnderstandStep = async (query: string, conversationHistory: ResearchConversation) => {
