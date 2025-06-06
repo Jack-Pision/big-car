@@ -2630,38 +2630,52 @@ export default function TestChat() {
                   </motion.div>
                 );
               } else if (msg.role === "deep-research") {
-                return (
-                  <DeepResearchBlock 
-                    key={msg.id + '-dr-' + i}
-                    query={msg.content} 
-                    conversationHistory={advanceSearchHistory}
-                    onClearHistory={clearAdvanceSearchHistory}
-                    onFinalAnswer={(answer: string, sources?: any[]) => {
-                      // Check if we already have this answer in messages to prevent duplicates
-                      const isDuplicate = messages.some(existingMsg => 
-                        existingMsg.role === "assistant" && 
-                        existingMsg.contentType === 'deep-research' && 
-                        existingMsg.content.includes(answer.substring(0, 100))
-                      );
-                      
-                      // Only add if not a duplicate
-                      if (!isDuplicate) {
-                        setMessages(prev => [
-                          ...prev,
-                          {
-                            role: "assistant",
-                            content: makeCitationsClickable(answer, sources),
-                            id: uuidv4(),
-                            timestamp: Date.now(),
-                            isProcessed: true,
-                            contentType: 'deep-research',
-                            webSources: sources || []
-                          }
-                        ]);
-                      }
-                    }}
-                  />
-                );
+                // Find the most recent deep-research message
+                const latestDeepResearchIndex = messages.map(m => m.role).lastIndexOf("deep-research");
+                
+                // Only render DeepResearchBlock for the latest deep-research message
+                if (i === latestDeepResearchIndex) {
+                  return (
+                    <DeepResearchBlock 
+                      key={msg.id + '-dr-' + i}
+                      query={msg.content} 
+                      conversationHistory={advanceSearchHistory}
+                      onClearHistory={clearAdvanceSearchHistory}
+                      onFinalAnswer={(answer: string, sources?: any[]) => {
+                        // Check if we already have this answer in messages to prevent duplicates
+                        const isDuplicate = messages.some(existingMsg => 
+                          existingMsg.role === "assistant" && 
+                          existingMsg.contentType === 'deep-research' && 
+                          existingMsg.content.includes(answer.substring(0, 100))
+                        );
+                        
+                        // Only add if not a duplicate
+                        if (!isDuplicate) {
+                          setMessages(prev => [
+                            ...prev,
+                            {
+                              role: "assistant",
+                              content: makeCitationsClickable(answer, sources),
+                              id: uuidv4(),
+                              timestamp: Date.now(),
+                              isProcessed: true,
+                              contentType: 'deep-research',
+                              webSources: sources || []
+                            }
+                          ]);
+                        }
+                      }}
+                    />
+                  );
+                } else {
+                  // For older deep-research messages, show a static placeholder
+                  return (
+                    <div className="p-3 text-sm text-neutral-400 italic rounded-lg border border-neutral-800 bg-neutral-900/50 my-2">
+                      Advanced Search: "{msg.content}"
+                      <span className="ml-2 text-xs">(See results in AI response below)</span>
+                    </div>
+                  );
+                }
               } else {
                 return (
                 <div
