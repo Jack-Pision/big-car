@@ -13,6 +13,7 @@ interface AdvanceSearchProps {
   webData: any | null;
   onManualStepClick?: (stepId: string) => void;
   manualNavigationEnabled?: boolean;
+  onFinalAnswer?: (answer: string) => void;
 }
 
 // Helper function to convert markdown to plain text with bullet points
@@ -93,7 +94,8 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
   error,
   webData,
   onManualStepClick,
-  manualNavigationEnabled = false
+  manualNavigationEnabled = false,
+  onFinalAnswer
 }) => {
   // Create refs for each step section
   const stepRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
@@ -103,6 +105,9 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
   
   // For mobile accordion view
   const [expandedMobileStep, setExpandedMobileStep] = useState<string | null>(null);
+
+  // Track if we've already called onFinalAnswer to avoid duplicate calls
+  const [finalAnswerSent, setFinalAnswerSent] = useState(false);
 
   // Track which steps are being displayed with animation
   useEffect(() => {
@@ -146,6 +151,18 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
       }
     }
   }, [steps]);
+
+  useEffect(() => {
+    const synthStep = steps.find(s => s.id === 'synthesize');
+    if (synthStep && synthStep.status === 'completed' && typeof synthStep.output === 'string' && onFinalAnswer && !finalAnswerSent) {
+      onFinalAnswer(synthStep.output);
+      setFinalAnswerSent(true);
+    }
+    // Reset flag if synthesize step is not completed (for new queries)
+    if (!synthStep || synthStep.status !== 'completed') {
+      setFinalAnswerSent(false);
+    }
+  }, [steps, onFinalAnswer, finalAnswerSent]);
 
   // Function to handle step click and scroll
   const handleStepClick = (stepId: string) => {

@@ -958,13 +958,14 @@ const Stack = ({ spacing = 20, children }: { spacing?: number; children: React.R
   </div>
 );
 
-function DeepResearchBlock({ query, conversationHistory, onClearHistory }: { 
+function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinalAnswer }: { 
   query: string, 
   conversationHistory: {
     previousQueries: string[];
     previousResponses: string[];
   },
-  onClearHistory?: () => void
+  onClearHistory?: () => void,
+  onFinalAnswer?: (answer: string) => void // NEW PROP
 }) {
   // State to track if content is restored from storage
   const [isBlockRestoredFromStorage, setIsBlockRestoredFromStorage] = useState(false);
@@ -1082,6 +1083,7 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory }: {
           manualNavigationEnabled={isFinalStepComplete}
           error={error}
           webData={webData}
+          onFinalAnswer={onFinalAnswer} // NEW PROP
         />
       </div>
       {error && (
@@ -2451,6 +2453,19 @@ export default function TestChat() {
                     query={msg.content} 
                     conversationHistory={advanceSearchHistory}
                     onClearHistory={clearAdvanceSearchHistory}
+                    onFinalAnswer={(answer: string) => {
+                      setMessages(prev => [
+                        ...prev,
+                        {
+                          role: "assistant",
+                          content: answer,
+                          id: uuidv4(),
+                          timestamp: Date.now(),
+                          isProcessed: true,
+                          contentType: 'deep-research' // Use allowed value
+                        }
+                      ]);
+                    }}
                   />
                 );
               } else {
