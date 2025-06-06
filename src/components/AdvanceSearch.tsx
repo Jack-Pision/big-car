@@ -13,7 +13,7 @@ interface AdvanceSearchProps {
   webData: any | null;
   onManualStepClick?: (stepId: string) => void;
   manualNavigationEnabled?: boolean;
-  onFinalAnswer?: (answer: string) => void;
+  onFinalAnswer?: (answer: string, sources?: any[]) => void;
 }
 
 // Helper function to convert markdown to plain text with bullet points
@@ -155,14 +155,14 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
   useEffect(() => {
     const synthStep = steps.find(s => s.id === 'synthesize');
     if (synthStep && synthStep.status === 'completed' && typeof synthStep.output === 'string' && onFinalAnswer && !finalAnswerSent) {
-      onFinalAnswer(synthStep.output);
+      onFinalAnswer(synthStep.output, webData?.sources || []);
       setFinalAnswerSent(true);
     }
     // Reset flag if synthesize step is not completed (for new queries)
     if (!synthStep || synthStep.status !== 'completed') {
       setFinalAnswerSent(false);
     }
-  }, [steps, onFinalAnswer, finalAnswerSent]);
+  }, [steps, onFinalAnswer, finalAnswerSent, webData]);
 
   // Function to handle step click and scroll
   const handleStepClick = (stepId: string) => {

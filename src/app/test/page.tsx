@@ -965,7 +965,7 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
     previousResponses: string[];
   },
   onClearHistory?: () => void,
-  onFinalAnswer?: (answer: string) => void // NEW PROP
+  onFinalAnswer?: (answer: string, sources?: any[]) => void // NEW PROP
 }) {
   // State to track if content is restored from storage
   const [isBlockRestoredFromStorage, setIsBlockRestoredFromStorage] = useState(false);
@@ -2453,16 +2453,17 @@ export default function TestChat() {
                     query={msg.content} 
                     conversationHistory={advanceSearchHistory}
                     onClearHistory={clearAdvanceSearchHistory}
-                    onFinalAnswer={(answer: string) => {
+                    onFinalAnswer={(answer: string, sources?: any[]) => {
                       setMessages(prev => [
                         ...prev,
                         {
                           role: "assistant",
-                          content: answer,
+                          content: makeCitationsClickable(answer, sources),
                           id: uuidv4(),
                           timestamp: Date.now(),
                           isProcessed: true,
-                          contentType: 'deep-research' // Use allowed value
+                          contentType: 'deep-research',
+                          webSources: sources || []
                         }
                       ]);
                     }}
