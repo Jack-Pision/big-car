@@ -365,7 +365,7 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
               <div className="space-y-2">
                 <div className="text-neutral-300 text-base mb-2">Web Articles:</div>
                     <div className="space-y-2">
-                  {webData.serperArticles.slice(0, 20).map((article: any, i: number) => {
+                  {webData.serperArticles.slice(0, 50).map((article: any, i: number) => {
                         let domain = '';
                         try {
                           domain = new URL(article.url).hostname;

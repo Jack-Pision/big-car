@@ -300,7 +300,7 @@ export const useDeepResearch = (
       updateStepStatus('research', 'active', 'Gathering information from multiple sources...');
 
       // Use the deduplication utility instead of direct fetch
-      const serperData = await dedupedSerperRequest(query, 20);
+      const serperData = await dedupedSerperRequest(query, 50);
 
       const newWebData: WebData = {
         serperArticles: serperData.articles || [],
