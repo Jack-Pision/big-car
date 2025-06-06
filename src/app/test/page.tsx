@@ -1566,53 +1566,6 @@ export default function TestChat() {
     }
   }, [isComplete, isAiResponding]);
 
-  // In the useEffect that processes the synthesis output, enforce the structure before displaying
-  useEffect(() => {
-    if (isComplete && currentQuery) {
-      const synthesisStep = steps.find(step => step.id === 'synthesize');
-      if (synthesisStep?.output) {
-        let cleanedOutput = cleanAIOutput(synthesisStep.output);
-        cleanedOutput = enforceAdvanceSearchStructure(cleanedOutput);
-        
-        // Add console log to debug
-        console.log("[AdvanceSearch] Processing completed synthesis:", { 
-          isComplete, 
-          synthesisStep: synthesisStep.id,
-          hasOutput: !!synthesisStep.output,
-          outputLength: synthesisStep.output?.length || 0
-        });
-        
-        const alreadyPresent = messages.some(m => m.role === 'assistant' && m.content === cleanedOutput);
-        if (!alreadyPresent) {
-          // Removed setTimeout to make message appear immediately
-            setMessages(prev => [
-            ...prev,
-              { 
-                role: 'assistant', 
-                content: cleanedOutput,
-                webSources: webData?.sources || [],
-                id: uuidv4(),
-              timestamp: Date.now(),
-              isProcessed: true // Mark Advance Search messages as processed
-              }
-            ]);
-            
-            setAdvanceSearchHistory(prev => ({
-              previousQueries: [...prev.previousQueries, currentQuery],
-              previousResponses: [...prev.previousResponses, cleanedOutput]
-            }));
-            
-          // Add console log for confirmation
-          console.log("[AdvanceSearch] Added synthesized response to messages");
-        } else {
-          console.log("[AdvanceSearch] Message already present, not adding duplicate");
-        }
-      } else {
-        console.log("[AdvanceSearch] Synthesis step has no output yet");
-      }
-    }
-  }, [isComplete, currentQuery, steps, messages, webData?.sources]);
-
   async function handleSend(e?: React.FormEvent) {
     if (e) e.preventDefault();
     
