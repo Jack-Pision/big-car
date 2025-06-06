@@ -1599,6 +1599,9 @@ export default function TestChat() {
       timestamp: Date.now(),
       isProcessed: true // Mark the user message as processed
     };
+    
+    // Store the user message ID to use as parentId for AI responses
+    const userMessageId = userMessageForDisplay.id;
 
     if (selectedFilesForUpload.length > 0 && !input) {
       userMessageForDisplay.content = "Image selected for analysis.";
@@ -1740,7 +1743,7 @@ export default function TestChat() {
           structuredContent: structuredData,
           id: uuidv4(),
           timestamp: Date.now(),
-          parentId: messageId,
+          parentId: userMessageId,
           webSources: [],
           isProcessed: true // Mark message as processed
       };
@@ -1762,7 +1765,7 @@ export default function TestChat() {
           content: "", 
           id: uuidv4(),
           timestamp: Date.now(),
-          parentId: messageId,
+          parentId: userMessageId,
           imageUrls: uploadedImageUrls.length > 0 ? uploadedImageUrls : undefined,
           webSources: [],
           contentType: 'conversation', // Default to conversation, will be confirmed/overridden after stream
@@ -1923,7 +1926,7 @@ export default function TestChat() {
             content: "[Response stopped by user]", 
             id: uuidv4(),
             timestamp: Date.now(),
-            parentId: messageId, 
+            parentId: userMessageId, 
             imageUrls: uploadedImageUrls.length > 0 ? uploadedImageUrls : undefined,
             isProcessed: true // Mark as processed
           },
@@ -1936,7 +1939,7 @@ export default function TestChat() {
             content: "Error: " + (err?.message || String(err)), 
             id: uuidv4(),
             timestamp: Date.now(),
-            parentId: messageId, 
+            parentId: userMessageId, 
             imageUrls: uploadedImageUrls.length > 0 ? uploadedImageUrls : undefined,
             isProcessed: true // Mark as processed
           },
