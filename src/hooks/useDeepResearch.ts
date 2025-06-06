@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { extractRedditUsername } from '@/utils/reddit-api';
-import { dedupedSerperRequest } from '@/utils/api-request-cache';
+import { dedupedSerperRequest, isQueryActive, markQueryActive, markQueryInactive } from '@/utils/api-request-cache';
 
 export interface ThinkingStep {
   id: string;
@@ -288,12 +288,22 @@ export const useDeepResearch = (
 
   // Step 2: Research - Fetch web data based on AI's analysis
   const processResearchStep = async (query: string, analysis: string) => {
-    // Guard: Only allow one research step per query
+    // First check the global registry
+    if (isQueryActive(query)) {
+      console.log('[DEBUG] Another component is already processing this query:', query);
+      return;
+    }
+    
+    // Then check the local ref (as before)
     if (researchStepCalledRef.current[query]) {
       console.log('[DEBUG] Skipping duplicate research step for:', query);
       return;
     }
+    
+    // Mark as active globally and locally
+    markQueryActive(query);
     researchStepCalledRef.current[query] = true;
+    
     console.log('[DEBUG] Running research step for:', query);
     try {
       setActiveStepId('research');
@@ -319,6 +329,9 @@ export const useDeepResearch = (
       processSynthesisStep(query, analysis, newWebData);
     } catch (err: any) {
       handleError('research', err.message);
+    } finally {
+      // Mark as inactive globally when done (important!)
+      markQueryInactive(query);
     }
   };
 

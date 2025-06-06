@@ -3,6 +3,39 @@
  * This helps prevent duplicate Serper API calls in the Advanced Search feature
  */
 
+// Create a global window property to track active queries across all components
+declare global {
+  interface Window {
+    _activeSerperQueries: Record<string, boolean>;
+  }
+}
+
+// Initialize the global tracker
+if (typeof window !== 'undefined') {
+  window._activeSerperQueries = window._activeSerperQueries || {};
+}
+
+// Check if a query is already active globally (across all components)
+export function isQueryActive(query: string): boolean {
+  if (typeof window === 'undefined') return false;
+  const key = query.trim().toLowerCase();
+  return !!window._activeSerperQueries[key];
+}
+
+// Mark a query as active globally
+export function markQueryActive(query: string): void {
+  if (typeof window === 'undefined') return;
+  const key = query.trim().toLowerCase();
+  window._activeSerperQueries[key] = true;
+}
+
+// Mark a query as inactive globally
+export function markQueryInactive(query: string): void {
+  if (typeof window === 'undefined') return;
+  const key = query.trim().toLowerCase();
+  delete window._activeSerperQueries[key];
+}
+
 // Constants
 const CACHE_STORAGE_KEY = 'api_request_cache';
 const CACHE_EXPIRATION_MS = 10 * 60 * 1000; // 10 minutes
