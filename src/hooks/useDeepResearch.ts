@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { extractRedditUsername } from '@/utils/reddit-api';
 import { dedupedSerperRequest } from '@/utils/api-request-cache';
 
@@ -152,6 +152,9 @@ export const useDeepResearch = (
     return restoredState.isFullyCompleted === true;
   }, [restoredState.isFullyCompleted]);
 
+  // Guard to prevent duplicate research step per query
+  const researchStepCalledRef = useRef<{ [query: string]: boolean }>({});
+
   // Reset everything when a new query starts
   useEffect(() => {
     // Skip API calls if this is a fully completed search
@@ -285,6 +288,13 @@ export const useDeepResearch = (
 
   // Step 2: Research - Fetch web data based on AI's analysis
   const processResearchStep = async (query: string, analysis: string) => {
+    // Guard: Only allow one research step per query
+    if (researchStepCalledRef.current[query]) {
+      console.log('[DEBUG] Skipping duplicate research step for:', query);
+      return;
+    }
+    researchStepCalledRef.current[query] = true;
+    console.log('[DEBUG] Running research step for:', query);
     try {
       setActiveStepId('research');
       updateStepStatus('research', 'active', 'Gathering information from multiple sources...');
@@ -301,8 +311,7 @@ export const useDeepResearch = (
       setWebData(newWebData);
       
       // Create a summary of found data
-      const dataSummary = `Found:
-- ${newWebData.serperArticles.length} web articles`;
+      const dataSummary = `Found:\n- ${newWebData.serperArticles.length} web articles`;
 
       updateStepStatus('research', 'completed', dataSummary, newWebData);
       
