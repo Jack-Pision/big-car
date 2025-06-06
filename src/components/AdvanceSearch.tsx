@@ -405,30 +405,11 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
       );
     }
 
-    // For completed synthesize step, show the actual content
+    // For completed synthesize step, always direct to main chat
     if (step.status === 'completed') {
-      const synthesisContent = typeof step.output === 'string' ? step.output : '';
-      
-      if (!synthesisContent) {
-        return (
-          <div className="text-cyan-400 text-base font-medium">
-            Response ready! See main chat for the full answer.
-          </div>
-        );
-      }
-      
       return (
-        <div className="space-y-4">
-          <div className="text-cyan-400 font-medium mb-2">
-            Final Answer:
-          </div>
-          <div className="text-neutral-300 text-base leading-relaxed">
-            <div className="prose prose-invert max-w-none">
-              <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
-                {synthesisContent}
-              </ReactMarkdown>
-            </div>
-          </div>
+        <div className="text-cyan-400 text-base font-medium">
+          Response ready! See main chat for the full answer.
         </div>
       );
     }
