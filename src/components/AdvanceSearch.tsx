@@ -97,17 +97,42 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
   manualNavigationEnabled = false,
   onFinalAnswer
 }) => {
-  // Create refs for each step section
+  const [expandedSteps, setExpandedSteps] = useState<string[]>([]);
+  const [expandedMobileStep, setExpandedMobileStep] = useState<string | null>(null);
+  const [finalAnswerSent, setFinalAnswerSent] = useState(false);
   const stepRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const [displayingSteps, setDisplayingSteps] = useState<string[]>([]);
   const rightPanelRef = useRef<HTMLDivElement>(null);
-  const [expandedSteps, setExpandedSteps] = useState<string[]>([]);
   
-  // For mobile accordion view
-  const [expandedMobileStep, setExpandedMobileStep] = useState<string | null>(null);
+  // Reset finalAnswerSent when steps array changes (new search)
+  useEffect(() => {
+    setFinalAnswerSent(false);
+  }, [steps.length]); // Only depend on steps.length to detect new searches
 
-  // Track if we've already called onFinalAnswer to avoid duplicate calls
-  const [finalAnswerSent, setFinalAnswerSent] = useState(false);
+  // Handle final answer when synthesis step completes
+  useEffect(() => {
+    const synthStep = steps.find((s: ThinkingStep) => s.id === 'synthesize');
+    if (synthStep && 
+        synthStep.status === 'completed' && 
+        typeof synthStep.output === 'string' && 
+        synthStep.output !== null && 
+        synthStep.output !== undefined &&
+        onFinalAnswer && 
+        !finalAnswerSent) {
+      onFinalAnswer(synthStep.output, webData?.sources || []);
+      setFinalAnswerSent(true);
+      
+      // Store that we've sent this answer in localStorage
+      if (typeof window !== 'undefined' && synthStep.output) {
+        try {
+          const answerFingerprint = synthStep.output.substring(0, 100).trim().toLowerCase().replace(/[^a-z0-9]/g, '_');
+          localStorage.setItem(`advance_search_answer_sent_${answerFingerprint}`, 'true');
+        } catch (err) {
+          console.error("Error storing answer state:", err);
+        }
+      }
+    }
+  }, [steps, onFinalAnswer, webData, finalAnswerSent]); // Add finalAnswerSent back to dependencies
 
   // Track which steps are being displayed with animation
   useEffect(() => {
@@ -151,35 +176,6 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
       }
     }
   }, [steps]);
-
-  useEffect(() => {
-    const synthStep = steps.find(s => s.id === 'synthesize');
-    if (synthStep && 
-        synthStep.status === 'completed' && 
-        typeof synthStep.output === 'string' && 
-        synthStep.output !== null && 
-        synthStep.output !== undefined &&
-        onFinalAnswer && 
-        !finalAnswerSent) {
-      onFinalAnswer(synthStep.output, webData?.sources || []);
-      setFinalAnswerSent(true);
-      
-      // Store that we've sent this answer in localStorage to prevent duplicates on reload
-      if (typeof window !== 'undefined' && synthStep.output) {
-        try {
-          // Create a key based on the output content to identify this specific answer
-          const answerFingerprint = synthStep.output.substring(0, 100).trim().toLowerCase().replace(/[^a-z0-9]/g, '_');
-          localStorage.setItem(`advance_search_answer_sent_${answerFingerprint}`, 'true');
-        } catch (err) {
-          console.error("Error storing answer state:", err);
-        }
-      }
-    }
-    // Reset flag if synthesize step is not completed (for new queries)
-    if (!synthStep || synthStep.status !== 'completed') {
-      setFinalAnswerSent(false);
-    }
-  }, [steps, onFinalAnswer, finalAnswerSent, webData]);
 
   // Function to handle step click and scroll
   const handleStepClick = (stepId: string) => {
