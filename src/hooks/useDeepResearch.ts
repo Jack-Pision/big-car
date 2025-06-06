@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { extractRedditUsername } from '@/utils/reddit-api';
+import { dedupedSerperRequest } from '@/utils/api-request-cache';
 
 export interface ThinkingStep {
   id: string;
@@ -288,14 +289,8 @@ export const useDeepResearch = (
       setActiveStepId('research');
       updateStepStatus('research', 'active', 'Gathering information from multiple sources...');
 
-      // Fetch from all sources in parallel
-      const serperRes = await fetch('/api/serper/search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, limit: 20 })
-      });
-
-      const serperData = await serperRes.json();
+      // Use the deduplication utility instead of direct fetch
+      const serperData = await dedupedSerperRequest(query, 20);
 
       const newWebData: WebData = {
         serperArticles: serperData.articles || [],
