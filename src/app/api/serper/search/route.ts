@@ -4,6 +4,14 @@ export const runtime = 'edge';
 
 const SERPER_API_KEY = "2ae2160086988d4517b81c0dade49cbd98bcb772";
 
+// Backend in-memory cache for Serper API results
+const serperBackendCache: Record<string, { data: any, timestamp: number }> = {};
+const CACHE_EXPIRATION_MS = 10 * 60 * 1000; // 10 minutes
+
+function getSerperBackendCacheKey(query: string, limit: number) {
+  return `${query.trim().toLowerCase()}::${limit}`;
+}
+
 async function searchSerperPage(query: string, page: number = 1) {
   const url = "https://google.serper.dev/search";
   const res = await fetch(url, {
@@ -66,18 +74,28 @@ export async function POST(req: NextRequest) {
     if (!query) {
       return new Response(JSON.stringify({ error: 'No query provided' }), { status: 400 });
     }
-    const results = await searchSerper(query, limit || 50);  // Update default limit to 50
-    if (!results.length) {
-      return new Response(JSON.stringify({
-        articles: [],
-        summary: 'No relevant Serper search results found.',
-        sources: []
-      }), {
+    const key = getSerperBackendCacheKey(query, limit || 50);
+    const cached = serperBackendCache[key];
+    if (cached && Date.now() - cached.timestamp < CACHE_EXPIRATION_MS) {
+      return new Response(JSON.stringify(cached.data), {
         status: 200,
         headers: { 'Content-Type': 'application/json' }
       });
     }
-    return new Response(JSON.stringify({
+    const results = await searchSerper(query, limit || 50);  // Update default limit to 50
+    if (!results.length) {
+      const responseData = {
+        articles: [],
+        summary: 'No relevant Serper search results found.',
+        sources: []
+      };
+      serperBackendCache[key] = { data: responseData, timestamp: Date.now() };
+      return new Response(JSON.stringify(responseData), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    const responseData = {
       articles: results,
       summary: results.map((a: any) => `- [${a.title}](${a.url}): ${a.description || ''}`).join('\n'),
       sources: results.map((a: any) => ({ 
@@ -88,7 +106,9 @@ export async function POST(req: NextRequest) {
         image: a.image,
         type: a.type 
       }))
-    }), {
+    };
+    serperBackendCache[key] = { data: responseData, timestamp: Date.now() };
+    return new Response(JSON.stringify(responseData), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
     });
