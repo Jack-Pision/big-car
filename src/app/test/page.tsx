@@ -1906,22 +1906,82 @@ export default function TestChat() {
         throw new Error(`API request failed with status ${res.status}: ${errorData}`);
       }
       
-      // Always treat the response as text/markdown for AI output
-      const aiResponseText = await res.text();
-      
-      // Add the AI message as plain text
-      const aiMsg: Message = {
-        role: "assistant" as const,
-        content: aiResponseText,
-        id: uuidv4(),
-        timestamp: Date.now(),
-        parentId: userMessageId,
-        webSources: [],
-        isProcessed: true
-      };
-      setMessages((prev) => [...prev, aiMsg]);
-      // ... skip the old JSON parsing block ...
-      // ... keep the streaming logic for other cases if needed ...
+      // Check if the response is a stream
+      const isStream = res.headers.get('content-type')?.includes('text/event-stream');
+      if (isStream && res.body) {
+        // Streaming handler
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let done = false;
+        let contentBuffer = '';
+        // Create the AI message and add it to the chat
+        const aiMsg: Message = {
+          role: "assistant" as const,
+          content: "",
+          id: uuidv4(),
+          timestamp: Date.now(),
+          parentId: userMessageId,
+          imageUrls: uploadedImageUrls.length > 0 ? uploadedImageUrls : undefined,
+          webSources: [],
+          contentType: 'conversation',
+          isProcessed: true
+        };
+        setMessages((prev) => [...prev, aiMsg]);
+        while (!done) {
+          const { value, done: doneReading } = await reader.read();
+          done = doneReading;
+          if (value) {
+            const chunk = decoder.decode(value, { stream: true });
+            buffer += chunk;
+            let lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+            for (let line of lines) {
+              if (line.startsWith('data:')) {
+                const data = line.replace('data:', '').trim();
+                if (data === '[DONE]') continue;
+                try {
+                  const parsed = JSON.parse(data);
+                  const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.message?.content || parsed.choices?.[0]?.text || parsed.content || '';
+                  if (delta) {
+                    contentBuffer += delta;
+                    aiMsg.content = contentBuffer;
+                    setMessages((prev) => {
+                      const updatedMessages = [...prev];
+                      const aiIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
+                      if (aiIndex !== -1) {
+                        updatedMessages[aiIndex] = {
+                          ...updatedMessages[aiIndex],
+                          content: contentBuffer,
+                          webSources: aiMsg.webSources,
+                          isProcessed: true
+                        };
+                      }
+                      return updatedMessages;
+                    });
+                  }
+                } catch (err) {
+                  // Ignore malformed/incomplete lines
+                  continue;
+                }
+              }
+            }
+          }
+        }
+      } else {
+        // Non-streaming: treat as plain text/markdown
+        const aiResponseText = await res.text();
+        const aiMsg: Message = {
+          role: "assistant" as const,
+          content: aiResponseText,
+          id: uuidv4(),
+          timestamp: Date.now(),
+          parentId: userMessageId,
+          webSources: [],
+          isProcessed: true
+        };
+        setMessages((prev) => [...prev, aiMsg]);
+      }
     } catch (err: any) {
       if (err.name === 'AbortError') {
       setMessages((prev) => [
