@@ -378,9 +378,9 @@ export async function POST(req: NextRequest) {
       const cached = nvidiaBackendCache[cacheKey];
       if (cached && Date.now() - cached.timestamp < CACHE_EXPIRATION_MS) {
         console.log(`[NVIDIA] Returning cached result for key: ${cacheKey.substring(0, 50)}...`);
-        return new Response(JSON.stringify(cached.data), {
+        return new Response(cached.data as string, {
           status: 200,
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'text/plain' }
         });
       }
     }
@@ -390,9 +390,9 @@ export async function POST(req: NextRequest) {
       console.log(`[NVIDIA] Waiting for in-flight request for key: ${cacheKey.substring(0, 50)}...`);
       try {
         const data = await nvidiaInFlight[cacheKey];
-        return new Response(JSON.stringify(data), {
+        return new Response(String(data), {
           status: 200,
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'text/plain' }
         });
       } catch (err) {
         // If the in-flight request failed, proceed with a new request
@@ -485,16 +485,16 @@ export async function POST(req: NextRequest) {
         nvidiaInFlight[cacheKey] = (async () => {
           console.log(`[NVIDIA] Making new NVIDIA API call for key: ${cacheKey.substring(0, 50)}...`);
           const nemotronRes = await fetchNvidiaText(messages, modelParams);
-          const data = await nemotronRes.json();
+          const data = await nemotronRes.text(); // Always treat as text
           nvidiaBackendCache[cacheKey] = { data, timestamp: Date.now() };
           return data;
         })();
         
         try {
           const data = await nvidiaInFlight[cacheKey];
-          return new Response(JSON.stringify(data), {
+          return new Response(String(data), {
             status: 200,
-            headers: { 'Content-Type': 'application/json' }
+            headers: { 'Content-Type': 'text/plain' }
           });
         } finally {
           delete nvidiaInFlight[cacheKey];
