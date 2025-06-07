@@ -509,6 +509,7 @@ export async function POST(req: NextRequest) {
       headers.set('Cache-Control', 'no-cache');
       headers.set('Connection', 'keep-alive');
       
+      // Return the stream directly to the client
       return new Response(nemotronRes.body, {
         status: 200,
         headers: headers,

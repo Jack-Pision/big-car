@@ -1938,11 +1938,23 @@ export default function TestChat() {
             buffer = lines.pop() || '';
             for (let line of lines) {
               if (line.startsWith('data:')) {
-                const data = line.replace('data:', '').trim();
-                if (data === '[DONE]') continue;
+                const dataContent = line.substring(5).trim(); // Extract content after 'data:'
+                if (dataContent === '[DONE]') continue;
                 try {
-                  const parsed = JSON.parse(data);
-                  const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.message?.content || parsed.choices?.[0]?.text || parsed.content || '';
+                  // Handle both JSON and plain text responses
+                  let delta = '';
+                  try {
+                    const parsed = JSON.parse(dataContent);
+                    delta = parsed.choices?.[0]?.delta?.content || 
+                            parsed.choices?.[0]?.message?.content || 
+                            parsed.choices?.[0]?.text || 
+                            parsed.content || 
+                            '';
+                  } catch (jsonError) {
+                    // If not valid JSON, use the raw content
+                    delta = dataContent;
+                  }
+                  
                   if (delta && typeof delta === 'string' && delta.trim() !== '') {
                     contentBuffer += delta;
                     aiMsg.content = contentBuffer;
