@@ -585,7 +585,7 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
       {/* Desktop/tablet split view */}
       <div className="hidden sm:flex flex-col md:flex-row w-full h-full">
         {/* Left Panel - Step List */}
-        <div className="w-full md:w-80 md:min-w-[220px] md:max-w-xs flex-shrink-0 bg-neutral-950 p-4 md:p-6 overflow-y-auto md:h-full md:max-h-none md:border-b-0 md:border-r md:border-r-neutral-800 md:rounded-l-2xl h-[40vh] md:h-full flex flex-col">
+        <div className="w-full md:w-80 md:min-w-[220px] md:max-w-xs flex-shrink-0 bg-neutral-950 p-4 md:p-6 md:h-[340px] md:min-h-[340px] md:max-h-[340px] md:border-b-0 md:border-r md:border-r-neutral-800 md:rounded-l-2xl flex flex-col" style={{height: '340px', minHeight: '340px', maxHeight: '340px', overflow: 'visible'}}>
           <div className="flex items-center gap-2 mb-4 md:mb-6">
             {/* New microchip icon with cyan color */}
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-400">
