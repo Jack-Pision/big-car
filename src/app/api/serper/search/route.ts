@@ -8,6 +8,9 @@ const SERPER_API_KEY = "2ae2160086988d4517b81c0dade49cbd98bcb772";
 const serperBackendCache: Record<string, { data: any, timestamp: number }> = {};
 const CACHE_EXPIRATION_MS = 10 * 60 * 1000; // 10 minutes
 
+// Add in-flight request lock map
+const serperInFlight: Record<string, Promise<any>> = {};
+
 function getSerperBackendCacheKey(query: string, limit: number) {
   return `${query.trim().toLowerCase()}::${limit}`;
 }
@@ -82,36 +85,50 @@ export async function POST(req: NextRequest) {
         headers: { 'Content-Type': 'application/json' }
       });
     }
-    const results = await searchSerper(query, limit || 50);  // Update default limit to 50
-    if (!results.length) {
-      const responseData = {
-        articles: [],
-        summary: 'No relevant Serper search results found.',
-        sources: []
-      };
-      serperBackendCache[key] = { data: responseData, timestamp: Date.now() };
-      return new Response(JSON.stringify(responseData), {
+    // Deduplication: If a request is already in flight, wait for it
+    if (typeof serperInFlight[key] !== "undefined") {
+      const data = await serperInFlight[key];
+      return new Response(JSON.stringify(data), {
         status: 200,
         headers: { 'Content-Type': 'application/json' }
       });
     }
-    const responseData = {
-      articles: results,
-      summary: results.map((a: any) => `- [${a.title}](${a.url}): ${a.description || ''}`).join('\n'),
-      sources: results.map((a: any) => ({ 
-        title: a.title, 
-        url: a.url, 
-        icon: a.icon, 
-        favicon: a.favicon,
-        image: a.image,
-        type: a.type 
-      }))
-    };
-    serperBackendCache[key] = { data: responseData, timestamp: Date.now() };
-    return new Response(JSON.stringify(responseData), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    // Otherwise, make the API call and lock it
+    serperInFlight[key] = (async () => {
+      const results = await searchSerper(query, limit || 50);
+      let responseData;
+      if (!results.length) {
+        responseData = {
+          articles: [],
+          summary: 'No relevant Serper search results found.',
+          sources: []
+        };
+      } else {
+        responseData = {
+          articles: results,
+          summary: results.map((a: any) => `- [${a.title}](${a.url}): ${a.description || ''}`).join('\n'),
+          sources: results.map((a: any) => ({ 
+            title: a.title, 
+            url: a.url, 
+            icon: a.icon, 
+            favicon: a.favicon,
+            image: a.image,
+            type: a.type 
+          }))
+        };
+      }
+      serperBackendCache[key] = { data: responseData, timestamp: Date.now() };
+      return responseData;
+    })();
+    try {
+      const data = await serperInFlight[key];
+      return new Response(JSON.stringify(data), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    } finally {
+      delete serperInFlight[key];
+    }
   } catch (error) {
     console.error('Serper API search error:', error);
     return new Response(JSON.stringify({ error: 'Failed to fetch Serper API data', details: error instanceof Error ? error.message : String(error) }), {
