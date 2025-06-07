@@ -42,6 +42,7 @@ import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import Image from 'next/image';
 import rehypeRaw from 'rehype-raw';
 import { isSearchCompleted, getCompletedSearch, saveCompletedSearch } from '@/utils/advance-search-state';
+import { MarkdownRenderer } from '@/utils/markdown-utils';
 
 // Define a type that includes all possible query types (including the ones in SCHEMAS and 'conversation')
 type QueryType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversation' | 'deep-research';
@@ -285,36 +286,63 @@ function postProcessAIChatResponse(text: string, isDefaultChat: boolean): string
   }
   let processedText = handlePotentialJsonInConversation(text);
   if (isDefaultChat) {
-  const artifactPatterns = [
-    /\[Your response here\]/gi,
-    /\[End of response\]/gi,
-    /\[AI response continues\]/gi,
-    /\[AI Assistant\]/gi,
-    /\[I'll create a (.*?) for you\]/gi,
-    /\[Let me help you with that\]/gi,
-    /\[I understand you're asking about\]/gi,
-    /As an AI assistant[,.]/gi,
-    /As an AI language model[,.]/gi,
-    /I'm an AI assistant and /gi,
-    /I'll generate /gi,
-    /I'll create /gi,
-    /Here's (a|an|the) (answer|response|information|summary)/gi,
-    /Thank you for your question/gi,
-    /AI: /g,
-    /User: /g,
-  ];
-  artifactPatterns.forEach(pattern => {
-    processedText = processedText.replace(pattern, '');
-  });
+    const artifactPatterns = [
+      /\[Your response here\]/gi,
+      /\[End of response\]/gi,
+      /\[AI response continues\]/gi,
+      /\[AI Assistant\]/gi,
+      /\[I'll create a (.*?) for you\]/gi,
+      /\[Let me help you with that\]/gi,
+      /\[I understand you're asking about\]/gi,
+      /As an AI assistant[,.]/gi,
+      /As an AI language model[,.]/gi,
+      /I'm an AI assistant and /gi,
+      /I'll generate /gi,
+      /I'll create /gi,
+      /Here's (a|an|the) (answer|response|information|summary)/gi,
+      /Thank you for your question/gi,
+      /AI: /g,
+      /User: /g,
+    ];
+    artifactPatterns.forEach(pattern => {
+      processedText = processedText.replace(pattern, '');
+    });
 
-    // REMOVED: lines that strip markdown formatting
-    // processedText = processedText.replace(/\*\*([^*]+)\*\*/g, '$1');
-    // processedText = processedText.replace(/\*([^*]+)\*/g, '$1');
-    // processedText = processedText.replace(/__([^_]+)__/g, '$1');
-    // processedText = processedText.replace(/_([^_]+)_/g, '$1');
-
-  // Fix broken lists (ensure proper space after list markers)
-  processedText = processedText.replace(/^(\s*[-*]|\s*[0-9]+\.)(?!\s)/gm, '$1 ');
+    // Fix markdown formatting issues
+    
+    // 1. Ensure proper spacing for markdown elements
+    
+    // Fix broken lists (ensure proper space after list markers)
+    processedText = processedText.replace(/^(\s*[-*]|\s*[0-9]+\.)(?!\s)/gm, '$1 ');
+    
+    // 2. Fix broken/incomplete markdown emphasis and strong syntax
+    
+    // Fix cases where asterisks for emphasis have inconsistent spacing
+    // Match *text* pattern and ensure it's properly formatted
+    processedText = processedText.replace(/\*([^\s*][^*]*?[^\s*])\*/g, '*$1*');
+    processedText = processedText.replace(/\*([^\s*])\*/g, '*$1*');
+    
+    // Match **text** pattern and ensure it's properly formatted
+    processedText = processedText.replace(/\*\*([^\s*][^*]*?[^\s*])\*\*/g, '**$1**');
+    processedText = processedText.replace(/\*\*([^\s*])\*\*/g, '**$1**');
+    
+    // Fix incomplete or mismatched markdown (e.g., unclosed asterisks)
+    // Count asterisks to detect unclosed patterns
+    const countAsterisks = (str: string) => {
+      return (str.match(/\*/g) || []).length;
+    };
+    
+    // If there's an odd number of asterisks, try to fix by matching patterns
+    if (countAsterisks(processedText) % 2 !== 0) {
+      // Fix cases like "This is *important but unclosed
+      processedText = processedText.replace(/\*([^*\n]+)(?!\*)/g, '*$1*');
+      
+      // Fix cases like "This is **bold but unclosed
+      processedText = processedText.replace(/\*\*([^*\n]+)(?!\*\*)/g, '**$1**');
+    }
+    
+    // 3. Fix cases where * is used for lists but might be confused with emphasis
+    processedText = processedText.replace(/^(\s*)\*(?!\s)([^*]+)$/gm, '$1* $2');
     
     // Remove circled numbers/letters and custom symbols (e.g., ⓵ⓇⓉⓐⓢ)
     processedText = processedText.replace(/[⓵⓶⓷⓸⓹⓺⓻⓼⓽⓾ⓇⓉⓐⓢⓑⓒⓓⓔⓕⓖⓗⓘⓙⓚⓛⓜⓝⓞⓟⓠⓡⓢⓣⓤⓥⓦⓧⓨⓩ]/g, '');
@@ -326,80 +354,80 @@ function postProcessAIChatResponse(text: string, isDefaultChat: boolean): string
     // Remove accidental dash repetition (e.g., - - - Item => - Item)
     processedText = processedText.replace(/^(?:-\s+)+(-\s+)/gm, '$1');
   
-  // Normalize multiple consecutive blank lines to at most two
-  processedText = processedText.replace(/\n{3,}/g, '\n\n');
+    // Normalize multiple consecutive blank lines to at most two
+    processedText = processedText.replace(/\n{3,}/g, '\n\n');
 
-  // 3. Remove Biased or Overconfident Phrasing
-  const overconfidentPhrases = [
-    /\bI'm (100% )?certain\b/gi,
-    /\bI guarantee\b/gi,
-  ];
+    // 3. Remove Biased or Overconfident Phrasing
+    const overconfidentPhrases = [
+      /\bI'm (100% )?certain\b/gi,
+      /\bI guarantee\b/gi,
+    ];
 
-  overconfidentPhrases.forEach(phrase => {
-    processedText = processedText.replace(phrase, match => {
-      // Replace with more measured alternatives
-      const alternatives = {
-        "I'm certain": "I believe",
-        "I'm 100% certain": "I believe",
-        "I guarantee": "I think",
-        "without any doubt": "based on available information",
-        "absolutely certain": "confident",
-        "absolutely sure": "confident",
-        "I can assure you": "It appears that",
-        "I promise": "I expect"
-      };
-      
-      const key = match.toLowerCase();
-      for (const [pattern, replacement] of Object.entries(alternatives)) {
-        if (key.includes(pattern.toLowerCase())) {
-          return replacement;
+    overconfidentPhrases.forEach(phrase => {
+      processedText = processedText.replace(phrase, match => {
+        // Replace with more measured alternatives
+        const alternatives = {
+          "I'm certain": "I believe",
+          "I'm 100% certain": "I believe",
+          "I guarantee": "I think",
+          "without any doubt": "based on available information",
+          "absolutely certain": "confident",
+          "absolutely sure": "confident",
+          "I can assure you": "It appears that",
+          "I promise": "I expect"
+        };
+        
+        const key = match.toLowerCase();
+        for (const [pattern, replacement] of Object.entries(alternatives)) {
+          if (key.includes(pattern.toLowerCase())) {
+            return replacement;
+          }
         }
-      }
-      return "I believe"; // Default fallback
+        return "I believe"; // Default fallback
+      });
     });
-  });
 
-  // 4. Fix Incomplete or Broken Text
-  // Close unclosed code blocks
-  const codeBlockFence = '```';
-  let openFenceCount = 0;
-  let lastFenceIndex = -1;
-  let fenceIndex = processedText.indexOf(codeBlockFence);
-  
-  while (fenceIndex !== -1) {
-    openFenceCount++;
-    lastFenceIndex = fenceIndex;
-    fenceIndex = processedText.indexOf(codeBlockFence, lastFenceIndex + codeBlockFence.length);
-  }
-  
-  // If odd number of fences, add a closing fence
-  if (openFenceCount % 2 !== 0) {
-    processedText += `\n${codeBlockFence}`;
-  }
-  
-  // Fix sentences that end abruptly
-  processedText = processedText.replace(/([a-z])(\s*\n|\s*$)/g, '$1.$2');
+    // 4. Fix Incomplete or Broken Text
+    // Close unclosed code blocks
+    const codeBlockFence = '```';
+    let openFenceCount = 0;
+    let lastFenceIndex = -1;
+    let fenceIndex = processedText.indexOf(codeBlockFence);
+    
+    while (fenceIndex !== -1) {
+      openFenceCount++;
+      lastFenceIndex = fenceIndex;
+      fenceIndex = processedText.indexOf(codeBlockFence, lastFenceIndex + codeBlockFence.length);
+    }
+    
+    // If odd number of fences, add a closing fence
+    if (openFenceCount % 2 !== 0) {
+      processedText += `\n${codeBlockFence}`;
+    }
+    
+    // Fix sentences that end abruptly
+    processedText = processedText.replace(/([a-z])(\s*\n|\s*$)/g, '$1.$2');
 
-  // 5. Filter Unsafe or Sensitive Content
-  // Basic HTML script tag removal
-  processedText = processedText.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
-  // Filter other potentially unsafe HTML
-  processedText = processedText.replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '');
-  
-  // 6. Final Cleanup
-  // Trim trailing whitespace from each line
-  processedText = processedText.split('\n').map(line => line.trimRight()).join('\n');
-  
-  // Remove trailing line breaks and spaces
-  processedText = processedText.trim();
-  
-  // 7. Visual Formatting & Readability
-  // Add a line break after every full stop followed by a capital letter if no line break exists
-  // This helps break up dense text paragraphs
-  processedText = processedText.replace(/\.([A-Z])/g, '.\n$1');
-  
-  // Clean up multiple consecutive line breaks again after formatting changes
-  processedText = processedText.replace(/\n{3,}/g, '\n\n');
+    // 5. Filter Unsafe or Sensitive Content
+    // Basic HTML script tag removal
+    processedText = processedText.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+    // Filter other potentially unsafe HTML
+    processedText = processedText.replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '');
+    
+    // 6. Final Cleanup
+    // Trim trailing whitespace from each line
+    processedText = processedText.split('\n').map(line => line.trimRight()).join('\n');
+    
+    // Remove trailing line breaks and spaces
+    processedText = processedText.trim();
+    
+    // 7. Visual Formatting & Readability
+    // Add a line break after every full stop followed by a capital letter if no line break exists
+    // This helps break up dense text paragraphs
+    processedText = processedText.replace(/\.([A-Z])/g, '.\n$1');
+    
+    // Clean up multiple consecutive line breaks again after formatting changes
+    processedText = processedText.replace(/\n{3,}/g, '\n\n');
 
     // 8. Fix bullet point gaps: join bullet and text if separated by blank line
     processedText = processedText.replace(/(^[-*]\s*)\n+([^\n*-].*)/gm, '$1$2');
@@ -2272,30 +2300,12 @@ export default function TestChat() {
       const isDefaultChat = msg.contentType === 'conversation' || (msg.role === 'assistant' && !msg.contentType);
       if (isDefaultChat) {
         const processedContent = postProcessAIChatResponse(msg.content, true);
+        // Use the MarkdownRenderer component for consistent rendering
         return (
-          <ReactMarkdown 
-            remarkPlugins={[remarkGfm]} 
-            rehypePlugins={[rehypeRaw]} 
+          <MarkdownRenderer 
+            content={processedContent}
             className="prose dark:prose-invert max-w-none default-chat-markdown"
-            components={{
-              h1: ({node, ...props}) => <h1 className="text-2xl font-bold mb-4 mt-6" {...props} />, 
-              h2: ({node, ...props}) => <h2 className="text-xl font-semibold mb-3 mt-5" {...props} />, 
-              h3: ({node, ...props}) => <h3 className="text-lg font-semibold mb-2 mt-4" {...props} />, 
-              h4: ({node, ...props}) => <h4 className="text-base font-semibold mb-2 mt-3" {...props} />, 
-              p: ({node, ...props}) => <p className="mb-2 leading-relaxed" {...props} />, 
-              ul: ({node, ...props}) => <ul className="list-disc ml-6 mb-2" {...props} />, 
-              ol: ({node, ...props}) => <ol className="list-decimal ml-6 mb-2" {...props} />, 
-              li: ({node, ...props}) => <li className="mb-1" {...props} />, 
-              code: ({node, ...props}) => <code className="bg-neutral-900 text-white rounded px-1.5 py-1" {...props} />, 
-              pre: ({node, ...props}) => <pre className="bg-neutral-900 text-white rounded p-4 overflow-x-auto my-2" {...props} />, 
-              table: ({node, ...props}) => <table className="min-w-full border-collapse my-4" {...props} />, 
-              th: ({node, ...props}) => <th className="border-b border-gray-700 px-4 py-2 text-left" {...props} />, 
-              td: ({node, ...props}) => <td className="border-b border-gray-800 px-4 py-2" {...props} />, 
-              blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-cyan-400 pl-4 italic my-2" {...props} />,
-            }}
-          >
-            {processedContent}
-          </ReactMarkdown>
+          />
         );
       }
       let content = msg.content.trim();
