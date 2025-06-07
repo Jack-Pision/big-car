@@ -54,6 +54,7 @@ import {
   generateDynamicConclusion,
   cleanAIOutput
 } from '@/utils/post-processing';
+import DeepResearchBlock from '@/components/AdvanceSearch';
 
 // Define a type that includes all possible query types (including the ones in SCHEMAS and 'conversation')
 type QueryType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversation' | 'deep-research';
@@ -2120,13 +2121,14 @@ export default function TestChat() {
                           <span className="text-sm text-white italic font-light mb-2">[Response stopped by user]</span>
                         ) : (
                           <div className="w-full max-w-full overflow-hidden">
-                        <ReactMarkdown 
-                          remarkPlugins={[remarkGfm]} 
-                          rehypePlugins={[rehypeRaw]} 
-                          className="prose dark:prose-invert max-w-none"
-                          children={processedContent}
-                            />
-    </div>
+                            <ReactMarkdown 
+                              remarkPlugins={[remarkGfm]} 
+                              rehypePlugins={[rehypeRaw]} 
+                              className="prose dark:prose-invert max-w-none"
+                            >
+                              {processedContent}
+                            </ReactMarkdown>
+                          </div>
                     )}
                   </motion.div>
                 );
@@ -2138,6 +2140,10 @@ export default function TestChat() {
                     query={msg.content} 
                     conversationHistory={advanceSearchHistory}
                     onClearHistory={clearAdvanceSearchHistory}
+                    steps={[]}
+                    activeStepId={null}
+                    error={null}
+                    webData={null}
                     onFinalAnswer={(answer: string, sources?: any[]) => {
                       // Check if we already have this answer in messages to prevent duplicates
                       const isDuplicate = messages.some(existingMsg => 
