@@ -172,27 +172,27 @@ export default function Sidebar({
                         }}
                       />
                     ) : (
-                      <span className="flex-1 truncate" title={session.title}>
-                        {session.title}
-                      </span>
+                    <span className="flex-1 truncate" title={session.title}>
+                      {session.title}
+                    </span>
                     )}
                     {/* Three dots menu */}
                     <div style={{ position: 'relative' }}>
-                      <button
+                    <button
                         className="p-1 rounded hover:bg-gray-600 focus:outline-none"
-                        onClick={e => {
-                          e.stopPropagation();
+                      onClick={e => {
+                        e.stopPropagation();
                           handleMenuToggle(session.id);
-                        }}
+                      }}
                         aria-label="Open menu"
                         title="Session options"
-                      >
+                    >
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <circle cx="12" cy="5" r="1.5" />
                           <circle cx="12" cy="12" r="1.5" />
                           <circle cx="12" cy="19" r="1.5" />
-                        </svg>
-                      </button>
+                      </svg>
+                    </button>
                       {menuOpenId === session.id && (
                         <div className="absolute right-0 mt-2 w-28 bg-white text-black rounded shadow-lg z-50 flex flex-col text-sm">
                           <button className="px-3 py-2 hover:bg-gray-200 text-left" onClick={e => { e.stopPropagation(); handleEdit(session); }}>Edit</button>
