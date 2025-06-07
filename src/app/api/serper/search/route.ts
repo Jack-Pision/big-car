@@ -12,6 +12,7 @@ const CACHE_EXPIRATION_MS = 10 * 60 * 1000; // 10 minutes
 const serperInFlight: Record<string, Promise<any>> = {};
 
 function getSerperBackendCacheKey(query: string, limit: number) {
+  // Normalize query for deduplication
   return `${query.trim().toLowerCase()}::${limit}`;
 }
 
@@ -78,23 +79,25 @@ export async function POST(req: NextRequest) {
       return new Response(JSON.stringify({ error: 'No query provided' }), { status: 400 });
     }
     const key = getSerperBackendCacheKey(query, limit || 50);
+    console.log(`[Serper] Incoming request: "${query}" (normalized: "${key}") at ${new Date().toISOString()}`);
     const cached = serperBackendCache[key];
     if (cached && Date.now() - cached.timestamp < CACHE_EXPIRATION_MS) {
+      console.log(`[Serper] Returning cached result for key: ${key}`);
       return new Response(JSON.stringify(cached.data), {
         status: 200,
         headers: { 'Content-Type': 'application/json' }
       });
     }
-    // Deduplication: If a request is already in flight, wait for it
     if (typeof serperInFlight[key] !== "undefined") {
+      console.log(`[Serper] Waiting for in-flight request for key: ${key}`);
       const data = await serperInFlight[key];
       return new Response(JSON.stringify(data), {
         status: 200,
         headers: { 'Content-Type': 'application/json' }
       });
     }
-    // Otherwise, make the API call and lock it
     serperInFlight[key] = (async () => {
+      console.log(`[Serper] Making new Serper API call for key: ${key}`);
       const results = await searchSerper(query, limit || 50);
       let responseData;
       if (!results.length) {

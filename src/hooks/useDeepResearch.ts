@@ -288,50 +288,43 @@ export const useDeepResearch = (
 
   // Step 2: Research - Fetch web data based on AI's analysis
   const processResearchStep = async (query: string, analysis: string) => {
+    // Normalize query for deduplication
+    const normalizedQuery = query.trim().toLowerCase();
     // First check the global registry
-    if (isQueryActive(query)) {
-      console.log('[DEBUG] Another component is already processing this query:', query);
+    if (isQueryActive(normalizedQuery)) {
+      console.log('[DEBUG] Another component is already processing this query:', normalizedQuery);
       return;
     }
-    
     // Then check the local ref (as before)
-    if (researchStepCalledRef.current[query]) {
-      console.log('[DEBUG] Skipping duplicate research step for:', query);
+    if (researchStepCalledRef.current[normalizedQuery]) {
+      console.log('[DEBUG] Skipping duplicate research step for:', normalizedQuery);
       return;
     }
-    
     // Mark as active globally and locally
-    markQueryActive(query);
-    researchStepCalledRef.current[query] = true;
-    
-    console.log('[DEBUG] Running research step for:', query);
+    markQueryActive(normalizedQuery);
+    researchStepCalledRef.current[normalizedQuery] = true;
+    console.log('[DEBUG] Running research step for:', normalizedQuery);
     try {
       setActiveStepId('research');
       updateStepStatus('research', 'active', 'Gathering information from multiple sources...');
-
       // Use the deduplication utility instead of direct fetch
-      const serperData = await dedupedSerperRequest(query, 50);
-
+      const serperData = await dedupedSerperRequest(normalizedQuery, 50);
       const newWebData: WebData = {
         serperArticles: serperData.articles || [],
         sources: [...(serperData.sources || [])],
         webCitations: serperData.summary || ''
       };
-
       setWebData(newWebData);
-      
       // Create a summary of found data
       const dataSummary = `Found:\n- ${newWebData.serperArticles.length} web articles`;
-
       updateStepStatus('research', 'completed', dataSummary, newWebData);
-      
       // Move to synthesis step
-      processSynthesisStep(query, analysis, newWebData);
+      processSynthesisStep(normalizedQuery, analysis, newWebData);
     } catch (err: any) {
       handleError('research', err.message);
     } finally {
       // Mark as inactive globally when done (important!)
-      markQueryInactive(query);
+      markQueryInactive(normalizedQuery);
     }
   };
 
