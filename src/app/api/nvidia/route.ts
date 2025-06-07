@@ -13,43 +13,6 @@ if (!OPENROUTER_API_KEY) {
   throw new Error('OPENROUTER_API_KEY is required');
 }
 
-// Backend in-memory cache for NVIDIA API results to prevent duplicate calls
-const nvidiaBackendCache: Record<string, { data: any, timestamp: number }> = {};
-// In-flight request lock map
-const nvidiaInFlight: Record<string, Promise<any>> = {};
-const CACHE_EXPIRATION_MS = 5 * 60 * 1000; // 5 minutes
-
-// Generate a cache key for deduplication
-function getNvidiaBackendCacheKey(messages: any[]): string {
-  // Extract user message content for deduplication (normalize to lowercase)
-  const userMessages = messages
-    .filter(m => m.role === 'user')
-    .map(m => {
-      if (typeof m.content === 'string') {
-        return m.content.trim().toLowerCase();
-      } else if (Array.isArray(m.content)) {
-        // Handle array content (e.g., for images)
-        return m.content
-          .filter((c: any) => c.type === 'text')
-          .map((c: any) => c.text.trim().toLowerCase())
-          .join(' ');
-      }
-      return '';
-    })
-    .join('|');
-  
-  // Extract system message content for deduplication (normalize to lowercase)
-  const systemMessage = messages
-    .find(m => m.role === 'system')?.content || '';
-  
-  const systemKey = typeof systemMessage === 'string' 
-    ? systemMessage.trim().toLowerCase().substring(0, 100) // First 100 chars
-    : '';
-  
-  // Combine to create a unique key
-  return `${systemKey}::${userMessages}`;
-}
-
 // Helper function for fetch with timeout
 async function fetchWithTimeout(resource: string, options: any = {}, timeout = 15000) {
   const controller = new AbortController();
@@ -311,81 +274,19 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  let body;
   try {
-    // First get the raw request text to check for invalid JSON formatting
-    const rawRequestText = await req.text();
-    
-    // Check if the raw text starts with 'data:' which would indicate SSE format mistakenly sent as JSON
-    if (rawRequestText.trim().startsWith('data:')) {
-      return new Response(JSON.stringify({ 
-        error: 'Invalid JSON format', 
-        details: 'Request body appears to be in SSE format (starts with "data:") instead of JSON'
-      }), { 
-        status: 400, 
-        headers: { 'Content-Type': 'application/json' } 
-      });
-    }
-    
-    // Attempt to parse the JSON
-    try {
-      body = JSON.parse(rawRequestText);
-    } catch (parseError: any) {
-      console.error("[API /api/nvidia] JSON parse error:", parseError.message);
-      return new Response(JSON.stringify({ 
-        error: 'Invalid JSON in request body', 
-        details: parseError.message
-      }), { 
-        status: 400, 
-        headers: { 'Content-Type': 'application/json' } 
-      });
-    }
-    
-    // Create a cache key based on messages
-    const cacheKey = getNvidiaBackendCacheKey(body.messages || []);
-    console.log(`[NVIDIA] Request with cache key: ${cacheKey.substring(0, 50)}...`);
+    const body = await req.json();
     
     // Extract model parameters if provided
     const modelParams = {
       temperature: body.temperature,
       top_p: body.top_p,
-      max_tokens: body.max_tokens || 10000,
+      max_tokens: body.max_tokens || 10000, // Use max_tokens from request or default to 10000
       presence_penalty: body.presence_penalty,
       frequency_penalty: body.frequency_penalty
     };
     
-    // Check cache first (for non-streaming requests only)
-    if (!body.stream) {
-      const cached = nvidiaBackendCache[cacheKey];
-      if (cached && Date.now() - cached.timestamp < CACHE_EXPIRATION_MS) {
-        console.log(`[NVIDIA] Returning cached result for key: ${cacheKey.substring(0, 50)}...`);
-        return new Response(JSON.stringify(cached.data), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' }
-        });
-      }
-    }
-    
-    // Deduplication: If a request is already in flight, wait for it
-    if (typeof nvidiaInFlight[cacheKey] !== "undefined" && !body.stream) {
-      console.log(`[NVIDIA] Waiting for in-flight request for key: ${cacheKey.substring(0, 50)}...`);
-      try {
-        const data = await nvidiaInFlight[cacheKey];
-        return new Response(JSON.stringify(data), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' }
-        });
-      } catch (err) {
-        // If the in-flight request failed, proceed with a new request
-        console.error(`[NVIDIA] In-flight request failed:`, err);
-        delete nvidiaInFlight[cacheKey];
-      }
-    }
-    
-    // For streaming requests, we can't deduplicate the same way
-    // because we need to return a stream to each client
-    
-    if (body.imageUrls && Array.isArray(body.imageUrls) && body.imageUrls.length > 0) {
+    if (body.imageUrls && Array.isArray(body.imageUrls) && body.imageUrls.length > 0) { // Check for imageUrls array
       console.log(`[API /api/nvidia] Received image request for URLs: ${body.imageUrls.join(', ')}`);
       
       // Extract previous user messages and image descriptions
@@ -459,37 +360,11 @@ export async function POST(req: NextRequest) {
   } else {
       console.log("[API /api/nvidia] Received text-only request (streaming)...");
       const { messages } = body;
-      
       // For text-only, also enable streaming
-      // If not streaming, we can use deduplication
-      if (!body.stream) {
-        nvidiaInFlight[cacheKey] = (async () => {
-          console.log(`[NVIDIA] Making new NVIDIA API call for key: ${cacheKey.substring(0, 50)}...`);
-          const nemotronRes = await fetchNvidiaText(messages, modelParams);
-          if (!nemotronRes.ok) {
-            throw new Error(`Nvidia API Error: ${await nemotronRes.text()}`);
-          }
-          const data = await nemotronRes.json();
-          nvidiaBackendCache[cacheKey] = { data, timestamp: Date.now() };
-          return data;
-        })();
-        
-        try {
-          const data = await nvidiaInFlight[cacheKey];
-          return new Response(JSON.stringify(data), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' }
-          });
-        } finally {
-          delete nvidiaInFlight[cacheKey];
-        }
-      }
-      
-      // For streaming, we can't use the same deduplication mechanism
-      const nemotronRes = await fetchNvidiaText(messages, modelParams);
+      const nemotronRes = await fetchNvidiaText(messages, modelParams); // Pass model parameters
       
       if (!nemotronRes.ok) {
-        return nemotronRes;
+          return nemotronRes;
       }
 
       const headers = new Headers(nemotronRes.headers);
