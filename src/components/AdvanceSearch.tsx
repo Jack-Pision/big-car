@@ -14,6 +14,9 @@ interface AdvanceSearchProps {
   onManualStepClick?: (stepId: string) => void;
   manualNavigationEnabled?: boolean;
   onFinalAnswer?: (answer: string, sources?: any[]) => void;
+  query?: string;
+  conversationHistory?: any;
+  onClearHistory?: () => void;
 }
 
 // Helper function to convert markdown to plain text with bullet points
