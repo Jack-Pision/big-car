@@ -2541,7 +2541,15 @@ export default function TestChat() {
                         className="max-w-xs max-h-64 rounded-md mb-2 self-end" 
                       />
                     ))}
-                    <div>{msg.content}</div>
+                    <div>
+                      {/* Filter out raw JSON data lines starting with data: */}
+                      {msg.content && msg.content.includes('data:') 
+                        ? msg.content
+                            .split('\n')
+                            .filter(line => !line.trim().startsWith('data:'))
+                            .join('\n')
+                        : msg.content}
+                    </div>
                 </div>
                 );
               }
