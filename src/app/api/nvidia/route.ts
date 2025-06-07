@@ -311,8 +311,35 @@ export async function POST(req: NextRequest) {
     });
   }
 
+  let body;
   try {
-    const body = await req.json();
+    // First get the raw request text to check for invalid JSON formatting
+    const rawRequestText = await req.text();
+    
+    // Check if the raw text starts with 'data:' which would indicate SSE format mistakenly sent as JSON
+    if (rawRequestText.trim().startsWith('data:')) {
+      return new Response(JSON.stringify({ 
+        error: 'Invalid JSON format', 
+        details: 'Request body appears to be in SSE format (starts with "data:") instead of JSON'
+      }), { 
+        status: 400, 
+        headers: { 'Content-Type': 'application/json' } 
+      });
+    }
+    
+    // Attempt to parse the JSON
+    try {
+      body = JSON.parse(rawRequestText);
+    } catch (parseError: any) {
+      console.error("[API /api/nvidia] JSON parse error:", parseError.message);
+      return new Response(JSON.stringify({ 
+        error: 'Invalid JSON in request body', 
+        details: parseError.message
+      }), { 
+        status: 400, 
+        headers: { 'Content-Type': 'application/json' } 
+      });
+    }
     
     // Create a cache key based on messages
     const cacheKey = getNvidiaBackendCacheKey(body.messages || []);

@@ -1894,6 +1894,10 @@ export default function TestChat() {
         }
       }
       
+      // Add logging to debug the payload
+      console.log("[handleSend] API Payload Type:", typeof apiPayload);
+      console.log("[handleSend] API Payload:", apiPayload);
+      
       const res = await fetch("/api/nvidia", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
