@@ -68,8 +68,6 @@ STEP 2 - RESEARCH:
 When researching, prioritize the most recent and up-to-date information, especially for topics that change frequently. However, if older information is important for context, background, or is still widely referenced, include it as well.
 The system will provide you with search results from:
 - Serper (Google Search API)
-- Wikipedia
-- NewsData.io
 You must use ONLY these sources - do not make up sources or information.
 
 STEP 3 - SYNTHESIS:
