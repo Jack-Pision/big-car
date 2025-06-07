@@ -20,7 +20,7 @@ export const markdownComponents = {
 /**
  * Clean and normalize markdown content
  */
-function cleanMarkdown(content: string): string {
+export function cleanMarkdown(content: string): string {
   if (!content) return '';
 
   let cleaned = content;
