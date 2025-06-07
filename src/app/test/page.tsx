@@ -2140,10 +2140,10 @@ export default function TestChat() {
                     query={msg.content} 
                     conversationHistory={advanceSearchHistory}
                     onClearHistory={clearAdvanceSearchHistory}
-                    steps={[]}
-                    activeStepId={null}
-                    error={null}
-                    webData={null}
+                    steps={steps}
+                    activeStepId={activeStepId}
+                    error={error}
+                    webData={webData}
                     onFinalAnswer={(answer: string, sources?: any[]) => {
                       // Check if we already have this answer in messages to prevent duplicates
                       const isDuplicate = messages.some(existingMsg => 
