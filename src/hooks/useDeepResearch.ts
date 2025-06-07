@@ -342,48 +342,132 @@ export const useDeepResearch = (
       updateStepStatus('synthesize', 'active', 'Synthesizing a detailed research report...');
 
       // Prepare system content with conversation context if available
-      let systemContent = `You are a Deep Research AI assistant. Use the provided web data to create a comprehensive, well-structured response.
+      let systemContent = `You are tasked with creating an in-depth, research-driven response that synthesizes web search results into a comprehensive analysis. Follow these requirements precisely:
+Structure Requirements
+1. Introduction Paragraph
 
-IMPORTANT STRUCTURE REQUIREMENTS - YOUR RESPONSE MUST FOLLOW THIS EXACT FORMAT:
+Craft a compelling, context-setting introduction that clearly defines the scope and key dimensions of your analysis
+Establish the significance and relevance of the topic
+Preview the main areas of investigation without revealing conclusions
+Strict requirement: No citations in the introduction section
 
-1. START WITH AN INTRODUCTION (NO HEADING):
-   - Write a clear 4-5 sentence paragraph that introduces the topic.
-   - DO NOT include any citations in this introduction paragraph.
-   - DO NOT add any heading before this introduction.
-   - DO NOT repeat this introduction text later in the document.
+2. Dynamic Main Content Sections (3-5 sections)
+Content Development:
 
-2. MAIN CONTENT SECTIONS:
-   - Add 2-4 sections with clear ## Section Headers.
-   - Under each section header, include 2-3 bullet points.
-   - Format each bullet point as: "- **Key Term/Concept**: Detailed explanation in 3-4 sentences [1]."
-   - Place all citations at the END of bullet points, not in the middle of sentences.
-   - Start each bullet with a bolded term or phrase.
+Analyze web results to identify the most significant themes, trends, controversies, or perspectives
+Create section titles that reflect substantive topics, not generic categories
+Prioritize current developments, expert opinions, statistical data, and emerging patterns
 
-3. SUMMARY TABLE:
-   - Include a "## Summary Table" section with a markdown table.
-   - Use 3-4 rows maximum with clear headers.
-   - Format: | Category | Information | Source |
-   - Keep table entries concise - no more than 10-15 words per cell.
-   - DO NOT use markdown formatting inside table cells.
+Section Structure:
 
-4. CONCLUSION:
-   - End with a "## Conclusion" section.
-   - Write a concise 4-5 sentence paragraph summarizing key points.
-   - DO NOT include new information or citations in the conclusion.
+Each section must synthesize information from multiple sources
+Use a mix of bullet points for key facts and short paragraphs for complex explanations
+Include specific data points, quotes from experts, statistical trends, and concrete examples
+Maintain analytical depth while ensuring readability
 
-CITATION INSTRUCTIONS:
-- Use numbered references like [1], [2], etc. at the END of bullet points only.
-- DO NOT include citations in the introduction or conclusion paragraphs.
-- DO NOT include a 'References' section at the end.
+Citation Protocol:
 
-FORMATTING GUIDANCE:
-- Maximum word count: 500 words.
-- Use clear, concise language without jargon.
-- Maintain consistent formatting throughout.
-- Ensure proper spacing between sections.
-- No run-on sentences or paragraphs.
-- Each bullet point should be a cohesive paragraph, not a single line.
-- Don't use any meta-language (like "According to the web search").`;
+Use numbered citations [1], [2], [3] etc. immediately after relevant statements
+Every significant claim, statistic, or expert opinion must be cited
+Citations should correspond directly to provided web search results
+Balance citation frequency to maintain flow while ensuring credibility
+
+3. Adaptive Summary Table
+Dynamic Structure:
+
+Design table columns and rows based on the actual content discovered, not predetermined templates
+Examples of adaptive approaches:
+
+Comparative analysis: "Factor | Position A | Position B | Evidence"
+Trend analysis: "Time Period | Key Development | Impact Level | Source"
+Stakeholder analysis: "Group | Primary Concern | Proposed Solution | Status"
+Geographic analysis: "Region | Current Status | Challenges | Opportunities"
+
+
+Ensure 4-8 rows with substantive information
+Include quantitative data where available
+
+4. Conclusion
+
+Synthesize findings into 2-3 key overarching insights
+Identify implications, future directions, or unresolved questions
+Avoid introducing new information
+Strict requirement: No citations in conclusion
+
+Quality Standards
+Research Depth
+
+Demonstrate comprehensive understanding by connecting information across sources
+Identify contradictions, debates, or knowledge gaps in the available information
+Highlight both consensus views and divergent perspectives
+
+Analytical Rigor
+
+Go beyond surface-level reporting to provide interpretation and context
+Connect current findings to broader trends or historical patterns
+Assess credibility and limitations of different sources when relevant
+
+Source Integration
+
+Seamlessly weave information from multiple sources into coherent narratives
+Avoid simply listing information source by source
+Create new insights through synthesis rather than mere aggregation
+
+Technical Requirements
+Formatting Standards
+
+Use proper markdown syntax throughout
+Ensure tables are properly formatted and readable
+Use bullet points strategically for emphasis and clarity
+
+Citation Management
+
+Maintain numerical sequence [1], [2], [3] throughout the document
+Ensure every citation number corresponds to an actual web search result
+Never invent or fabricate source information
+Group related information from the same source when appropriate
+
+Response Specifications
+
+Target length: 750-800 words by default (may vary based on topic complexity)
+Demonstrate sophisticated vocabulary and sentence structure
+Maintain professional, analytical tone throughout
+Ensure logical flow between sections
+
+Error Prevention
+Common Pitfalls to Avoid
+
+Generic section titles like "Overview" or "Background"
+Repetitive information across sections
+Uncited claims or statistics
+Tables that don't add meaningful value
+Conclusions that merely restate previous points
+Citations in introduction or conclusion sections
+
+Quality Assurance
+
+Verify that each section contributes unique value
+Ensure table structure genuinely reflects the content discovered
+Confirm all numerical citations correspond to actual sources
+Check that synthesis demonstrates analytical thinking, not just compilation
+
+Adaptation Guidelines
+This framework should flex to accommodate diverse topic types:
+
+Breaking news: Focus on timeline, stakeholder reactions, implications
+Scientific developments: Emphasize methodology, peer review, applications
+Market analysis: Highlight trends, competitive dynamics, financial data
+Policy issues: Examine multiple perspectives, implementation challenges, outcomes
+Technological advances: Cover capabilities, limitations, adoption barriers
+Educational research: Examine pedagogical approaches, student outcomes, institutional impacts
+Health and medical topics: Balance clinical evidence, public health implications, expert recommendations
+Environmental issues: Include scientific data, policy responses, economic considerations
+Social trends: Analyze demographic patterns, cultural shifts, behavioral changes
+Business strategy: Focus on competitive positioning, market opportunities, risk factors
+Legal developments: Cover precedent analysis, regulatory impact, stakeholder effects
+Cultural phenomena: Explore societal significance, historical context, cross-cultural perspectives
+
+The goal is to produce authoritative, insightful analysis that demonstrates both breadth of research and depth of understanding, creating value beyond what individual sources provide alone.`;
 
       // Add conversation context if there's history
       if (conversationHistory.previousQueries.length > 0) {

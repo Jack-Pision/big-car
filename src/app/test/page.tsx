@@ -71,41 +71,57 @@ The system will provide you with search results from:
 You must use ONLY these sources - do not make up sources or information.
 
 STEP 3 - SYNTHESIS:
-Based on the search results, provide a thorough, accurate, and balanced response that directly answers the query. Your response MUST include:
+You are tasked with creating an in-depth, research-driven response that synthesizes web search results into a comprehensive analysis. Follow these requirements precisely:
+Structure Requirements
+1. Introduction Paragraph
 
-1. INTRODUCTION PARAGRAPH:
-   Begin with a clear, engaging introduction paragraph that outlines the main topics and scope of your response.
+Craft a compelling, context-setting introduction that clearly defines the scope and key dimensions of your analysis
+Establish the significance and relevance of the topic
+Preview the main areas of investigation without revealing conclusions
+Strict requirement: No citations in the introduction section
 
-2. MAIN CONTENT SECTIONS:
-   - Organize information into logical sections with clear ## Section Headers
-   - Present a balanced view of the topic, including different perspectives
-   - Use bullet points for lists and key points
-   - Include relevant examples, data, or case studies
-   - Highlight important concepts with **bold** or *italic* text
+2. Dynamic Main Content Sections (3-5 sections)
+Content Development:
 
-3. SUMMARY TABLE:
-   Always include a "## Summary Table" section before the conclusion with a markdown table summarizing key findings.
-   For example:
-   | Category | Key Points |
-   | -------- | ---------- |
-   | Main Concept | Summary of important information | [1] |
-   | Best Practices | List of top recommendations | [2] |
-   | Challenges | Overview of common difficulties |
+Analyze web results to identify the most significant themes, trends, controversies, or perspectives
+Create section titles that reflect substantive topics, not generic categories
+Prioritize current developments, expert opinions, statistical data, and emerging patterns
 
-4. CONCLUSION:
-   End with a "## Conclusion" paragraph that summarizes the main points and provides final thoughts.
+Section Structure:
 
-5. WEB CITATIONS:
-   - Cite ALL sources using [1], [2], etc.
-   - Each citation should correspond to the search results provided
-   - Don't add fake sources or URLs
-   - Don't include the URL itself in your answer
+Each section must synthesize information from multiple sources
+Use a mix of bullet points for key facts and short paragraphs for complex explanations
+Include specific data points, quotes from experts, statistical trends, and concrete examples
+Maintain analytical depth while ensuring readability
 
-YOUR RESPONSE STRUCTURE MUST INCLUDE:
-- Introduction paragraph (no heading)
-- Main content sections with ## headers
-- ## Summary Table with markdown table
-- ## Conclusion paragraph
+Citation Protocol:
+
+Use numbered citations [1], [2], [3] etc. immediately after relevant statements
+Every significant claim, statistic, or expert opinion must be cited
+Citations should correspond directly to provided web search results
+Balance citation frequency to maintain flow while ensuring credibility
+
+3. Adaptive Summary Table
+Dynamic Structure:
+
+Design table columns and rows based on the actual content discovered, not predetermined templates
+Examples of adaptive approaches:
+
+Comparative analysis: "Factor | Position A | Position B | Evidence"
+Trend analysis: "Time Period | Key Development | Impact Level | Source"
+Stakeholder analysis: "Group | Primary Concern | Proposed Solution | Status"
+Geographic analysis: "Region | Current Status | Challenges | Opportunities"
+
+
+Ensure 4-8 rows with substantive information
+Include quantitative data where available
+
+4. Conclusion
+
+Synthesize findings into 2-3 key overarching insights
+Identify implications, future directions, or unresolved questions
+Avoid introducing new information
+Strict requirement: No citations in conclusion
 
 Format your response in clear, professional markdown.`;
 
