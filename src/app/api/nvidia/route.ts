@@ -2,6 +2,50 @@ import { NextRequest } from 'next/server';
 
 export const runtime = 'edge';
 
+// Type definitions
+interface Message {
+  role: 'user' | 'assistant' | 'system';
+  content: string | Array<{
+    type: 'text' | 'image_url';
+    text?: string;
+    image_url?: {
+      url: string;
+    };
+  }>;
+}
+
+interface ModelOptions {
+  temperature?: number;
+  top_p?: number;
+  max_tokens?: number;
+  presence_penalty?: number;
+  frequency_penalty?: number;
+}
+
+interface CacheEntry {
+  data: unknown;
+  timestamp: number;
+}
+
+interface RequestBody {
+  messages?: Message[];
+  imageUrls?: string[];
+  stream?: boolean;
+  temperature?: number;
+  top_p?: number;
+  max_tokens?: number;
+  presence_penalty?: number;
+  frequency_penalty?: number;
+  previousImageDescriptions?: string[];
+}
+
+class NvidiaApiError extends Error {
+  constructor(message: string, public statusCode?: number) {
+    super(message);
+    this.name = 'NvidiaApiError';
+  }
+}
+
 const TEXT_API_KEY = process.env.NVIDIA_API_KEY || '';
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || '';
 
@@ -14,13 +58,13 @@ if (!OPENROUTER_API_KEY) {
 }
 
 // Backend in-memory cache for NVIDIA API results to prevent duplicate calls
-const nvidiaBackendCache: Record<string, { data: any, timestamp: number }> = {};
+const nvidiaBackendCache: Record<string, CacheEntry> = {};
 // In-flight request lock map
-const nvidiaInFlight: Record<string, Promise<any>> = {};
+const nvidiaInFlight: Record<string, Promise<unknown>> = {};
 const CACHE_EXPIRATION_MS = 5 * 60 * 1000; // 5 minutes
 
 // Generate a cache key for deduplication
-function getNvidiaBackendCacheKey(messages: any[]): string {
+function getNvidiaBackendCacheKey(messages: Message[]): string {
   // Extract user message content for deduplication (normalize to lowercase)
   const userMessages = messages
     .filter(m => m.role === 'user')
@@ -30,8 +74,8 @@ function getNvidiaBackendCacheKey(messages: any[]): string {
       } else if (Array.isArray(m.content)) {
         // Handle array content (e.g., for images)
         return m.content
-          .filter((c: any) => c.type === 'text')
-          .map((c: any) => c.text.trim().toLowerCase())
+          .filter(c => c.type === 'text')
+          .map(c => c.text?.trim().toLowerCase() || '')
           .join(' ');
       }
       return '';
@@ -51,18 +95,22 @@ function getNvidiaBackendCacheKey(messages: any[]): string {
 }
 
 // Helper function for fetch with timeout
-async function fetchWithTimeout(resource: string, options: any = {}, timeout = 15000) {
+async function fetchWithTimeout(
+  resource: string, 
+  options: RequestInit = {}, 
+  timeout = 15000
+): Promise<Response> {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
   try {
     const response = await fetch(resource, { ...options, signal: controller.signal });
     clearTimeout(id);
     return response;
-  } catch (err: any) {
+  } catch (err: unknown) {
     clearTimeout(id);
-    if (err.name === 'AbortError') {
+    if (err instanceof Error && err.name === 'AbortError') {
       // Re-throw a specific error for timeout to be caught by the main handler
-      throw new Error('Request timed out'); 
+      throw new NvidiaApiError('Request timed out', 504);
     }
     throw err; // Re-throw other errors
   }
@@ -193,9 +241,9 @@ When ending a conversation, offer follow-up options or future guidance.`;
 async function fetchOpenRouterImageAnalysis(
   imageUrls: string[], 
   openRouterApiKey: string,
-  previousMessages: any[] = [], // Add parameter for previous messages
-  previousImageDescriptions: string[] = [] // Add parameter for previous image descriptions
-) {
+  previousMessages: Message[] = [],
+  previousImageDescriptions: string[] = []
+): Promise<Response> {
   // If multiple images, pick the first one for now, or adapt the prompt for multiple images.
   const targetImageUrl = imageUrls[0]; 
 
@@ -211,13 +259,10 @@ async function fetchOpenRouterImageAnalysis(
   }
 
   // Format previous messages for Gemma
-  const formattedPreviousMessages = previousMessages.map(msg => {
-    // Convert to the format Gemma expects
-    return {
-      role: msg.role,
-      content: msg.content
-    };
-  });
+  const formattedPreviousMessages = previousMessages.map(msg => ({
+    role: msg.role,
+    content: msg.content
+  }));
 
   // Limit context to prevent token overflow (keep last 5 messages)
   const limitedPreviousMessages = formattedPreviousMessages.slice(-5);
@@ -245,7 +290,7 @@ async function fetchOpenRouterImageAnalysis(
           {
             type: 'image_url',
             image_url: {
-              url: targetImageUrl // Send only the first image URL to Gemma for now
+              url: targetImageUrl
             }
           }
         ]
@@ -266,40 +311,41 @@ async function fetchOpenRouterImageAnalysis(
   if (!res.ok) {
     const errorText = await res.text();
     console.error('OpenRouter API error:', errorText);
-    // Return a Response object with status for consistent error handling upstream
-    return new Response(JSON.stringify({ error: `OpenRouter API Error: ${errorText}` }), { status: res.status, headers: { 'Content-Type': 'application/json'} });
+    throw new NvidiaApiError(`OpenRouter API Error: ${errorText}`, res.status);
   }
-  return res; // Return the full response object to be processed by the caller
+  return res;
 }
 
-async function fetchNvidiaText(messages: any[], options: any = {}) {
+async function fetchNvidiaText(
+  messages: Message[], 
+  options: ModelOptions = {}
+): Promise<Response> {
   const payload = {
     model: 'deepseek-ai/deepseek-r1',
     messages,
     temperature: options.temperature || 0.6,
     top_p: options.top_p || 0.95,
-    max_tokens: options.max_tokens || 10000, // Support custom token limit, default to 10000
-    presence_penalty: options.presence_penalty || 0.8,  // Discourage repetition
-    frequency_penalty: options.frequency_penalty || 0.5, // Reduce phrase repetition
-    stream: true, // Always stream
+    max_tokens: options.max_tokens || 10000,
+    presence_penalty: options.presence_penalty || 0.8,
+    frequency_penalty: options.frequency_penalty || 0.5,
+    stream: true,
   };
   
   // Using fetchWithTimeout for the NVIDIA API call
   const res = await fetchWithTimeout('https://integrate.api.nvidia.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
+    method: 'POST',
+    headers: {
       'Authorization': `Bearer ${TEXT_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
   }, 12000); // 12-second timeout for NVIDIA Nemotron
 
-    if (!res.ok) {
-      const errorText = await res.text();
-    // Return a Response object with status for consistent error handling upstream
-    return new Response(JSON.stringify({ error: `Nvidia API Error: ${errorText}` }), { status: res.status, headers: { 'Content-Type': 'application/json'} });
-    }
-    return res;
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new NvidiaApiError(`Nvidia API Error: ${errorText}`, res.status);
+  }
+  return res;
 }
 
 export async function POST(req: NextRequest) {
@@ -312,14 +358,14 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const body = await req.json();
+    const body = await req.json() as RequestBody;
     
     // Create a cache key based on messages
     const cacheKey = getNvidiaBackendCacheKey(body.messages || []);
     console.log(`[NVIDIA] Request with cache key: ${cacheKey.substring(0, 50)}...`);
     
     // Extract model parameters if provided
-    const modelParams = {
+    const modelParams: ModelOptions = {
       temperature: body.temperature,
       top_p: body.top_p,
       max_tokens: body.max_tokens || 10000,
@@ -355,93 +401,90 @@ export async function POST(req: NextRequest) {
       }
     }
     
-    // For streaming requests, we can't deduplicate the same way
-    // because we need to return a stream to each client
-    
     if (body.imageUrls && Array.isArray(body.imageUrls) && body.imageUrls.length > 0) {
       console.log(`[API /api/nvidia] Received image request for URLs: ${body.imageUrls.join(', ')}`);
       
       // Extract previous user messages and image descriptions
-      const previousUserMessages = body.messages?.filter((m:any) => m.role === 'user') || [];
+      const previousUserMessages = body.messages?.filter((m): m is Message => 
+        m.role === 'user'
+      ) || [];
       
       // Extract previous image descriptions from the conversation
       const previousImageDescriptions = body.previousImageDescriptions || [];
       
-      // 1. Get image description from OpenRouter with context
-      console.log("[API /api/nvidia] Calling OpenRouter with conversation context...");
-      const openRouterRes = await fetchOpenRouterImageAnalysis(
-        body.imageUrls, 
-        OPENROUTER_API_KEY,
-        previousUserMessages,
-        previousImageDescriptions
-      );
-      
-      if (!openRouterRes.ok) {
-        return openRouterRes; 
+      try {
+        // 1. Get image description from OpenRouter with context
+        console.log("[API /api/nvidia] Calling OpenRouter with conversation context...");
+        const openRouterRes = await fetchOpenRouterImageAnalysis(
+          body.imageUrls, 
+          OPENROUTER_API_KEY,
+          previousUserMessages,
+          previousImageDescriptions
+        );
+        
+        const openRouterData = await openRouterRes.json();
+        const imageDescription = openRouterData.choices?.[0]?.message?.content || 'Could not get a description from the image(s).';
+        console.log("[API /api/nvidia] OpenRouter description received:", imageDescription.substring(0, 100) + "...");
+
+        // 2. Construct prompt for Nemotron
+        const userImagePrompt = body.messages?.filter((m): m is Message => 
+          m.role === 'user'
+        ).pop()?.content || (body.imageUrls.length > 1 ? "Tell me more about these images." : "Tell me more about what was found in the image.");
+
+        // Get the system message from the request
+        const systemMessage = body.messages?.find((m): m is Message => 
+          m.role === 'system'
+        )?.content || '';
+        
+        // Extract the image context part if present
+        const imageContext = body.imageUrls.length > 1 
+          ? `A set of ${body.imageUrls.length} images were provided.` 
+          : "An image was provided.";
+        
+        // Create a comprehensive system prompt
+        const nemotronSystemPrompt = `${systemMessage}\n\nLatest image analysis: "${imageDescription}"\n\nThe user has provided the following specific query: "${userImagePrompt}". Based on the image description(s) and the user's query, provide a helpful and detailed response.`;
+        
+        const nemotronMessages: Message[] = [
+          { role: "system", content: nemotronSystemPrompt },
+          { role: "user", content: "Please proceed with the analysis based on my query and the image description." }
+        ];
+        
+        // 3. Call Nemotron and stream its response
+        console.log("[API /api/nvidia] Calling Nemotron with streaming enabled...");
+        const nemotronRes = await fetchNvidiaText(nemotronMessages, modelParams);
+        
+        // Return the stream directly to the client
+        const headers = new Headers(nemotronRes.headers);
+        headers.set('Content-Type', 'text/event-stream');
+        headers.set('Cache-Control', 'no-cache');
+        headers.set('Connection', 'keep-alive');
+
+        return new Response(nemotronRes.body, {
+          status: 200,
+          headers: headers,
+        });
+      } catch (err) {
+        if (err instanceof NvidiaApiError) {
+          return new Response(JSON.stringify({ error: err.message }), {
+            status: err.statusCode || 500,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        throw err; // Re-throw other errors to be caught by the outer try-catch
       }
-      
-      const openRouterData = await openRouterRes.json();
-      const imageDescription = openRouterData.choices?.[0]?.message?.content || 'Could not get a description from the image(s).';
-      console.log("[API /api/nvidia] OpenRouter description received:", imageDescription.substring(0, 100) + "...");
-
-      // 2. Construct prompt for Nemotron
-      const userImagePrompt = body.messages?.filter((m:any) => m.role === 'user').pop()?.content || (body.imageUrls.length > 1 ? "Tell me more about these images." : "Tell me more about what was found in the image.");
-
-      // Get the system message from the request which now includes all image contexts
-      const systemMessage = body.messages?.find((m:any) => m.role === 'system')?.content || '';
-      
-      // Extract the image context part if present (everything after the SYSTEM_PROMPT)
-      const imageContext = body.imageUrls.length > 1 
-        ? `A set of ${body.imageUrls.length} images were provided.` 
-        : "An image was provided.";
-      
-      // Create a comprehensive system prompt that includes:
-      // 1. The original system message (which now includes all previous image contexts)
-      // 2. The new image description
-      const nemotronSystemPrompt = `${systemMessage}\n\nLatest image analysis: "${imageDescription}"\n\nThe user has provided the following specific query: "${userImagePrompt}". Based on the image description(s) and the user's query, provide a helpful and detailed response.`;
-      
-      const nemotronMessages = [
-        { role: "system", content: nemotronSystemPrompt },
-        // The user's direct prompt about the image is now part of the system prompt for better context.
-        // We can send a generic follow-up here, or make it more dynamic if needed.
-        { role: "user", content: "Please proceed with the analysis based on my query and the image description." } 
-      ];
-      
-      // 3. Call Nemotron and stream its response
-      console.log("[API /api/nvidia] Calling Nemotron with streaming enabled...");
-      const nemotronRes = await fetchNvidiaText(nemotronMessages, modelParams); // Pass model parameters
-      
-      if (!nemotronRes.ok) {
-          // If Nemotron returns an error (e.g. 4xx, 5xx), it won't be a stream.
-          // We expect our fetchNvidiaText to already convert this to a JSON error Response.
-          return nemotronRes;
-      }
-      
-      // Return the stream directly to the client
-      // Ensure appropriate headers for streaming
-      const headers = new Headers(nemotronRes.headers);
-      headers.set('Content-Type', 'text/event-stream'); // Or 'application/x-ndjson' depending on actual stream format
-      headers.set('Cache-Control', 'no-cache');
-      headers.set('Connection', 'keep-alive');
-
-      return new Response(nemotronRes.body, {
-      status: 200,
-        headers: headers,
-    });
-
-  } else {
+    } else {
       console.log("[API /api/nvidia] Received text-only request (streaming)...");
       const { messages } = body;
       
+      if (!messages) {
+        throw new NvidiaApiError('No messages provided in request', 400);
+      }
+      
       // For text-only, also enable streaming
-      // If not streaming, we can use deduplication
       if (!body.stream) {
         nvidiaInFlight[cacheKey] = (async () => {
           console.log(`[NVIDIA] Making new NVIDIA API call for key: ${cacheKey.substring(0, 50)}...`);
           const nemotronRes = await fetchNvidiaText(messages, modelParams);
-          if (!nemotronRes.ok) {
-            throw new Error(`Nvidia API Error: ${await nemotronRes.text()}`);
-          }
           const data = await nemotronRes.json();
           nvidiaBackendCache[cacheKey] = { data, timestamp: Date.now() };
           return data;
@@ -461,10 +504,6 @@ export async function POST(req: NextRequest) {
       // For streaming, we can't use the same deduplication mechanism
       const nemotronRes = await fetchNvidiaText(messages, modelParams);
       
-      if (!nemotronRes.ok) {
-        return nemotronRes;
-      }
-
       const headers = new Headers(nemotronRes.headers);
       headers.set('Content-Type', 'text/event-stream');
       headers.set('Cache-Control', 'no-cache');
@@ -475,12 +514,14 @@ export async function POST(req: NextRequest) {
         headers: headers,
       });
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("[API /api/nvidia] Error in POST:", err);
-    const isTimeout = err.message === 'Request timed out';
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    const isTimeout = errorMessage === 'Request timed out';
+    
     return new Response(JSON.stringify({
       error: isTimeout ? 'Gateway Timeout: The AI service took too long to respond.' : 'Failed to process request',
-      details: err.message || String(err)
+      details: errorMessage
     }), {
       status: isTimeout ? 504 : 500,
       headers: { 'Content-Type': 'application/json' }
