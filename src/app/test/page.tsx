@@ -1940,24 +1940,29 @@ export default function TestChat() {
               if (line.startsWith('data:')) {
                 const dataContent = line.substring(5).trim(); // Extract content after 'data:'
                 if (dataContent === '[DONE]') continue;
+                
                 try {
-                  // Handle both JSON and plain text responses
+                  // Handle JSON data format from the LLM API
                   let delta = '';
                   try {
                     const parsed = JSON.parse(dataContent);
+                    // Extract content from various possible locations in the JSON
                     delta = parsed.choices?.[0]?.delta?.content || 
                             parsed.choices?.[0]?.message?.content || 
-                            parsed.choices?.[0]?.text || 
                             parsed.content || 
+                            parsed.choices?.[0]?.text || 
                             '';
                   } catch (jsonError) {
-                    // If not valid JSON, use the raw content
-                    delta = dataContent;
+                    // If not valid JSON or parsing fails, use the raw content
+                    // but only if it doesn't look like a JSON object
+                    if (!dataContent.startsWith('{') && !dataContent.startsWith('[')) {
+                      delta = dataContent;
+                    }
                   }
                   
+                  // Only update if we have meaningful content
                   if (delta && typeof delta === 'string' && delta.trim() !== '') {
                     contentBuffer += delta;
-                    aiMsg.content = contentBuffer;
                     setMessages((prev) => {
                       const updatedMessages = [...prev];
                       const aiIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
@@ -1965,15 +1970,15 @@ export default function TestChat() {
                         updatedMessages[aiIndex] = {
                           ...updatedMessages[aiIndex],
                           content: contentBuffer,
-                          webSources: aiMsg.webSources,
                           isProcessed: true
                         };
                       }
                       return updatedMessages;
                     });
                   }
-                } catch (err) {
-                  // Ignore malformed/incomplete lines
+                } catch (error) {
+                  console.error("Error processing streaming data:", error);
+                  // Continue processing other chunks even if one fails
                   continue;
                 }
               }
@@ -2128,6 +2133,22 @@ export default function TestChat() {
     setIsRestoredFromStorage(false); // Reset the restored flag
   };
 
+  // Helper function to clean content from any 'data:' lines before rendering
+  const cleanDataPrefixes = (content: string): string => {
+    if (!content) return '';
+    
+    // Check if the content contains any 'data:' lines
+    if (content.includes('data:')) {
+      // Split by lines, filter out any 'data:' prefixed lines, and rejoin
+      return content
+        .split('\n')
+        .filter(line => !line.trim().startsWith('data:'))
+        .join('\n');
+    }
+    
+    return content;
+  };
+
   const renderMessageContent = (msg: Message) => {
     if (msg.contentType && msg.structuredContent) {
       switch (msg.contentType) {
@@ -2146,9 +2167,12 @@ export default function TestChat() {
           return <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="prose dark:prose-invert max-w-none">{`Unsupported structured content: ${JSON.stringify(msg.structuredContent)}`}</ReactMarkdown>;
       }
     } else if (msg.content) {
+      // Clean the message content first
+      const cleanedContent = cleanDataPrefixes(msg.content);
+      
       const isDefaultChat = msg.contentType === 'conversation' || (msg.role === 'assistant' && !msg.contentType);
       if (isDefaultChat) {
-        const processedContent = postProcessAIChatResponse(msg.content, true);
+        const processedContent = postProcessAIChatResponse(cleanedContent, true);
         return (
           <ReactMarkdown 
             remarkPlugins={[remarkGfm]} 
@@ -2175,7 +2199,7 @@ export default function TestChat() {
           </ReactMarkdown>
         );
       }
-      let content = msg.content.trim();
+      let content = cleanedContent.trim();
       if (content.startsWith('```')) {
         content = content.replace(/^```[a-zA-Z]*\n?/, '').replace(/```$/, '').trim();
       }
@@ -2195,7 +2219,7 @@ export default function TestChat() {
           return <pre className="bg-neutral-900 text-white rounded p-4 overflow-x-auto"><code>{JSON.stringify(parsed, null, 2)}</code></pre>;
         } catch (e) {}
       }
-        return <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="prose dark:prose-invert max-w-none">{msg.content}</ReactMarkdown>;
+        return <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="prose dark:prose-invert max-w-none">{content}</ReactMarkdown>;
     }
     return null;
   };

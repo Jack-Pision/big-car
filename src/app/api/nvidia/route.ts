@@ -348,6 +348,53 @@ async function fetchNvidiaText(
   return res;
 }
 
+// Helper function to transform streaming response
+async function transformStreamForClient(stream: ReadableStream): Promise<ReadableStream> {
+  const reader = stream.getReader();
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+  
+  return new ReadableStream({
+    async start(controller) {
+      try {
+        let buffer = '';
+        
+        while (true) {
+          const { done, value } = await reader.read();
+          
+          if (done) {
+            // Send final [DONE] event if needed
+            controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+            break;
+          }
+          
+          // Process the chunk
+          buffer += decoder.decode(value, { stream: true });
+          let lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+          
+          for (const line of lines) {
+            if (line.trim() === '') continue;
+            
+            // Forward data lines with proper SSE formatting
+            if (line.startsWith('data:')) {
+              controller.enqueue(encoder.encode(line + '\n\n'));
+            } else {
+              // For non-data lines, wrap them in data: format
+              controller.enqueue(encoder.encode(`data: ${line}\n\n`));
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error in stream transformation:', err);
+        controller.error(err);
+      } finally {
+        controller.close();
+      }
+    }
+  });
+}
+
 export async function POST(req: NextRequest) {
   const contentType = req.headers.get('content-type') || '';
   if (!contentType.includes('application/json')) {
@@ -459,7 +506,11 @@ export async function POST(req: NextRequest) {
         headers.set('Cache-Control', 'no-cache');
         headers.set('Connection', 'keep-alive');
 
-        return new Response(nemotronRes.body, {
+        // Transform the stream for better client-side processing
+        const transformedStream = await transformStreamForClient(nemotronRes.body as ReadableStream);
+        
+        // Return the transformed stream to the client
+        return new Response(transformedStream, {
           status: 200,
           headers: headers,
         });
@@ -509,8 +560,11 @@ export async function POST(req: NextRequest) {
       headers.set('Cache-Control', 'no-cache');
       headers.set('Connection', 'keep-alive');
       
-      // Return the stream directly to the client
-      return new Response(nemotronRes.body, {
+      // Transform the stream for better client-side processing
+      const transformedStream = await transformStreamForClient(nemotronRes.body as ReadableStream);
+      
+      // Return the transformed stream to the client
+      return new Response(transformedStream, {
         status: 200,
         headers: headers,
       });
