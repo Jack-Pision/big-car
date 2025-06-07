@@ -1943,7 +1943,7 @@ export default function TestChat() {
                 try {
                   const parsed = JSON.parse(data);
                   const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.message?.content || parsed.choices?.[0]?.text || parsed.content || '';
-                  if (delta) {
+                  if (delta && typeof delta === 'string' && delta.trim() !== '') {
                     contentBuffer += delta;
                     aiMsg.content = contentBuffer;
                     setMessages((prev) => {
