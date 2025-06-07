@@ -57,6 +57,28 @@ export function cleanMarkdown(content: string): string {
   cleaned = cleaned.replace(/([^\n])\n```/g, '$1\n\n```');
   cleaned = cleaned.replace(/```\n([^\n])/g, '```\n\n$1');
 
+  // --- NEW: Normalize malformed markdown asterisks ---
+  // 1. Remove spaces between asterisks and text (e.g., * text * => *text*)
+  cleaned = cleaned.replace(/\*\s+([^*]+?)\s+\*/g, '*$1*');
+  cleaned = cleaned.replace(/\*\s+([^*]+?)\*/g, '*$1*');
+  cleaned = cleaned.replace(/\*([^*]+?)\s+\*/g, '*$1*');
+  cleaned = cleaned.replace(/\*\s+([^*]+?)\s*\*/g, '*$1*');
+  cleaned = cleaned.replace(/\*\s+\*/g, ''); // Remove empty * *
+
+  // 2. Collapse multiple asterisks (e.g., ***text*** => **text**)
+  cleaned = cleaned.replace(/\*{3,}([^*]+?)\*{3,}/g, '**$1**');
+
+  // 3. Remove lone asterisks not part of formatting (e.g., stray * in text)
+  cleaned = cleaned.replace(/(^|\s)\*(\s|$)/g, ' '); // Remove * surrounded by spaces
+  cleaned = cleaned.replace(/(^|\n)\*(?=\W|$)/g, ''); // Remove * at start of line not followed by word
+  cleaned = cleaned.replace(/(?<=\W)\*(?=\W)/g, ''); // Remove * between non-word chars
+
+  // 4. Remove asterisks before/after punctuation (e.g., *.)
+  cleaned = cleaned.replace(/\*(?=[.,;:!?])/g, '');
+  cleaned = cleaned.replace(/(?<=[.,;:!?])\*/g, '');
+
+  // --- END NEW ---
+
   return cleaned;
 }
 
