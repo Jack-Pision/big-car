@@ -245,4 +245,62 @@ export function cleanAIOutput(text: string): string {
   cleanedText = cleanedText.replace(/\n{3,}/g, '\n\n');
   
   return cleanedText.trim();
+}
+
+/**
+ * Process a content section (bullets and paragraphs)
+ */
+export function processContentSection(lines: string[]): string {
+  let content = '';
+  let inBulletList = false;
+  for (const line of lines) {
+    if (line.trim().startsWith('-') || line.trim().startsWith('*')) {
+      if (!inBulletList) {
+        content += '\n';
+        inBulletList = true;
+      }
+      content += formatBulletPoint(line);
+    } else {
+      if (inBulletList) {
+        content += '\n';
+        inBulletList = false;
+      }
+      content += formatParagraph(line);
+    }
+  }
+  return content;
+}
+
+/**
+ * Generate a dynamic table structure based on content sections
+ */
+export function generateDynamicTable(sections: {title: string, content: string}[]): string {
+  const hasComparisons = sections.some(s =>
+    s.content.toLowerCase().includes('versus') ||
+    s.content.toLowerCase().includes('compared to')
+  );
+  const hasTrends = sections.some(s =>
+    s.content.toLowerCase().includes('trend') ||
+    s.content.toLowerCase().includes('over time')
+  );
+  if (hasComparisons) {
+    return "| Factor | Position A | Position B | Evidence |\n|--------|------------|------------|----------|\n";
+  } else if (hasTrends) {
+    return "| Time Period | Key Development | Impact | Source |\n|-------------|-----------------|--------|--------|\n";
+  } else {
+    return "| Category | Key Points | Evidence | Implications |\n|----------|------------|----------|--------------|\n";
+  }
+}
+
+/**
+ * Generate a dynamic conclusion from content sections
+ */
+export function generateDynamicConclusion(sections: {title: string, content: string}[]): string {
+  const insights = sections.map(section => {
+    const sentences = section.content.split(/[.!?]+/);
+    return sentences[0];
+  }).filter(Boolean);
+  return insights.join(' ') +
+    "\n\nThese findings demonstrate the complexity and significance of the topic, " +
+    "highlighting both current understanding and areas for further investigation.";
 } 
