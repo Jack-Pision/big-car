@@ -577,7 +577,7 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
   return (
     <div className="w-full mx-auto rounded-lg overflow-hidden shadow-lg bg-[#171717]" style={{ borderRadius: '20px', maxWidth: '969px' }}>
       {/* Header - Always visible, styled, fixed at the top */}
-      <div className="relative flex items-center px-6 py-4 border-b border-neutral-800 bg-[#171717]" style={{ minHeight: '64px' }}>
+      <div className="relative flex items-center px-6 py-4 bg-[#171717]" style={{ minHeight: '64px' }}>
         {/* Molecule icon and title, left-aligned */}
         <div className="flex items-center gap-3">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-400">
@@ -588,7 +588,7 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
             <line x1="6.85" y1="17.15" x2="10.15" y2="13.85" />
             <line x1="13.85" y1="10.15" x2="17.15" y2="6.85" />
           </svg>
-          <h1 className="text-2xl font-normal text-neutral-200">{steps[0]?.title || "Title of the query"}</h1>
+          <h1 className="text-lg font-normal text-neutral-200">{steps[0]?.title || "Title of the query"}</h1>
         </div>
         {/* Collapse/expand arrow - functional, right-aligned */}
         <div className="absolute right-6 top-1/2 -translate-y-1/2 cursor-pointer" onClick={() => {
