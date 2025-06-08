@@ -427,6 +427,31 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
     }
 
     if (step.status === 'active') {
+      // Check if we have streaming content to display
+      if (step.output && typeof step.output === 'string' && step.output.length > 0) {
+        // Show streaming content in real-time
+        return (
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2 text-neutral-300 mb-2">
+              <div className="animate-pulse w-2 h-2 rounded-full bg-cyan-500"></div>
+              <span>Synthesizing final answer... See below for the current progress:</span>
+            </div>
+            <div className="text-neutral-300 text-base leading-relaxed max-h-[300px] overflow-y-auto p-2 bg-neutral-900/30 rounded-md">
+              <ReactMarkdown 
+                remarkPlugins={[remarkGfm]} 
+                className="prose dark:prose-invert max-w-none"
+              >
+                {step.output}
+              </ReactMarkdown>
+            </div>
+            <div className="text-cyan-400 text-sm mt-2">
+              <span>The complete answer will appear in the main chat when finished.</span>
+            </div>
+          </div>
+        );
+      }
+      
+      // Default loading indicator when no content yet
       return (
         <div className="flex items-center gap-2 text-neutral-300">
           <div className="animate-pulse w-2 h-2 rounded-full bg-cyan-500"></div>
@@ -437,11 +462,11 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
 
     // For completed synthesize step, always direct to main chat
     if (step.status === 'completed') {
-        return (
+      return (
         <div className="text-cyan-400 text-base font-medium">
           Response ready! See main chat for the full answer.
-          </div>
-        );
+        </div>
+      );
     }
     
     return null;

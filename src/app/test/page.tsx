@@ -606,17 +606,16 @@ interface ImageContext {
 }
 
 interface Message {
-  role: 'user' | 'assistant' | 'deep-research';
+  role: 'user' | 'assistant' | 'system' | 'function' | 'deep-research';
   content: string;
-  contentType?: ContentDisplayType;
-  structuredContent?: any;
-  imageUrls?: string[];
-  webSources?: WebSource[];
-  researchId?: string;
   id: string;
   timestamp: number;
   parentId?: string;
-  isProcessed?: boolean; // Flag to indicate messages that have been processed and shouldn't trigger new API calls
+  isProcessed?: boolean; 
+  isStreaming?: boolean; // Flag to indicate if the message is part of a streaming response
+  contentType?: 'conversation' | 'deep-research' | 'code' | 'tutorial' | 'comparison' | 'summary';
+  webSources?: any[];
+  toolUsed?: string;
 }
 
 // Helper to enforce Advance Search output structure
@@ -1011,6 +1010,10 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
   const [completedSearchAnswer, setCompletedSearchAnswer] = useState<string | null>(null);
   const [completedSearchSources, setCompletedSearchSources] = useState<any[] | null>(null);
   
+  // Track if we're streaming the response to main chat
+  const [isStreamingToMainChat, setIsStreamingToMainChat] = useState(false);
+  const streamedContentRef = useRef<string>('');
+  
   // State to hold restored deep research state
   const [restoredState, setRestoredState] = useState<{
     steps?: any[];
@@ -1204,15 +1207,51 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
       markAnswerAddedToMainChat();
     }
   }, [answerAddedToMainChat, onFinalAnswer, markAnswerAddedToMainChat]);
+
+  // New function to handle streaming synthesis output to the main chat
+  const handleStreamingSynthesisOutput = useCallback((content: string, sources?: any[]) => {
+    if (!answerAddedToMainChat && onFinalAnswer && content) {
+      if (!isStreamingToMainChat) {
+        // Create an initial message with empty content to start the streaming process
+        setIsStreamingToMainChat(true);
+        onFinalAnswer('', sources);
+        streamedContentRef.current = '';
+      }
+      
+      // Only send updates if we've added more content
+      if (content.length > streamedContentRef.current.length) {
+        streamedContentRef.current = content;
+        // Call onFinalAnswer with updated content
+        onFinalAnswer(content, sources);
+      }
+    }
+  }, [answerAddedToMainChat, onFinalAnswer, isStreamingToMainChat]);
   
   // Handle onFinalAnswer callback for completed searches
   useEffect(() => {
     const synthStep = steps.find(s => s.id === 'synthesize');
+    
+    // If synthesis is active and has output, send as streaming content
+    if (synthStep && 
+        synthStep.status === 'active' && 
+        typeof synthStep.output === 'string' && 
+        synthStep.output) {
+      handleStreamingSynthesisOutput(synthStep.output, webData?.sources || []);
+    }
+    
+    // When synthesis completes, mark as done and save completed search
     if (synthStep && 
         synthStep.status === 'completed' && 
         typeof synthStep.output === 'string' && 
-        synthStep.output !== null && 
-        !answerAddedToMainChat) {
+        synthStep.output !== null) {
+      
+      // Final update with complete content
+      handleStreamingSynthesisOutput(synthStep.output, webData?.sources || []);
+      
+      // Mark as complete
+      setIsStreamingToMainChat(false);
+      markAnswerAddedToMainChat();
+      
       // Save the final answer to our completed searches
       saveCompletedSearch({
         query,
@@ -1226,7 +1265,7 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
         conversationHistory
       });
     }
-  }, [steps, isComplete, query, activeStepId, isInProgress, webData, conversationHistory, answerAddedToMainChat]);
+  }, [steps, isComplete, query, activeStepId, isInProgress, webData, conversationHistory, answerAddedToMainChat, handleStreamingSynthesisOutput, markAnswerAddedToMainChat]);
   
   const [manualStepId, setManualStepId] = useState<string | null>(null);
   const isFinalStepComplete = steps[steps.length - 1]?.status === 'completed';
@@ -2627,26 +2666,48 @@ export default function TestChat() {
                     conversationHistory={advanceSearchHistory}
                     onClearHistory={clearAdvanceSearchHistory}
                     onFinalAnswer={(answer: string, sources?: any[]) => {
-                      // Check if we already have this answer in messages to prevent duplicates
-                      const isDuplicate = messages.some(existingMsg => 
+                      // Check if we have an existing message with no content (streaming placeholder)
+                      const existingMessageIndex = messages.findIndex(existingMsg => 
                         existingMsg.role === "assistant" && 
                         existingMsg.contentType === 'deep-research' && 
-                        existingMsg.content.includes(answer.substring(0, 100))
+                        existingMsg.content === '' // Empty content means it's our streaming placeholder
                       );
-                      // Only add if not a duplicate
-                      if (!isDuplicate) {
-                        setMessages(prev => [
-                          ...prev,
-                          {
-                            role: "assistant",
+                      
+                      if (existingMessageIndex >= 0 && answer.length > 0) {
+                        // Update the existing streaming message
+                        setMessages(prev => {
+                          const updatedMessages = [...prev];
+                          updatedMessages[existingMessageIndex] = {
+                            ...updatedMessages[existingMessageIndex],
                             content: makeCitationsClickable(answer, sources),
-                            id: uuidv4(),
-                            timestamp: Date.now(),
-                            isProcessed: true,
-                            contentType: 'deep-research',
-                            webSources: sources || []
-                          }
-                        ]);
+                            webSources: sources || [],
+                            isProcessed: true
+                          };
+                          return updatedMessages;
+                        });
+                      } else {
+                        // Only check for duplicates for non-empty messages
+                        const isDuplicate = answer.length > 0 && messages.some(existingMsg => 
+                          existingMsg.role === "assistant" && 
+                          existingMsg.contentType === 'deep-research' && 
+                          existingMsg.content.includes(answer.substring(0, 100))
+                        );
+                        
+                        // Add a new message if not a duplicate
+                        if (!isDuplicate) {
+                          setMessages(prev => [
+                            ...prev,
+                            {
+                              role: "assistant",
+                              content: makeCitationsClickable(answer, sources),
+                              id: uuidv4(),
+                              timestamp: Date.now(),
+                              isProcessed: answer.length > 0,
+                              contentType: 'deep-research',
+                              webSources: sources || []
+                            }
+                          ]);
+                        }
                       }
                     }}
                   />

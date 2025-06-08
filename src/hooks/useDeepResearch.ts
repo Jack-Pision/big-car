@@ -407,6 +407,10 @@ FORMATTING GUIDANCE:
         const decoder = new TextDecoder();
         let buffer = '';
         let done = false;
+        
+        // Set an initial empty content to indicate streaming has started
+        updateStepStatus('synthesize', 'active', 'Synthesizing response...', '');
+        
         while (!done) {
           const { value, done: doneReading } = await reader.read();
           done = doneReading;
@@ -414,6 +418,9 @@ FORMATTING GUIDANCE:
             buffer += decoder.decode(value, { stream: true });
             let lines = buffer.split('\n');
             buffer = lines.pop() || '';
+            
+            let hasNewContent = false;
+            
             for (let line of lines) {
               if (line.startsWith('data:')) {
                 const data = line.replace('data:', '').trim();
@@ -421,11 +428,20 @@ FORMATTING GUIDANCE:
                 try {
                   const parsed = JSON.parse(data);
                   const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.message?.content || parsed.choices?.[0]?.text || parsed.content || '';
-                  if (delta) aiContent += delta;
+                  if (delta) {
+                    aiContent += delta;
+                    hasNewContent = true;
+                  }
                 } catch (err) {
                   // Ignore parse errors for incomplete lines
                 }
               }
+            }
+            
+            // Update the step output with each chunk to enable streaming in the UI
+            if (hasNewContent) {
+              // Update both the step content and output with the streaming content
+              updateStepStatus('synthesize', 'active', 'Synthesizing response...', aiContent);
             }
           }
         }
@@ -433,6 +449,8 @@ FORMATTING GUIDANCE:
         const data = await response.json();
         aiContent = data.content || data.choices?.[0]?.message?.content || data.generated_text || '';
       }
+      
+      // Final update with completed status
       updateStepStatus('synthesize', 'completed', aiContent, aiContent);
       setIsComplete(true);
       setIsInProgress(false);
