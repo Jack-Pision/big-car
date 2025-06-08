@@ -1804,80 +1804,90 @@ export default function TestChat() {
   async function handleSend(e?: React.FormEvent) {
     if (e) e.preventDefault();
     
+    // If in search mode (activeButton === 'search'), insert a 'search-ui' message and do nothing else.
+    if (activeButton === 'search') {
+      setMessages(prev => [
+        ...prev,
+        { role: 'search-ui', id: `search-ui-${Date.now()}`, content: '' }
+      ]);
+      setInput("");
+      return;
+    }
+    
     // Initialize variables at the function scope level
     let userMessageId = '';
     let uploadedImageUrls: string[] = [];
 
     try {
-    if (!input.trim() || isLoading || isAiResponding) return;
+      if (!input.trim() || isLoading || isAiResponding) return;
 
-    let currentActiveSessionId = activeSessionId;
+      let currentActiveSessionId = activeSessionId;
 
-    if (!currentActiveSessionId) {
-      const newSession = createNewSession(input.trim() || (selectedFilesForUpload.length > 0 ? "Image Upload" : undefined));
-      setActiveSessionId(newSession.id);
-      saveActiveSessionId(newSession.id);
-      currentActiveSessionId = newSession.id;
-      setMessages([]);
-    }
+      if (!currentActiveSessionId) {
+        const newSession = createNewSession(input.trim() || (selectedFilesForUpload.length > 0 ? "Image Upload" : undefined));
+        setActiveSessionId(newSession.id);
+        saveActiveSessionId(newSession.id);
+        currentActiveSessionId = newSession.id;
+        setMessages([]);
+      }
 
-    if (!hasInteracted) setHasInteracted(true);
-    // --- FIX: Always reset restoration state for new Advance Search queries ---
-    if (showAdvanceSearchUI) {
-      setIsRestoredFromStorage(false); // Always reset before new query
-      setRestoredDeepResearchState({}); // Clear any old state
-    }
-    setCurrentQuery(input);
-    setIsRestoredFromStorage(false); // Reset the restored flag when sending a new message
+      if (!hasInteracted) setHasInteracted(true);
+      // --- FIX: Always reset restoration state for new Advance Search queries ---
+      if (showAdvanceSearchUI) {
+        setIsRestoredFromStorage(false); // Always reset before new query
+        setRestoredDeepResearchState({}); // Clear any old state
+      }
+      setCurrentQuery(input);
+      setIsRestoredFromStorage(false); // Reset the restored flag when sending a new message
 
-    if (showAdvanceSearchUI) {
-      setIsAdvanceSearchActive(true);
-      const researchId = uuidv4();
-      setMessages(prev => [
-        ...prev,
-        { role: "user", content: input, id: uuidv4(), timestamp: Date.now(), isProcessed: true },
-        { role: "deep-research", content: input, researchId, id: uuidv4(), timestamp: Date.now(), isProcessed: true }
-      ]);
-      setInput("");
-      setImagePreviewUrls([]);
-      setSelectedFilesForUpload([]);
+      if (showAdvanceSearchUI) {
+        setIsAdvanceSearchActive(true);
+        const researchId = uuidv4();
+        setMessages(prev => [
+          ...prev,
+          { role: "user", content: input, id: uuidv4(), timestamp: Date.now(), isProcessed: true },
+          { role: "deep-research", content: input, researchId, id: uuidv4(), timestamp: Date.now(), isProcessed: true }
+        ]);
+        setInput("");
+        setImagePreviewUrls([]);
+        setSelectedFilesForUpload([]);
         setIsLoading(false);
-      setIsAiResponding(false);
-      return;
-    }
+        setIsAiResponding(false);
+        return;
+      }
 
-    setIsAiResponding(true);
+      setIsAiResponding(true);
       setIsLoading(true);
-    if (showHeading) setShowHeading(false);
+      if (showHeading) setShowHeading(false);
 
-    const queryType = classifyQuery(input) as QueryClassificationType;
-    const responseSchema = SCHEMAS[queryType] || SCHEMAS.conversation;
+      const queryType = classifyQuery(input) as QueryClassificationType;
+      const responseSchema = SCHEMAS[queryType] || SCHEMAS.conversation;
 
-    console.log("[handleSend] Query:", input);
-    console.log("[handleSend] Classified Query Type:", queryType);
-    console.log("[handleSend] Selected Response Schema Name:", queryType);
+      console.log("[handleSend] Query:", input);
+      console.log("[handleSend] Classified Query Type:", queryType);
+      console.log("[handleSend] Selected Response Schema Name:", queryType);
 
-    aiStreamAbortController.current = new AbortController();
+      aiStreamAbortController.current = new AbortController();
 
       const userMessageForDisplay: LocalMessage = {
-      role: "user" as const,
-      content: input,
-      id: uuidv4(),
-      timestamp: Date.now(),
-      isProcessed: true // Mark the user message as processed
-    };
-    
-    // Store the user message ID to use as parentId for AI responses
-    userMessageId = userMessageForDisplay.id!;
+        role: "user" as const,
+        content: input,
+        id: uuidv4(),
+        timestamp: Date.now(),
+        isProcessed: true // Mark the user message as processed
+      };
+      
+      // Store the user message ID to use as parentId for AI responses
+      userMessageId = userMessageForDisplay.id!;
 
-    if (selectedFilesForUpload.length > 0 && !input) {
-      userMessageForDisplay.content = "Image selected for analysis.";
-    }
-    if (selectedFilesForUpload.length > 0) {
-      (userMessageForDisplay as any).imageUrls = imagePreviewUrls || undefined;
-    }
-    setMessages((prev) => [...prev, userMessageForDisplay]);
-    setInput("");
+      if (selectedFilesForUpload.length > 0 && !input) {
+        userMessageForDisplay.content = "Image selected for analysis.";
+      }
+      if (selectedFilesForUpload.length > 0) {
+        (userMessageForDisplay as any).imageUrls = imagePreviewUrls || undefined;
+      }
+      setMessages((prev) => [...prev, userMessageForDisplay]);
+      setInput("");
 
       if (selectedFilesForUpload.length > 0) {
         const clientSideSupabase = createSupabaseClient();
@@ -1909,7 +1919,7 @@ export default function TestChat() {
         }
       }
 
-              const context = buildConversationContext(convertToConversationMessages(messages));
+      const context = buildConversationContext(convertToConversationMessages(messages));
 
       let turnSpecificSystemPrompt = BASE_SYSTEM_PROMPT;
 
@@ -1956,9 +1966,9 @@ export default function TestChat() {
         const previousImageDescriptions = imageContexts.map(ctx => ctx.description);
         apiPayload.previousImageDescriptions = previousImageDescriptions;
         if (!userMessageForDisplay.content || userMessageForDisplay.content === "Image selected for analysis.") {
-             if (formattedMessages[lastUserMsgIndex]) {
-                formattedMessages[lastUserMsgIndex].content = "Describe these images.";
-             }
+          if (formattedMessages[lastUserMsgIndex]) {
+            formattedMessages[lastUserMsgIndex].content = "Describe these images.";
+          }
         }
       }
       
