@@ -44,7 +44,7 @@ import rehypeRaw from 'rehype-raw';
 import { isSearchCompleted, getCompletedSearch, saveCompletedSearch } from '@/utils/advance-search-state';
 import { MarkdownRenderer } from '@/utils/markdown-utils';
 import { Message as BaseMessage } from '@/utils/conversation-context';
-import SearchPanel from '@/components/Search';
+import SearchPanel, { SearchStep } from '@/components/Search';
 import { Message as ConversationMessage } from "@/utils/conversation-context";
 
 // Define a type that includes all possible query types (including the ones in SCHEMAS and 'conversation')
@@ -610,17 +610,18 @@ interface ImageContext {
 
 // Define a local (renamed) Message interface (not extending BaseMessage) to avoid type incompatibility
 interface LocalMessage {
-  role: 'user' | 'assistant' | 'deep-research' | 'search-ui'; // (re-adding 'search-ui' so that linter errors (e.g. "This comparison appears to be unintentional because the types '"user"' and '"search-ui"' have no overlap.") are resolved)
+  role: 'user' | 'assistant' | 'deep-research' | 'search-ui';
   isProcessed?: boolean;
   isStreaming?: boolean;
   imageUrls?: string[];
-  content: string; // (required, so that linter errors (e.g. "Argument of type 'string | undefined' is not assignable to parameter of type 'string'.") are resolved)
+  content: string;
   id?: string;
-  contentType?: string; // (or use a union type if needed, e.g. 'text' | 'image' | 'structured' etc.)
-  timestamp?: number; // (or Date, if preferred)
-  webSources?: any; // (or a more specific type if available, e.g. WebSource[] or { url: string; title?: string; ... }[] )
-  structuredContent?: any; // (or a more specific type if available, e.g. { ... } )
-  parentId?: string; // (optional parent message id)
+  contentType?: string;
+  timestamp?: number;
+  webSources?: any;
+  structuredContent?: any;
+  parentId?: string;
+  query?: string; // Add this property for search-ui messages
 }
 
 // Helper to enforce Advance Search output structure
@@ -1808,7 +1809,12 @@ export default function TestChat() {
     if (activeButton === 'search') {
       setMessages(prev => [
         ...prev,
-        { role: 'search-ui', id: `search-ui-${Date.now()}`, content: '' }
+        { 
+          role: 'search-ui', 
+          id: `search-ui-${Date.now()}`, 
+          content: input, // Include the query content
+          query: input // Store the query for the search component
+        }
       ]);
       setInput("");
       return;
@@ -2752,7 +2758,25 @@ export default function TestChat() {
                   />
                 );
               } else if (msg.role === 'search-ui') {
-                return <SearchPanel />;
+                return (
+                  <SearchPanel 
+                    key={msg.id + '-search-' + i}
+                    query={msg.content} 
+                    onFinalOutput={(finalOutput) => {
+                      // Add the final output as an assistant message in the chat
+                      setMessages(prev => [
+                        ...prev,
+                        {
+                          role: "assistant",
+                          content: finalOutput,
+                          id: uuidv4(),
+                          timestamp: Date.now(),
+                          isProcessed: true
+                        }
+                      ]);
+                    }}
+                  />
+                );
               } else {
                 return (
                 <div
