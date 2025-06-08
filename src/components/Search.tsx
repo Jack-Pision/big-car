@@ -304,30 +304,6 @@ const Search: React.FC<SearchProps> = ({ query, onFinalOutput }) => {
           {steps.map((step) => (
             <div key={step.id} className="mb-6">
               <h3 className="text-lg font-medium text-white mb-3">{step.title}</h3>
-              {/* Step status indicator */}
-              <div className="flex items-center gap-2 mb-2">
-                <span 
-                  className={`inline-block w-2 h-2 rounded-full ${
-                    step.status === 'pending' ? 'bg-neutral-400' :
-                    step.status === 'active' ? 'bg-blue-400 animate-pulse' :
-                    step.status === 'completed' ? 'bg-green-400' :
-                    'bg-red-400'
-                  }`}
-                />
-                <span 
-                  className={`text-sm ${
-                    step.status === 'pending' ? 'text-neutral-400' :
-                    step.status === 'active' ? 'text-blue-400' :
-                    step.status === 'completed' ? 'text-green-400' :
-                    'text-red-400'
-                  }`}
-                >
-                  {step.status === 'pending' ? 'Pending' :
-                   step.status === 'active' ? 'In Progress' :
-                   step.status === 'completed' ? 'Completed' :
-                   'Error'}
-                </span>
-              </div>
               {/* Step content */}
               <div className="text-neutral-300 ml-4">
                 {step.status === 'active' && <p>{step.content}</p>}
