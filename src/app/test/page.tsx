@@ -2430,6 +2430,10 @@ export default function TestChat() {
   // Add at the top of the component
   const [activeButton, setActiveButton] = useState<string | null>(null);
 
+  const handleButtonClick = (key: string) => {
+    setActiveButton(prev => (prev === key ? null : key));
+  };
+
   return (
     <>
       <div className="min-h-screen flex flex-col px-4 sm:px-4 md:px-8 lg:px-0" style={{ background: '#161618' }}>
@@ -2511,10 +2515,10 @@ export default function TestChat() {
                     <button
                       type="button"
                       className={`flex items-center gap-1.5 rounded-full transition px-3 py-1.5 flex-shrink-0 text-xs font-medium
-                        ${activeButton === 'write' ? 'bg-gray-800 text-cyan-400 shadow-[0_0_8px_#22d3ee]' : 'bg-gray-800 text-gray-400 opacity-60'}
+                        ${activeButton === 'write' ? 'bg-gray-800 text-cyan-400' : 'bg-gray-800 text-gray-400 opacity-60'}
                         hover:bg-gray-700`}
                       style={{ height: "36px" }}
-                      onClick={() => setActiveButton('write')}
+                      onClick={() => handleButtonClick('write')}
                     >
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: activeButton === 'write' ? '#22d3ee' : '#a3a3a3' }}>
                         <path d="M12 20h9" />
@@ -2527,10 +2531,10 @@ export default function TestChat() {
                     <button
                       type="button"
                       className={`rounded-full transition flex items-center justify-center gap-1.5 px-3 py-1.5 flex-shrink-0 text-xs font-medium
-                        ${activeButton === 'search' ? 'bg-gray-800 text-cyan-400 shadow-[0_0_8px_#22d3ee]' : 'bg-gray-800 text-gray-400 opacity-60'}
+                        ${activeButton === 'search' ? 'bg-gray-800 text-cyan-400' : 'bg-gray-800 text-gray-400 opacity-60'}
                         hover:bg-gray-700`}
                       style={{ height: "36px" }}
-                      onClick={() => setActiveButton('search')}
+                      onClick={() => handleButtonClick('search')}
                     >
                       <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" style={{ color: activeButton === 'search' ? '#22d3ee' : '#a3a3a3' }}>
                         <circle cx="11" cy="11" r="7"/>
@@ -2543,11 +2547,11 @@ export default function TestChat() {
                     <button
                       type="button"
                       className={`flex items-center gap-1.5 rounded-full transition px-3 py-1.5 flex-shrink-0 text-xs font-medium
-                        ${activeButton === 'advance' ? 'bg-gray-800 text-cyan-400 shadow-[0_0_8px_#22d3ee]' : 'bg-gray-800 text-gray-400 opacity-60'}
+                        ${activeButton === 'advance' ? 'bg-gray-800 text-cyan-400' : 'bg-gray-800 text-gray-400 opacity-60'}
                         hover:bg-gray-700`}
                       style={{ height: "36px" }}
                       tabIndex={0}
-                      onClick={() => setActiveButton('advance')}
+                      onClick={() => handleButtonClick('advance')}
                     >
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: activeButton === 'advance' ? '#22d3ee' : '#a3a3a3' }}>
                         <circle cx="12" cy="12" r="3" />
