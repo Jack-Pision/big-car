@@ -2452,6 +2452,11 @@ export default function TestChat() {
     ) as unknown as ConversationMessage[];
   }
 
+  // Add this at the top of the return statement
+  if (activeButton === 'search') {
+    return <SearchPanel />;
+  }
+
   return (
     <>
       <div className="min-h-screen flex flex-col px-4 sm:px-4 md:px-8 lg:px-0" style={{ background: '#161618' }}>
