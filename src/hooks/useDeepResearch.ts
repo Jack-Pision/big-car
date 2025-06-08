@@ -388,7 +388,7 @@ FORMATTING GUIDANCE:
         systemContent += '\n\nIMPORTANT: Maintain the same output structure as specified above, even when answering follow-up questions.';
       }
 
-      // Step 3b: Get the full research-paper style answer from the AI
+      // Step 3b: Get the full research-paper style answer from the AI (streaming)
       const response = await fetch('/api/nvidia', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -421,7 +421,11 @@ FORMATTING GUIDANCE:
                 try {
                   const parsed = JSON.parse(data);
                   const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.message?.content || parsed.choices?.[0]?.text || parsed.content || '';
-                  if (delta) aiContent += delta;
+                  if (delta) {
+                    aiContent += delta;
+                    // Progressive update: show partial output in the UI
+                    updateStepStatus('synthesize', 'active', aiContent, aiContent);
+                  }
                 } catch (err) {
                   // Ignore parse errors for incomplete lines
                 }
@@ -429,13 +433,18 @@ FORMATTING GUIDANCE:
             }
           }
         }
+        // When streaming is done, mark as completed
+        updateStepStatus('synthesize', 'completed', aiContent, aiContent);
+        setIsComplete(true);
+        setIsInProgress(false);
       } else {
+        // Fallback for non-streaming response
         const data = await response.json();
         aiContent = data.content || data.choices?.[0]?.message?.content || data.generated_text || '';
+        updateStepStatus('synthesize', 'completed', aiContent, aiContent);
+        setIsComplete(true);
+        setIsInProgress(false);
       }
-      updateStepStatus('synthesize', 'completed', aiContent, aiContent);
-      setIsComplete(true);
-      setIsInProgress(false);
     } catch (err: any) {
       handleError('synthesize', err.message);
     }
