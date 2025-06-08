@@ -44,6 +44,7 @@ import rehypeRaw from 'rehype-raw';
 import { isSearchCompleted, getCompletedSearch, saveCompletedSearch } from '@/utils/advance-search-state';
 import { MarkdownRenderer } from '@/utils/markdown-utils';
 import { Message as BaseMessage } from '@/utils/conversation-context';
+import SearchPanel from '@/components/Search';
 
 // Define a type that includes all possible query types (including the ones in SCHEMAS and 'conversation')
 type QueryType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversation' | 'deep-research';
@@ -608,6 +609,7 @@ interface ImageContext {
 
 // Extend the base Message interface for local use
 interface Message extends BaseMessage {
+  role: 'user' | 'assistant' | 'deep-research' | 'search-ui';
   isProcessed?: boolean;
   isStreaming?: boolean;
   contentType?: ContentDisplayType;
@@ -2723,6 +2725,8 @@ export default function TestChat() {
                     }}
                   />
                 );
+              } else if (msg.role === 'search-ui') {
+                return <SearchPanel />;
               } else {
                 return (
                 <div
