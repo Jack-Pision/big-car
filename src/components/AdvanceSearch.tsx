@@ -426,30 +426,22 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
       return null;
     }
 
-    // Show partial output while streaming
     if (step.status === 'active') {
       return (
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-neutral-300">
-            <div className="animate-pulse w-2 h-2 rounded-full bg-cyan-500"></div>
-            <span>Synthesizing final answer...</span>
-          </div>
-          {step.output && (
-            <div className="mt-2 p-3 bg-neutral-900/60 rounded-lg text-neutral-200 text-base whitespace-pre-line prose prose-invert prose-sm max-w-none">
-              {step.output}
-            </div>
-          )}
+        <div className="flex items-center gap-2 text-neutral-300">
+          <div className="animate-pulse w-2 h-2 rounded-full bg-cyan-500"></div>
+          <span>Synthesizing final answer...</span>
         </div>
       );
     }
 
-    // For completed synthesize step, show the final output
+    // For completed synthesize step, always direct to main chat
     if (step.status === 'completed') {
-      return (
-        <div className="mt-2 p-3 bg-neutral-900/60 rounded-lg text-neutral-200 text-base whitespace-pre-line prose prose-invert prose-sm max-w-none">
-          {step.output}
-        </div>
-      );
+        return (
+        <div className="text-cyan-400 text-base font-medium">
+          Response ready! See main chat for the full answer.
+          </div>
+        );
     }
     
     return null;
