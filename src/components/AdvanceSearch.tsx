@@ -607,12 +607,11 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
       </div>
       
       {/* Content panel - All steps */}
-      <div ref={rightPanelRef} className="overflow-y-auto px-8 py-4 hide-scrollbar" style={{ maxHeight: 'calc(409px - 64px)' }}>
+      <div ref={rightPanelRef} className="overflow-y-auto px-8 pt-4 pb-2 hide-scrollbar" style={{ maxHeight: 'calc(409px - 64px)' }}>
         <div className="space-y-8">
-          {steps.map((step) => {
+          {steps.map((step, idx, arr) => {
             // Only show steps that are in the displayingSteps array
             if (!displayingSteps.includes(step.id)) return null;
-            
             return (
               <motion.div
                 key={step.id}
@@ -620,11 +619,9 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
-                className="pb-2 last:pb-0"
+                className={idx === arr.length - 1 ? "" : "pb-2"}
               >
                 <h2 className="text-xl font-normal mb-4 text-neutral-200">{step.title}</h2>
-                
-                {/* Content for each step */}
                 <div className="text-base text-neutral-300">
                   {step.id === 'understand' && renderUnderstandContent(step)}
                   {step.id === 'research' && renderResearchContent(step)}
@@ -634,7 +631,6 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
             );
           })}
         </div>
-        
         {/* Error message */}
         {error && (
           <div className="mt-4 p-4 bg-red-900/20 border border-red-900/50 rounded-lg text-red-400">
