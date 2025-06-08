@@ -575,7 +575,7 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
   };
 
   return (
-    <div className="w-full mx-auto rounded-lg overflow-hidden shadow-lg h-full min-h-[400px]" style={{ background: '#171717', borderRadius: '20px', maxWidth: '969px' }}>
+    <div className="w-full mx-auto rounded-lg overflow-hidden shadow-lg h-auto" style={{ background: '#171717', borderRadius: '20px', maxWidth: '969px' }}>
       {/* Header - Cross/back button and Title */}
       <div className="relative p-6 pb-2">
         <div className="flex items-center mb-2">
@@ -586,12 +586,10 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
               <div className="w-4 h-0.5 bg-cyan-400 transform -rotate-45 absolute"></div>
             </div>
           </div>
-          
           {/* Title */}
           <h1 className="text-2xl font-normal mx-auto text-neutral-200 pl-8">
             {steps[0]?.title || "Title of the query"}
           </h1>
-          
           {/* Collapse/expand arrow - functional */}
           <div className="absolute right-6 top-7 cursor-pointer" onClick={() => {
             if (rightPanelRef.current) {
@@ -605,9 +603,8 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
           </div>
         </div>
       </div>
-      
       {/* Content panel - All steps */}
-      <div ref={rightPanelRef} className="overflow-y-auto px-8 pt-4 pb-2 hide-scrollbar" style={{ maxHeight: 'calc(409px - 64px)' }}>
+      <div ref={rightPanelRef} className="overflow-y-auto px-8 pt-4 pb-2 hide-scrollbar" style={{ maxHeight: 'none' }}>
         <div className="space-y-8">
           {steps.map((step, idx, arr) => {
             // Only show steps that are in the displayingSteps array
@@ -638,11 +635,7 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
           </div>
         )}
       </div>
-      
-      {/* Hidden mobile accordion - necessary for functionality but not displayed */}
-      <div className="hidden">
-        {renderMobileAccordion()}
-      </div>
+      {/* Remove hidden mobile accordion and any unnecessary footer elements */}
     </div>
   );
 };
