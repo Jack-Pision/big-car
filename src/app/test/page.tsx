@@ -2319,7 +2319,8 @@ export default function TestChat() {
     setIsRestoredFromStorage(false); // Reset the restored flag
   };
 
-  const renderMessageContent = (msg: Message) => {
+  // Fix the renderMessageContent function to use LocalMessage
+  const renderMessageContent = (msg: LocalMessage) => {
     if (msg.contentType && msg.structuredContent) {
       switch (msg.contentType) {
         case 'tutorial':
@@ -2450,23 +2451,6 @@ export default function TestChat() {
       msg => msg.role !== 'search-ui'
     ) as unknown as ConversationMessage[];
   }
-
-  // Update the updateConversation call to use the conversion function
-  useEffect(() => {
-    updateConversation(convertToConversationMessages(messages));
-  }, [messages]);
-
-  // Update onGetAnswer call to use the conversion function
-  onGetAnswer(convertToConversationMessages(filteredMessages), answerContainer.current);
-
-  // Update any place where we're passing messages to conversation context
-  const contextValue = { 
-    messages: convertToConversationMessages(messages), 
-    setMessages: setMessages as unknown as React.Dispatch<React.SetStateAction<ConversationMessage[]>>, 
-    fetchSuggestions, 
-    onProcessMessage, 
-    onDeepResearch 
-  };
 
   return (
     <>
