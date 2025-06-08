@@ -262,9 +262,9 @@ const Search: React.FC<SearchProps> = ({ query, onFinalOutput }) => {
   return (
     <div
       className="w-full mx-auto rounded-lg overflow-hidden bg-[#171717] border border-white/20"
-      style={{ borderRadius: '20px', maxWidth: '969px', minHeight: '300px' }}
+      style={{ borderRadius: '20px', maxWidth: '969px', height: '300px' }}
     >
-      {/* Header */}
+      {/* Header (fixed) */}
       <div
         className="relative flex items-center px-6 py-4 bg-[#171717]"
         style={{ minHeight: '64px' }}
@@ -296,8 +296,8 @@ const Search: React.FC<SearchProps> = ({ query, onFinalOutput }) => {
         </div>
       </div>
 
-      {/* Content */}
-      <div className="px-6 py-4 overflow-y-auto">
+      {/* Content (scrollable) */}
+      <div className="px-6 py-4 overflow-y-auto" style={{ height: 'calc(300px - 64px)' }}>
         {/* Query display */}
         <div className="mb-6">
           <h2 className="text-xl font-semibold text-white mb-2">Title of the query</h2>
