@@ -211,8 +211,15 @@ function saveSerperCache() {
   }
 }
 
+/* Insert a new helper function to generate the in-flight lock key for a Serper query */
+function getSerperInFlightKey(query: string, limit: number) {
+  return `serper_inflight_${query.trim().toLowerCase()}::${limit}`;
+}
+
+/* Update dedupedSerperRequest to use a persistent in-flight lock in localStorage */
 export async function dedupedSerperRequest(query: string, limit: number) {
   const key = getSerperCacheKey(query, limit);
+  const inFlightKey = getSerperInFlightKey(query, limit);
 
   // Return cached result if not expired
   const cached = serperCache[key];
@@ -220,9 +227,32 @@ export async function dedupedSerperRequest(query: string, limit: number) {
     return cached.data;
   }
 
-  // Return in-flight promise if exists
+  // Check if an in-flight lock exists in localStorage
+  if (typeof window !== 'undefined') {
+    const inFlightLock = localStorage.getItem(inFlightKey);
+    if (inFlightLock) {
+      // Poll (wait) for the result to be cached (every 200ms) until the lock is removed or a cached result is found
+      while (true) {
+        const pollCached = serperCache[key];
+         if (pollCached && Date.now() - pollCached.timestamp < CACHE_EXPIRATION_MS) {
+           return pollCached.data;
+         }
+         if (!localStorage.getItem(inFlightKey)) {
+           break; // lock removed, proceed (or re-check cache)
+         }
+         await new Promise(resolve => setTimeout(resolve, 200));
+      }
+    }
+  }
+
+  // Return in-flight promise if exists (in-memory)
   if (typeof serperInFlight[key] !== 'undefined') {
     return serperInFlight[key];
+  }
+
+  // Set the in-flight lock in localStorage (if in browser)
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(inFlightKey, 'true');
   }
 
   // Otherwise, make the API call
@@ -236,10 +266,18 @@ export async function dedupedSerperRequest(query: string, limit: number) {
       serperCache[key] = { data, timestamp: Date.now() };
       saveSerperCache();
       delete serperInFlight[key];
+      // Remove the in-flight lock from localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(inFlightKey);
+      }
       return data;
     })
     .catch(err => {
       delete serperInFlight[key];
+      // Remove the in-flight lock on error as well
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(inFlightKey);
+      }
       throw err;
     });
 
