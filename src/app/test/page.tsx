@@ -2452,16 +2452,6 @@ export default function TestChat() {
 
   const handleButtonClick = (key: string) => {
     setActiveButton(prev => (prev === key ? null : key));
-    if (key === 'search') {
-      setMessages(prev => [
-        ...prev,
-        {
-          role: 'search-ui',
-          id: `search-ui-${Date.now()}`,
-          content: ''
-        }
-      ]);
-    }
   };
 
   // Add helper function to convert LocalMessage[] to ConversationMessage[] by type casting
