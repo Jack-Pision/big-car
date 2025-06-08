@@ -45,6 +45,7 @@ import { isSearchCompleted, getCompletedSearch, saveCompletedSearch } from '@/ut
 import { MarkdownRenderer } from '@/utils/markdown-utils';
 import { Message as BaseMessage } from '@/utils/conversation-context';
 import SearchPanel from '@/components/Search';
+import { Message as ConversationMessage } from "@/utils/conversation-context";
 
 // Define a type that includes all possible query types (including the ones in SCHEMAS and 'conversation')
 type QueryType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversation' | 'deep-research';
@@ -607,14 +608,19 @@ interface ImageContext {
   timestamp: number;    // When this image was processed
 }
 
-// Extend the base Message interface for local use
-interface Message extends BaseMessage {
-  role: 'user' | 'assistant' | 'deep-research' | 'search-ui';
+// Define a local (renamed) Message interface (not extending BaseMessage) to avoid type incompatibility
+interface LocalMessage {
+  role: 'user' | 'assistant' | 'deep-research' | 'search-ui'; // (re-adding 'search-ui' so that linter errors (e.g. "This comparison appears to be unintentional because the types '"user"' and '"search-ui"' have no overlap.") are resolved)
   isProcessed?: boolean;
   isStreaming?: boolean;
-  contentType?: ContentDisplayType;
-  structuredContent?: any;
-  toolUsed?: string;
+  imageUrls?: string[];
+  content: string; // (required, so that linter errors (e.g. "Argument of type 'string | undefined' is not assignable to parameter of type 'string'.") are resolved)
+  id?: string;
+  contentType?: string; // (or use a union type if needed, e.g. 'text' | 'image' | 'structured' etc.)
+  timestamp?: number; // (or Date, if preferred)
+  webSources?: any; // (or a more specific type if available, e.g. WebSource[] or { url: string; title?: string; ... }[] )
+  structuredContent?: any; // (or a more specific type if available, e.g. { ... } )
+  parentId?: string; // (optional parent message id)
 }
 
 // Helper to enforce Advance Search output structure
@@ -1624,7 +1630,7 @@ function processStreamBuffer(buffer: string): {
 
 export default function TestChat() {
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<LocalMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [chatError, setChatError] = useState(""); // Renamed from error to chatError
@@ -1853,7 +1859,7 @@ export default function TestChat() {
 
     aiStreamAbortController.current = new AbortController();
 
-      const userMessageForDisplay: Message = {
+      const userMessageForDisplay: LocalMessage = {
       role: "user" as const,
       content: input,
       id: uuidv4(),
@@ -1997,7 +2003,7 @@ export default function TestChat() {
           parsedQueryType = 'conversation'; // Fallback to conversation display for the error
         }
 
-        const aiMsg: Message = {
+        const aiMsg: LocalMessage = {
         role: "assistant" as const,
           content: '', 
           contentType: parsedQueryType,
@@ -2021,7 +2027,7 @@ export default function TestChat() {
         
         // Initialize aiMsg for the streaming case. 
         // We'll set its contentType more definitively after the stream.
-        let aiMsg: Message = { 
+        let aiMsg: LocalMessage = { 
           role: "assistant" as const,
           content: "", 
           id: uuidv4(),
@@ -2434,6 +2440,31 @@ export default function TestChat() {
 
   const handleButtonClick = (key: string) => {
     setActiveButton(prev => (prev === key ? null : key));
+  };
+
+  // Add helper function to convert LocalMessage[] to ConversationMessage[] by type casting
+  function convertToConversationMessages(messages: LocalMessage[]): ConversationMessage[] {
+    // This filters out any messages with role 'search-ui' since ConversationMessage doesn't support that role
+    return messages.filter(
+      msg => msg.role !== 'search-ui'
+    ) as unknown as ConversationMessage[];
+  }
+
+  // Update the updateConversation call to use the conversion function
+  useEffect(() => {
+    updateConversation(convertToConversationMessages(messages));
+  }, [messages]);
+
+  // Update onGetAnswer call to use the conversion function
+  onGetAnswer(convertToConversationMessages(filteredMessages), answerContainer.current);
+
+  // Update any place where we're passing messages to conversation context
+  const contextValue = { 
+    messages: convertToConversationMessages(messages), 
+    setMessages: setMessages as unknown as React.Dispatch<React.SetStateAction<ConversationMessage[]>>, 
+    fetchSuggestions, 
+    onProcessMessage, 
+    onDeepResearch 
   };
 
   return (
