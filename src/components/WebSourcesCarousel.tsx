@@ -35,8 +35,19 @@ const WebSourcesCarousel: React.FC<WebSourcesCarouselProps> = ({ sources }) => {
     setCurrentIndex(prev => Math.min(prev + 1, Math.max(0, sources.length - visibleItems)));
   };
 
+  // Animation variants for entrance
+  const entranceVariants = {
+    hidden: { opacity: 0, y: 30 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' } }
+  };
+
   return (
-    <div className="w-full mb-6 relative">
+    <motion.div
+      className="w-full mb-6 relative"
+      initial="hidden"
+      animate="visible"
+      variants={entranceVariants}
+    >
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-neutral-300 text-sm font-medium">Research Sources</h3>
         <div className="flex space-x-2">
@@ -81,7 +92,7 @@ const WebSourcesCarousel: React.FC<WebSourcesCarouselProps> = ({ sources }) => {
           ))}
         </motion.div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 
