@@ -2442,6 +2442,16 @@ export default function TestChat() {
 
   const handleButtonClick = (key: string) => {
     setActiveButton(prev => (prev === key ? null : key));
+    if (key === 'search') {
+      setMessages(prev => [
+        ...prev,
+        {
+          role: 'search-ui',
+          id: `search-ui-${Date.now()}`,
+          content: ''
+        }
+      ]);
+    }
   };
 
   // Add helper function to convert LocalMessage[] to ConversationMessage[] by type casting
@@ -2450,11 +2460,6 @@ export default function TestChat() {
     return messages.filter(
       msg => msg.role !== 'search-ui'
     ) as unknown as ConversationMessage[];
-  }
-
-  // Add this at the top of the return statement
-  if (activeButton === 'search') {
-    return <SearchPanel />;
   }
 
   return (
