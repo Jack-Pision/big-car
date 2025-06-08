@@ -1000,8 +1000,9 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
   // State to track if this search is already completed
   const [isSearchAlreadyCompleted, setIsSearchAlreadyCompleted] = useState(false);
   
-  // Add ref to track initial load
+  // Add ref to track initial load and restoration
   const isInitialLoadRef = useRef(true);
+  const restorationAttemptedRef = useRef(false);
   
   // Track if answer has been added to the main chat to prevent duplicates
   const [answerAddedToMainChat, setAnswerAddedToMainChat] = useState(false);
@@ -1025,7 +1026,6 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
   
   // Check if the main chat already contains this answer
   const checkIfAnswerAlreadyInMainChat = useCallback(() => {
-    // We can use localStorage to track which answers have been added to the chat
     const answerKey = `advance_search_answer_added_${query.trim().toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
     if (typeof window !== 'undefined') {
       return localStorage.getItem(answerKey) === 'true';
@@ -1041,104 +1041,98 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
       setAnswerAddedToMainChat(true);
     }
   }, [query]);
-  
-  // First check if this search is already completed - do this once on mount
+
+  // Consolidated state restoration logic
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      // First check if this answer is already in the main chat
-      const alreadyInMainChat = checkIfAnswerAlreadyInMainChat();
-      setAnswerAddedToMainChat(alreadyInMainChat);
-      
-      // Check if this exact search was completed before
-      if (isSearchCompleted(query)) {
-        const completedSearch = getCompletedSearch(query);
-        if (completedSearch && completedSearch.finalAnswer) {
-          // Restore the completed search state
-          setRestoredState({
-            steps: completedSearch.steps,
-            activeStepId: completedSearch.activeStepId,
-            isComplete: true,
-            isInProgress: false,
-            webData: completedSearch.webData,
-            isFullyCompleted: true // Add this flag
-          });
-          
-          // Mark as restored and completed to prevent API calls
-          setIsBlockRestoredFromStorage(true);
-          setIsSearchAlreadyCompleted(true);
-          
-          // Store the final answer
-          setCompletedSearchAnswer(completedSearch.finalAnswer);
-          setCompletedSearchSources(completedSearch.webData?.sources || []);
-          
-          // If there's a final answer and onFinalAnswer callback, call it to display in main chat
-          // But ONLY if it hasn't been added to the main chat already
-          if (completedSearch.finalAnswer && 
-              typeof completedSearch.finalAnswer === 'string' && 
-              completedSearch.finalAnswer !== null &&
-              completedSearch.finalAnswer !== undefined && 
-              onFinalAnswer && 
-              !alreadyInMainChat) {
-            // Use setTimeout to ensure UI is ready
-            setTimeout(() => {
-              onFinalAnswer(completedSearch.finalAnswer as string, completedSearch.webData?.sources || []);
-              markAnswerAddedToMainChat();
-            }, 100);
-          }
-          
-          return; // Skip the regular localStorage restore
+    if (typeof window === 'undefined' || restorationAttemptedRef.current) {
+      return;
+    }
+
+    restorationAttemptedRef.current = true;
+    const alreadyInMainChat = checkIfAnswerAlreadyInMainChat();
+    setAnswerAddedToMainChat(alreadyInMainChat);
+
+    // Try to restore from completed searches first
+    if (isSearchCompleted(query)) {
+      const completedSearch = getCompletedSearch(query);
+      if (completedSearch && completedSearch.finalAnswer) {
+        setRestoredState({
+          steps: completedSearch.steps,
+          activeStepId: completedSearch.activeStepId,
+          isComplete: true,
+          isInProgress: false,
+          webData: completedSearch.webData,
+          isFullyCompleted: true
+        });
+        
+        setIsBlockRestoredFromStorage(true);
+        setIsSearchAlreadyCompleted(true);
+        setCompletedSearchAnswer(completedSearch.finalAnswer);
+        setCompletedSearchSources(completedSearch.webData?.sources || []);
+        
+        if (onFinalAnswer && !alreadyInMainChat && typeof completedSearch.finalAnswer === 'string') {
+          setTimeout(() => {
+            onFinalAnswer(completedSearch.finalAnswer as string, completedSearch.webData?.sources || []);
+            markAnswerAddedToMainChat();
+          }, 100);
         }
+        
+        // Mark initial load as complete
+        setTimeout(() => {
+          isInitialLoadRef.current = false;
+        }, 100);
+        return;
       }
-      
-      // Regular localStorage restore logic if not a completed search
-      const saved = localStorage.getItem('advanceSearchState');
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          // Check for isFullyCompleted flag to prevent API calls
-          if (parsed && parsed.isFullyCompleted === true && parsed.currentQuery === query && parsed.finalAnswer) {
-            // This is a fully completed search
+    }
+
+    // If not found in completed searches, try localStorage
+    const saved = localStorage.getItem('advanceSearchState');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.steps) {
+          const isFullyCompleted = parsed.isFullyCompleted === true && 
+                                 parsed.currentQuery === query && 
+                                 parsed.finalAnswer;
+          
+          if (isFullyCompleted) {
             setIsSearchAlreadyCompleted(true);
             setCompletedSearchAnswer(parsed.finalAnswer);
             setCompletedSearchSources(parsed.webData?.sources || []);
             
-            // Call onFinalAnswer to display in main chat only if not already shown
-            if (onFinalAnswer && parsed.finalAnswer && !alreadyInMainChat) {
+            if (onFinalAnswer && !alreadyInMainChat && typeof parsed.finalAnswer === 'string') {
               setTimeout(() => {
-                onFinalAnswer(parsed.finalAnswer, parsed.webData?.sources || []);
+                onFinalAnswer(parsed.finalAnswer as string, parsed.webData?.sources || []);
                 markAnswerAddedToMainChat();
               }, 100);
             }
           }
           
-          // Don't strictly check for query match on reload - focus on having valid steps
-          if (parsed && parsed.steps) {
-            setRestoredState({
-              steps: parsed.steps,
-              activeStepId: parsed.activeStepId,
-              isComplete: parsed.isComplete,
-              isInProgress: parsed.isInProgress,
-              webData: parsed.webData
-            });
-            setIsBlockRestoredFromStorage(true);
-          }
-        } catch (err) {
-          console.error("Error restoring deep research state:", err);
-          setIsBlockRestoredFromStorage(false);
+          setRestoredState({
+            steps: parsed.steps,
+            activeStepId: parsed.activeStepId,
+            isComplete: parsed.isComplete,
+            isInProgress: parsed.isInProgress,
+            webData: parsed.webData,
+            isFullyCompleted
+          });
+          setIsBlockRestoredFromStorage(true);
         }
-      } else {
+      } catch (err) {
+        console.error("Error restoring deep research state:", err);
         setIsBlockRestoredFromStorage(false);
       }
-      
-      // Mark initial load as complete after a small delay
-      setTimeout(() => {
-        isInitialLoadRef.current = false;
-      }, 500);
+    } else {
+      setIsBlockRestoredFromStorage(false);
     }
-  }, [query, onFinalAnswer, checkIfAnswerAlreadyInMainChat, markAnswerAddedToMainChat]); // Include new dependencies
-  
-  // Only reset isBlockRestoredFromStorage when a new query is detected
-  // and we're not in the initial load phase
+
+    // Mark initial load as complete
+    setTimeout(() => {
+      isInitialLoadRef.current = false;
+    }, 100);
+  }, [query, onFinalAnswer, checkIfAnswerAlreadyInMainChat, markAnswerAddedToMainChat]);
+
+  // Reset state when query changes (but not during initial load)
   useEffect(() => {
     if (!isInitialLoadRef.current && query !== previousQuery) {
       setPreviousQuery(query);
@@ -1147,6 +1141,7 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
       setCompletedSearchAnswer(null);
       setCompletedSearchSources(null);
       setAnswerAddedToMainChat(false);
+      restorationAttemptedRef.current = false;
     }
   }, [query, previousQuery]);
   
