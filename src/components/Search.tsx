@@ -25,7 +25,7 @@ const Search: React.FC = () => {
   ];
 
   return (
-    <div className="w-full mx-auto rounded-lg overflow-hidden shadow-lg bg-[#171717]" style={{ borderRadius: '20px', maxWidth: '969px' }}>
+    <div className="w-full mx-auto rounded-lg overflow-hidden bg-[#171717] border border-white/20" style={{ borderRadius: '20px', maxWidth: '969px' }}>
       {/* Header */}
       <div className="relative flex items-center px-6 py-4 bg-[#171717]" style={{ minHeight: '64px' }}>
         <div className="flex items-center gap-3">
