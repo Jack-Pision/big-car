@@ -2396,20 +2396,6 @@ export default function TestChat() {
     }
   }, [steps, activeStepId, isComplete, isInProgress, webData, currentQuery, advanceSearchHistory, showAdvanceSearchUI]);
 
-  // Clear Advance Search state from localStorage when a new search is started
-  useEffect(() => {
-    // Don't clear during initial load phase
-    if (isInitialLoadRef.current) {
-      return;
-    }
-    
-    // Only clear if the user explicitly closed the UI or stopped the process
-    if (!showAdvanceSearchUI || !isAdvanceSearchActive) {
-      // Only clear if this was an explicit action, not a page load
-      localStorage.removeItem(ADVANCE_SEARCH_STORAGE_KEY);
-    }
-  }, [showAdvanceSearchUI, isAdvanceSearchActive]);
-
   return (
     <>
       <div className="min-h-screen flex flex-col px-4 sm:px-4 md:px-8 lg:px-0" style={{ background: '#161618' }}>
