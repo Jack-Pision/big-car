@@ -1909,7 +1909,8 @@ export default function TestChat() {
         }
       }
 
-      const context = buildConversationContext(messages);
+              const context = buildConversationContext(convertToConversationMessages(messages));
+
       let turnSpecificSystemPrompt = BASE_SYSTEM_PROMPT;
 
       // Add explicit instruction to never show reasoning
@@ -1932,7 +1933,7 @@ export default function TestChat() {
       
       const formattedMessages = formatMessagesForApi(
         enhancedSystemPrompt,
-        messages,
+        convertToConversationMessages(messages),
         input,
         true
       );
