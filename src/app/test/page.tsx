@@ -2427,6 +2427,9 @@ export default function TestChat() {
     }
   }, [steps, activeStepId, isComplete, isInProgress, webData, currentQuery, advanceSearchHistory, showAdvanceSearchUI]);
 
+  // Add at the top of the component
+  const [activeButton, setActiveButton] = useState<string | null>(null);
+
   return (
     <>
       <div className="min-h-screen flex flex-col px-4 sm:px-4 md:px-8 lg:px-0" style={{ background: '#161618' }}>
@@ -2507,11 +2510,13 @@ export default function TestChat() {
                     {/* Write button */}
                     <button
                       type="button"
-                      className={`flex items-center gap-1.5 rounded-full bg-gray-800 hover:bg-gray-700 transition px-3 py-1.5 flex-shrink-0 text-xs font-medium text-cyan-400`}
+                      className={`flex items-center gap-1.5 rounded-full transition px-3 py-1.5 flex-shrink-0 text-xs font-medium
+                        ${activeButton === 'write' ? 'bg-gray-800 text-cyan-400 shadow-[0_0_8px_#22d3ee]' : 'bg-gray-800 text-gray-400 opacity-60'}
+                        hover:bg-gray-700`}
                       style={{ height: "36px" }}
-                      onClick={handleWriteClick}
+                      onClick={() => setActiveButton('write')}
                     >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#22d3ee' }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: activeButton === 'write' ? '#22d3ee' : '#a3a3a3' }}>
                         <path d="M12 20h9" />
                         <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19.5 3 21l1.5-4L16.5 3.5z" />
               </svg>
@@ -2521,25 +2526,30 @@ export default function TestChat() {
                     {/* Search button */}
                     <button
                       type="button"
-                      className="rounded-full bg-gray-800 text-cyan-400 hover:bg-gray-700 transition flex items-center justify-center gap-1.5 px-3 py-1.5 flex-shrink-0"
+                      className={`rounded-full transition flex items-center justify-center gap-1.5 px-3 py-1.5 flex-shrink-0 text-xs font-medium
+                        ${activeButton === 'search' ? 'bg-gray-800 text-cyan-400 shadow-[0_0_8px_#22d3ee]' : 'bg-gray-800 text-gray-400 opacity-60'}
+                        hover:bg-gray-700`}
                       style={{ height: "36px" }}
+                      onClick={() => setActiveButton('search')}
                     >
-                      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" style={{ color: activeButton === 'search' ? '#22d3ee' : '#a3a3a3' }}>
                         <circle cx="11" cy="11" r="7"/>
                         <line x1="21" y1="21" x2="16.65" y2="16.65"/>
                       </svg>
                       <span className="text-xs font-medium">Search</span>
                     </button>
 
-                    {/* Deep Research button */}
+                    {/* Deep Research button (Advance Search) */}
                     <button
                       type="button"
-                      className={`flex items-center gap-1.5 rounded-full bg-gray-800 hover:bg-gray-700 transition px-3 py-1.5 flex-shrink-0 ${showAdvanceSearchUI ? 'text-cyan-400' : 'text-gray-400'}`}
+                      className={`flex items-center gap-1.5 rounded-full transition px-3 py-1.5 flex-shrink-0 text-xs font-medium
+                        ${activeButton === 'advance' ? 'bg-gray-800 text-cyan-400 shadow-[0_0_8px_#22d3ee]' : 'bg-gray-800 text-gray-400 opacity-60'}
+                        hover:bg-gray-700`}
                       style={{ height: "36px" }}
                       tabIndex={0}
-                      onClick={() => setShowAdvanceSearchUI(a => !a)}
+                      onClick={() => setActiveButton('advance')}
                     >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: showAdvanceSearchUI ? '#22d3ee' : '#a3a3a3' }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: activeButton === 'advance' ? '#22d3ee' : '#a3a3a3' }}>
                         <circle cx="12" cy="12" r="3" />
                         <circle cx="19" cy="5" r="2" />
                         <circle cx="5" cy="19" r="2" />
