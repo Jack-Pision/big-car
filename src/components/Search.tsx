@@ -279,7 +279,7 @@ const Search: React.FC<SearchProps> = ({ query, onFinalOutput }) => {
             <line x1="6.85" y1="17.15" x2="10.15" y2="13.85" />
             <line x1="13.85" y1="10.15" x2="17.15" y2="6.85" />
           </svg>
-          <span className="text-lg font-normal text-neutral-200">Search Results</span>
+          <span className="text-lg font-normal text-neutral-200">{query}</span>
         </div>
         <div className="absolute right-6 top-1/2 -translate-y-1/2">
           <svg
@@ -299,18 +299,11 @@ const Search: React.FC<SearchProps> = ({ query, onFinalOutput }) => {
 
       {/* Content (scrollable) */}
       <div className={`px-6 py-4 overflow-y-auto ${styles['hide-scrollbar']}`} style={{ height: 'calc(300px - 64px)' }}>
-        {/* Query display */}
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold text-white mb-2">Title of the query</h2>
-          <div className="text-neutral-300">{query}</div>
-        </div>
-
         {/* Steps */}
         <div className="space-y-8">
           {steps.map((step) => (
             <div key={step.id} className="mb-6">
               <h3 className="text-lg font-medium text-white mb-3">{step.title}</h3>
-              
               {/* Step status indicator */}
               <div className="flex items-center gap-2 mb-2">
                 <span 
@@ -335,7 +328,6 @@ const Search: React.FC<SearchProps> = ({ query, onFinalOutput }) => {
                    'Error'}
                 </span>
               </div>
-              
               {/* Step content */}
               <div className="text-neutral-300 ml-4">
                 {step.status === 'active' && <p>{step.content}</p>}
@@ -345,7 +337,6 @@ const Search: React.FC<SearchProps> = ({ query, onFinalOutput }) => {
             </div>
           ))}
         </div>
-
         {/* Error display */}
         {error && (
           <div className="mt-6 p-4 bg-red-900/30 border border-red-700 rounded-lg">
