@@ -86,7 +86,7 @@ export function MarkdownRenderer({
       const structuredContent = structureAIResponse(content, templateType);
       processed = applyTemplate(structuredContent, templateType);
     }
-    
+      
     // Clean and normalize markdown
     return cleanMarkdown(processed);
   }, [content, userQuery, context]);

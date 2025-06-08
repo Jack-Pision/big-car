@@ -286,34 +286,34 @@ function postProcessAIChatResponse(text: string, isDefaultChat: boolean): string
   }
   let processedText = handlePotentialJsonInConversation(text);
   if (isDefaultChat) {
-    const artifactPatterns = [
-      /\[Your response here\]/gi,
-      /\[End of response\]/gi,
-      /\[AI response continues\]/gi,
-      /\[AI Assistant\]/gi,
-      /\[I'll create a (.*?) for you\]/gi,
-      /\[Let me help you with that\]/gi,
-      /\[I understand you're asking about\]/gi,
-      /As an AI assistant[,.]/gi,
-      /As an AI language model[,.]/gi,
-      /I'm an AI assistant and /gi,
-      /I'll generate /gi,
-      /I'll create /gi,
-      /Here's (a|an|the) (answer|response|information|summary)/gi,
-      /Thank you for your question/gi,
-      /AI: /g,
-      /User: /g,
-    ];
-    artifactPatterns.forEach(pattern => {
-      processedText = processedText.replace(pattern, '');
-    });
+  const artifactPatterns = [
+    /\[Your response here\]/gi,
+    /\[End of response\]/gi,
+    /\[AI response continues\]/gi,
+    /\[AI Assistant\]/gi,
+    /\[I'll create a (.*?) for you\]/gi,
+    /\[Let me help you with that\]/gi,
+    /\[I understand you're asking about\]/gi,
+    /As an AI assistant[,.]/gi,
+    /As an AI language model[,.]/gi,
+    /I'm an AI assistant and /gi,
+    /I'll generate /gi,
+    /I'll create /gi,
+    /Here's (a|an|the) (answer|response|information|summary)/gi,
+    /Thank you for your question/gi,
+    /AI: /g,
+    /User: /g,
+  ];
+  artifactPatterns.forEach(pattern => {
+    processedText = processedText.replace(pattern, '');
+  });
 
     // Fix markdown formatting issues
     
     // 1. Ensure proper spacing for markdown elements
-    
-    // Fix broken lists (ensure proper space after list markers)
-    processedText = processedText.replace(/^(\s*[-*]|\s*[0-9]+\.)(?!\s)/gm, '$1 ');
+
+  // Fix broken lists (ensure proper space after list markers)
+  processedText = processedText.replace(/^(\s*[-*]|\s*[0-9]+\.)(?!\s)/gm, '$1 ');
     
     // 2. Fix broken/incomplete markdown emphasis and strong syntax
     
@@ -354,80 +354,80 @@ function postProcessAIChatResponse(text: string, isDefaultChat: boolean): string
     // Remove accidental dash repetition (e.g., - - - Item => - Item)
     processedText = processedText.replace(/^(?:-\s+)+(-\s+)/gm, '$1');
   
-    // Normalize multiple consecutive blank lines to at most two
-    processedText = processedText.replace(/\n{3,}/g, '\n\n');
+  // Normalize multiple consecutive blank lines to at most two
+  processedText = processedText.replace(/\n{3,}/g, '\n\n');
 
-    // 3. Remove Biased or Overconfident Phrasing
-    const overconfidentPhrases = [
-      /\bI'm (100% )?certain\b/gi,
-      /\bI guarantee\b/gi,
-    ];
+  // 3. Remove Biased or Overconfident Phrasing
+  const overconfidentPhrases = [
+    /\bI'm (100% )?certain\b/gi,
+    /\bI guarantee\b/gi,
+  ];
 
-    overconfidentPhrases.forEach(phrase => {
-      processedText = processedText.replace(phrase, match => {
-        // Replace with more measured alternatives
-        const alternatives = {
-          "I'm certain": "I believe",
-          "I'm 100% certain": "I believe",
-          "I guarantee": "I think",
-          "without any doubt": "based on available information",
-          "absolutely certain": "confident",
-          "absolutely sure": "confident",
-          "I can assure you": "It appears that",
-          "I promise": "I expect"
-        };
-        
-        const key = match.toLowerCase();
-        for (const [pattern, replacement] of Object.entries(alternatives)) {
-          if (key.includes(pattern.toLowerCase())) {
-            return replacement;
-          }
+  overconfidentPhrases.forEach(phrase => {
+    processedText = processedText.replace(phrase, match => {
+      // Replace with more measured alternatives
+      const alternatives = {
+        "I'm certain": "I believe",
+        "I'm 100% certain": "I believe",
+        "I guarantee": "I think",
+        "without any doubt": "based on available information",
+        "absolutely certain": "confident",
+        "absolutely sure": "confident",
+        "I can assure you": "It appears that",
+        "I promise": "I expect"
+      };
+      
+      const key = match.toLowerCase();
+      for (const [pattern, replacement] of Object.entries(alternatives)) {
+        if (key.includes(pattern.toLowerCase())) {
+          return replacement;
         }
-        return "I believe"; // Default fallback
-      });
+      }
+      return "I believe"; // Default fallback
     });
+  });
 
-    // 4. Fix Incomplete or Broken Text
-    // Close unclosed code blocks
-    const codeBlockFence = '```';
-    let openFenceCount = 0;
-    let lastFenceIndex = -1;
-    let fenceIndex = processedText.indexOf(codeBlockFence);
-    
-    while (fenceIndex !== -1) {
-      openFenceCount++;
-      lastFenceIndex = fenceIndex;
-      fenceIndex = processedText.indexOf(codeBlockFence, lastFenceIndex + codeBlockFence.length);
-    }
-    
-    // If odd number of fences, add a closing fence
-    if (openFenceCount % 2 !== 0) {
-      processedText += `\n${codeBlockFence}`;
-    }
-    
-    // Fix sentences that end abruptly
-    processedText = processedText.replace(/([a-z])(\s*\n|\s*$)/g, '$1.$2');
+  // 4. Fix Incomplete or Broken Text
+  // Close unclosed code blocks
+  const codeBlockFence = '```';
+  let openFenceCount = 0;
+  let lastFenceIndex = -1;
+  let fenceIndex = processedText.indexOf(codeBlockFence);
+  
+  while (fenceIndex !== -1) {
+    openFenceCount++;
+    lastFenceIndex = fenceIndex;
+    fenceIndex = processedText.indexOf(codeBlockFence, lastFenceIndex + codeBlockFence.length);
+  }
+  
+  // If odd number of fences, add a closing fence
+  if (openFenceCount % 2 !== 0) {
+    processedText += `\n${codeBlockFence}`;
+  }
+  
+  // Fix sentences that end abruptly
+  processedText = processedText.replace(/([a-z])(\s*\n|\s*$)/g, '$1.$2');
 
-    // 5. Filter Unsafe or Sensitive Content
-    // Basic HTML script tag removal
-    processedText = processedText.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
-    // Filter other potentially unsafe HTML
-    processedText = processedText.replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '');
-    
-    // 6. Final Cleanup
-    // Trim trailing whitespace from each line
-    processedText = processedText.split('\n').map(line => line.trimRight()).join('\n');
-    
-    // Remove trailing line breaks and spaces
-    processedText = processedText.trim();
-    
-    // 7. Visual Formatting & Readability
-    // Add a line break after every full stop followed by a capital letter if no line break exists
-    // This helps break up dense text paragraphs
-    processedText = processedText.replace(/\.([A-Z])/g, '.\n$1');
-    
-    // Clean up multiple consecutive line breaks again after formatting changes
-    processedText = processedText.replace(/\n{3,}/g, '\n\n');
+  // 5. Filter Unsafe or Sensitive Content
+  // Basic HTML script tag removal
+  processedText = processedText.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+  // Filter other potentially unsafe HTML
+  processedText = processedText.replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '');
+  
+  // 6. Final Cleanup
+  // Trim trailing whitespace from each line
+  processedText = processedText.split('\n').map(line => line.trimRight()).join('\n');
+  
+  // Remove trailing line breaks and spaces
+  processedText = processedText.trim();
+  
+  // 7. Visual Formatting & Readability
+  // Add a line break after every full stop followed by a capital letter if no line break exists
+  // This helps break up dense text paragraphs
+  processedText = processedText.replace(/\.([A-Z])/g, '.\n$1');
+  
+  // Clean up multiple consecutive line breaks again after formatting changes
+  processedText = processedText.replace(/\n{3,}/g, '\n\n');
 
     // 8. Fix bullet point gaps: join bullet and text if separated by blank line
     processedText = processedText.replace(/(^[-*]\s*)\n+([^\n*-].*)/gm, '$1$2');

@@ -575,141 +575,38 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
   };
 
   return (
-    <div className="w-full mx-auto rounded-2xl border border-black/5 shadow-lg bg-neutral-900 overflow-hidden h-full min-h-[400px]" style={{ minHeight: '400px' }}>
-      {/* Mobile accordion view */}
-      {renderMobileAccordion()}
-      
-      {/* Desktop/tablet split view */}
-      <div className="hidden sm:flex flex-col md:flex-row w-full h-full">
-      {/* Left Panel - Step List */}
-        <div className="w-full md:w-80 md:min-w-[220px] md:max-w-xs flex-shrink-0 bg-neutral-950 p-4 md:p-6 overflow-y-auto md:h-full md:max-h-none md:border-b-0 md:border-r md:border-r-neutral-800 md:rounded-l-2xl h-[40vh] md:h-full flex flex-col">
-        <div className="flex items-center gap-2 mb-4 md:mb-6">
-          {/* New microchip icon with cyan color */}
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-400">
-            <rect x="7" y="7" width="10" height="10" rx="2"/>
-            <rect x="9.5" y="9.5" width="5" height="5" rx="1"/>
-            <path d="M2 9h3M2 15h3M19 9h3M19 15h3M9 2v3M15 2v3M9 19v3M15 19v3"/>
-          </svg>
-          <span className="text-xl text-neutral-200 font-normal">Advance Search</span>
-        </div>
-
-        {/* Add conversation mode indicator */}
-        {steps[0]?.status === 'active' && steps[0]?.content?.includes('follow-up') && (
-          <div className="mb-4 flex items-center gap-2 py-1.5 px-2.5 rounded-lg bg-cyan-900/20 border border-cyan-800/30">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-400">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-            </svg>
-            <span className="text-xs text-cyan-300">Follow-up question mode</span>
-          </div>
-        )}
-
-        <div className="flex flex-col relative flex-1">
-          {/* Timeline line connecting steps */}
-          <div className="absolute left-[10px] top-0 bottom-0 w-px bg-neutral-800"></div>
-          
-          {/* Step list */}
-          {steps.map((step, index) => (
-            <div
-              key={step.id}
-              ref={setStepRef(step.id)}
-              className={`relative flex flex-col ${index < steps.length - 1 ? 'mb-6' : ''}`}
-            >
-              {/* Step timeline dot */}
-              <div
-                className={`absolute left-0 top-0 w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                  step.status === 'completed'
-                    ? 'bg-cyan-500 border-cyan-500'
-                    : step.status === 'active'
-                    ? 'bg-black border-cyan-500'
-                    : 'bg-black border-neutral-700'
-                }`}
-                style={{ zIndex: 1 }}
-              >
-                {step.status === 'completed' && (
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                  </svg>
-                )}
-              </div>
-              
-              {/* Step content */}
-                <div className="pl-8 cursor-pointer" onClick={() => handleStepClick(step.id)}>
-                  {/* Step Title */}
-                  <div className="flex items-center gap-2 mb-1">
-                    <div 
-                      className={`text-base font-medium transition-colors ${
-                        step.status === 'completed'
-                          ? 'text-cyan-400'
-                          : step.status === 'active'
-                          ? 'text-white'
-                          : 'text-neutral-500'
-                      }`}
-                    >
-                {step.title}
-                    </div>
-                  
-                    {/* Status indicator for active step */}
-                  {step.status === 'active' && (
-                      <div className="flex items-center gap-1 py-0.5 px-2 rounded-full bg-cyan-900/20 border border-cyan-900/30">
-                        <div className="animate-pulse w-2 h-2 rounded-full bg-cyan-500"></div>
-                        <span className="text-xs text-cyan-400">In progress</span>
-                    </div>
-                  )}
-                </div>
-                
-                  {/* Step Description/Status */}
-                  <div 
-                    className={`text-sm transition-colors ${
-                      step.status === 'completed'
-                        ? 'text-neutral-400'
-                        : step.status === 'active'
-                        ? 'text-neutral-300'
-                        : 'text-neutral-600'
-                    }`}
-                  >
-                    {step.status === 'completed' && "Done"}
-                    {step.status === 'active' && "Working..."}
-                    {step.status === 'pending' && "Waiting..."}
-                  </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-        {/* Right Panel - Content Area */}
-        <div ref={rightPanelRef} className="flex-1 overflow-y-auto p-4 md:p-8 bg-neutral-900 md:rounded-r-2xl hide-scrollbar h-[50vh] md:h-full flex flex-col">
-        <div className="space-y-6 md:space-y-10 flex-1">
+    <div className="w-full mx-auto rounded-2xl border border-black/5 shadow-lg bg-neutral-900 overflow-hidden h-full min-h-[400px] flex" style={{ minHeight: '400px', background: '#171717', borderRadius: '20px', width: '969px', height: '409px', position: 'relative' }}>
+      {/* Hide Mobile accordion and Left Panel */}
+      {/* Right Panel Only */}
+      <div ref={rightPanelRef} className="flex-1 overflow-y-auto p-8 hide-scrollbar flex flex-col" style={{ color: '#E5E5E5', fontFamily: 'Roboto', fontSize: '24px', lineHeight: '28px', position: 'absolute', left: '67px', top: '26px', width: '850px', height: '357px' }}>
+        <div className="space-y-10 flex-1">
           {steps.map((step) => {
             // Only show steps that are in the displayingSteps array
             if (!displayingSteps.includes(step.id)) return null;
-            
             return (
-            <motion.div
-              key={step.id}
-              ref={setStepRef(step.id)}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="pb-6 border-b border-neutral-800 last:border-b-0"
-            >
-              <h2 className="text-xl text-white mb-4">{step.title}</h2>
-              
-              {/* Step specific content */}
-              {step.id === 'understand' && renderUnderstandContent(step)}
-              {step.id === 'research' && renderResearchContent(step)}
-              {step.id === 'synthesize' && renderSynthesizeContent(step)}
-            </motion.div>
+              <motion.div
+                key={step.id}
+                ref={setStepRef(step.id)}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="pb-6 border-b border-neutral-800 last:border-b-0"
+                style={{ color: '#E5E5E5' }}
+              >
+                <h2 className="text-xl mb-4" style={{ color: '#E5E5E5', fontWeight: 400 }}>{step.title}</h2>
+                {/* Step specific content */}
+                {step.id === 'understand' && renderUnderstandContent(step)}
+                {step.id === 'research' && renderResearchContent(step)}
+                {step.id === 'synthesize' && renderSynthesizeContent(step)}
+              </motion.div>
             );
           })}
         </div>
-        
         {error && (
           <div className="mt-4 p-4 bg-red-900/20 border border-red-900/50 rounded-lg text-red-400">
             {error}
           </div>
         )}
-        </div>
       </div>
     </div>
   );
