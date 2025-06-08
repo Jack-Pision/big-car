@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import styles from './Search.module.css';
 
 // Define the steps for the Search UI
 export interface SearchStep {
@@ -297,7 +298,7 @@ const Search: React.FC<SearchProps> = ({ query, onFinalOutput }) => {
       </div>
 
       {/* Content (scrollable) */}
-      <div className="px-6 py-4 overflow-y-auto" style={{ height: 'calc(300px - 64px)' }}>
+      <div className={`px-6 py-4 overflow-y-auto ${styles['hide-scrollbar']}`} style={{ height: 'calc(300px - 64px)' }}>
         {/* Query display */}
         <div className="mb-6">
           <h2 className="text-xl font-semibold text-white mb-2">Title of the query</h2>
