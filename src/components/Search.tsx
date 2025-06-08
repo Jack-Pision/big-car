@@ -1,262 +1,248 @@
 import React, { useState, useEffect } from 'react';
 import styles from './Search.module.css';
+import { dedupedSerperRequest } from '@/utils/api-request-cache';
 
-// Define the steps for the Search UI
+// Define step types
+type StepStatus = 'pending' | 'active' | 'completed' | 'error';
+
+// Export the SearchStep interface for external use
 export interface SearchStep {
   id: string;
   title: string;
-  status: 'pending' | 'active' | 'completed' | 'error';
+  status: StepStatus;
   content: string;
   result?: string;
 }
 
-interface SearchProps {
+// Define search props interface
+export interface SearchProps {
   query: string;
-  onFinalOutput?: (finalOutput: string) => void;
+  onComplete?: (result: string) => void;
 }
 
-const Search: React.FC<SearchProps> = ({ query, onFinalOutput }) => {
-  // Define the 5 steps for the search process
+const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
+  // State for steps
   const [steps, setSteps] = useState<SearchStep[]>([
     {
-      id: 'query-intelligence',
+      id: 'understand',
       title: 'Query Intelligence & Strategy Planning',
       status: 'pending',
-      content: 'Analyzing your query to develop a comprehensive search strategy...',
+      content: 'Analyzing your query to develop a comprehensive search strategy...'
     },
     {
-      id: 'web-discovery',
+      id: 'research',
       title: 'Multi-Source Web Discovery & Retrieval',
       status: 'pending',
-      content: 'Discovering and retrieving information from diverse web sources...',
+      content: 'Retrieving relevant information from multiple web sources...'
     },
     {
-      id: 'fact-checking',
+      id: 'validate',
       title: 'Fact-Checking & Source Validation',
       status: 'pending',
-      content: 'Validating information and checking facts across multiple sources...',
+      content: 'Validating the accuracy and reliability of the retrieved information...'
     },
     {
-      id: 'deep-reasoning',
+      id: 'analyze',
       title: 'Deep Reasoning & Analysis',
       status: 'pending',
-      content: 'Conducting in-depth analysis and reasoning on the gathered information...',
-    },
-    {
-      id: 'final-output',
-      title: 'Final Output',
-      status: 'pending',
-      content: 'Generating final comprehensive answer...',
+      content: 'Analyzing the validated information to generate insights...'
     }
   ]);
-
-  const [isSearching, setIsSearching] = useState(false);
-  const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
-
-  // Function to update a step's status and result
-  const updateStep = (stepId: string, status: 'pending' | 'active' | 'completed' | 'error', result?: string) => {
+  const [finalResult, setFinalResult] = useState<string>('');
+  
+  // Execute search on mount
+  useEffect(() => {
+    if (query) {
+      executeSearch(query);
+    }
+  }, [query]);
+  
+  // Update a step's status
+  const updateStepStatus = (id: string, status: StepStatus, result?: string) => {
     setSteps(prevSteps => prevSteps.map(step => 
-      step.id === stepId 
+      step.id === id 
         ? { ...step, status, result: result || step.result }
         : step
     ));
   };
 
-  // Function to process each step sequentially
-  useEffect(() => {
-    if (!query || !isSearching || currentStepIndex >= steps.length) return;
-
-    const currentStep = steps[currentStepIndex];
-    updateStep(currentStep.id, 'active');
-
-    const processStep = async () => {
-      try {
-        // Execute the appropriate API call for the current step
-        let result = '';
-        
-        switch (currentStep.id) {
-          case 'query-intelligence':
-            // Call Nvidia API for Query Intelligence
-            result = await executeQueryIntelligence(query);
-            break;
-          case 'web-discovery':
-            // Call Serper API for Web Discovery
-            result = await executeWebDiscovery(query);
-            break;
-          case 'fact-checking':
-            // Call Nvidia API for Fact Checking
-            result = await executeFactChecking(query);
-            break;
-          case 'deep-reasoning':
-            // Call Nvidia API for Deep Reasoning
-            result = await executeDeepReasoning(query);
-            break;
-          case 'final-output':
-            // Call Nvidia API for Final Output
-            result = await executeFinalOutput(query);
-            // Send the final output to the main chat
-            if (onFinalOutput) {
-              onFinalOutput(result);
+  // Execute Nvidia API call for a step
+  const executeNvidiaStep = async (
+    stepId: string, 
+    systemPrompt: string, 
+    userPrompt: string
+  ): Promise<string> => {
+    try {
+      updateStepStatus(stepId, 'active');
+      
+      const response = await fetch('/api/nvidia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [
+            {
+              role: 'system',
+              content: systemPrompt
+            },
+            {
+              role: 'user',
+              content: userPrompt
             }
-            break;
-        }
-
-        // Update the step as completed with the result
-        updateStep(currentStep.id, 'completed', result);
-        
-        // Move to the next step
-        setCurrentStepIndex(prevIndex => prevIndex + 1);
-      } catch (err) {
-        console.error(`Error processing step ${currentStep.id}:`, err);
-        updateStep(currentStep.id, 'error');
-        setError(`Error in ${currentStep.title}: ${err instanceof Error ? err.message : 'Unknown error'}`);
-        setIsSearching(false);
+          ]
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API call failed with status: ${response.status}`);
       }
-    };
+      
+      const data = await response.json();
+      const result = data.choices?.[0]?.message?.content || 'Step completed successfully.';
+      
+      updateStepStatus(stepId, 'completed', result);
+      return result;
+    } catch (err) {
+      console.error(`Error in ${stepId} step:`, err);
+      updateStepStatus(stepId, 'error');
+      setError(`Error in ${stepId}: ${err instanceof Error ? err.message : String(err)}`);
+      throw err;
+    }
+  };
 
-    // Add a small delay to make the UI feel more natural
-    const timer = setTimeout(() => {
-      processStep();
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, [query, isSearching, currentStepIndex, steps, onFinalOutput]);
-
-  // Start the search process when query is provided
-  useEffect(() => {
-    if (query && !isSearching) {
-      setIsSearching(true);
-      setCurrentStepIndex(0);
+  // Execute Serper API call for the research step
+  const executeSerperStep = async (query: string): Promise<any> => {
+    try {
+      updateStepStatus('research', 'active');
+      
+      // Use the deduped Serper request utility with required limit parameter
+      const serperData = await dedupedSerperRequest(query, 10);
+      
+      if (!serperData || !serperData.sources || serperData.sources.length === 0) {
+        throw new Error('No search results found');
+      }
+      
+      // Format the results for display
+      const formattedResults = serperData.sources.map((source: any, index: number) => 
+        `Source ${index + 1}: ${source.title}\nURL: ${source.url}\n`
+      ).join('\n');
+      
+      updateStepStatus('research', 'completed', formattedResults);
+      return serperData;
+    } catch (err) {
+      console.error('Error in research step:', err);
+      updateStepStatus('research', 'error');
+      setError(`Error in research: ${err instanceof Error ? err.message : String(err)}`);
+      throw err;
+    }
+  };
+  
+  // Main search execution flow
+  const executeSearch = async (query: string) => {
+    try {
       setError(null);
-      // Reset all steps to pending
-      setSteps(prevSteps => prevSteps.map(step => ({ ...step, status: 'pending', result: undefined })));
-    }
-  }, [query]);
+      
+      // Step 1: Query Intelligence & Strategy Planning
+      const strategyPrompt = `You are an AI Search Strategy Planner. Your goal is to analyze the user's query and develop a comprehensive search strategy.
+Think step-by-step to:
+1. Understand the core information need
+2. Identify key concepts and potential subtopics
+3. Develop an effective search strategy with key terms
+4. Anticipate potential challenges or ambiguities
 
-  // Mock API functions for each step - Replace these with actual API calls
-  const executeQueryIntelligence = async (query: string): Promise<string> => {
-    // Replace with actual Nvidia API call
-    const response = await fetch('/api/nvidia', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a Query Intelligence Agent. Analyze the query, identify key concepts, and develop a strategy for finding the most relevant and accurate information. Provide a bullet-point analysis of the query.'
-          },
-          {
-            role: 'user',
-            content: query
-          }
-        ]
-      })
-    });
-    
-    if (!response.ok) {
-      throw new Error('Failed to execute Query Intelligence');
-    }
-    
-    const data = await response.json();
-    return data.content || 'Query analysis completed successfully.';
-  };
+Format your response as a clear, structured strategy plan.`;
+      
+      const strategyResult = await executeNvidiaStep(
+        'understand',
+        strategyPrompt,
+        `Analyze the following query and develop a comprehensive search strategy: "${query}"`
+      );
+      
+      // Step 2: Multi-Source Web Discovery & Retrieval
+      const serperResults = await executeSerperStep(query);
+      
+      // Step 3: Fact-Checking & Source Validation
+      const validationPrompt = `You are an AI Fact-Checker and Source Validator. Your goal is to critically evaluate the search results and validate their reliability.
+Think step-by-step to:
+1. Analyze each source for credibility and relevance
+2. Identify any contradictions or inconsistencies between sources
+3. Assess the quality of information and potential biases
+4. Extract the most reliable facts and information
 
-  const executeWebDiscovery = async (query: string): Promise<string> => {
-    // Replace with actual Serper API call
-    const response = await fetch('/api/serper', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query })
-    });
-    
-    if (!response.ok) {
-      throw new Error('Failed to execute Web Discovery');
-    }
-    
-    const data = await response.json();
-    return 'Web discovery completed successfully. Retrieved relevant information from multiple sources.';
-  };
+Format your response as a clear assessment of the information quality.`;
+      
+      // Send both the query and web results to be validated
+      const sourcesText = serperResults.sources.map((s: any) => 
+        `- ${s.title}: ${s.url}`
+      ).join('\n');
+      
+      const validationResult = await executeNvidiaStep(
+        'validate',
+        validationPrompt,
+        `Validate the following search results for the query: "${query}"\n\nSearch Results:\n${sourcesText}`
+      );
+      
+      // Step 4: Deep Reasoning & Analysis
+      const analysisPrompt = `You are an AI Deep Reasoning Agent. Your goal is to analyze the validated information and generate insights.
+Think step-by-step to:
+1. Synthesize the validated information
+2. Identify patterns, trends, and connections
+3. Draw logical conclusions
+4. Generate insights that address the original query
 
-  const executeFactChecking = async (query: string): Promise<string> => {
-    // Replace with actual Nvidia API call
-    const response = await fetch('/api/nvidia', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a Fact-Checking Agent. Validate the information gathered, check for inconsistencies, and identify reliable sources.'
-          },
-          {
-            role: 'user',
-            content: `Fact check the following query: ${query}`
-          }
-        ]
-      })
-    });
-    
-    if (!response.ok) {
-      throw new Error('Failed to execute Fact Checking');
-    }
-    
-    const data = await response.json();
-    return data.content || 'Fact checking completed successfully.';
-  };
+Format your response as a well-structured analysis.`;
+      
+      const analysisResult = await executeNvidiaStep(
+        'analyze',
+        analysisPrompt,
+        `Analyze the following validated information for the query: "${query}"\n\nStrategy Plan:\n${strategyResult}\n\nValidated Information:\n${validationResult}`
+      );
+      
+      // Step 5: Final Output (to be displayed in main chat)
+      const finalOutputPrompt = `You are an AI Answer Generator. Your goal is to create a comprehensive, well-structured final answer.
+Think step-by-step to:
+1. Integrate all insights from the previous steps
+2. Organize the information in a logical flow
+3. Present a balanced, nuanced perspective
+4. Provide clear, actionable conclusions
 
-  const executeDeepReasoning = async (query: string): Promise<string> => {
-    // Replace with actual Nvidia API call
-    const response = await fetch('/api/nvidia', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a Deep Reasoning Agent. Conduct in-depth analysis of the information, make connections, and draw logical conclusions.'
-          },
-          {
-            role: 'user',
-            content: `Analyze the following query: ${query}`
-          }
-        ]
-      })
-    });
-    
-    if (!response.ok) {
-      throw new Error('Failed to execute Deep Reasoning');
+Format your response as a definitive answer to the user's query.`;
+      
+      const finalResponse = await fetch('/api/nvidia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [
+            {
+              role: 'system',
+              content: finalOutputPrompt
+            },
+            {
+              role: 'user',
+              content: `Generate a final, comprehensive answer for the query: "${query}"\n\nStrategy Plan:\n${strategyResult}\n\nWeb Research:\n${sourcesText}\n\nValidation:\n${validationResult}\n\nAnalysis:\n${analysisResult}`
+            }
+          ]
+        })
+      });
+      
+      if (!finalResponse.ok) {
+        throw new Error(`Final output API call failed with status: ${finalResponse.status}`);
+      }
+      
+      const finalData = await finalResponse.json();
+      const finalOutput = finalData.choices?.[0]?.message?.content || 'Search completed successfully.';
+      
+      setFinalResult(finalOutput);
+      
+      // Notify parent component that search is complete with final result
+      if (onComplete) {
+        onComplete(finalOutput);
+      }
+      
+    } catch (err) {
+      console.error('Error in search execution:', err);
+      setError(`Error in search: ${err instanceof Error ? err.message : String(err)}`);
     }
-    
-    const data = await response.json();
-    return data.content || 'Deep reasoning completed successfully.';
-  };
-
-  const executeFinalOutput = async (query: string): Promise<string> => {
-    // Replace with actual Nvidia API call
-    const response = await fetch('/api/nvidia', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a Comprehensive Answer Generation Agent. Create a final, well-structured answer based on all the information gathered and analyzed.'
-          },
-          {
-            role: 'user',
-            content: `Provide a comprehensive answer to: ${query}`
-          }
-        ]
-      })
-    });
-    
-    if (!response.ok) {
-      throw new Error('Failed to execute Final Output');
-    }
-    
-    const data = await response.json();
-    return data.content || 'Final output generated successfully.';
   };
 
   // Render the Search UI

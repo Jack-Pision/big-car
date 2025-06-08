@@ -44,7 +44,7 @@ import rehypeRaw from 'rehype-raw';
 import { isSearchCompleted, getCompletedSearch, saveCompletedSearch } from '@/utils/advance-search-state';
 import { MarkdownRenderer } from '@/utils/markdown-utils';
 import { Message as BaseMessage } from '@/utils/conversation-context';
-import SearchPanel, { SearchStep } from '@/components/Search';
+import SearchPanel from '@/components/Search';
 import { Message as ConversationMessage } from "@/utils/conversation-context";
 
 // Define a type that includes all possible query types (including the ones in SCHEMAS and 'conversation')
@@ -1802,24 +1802,37 @@ export default function TestChat() {
     }
   }, [isComplete, isAiResponding]);
 
-  async function handleSend(e?: React.FormEvent) {
-    if (e) e.preventDefault();
-    
-    // If in search mode (activeButton === 'search'), insert a 'search-ui' message and do nothing else.
+  async function handleSend(e: React.FormEvent) {
+    e.preventDefault();
+    if (!input.trim()) return;
+
+    // Check if we're in search mode
     if (activeButton === 'search') {
+      // Add user message to chat
       setMessages(prev => [
         ...prev,
         { 
-          role: 'search-ui', 
-          id: `search-ui-${Date.now()}`, 
+          role: 'user',
+          id: uuidv4(),
+          content: input,
+          timestamp: Date.now(),
+          isProcessed: true
+        },
+        { 
+          role: 'search-ui',
+          id: uuidv4(), 
           content: input, // Include the query content
-          query: input // Store the query for the search component
+          query: input,   // Also store as query property for SearchPanel
+          timestamp: Date.now(),
+          isProcessed: true
         }
       ]);
-      setInput("");
+      
+      // Clear input
+      setInput('');
       return;
     }
-    
+
     // Initialize variables at the function scope level
     let userMessageId = '';
     let uploadedImageUrls: string[] = [];
@@ -2530,7 +2543,7 @@ export default function TestChat() {
                     onKeyDown={e => {
                       if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.altKey) {
                         e.preventDefault();
-                        if (!isLoading) handleSend();
+                        if (!isLoading) handleSend(e);
                       }
                     }}
                     className="w-full border-none outline-none bg-transparent px-2 py-1 text-gray-200 text-sm placeholder-gray-500 resize-none overflow-auto self-center rounded-lg"
@@ -2762,14 +2775,14 @@ export default function TestChat() {
                   <SearchPanel 
                     key={msg.id + '-search-' + i}
                     query={msg.content} 
-                    onFinalOutput={(finalOutput) => {
-                      // Add the final output as an assistant message in the chat
+                    onComplete={(result) => {
+                      // When search is complete, add the result as an assistant message
                       setMessages(prev => [
                         ...prev,
                         {
-                          role: "assistant",
-                          content: finalOutput,
                           id: uuidv4(),
+                          role: 'assistant',
+                          content: result,
                           timestamp: Date.now(),
                           isProcessed: true
                         }
