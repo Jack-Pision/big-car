@@ -43,6 +43,7 @@ import Image from 'next/image';
 import rehypeRaw from 'rehype-raw';
 import { isSearchCompleted, getCompletedSearch, saveCompletedSearch } from '@/utils/advance-search-state';
 import { MarkdownRenderer } from '@/utils/markdown-utils';
+import { Message as BaseMessage } from '@/utils/conversation-context';
 
 // Define a type that includes all possible query types (including the ones in SCHEMAS and 'conversation')
 type QueryType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversation' | 'deep-research';
@@ -605,16 +606,12 @@ interface ImageContext {
   timestamp: number;    // When this image was processed
 }
 
-interface Message {
-  role: 'user' | 'assistant' | 'system' | 'function' | 'deep-research';
-  content: string;
-  id: string;
-  timestamp: number;
-  parentId?: string;
-  isProcessed?: boolean; 
-  isStreaming?: boolean; // Flag to indicate if the message is part of a streaming response
-  contentType?: 'conversation' | 'deep-research' | 'code' | 'tutorial' | 'comparison' | 'summary';
-  webSources?: any[];
+// Extend the base Message interface for local use
+interface Message extends BaseMessage {
+  isProcessed?: boolean;
+  isStreaming?: boolean;
+  contentType?: ContentDisplayType;
+  structuredContent?: any;
   toolUsed?: string;
 }
 
@@ -1863,13 +1860,13 @@ export default function TestChat() {
     };
     
     // Store the user message ID to use as parentId for AI responses
-    userMessageId = userMessageForDisplay.id;
+    userMessageId = userMessageForDisplay.id!;
 
     if (selectedFilesForUpload.length > 0 && !input) {
       userMessageForDisplay.content = "Image selected for analysis.";
     }
     if (selectedFilesForUpload.length > 0) {
-      userMessageForDisplay.imageUrls = imagePreviewUrls || undefined;
+      (userMessageForDisplay as any).imageUrls = imagePreviewUrls || undefined;
     }
     setMessages((prev) => [...prev, userMessageForDisplay]);
     setInput("");
