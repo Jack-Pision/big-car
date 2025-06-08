@@ -575,14 +575,44 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
   };
 
   return (
-    <div className="w-full mx-auto rounded-2xl border border-black/5 shadow-lg bg-neutral-900 overflow-hidden h-full min-h-[400px] flex" style={{ minHeight: '400px', background: '#171717', borderRadius: '20px', width: '969px', height: '409px', position: 'relative' }}>
-      {/* Hide Mobile accordion and Left Panel */}
-      {/* Right Panel Only */}
-      <div ref={rightPanelRef} className="flex-1 overflow-y-auto p-8 hide-scrollbar flex flex-col" style={{ color: '#E5E5E5', fontFamily: 'Roboto', fontSize: '24px', lineHeight: '28px', position: 'absolute', left: '67px', top: '26px', width: '850px', height: '357px' }}>
-        <div className="space-y-10 flex-1">
+    <div className="w-full mx-auto rounded-lg overflow-hidden shadow-lg h-full min-h-[400px]" style={{ background: '#171717', borderRadius: '20px', maxWidth: '969px' }}>
+      {/* Header - Cross/back button and Title */}
+      <div className="relative p-6 pb-2">
+        <div className="flex items-center mb-2">
+          {/* Back button/X - just for styling */}
+          <div className="absolute left-6 top-7">
+            <div className="flex items-center justify-center w-6 h-6">
+              <div className="w-4 h-0.5 bg-cyan-400 transform rotate-45 absolute"></div>
+              <div className="w-4 h-0.5 bg-cyan-400 transform -rotate-45 absolute"></div>
+            </div>
+          </div>
+          
+          {/* Title */}
+          <h1 className="text-2xl font-normal mx-auto text-neutral-200 pl-8">
+            {steps[0]?.title || "Title of the query"}
+          </h1>
+          
+          {/* Collapse/expand arrow - functional */}
+          <div className="absolute right-6 top-7 cursor-pointer" onClick={() => {
+            if (rightPanelRef.current) {
+              rightPanelRef.current.classList.toggle('h-0');
+              rightPanelRef.current.classList.toggle('overflow-hidden');
+            }
+          }}>
+            <svg viewBox="0 0 24 24" width="20" height="20" stroke="#E5E5E5" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="18 15 12 9 6 15"></polyline>
+            </svg>
+          </div>
+        </div>
+      </div>
+      
+      {/* Content panel - All steps */}
+      <div ref={rightPanelRef} className="overflow-y-auto px-8 py-4 hide-scrollbar" style={{ maxHeight: 'calc(409px - 64px)' }}>
+        <div className="space-y-8">
           {steps.map((step) => {
             // Only show steps that are in the displayingSteps array
             if (!displayingSteps.includes(step.id)) return null;
+            
             return (
               <motion.div
                 key={step.id}
@@ -590,23 +620,32 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
-                className="pb-6 border-b border-neutral-800 last:border-b-0"
-                style={{ color: '#E5E5E5' }}
+                className="pb-2 last:pb-0"
               >
-                <h2 className="text-xl mb-4" style={{ color: '#E5E5E5', fontWeight: 400 }}>{step.title}</h2>
-                {/* Step specific content */}
-                {step.id === 'understand' && renderUnderstandContent(step)}
-                {step.id === 'research' && renderResearchContent(step)}
-                {step.id === 'synthesize' && renderSynthesizeContent(step)}
+                <h2 className="text-xl font-normal mb-4 text-neutral-200">{step.title}</h2>
+                
+                {/* Content for each step */}
+                <div className="text-base text-neutral-300">
+                  {step.id === 'understand' && renderUnderstandContent(step)}
+                  {step.id === 'research' && renderResearchContent(step)}
+                  {step.id === 'synthesize' && renderSynthesizeContent(step)}
+                </div>
               </motion.div>
             );
           })}
         </div>
+        
+        {/* Error message */}
         {error && (
           <div className="mt-4 p-4 bg-red-900/20 border border-red-900/50 rounded-lg text-red-400">
             {error}
           </div>
         )}
+      </div>
+      
+      {/* Hidden mobile accordion - necessary for functionality but not displayed */}
+      <div className="hidden">
+        {renderMobileAccordion()}
       </div>
     </div>
   );
