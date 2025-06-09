@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styles from './Search.module.css';
 import { dedupedSerperRequest } from '@/utils/api-request-cache';
+import ReactMarkdown from 'react-markdown';
 
 // Define step types
 type StepStatus = 'pending' | 'active' | 'completed' | 'error';
@@ -261,48 +262,47 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
       // Shorten the query if it's very long
       const shortenedQuery = query.length > 500 ? query.substring(0, 500) + "..." : query;
       
-      // Step 1: Query Intelligence & Strategy Planning - with concise prompt
+      // Step 1: Query Intelligence & Strategy Planning - with bullet points
       console.time('Step 1: Strategy Planning');
-      const strategyPrompt = `Analyze this query and create a search plan: ${shortenedQuery}`;
+      const strategyPrompt = `Analyze this query and create a search plan as a markdown bullet list for clarity.\n\nQuery: ${shortenedQuery}`;
       const strategyResult = await executeNvidiaStep(
         'understand',
-        `You are an AI Search Strategy Planner. Create a brief, focused plan.`,
+        `You are an AI Search Strategy Planner. Break down your understanding and plan as a markdown bullet list.`,
         strategyPrompt
       );
       console.timeEnd('Step 1: Strategy Planning');
       
-      // Step 2: Multi-Source Web Discovery & Retrieval - with reduced results
+      // Step 2: Multi-Source Web Discovery & Retrieval - no change
       console.time('Step 2: Web Discovery');
       const serperResults = await executeSerperStep(shortenedQuery);
       console.timeEnd('Step 2: Web Discovery');
       
-      // Step 3: Fact-Checking & Source Validation - with concise prompt
+      // Step 3: Fact-Checking & Source Validation - with bullet points
       console.time('Step 3: Fact-Checking');
-      const validationPrompt = `Quickly assess the credibility of these search results for: "${shortenedQuery}"`;
+      const validationPrompt = `Quickly assess the credibility of these search results for: "${shortenedQuery}". Present your findings as a markdown bullet list.`;
       const sourcesText = serperResults.sources.map((s: any, i: number) => 
         `${i+1}. ${s.title}: ${s.url}`
       ).join('\n');
       
       const validationResult = await executeNvidiaStep(
         'validate',
-        `You are an AI Fact-Checker. Briefly validate source credibility.`,
+        `You are an AI Fact-Checker. Present your validation as a markdown bullet list for clarity.`,
         `${validationPrompt}\n\nSources:\n${sourcesText}`
       );
       console.timeEnd('Step 3: Fact-Checking');
       
-      // Step 4: Deep Reasoning & Analysis - with concise prompt
+      // Step 4: Deep Reasoning & Analysis - with bullet points
       console.time('Step 4: Deep Reasoning');
-      const analysisPrompt = `Analyze the information and generate key insights for: "${shortenedQuery}"`;
+      const analysisPrompt = `Analyze the information and generate key insights for: "${shortenedQuery}". Present your insights as a markdown bullet list.`;
       const analysisResult = await executeNvidiaStep(
         'analyze',
-        `You are an AI Analysis Agent. Provide clear, focused insights.`,
+        `You are an AI Analysis Agent. Provide your insights as a markdown bullet list for clarity.`,
         `${analysisPrompt}\n\nStrategy: ${strategyResult}\n\nValidation: ${validationResult}`
       );
       console.timeEnd('Step 4: Deep Reasoning');
       
       // Step 5: Final Output - with streamlined prompt
       console.time('Step 5: Final Output');
-      // Create a more concise final prompt
       const finalOutputPrompt = `Create a concise, well-structured answer for the query: "${shortenedQuery}"`;
       
       // Add a timeout for the final output
@@ -483,7 +483,13 @@ Error details: ${errorMessage}
               {/* Step content */}
               <div className="text-neutral-300 ml-4">
                 {step.status === 'active' && <p>{step.content}</p>}
-                {step.status === 'completed' && step.result && <p>{step.result}</p>}
+                {step.status === 'completed' && step.result && (
+                  step.id === 'research' ? (
+                    <p>{step.result}</p>
+                  ) : (
+                    <ReactMarkdown className="prose prose-invert">{step.result}</ReactMarkdown>
+                  )
+                )}
                 {step.status === 'error' && <p className="text-red-400">An error occurred while processing this step.</p>}
               </div>
             </div>
