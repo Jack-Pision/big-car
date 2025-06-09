@@ -193,7 +193,7 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
       // Limit result size for faster processing in next steps
       const finalResult = result.length > 2000 ? result.substring(0, 2000) + "..." : result;
       
-      updateStepStatus(stepId, 'completed', finalResult);
+      updateStepStatus(stepId, 'completed');
       return finalResult;
     } catch (err) {
       console.error(`Error in ${stepId} step:`, err);
