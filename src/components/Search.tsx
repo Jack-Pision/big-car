@@ -73,6 +73,24 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
     ));
   };
 
+  let lastNvidiaCall = 0;
+  const NVIDIA_API_DELAY = 2200; // 2.2 seconds
+
+  async function fetchNvidiaWithDelay(url: string, options: RequestInit) {
+    const now = Date.now();
+    const wait = Math.max(0, NVIDIA_API_DELAY - (now - lastNvidiaCall));
+    if (wait > 0) await new Promise(res => setTimeout(res, wait));
+    lastNvidiaCall = Date.now();
+
+    let response = await fetch(url, options);
+    if (response.status === 429) {
+      // Wait longer and retry once
+      await new Promise(res => setTimeout(res, 5000));
+      response = await fetch(url, options);
+    }
+    return response;
+  }
+
   // Execute Nvidia API call for a step
   const executeNvidiaStep = async (
     stepId: string, 
@@ -95,7 +113,7 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 25000); // 25 second timeout
       
-      const response = await fetch('/api/nvidia', {
+      const response = await fetchNvidiaWithDelay('/api/nvidia', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -324,7 +342,7 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
       const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
       
       try {
-        const finalResponse = await fetch('/api/nvidia', {
+        const finalResponse = await fetchNvidiaWithDelay('/api/nvidia', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
