@@ -482,14 +482,14 @@ Error details: ${errorMessage}
               <h3 className="text-lg font-medium text-white mb-3">{step.title}</h3>
               {/* Step content */}
               <div className="text-neutral-300 ml-4">
-                {step.status === 'active' && <p>{step.content}</p>}
-                {step.status === 'completed' && step.result && (
+                {step.status !== 'error' && step.result && (
                   step.id === 'research' ? (
                     <p>{step.result}</p>
                   ) : (
                     <ReactMarkdown className="prose prose-invert">{step.result}</ReactMarkdown>
                   )
                 )}
+                {step.status !== 'error' && !step.result && step.content && <p>{step.content}</p>}
                 {step.status === 'error' && <p className="text-red-400">An error occurred while processing this step.</p>}
               </div>
             </div>
