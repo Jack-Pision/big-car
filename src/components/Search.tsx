@@ -311,7 +311,7 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
       // Step 1: Query Intelligence & Strategy Planning - with bullet points and aggressive truncation
       console.time('Step 1: Strategy Planning');
       let step1SystemPrompt = `You are an AI Search Strategy Planner. Show your thinking process. Respond with ONLY a markdown bullet list (one bullet per understanding) and do not include paragraphs or prose.`;
-      let step1UserPrompt = `Break down your understanding and thinking about this query in bullet points (one bullet per understanding).\n\nQuery: ${shortenedQuery}`;
+      let step1UserPrompt = `Just show your initial thinking proccess and nothing else.Break down your understanding and thinking about this query in bullet points (one bullet per understanding).\n\nQuery: ${shortenedQuery}`;
       // Aggressively truncate for step 1
       const step1SystemPromptTruncated = step1SystemPrompt.length > MAX_STEP1_PROMPT_LENGTH
         ? step1SystemPrompt.substring(0, MAX_STEP1_PROMPT_LENGTH) + '...'
