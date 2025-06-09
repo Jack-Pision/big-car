@@ -66,11 +66,14 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
   
   // Update a step's status
   const updateStepStatus = (id: string, status: StepStatus, result?: string) => {
-    setSteps(prevSteps => prevSteps.map(step => 
-      step.id === id 
-        ? { ...step, status, result: result || step.result }
-        : step
-    ));
+    setSteps(prevSteps => prevSteps.map(step => {
+      if (step.id !== id) return step;
+      // Prevent overwriting completed step's result
+      if (step.status === 'completed' && step.result) {
+        return step;
+      }
+      return { ...step, status, result: result || step.result };
+    }));
   };
 
   let lastNvidiaCall = 0;
