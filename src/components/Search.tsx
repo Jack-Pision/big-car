@@ -553,15 +553,13 @@ Error details: ${errorMessage}
               <h3 className="text-lg font-medium text-white mb-3">{step.title}</h3>
               <div className="text-neutral-300 ml-4">
                 {step.status !== 'error' && step.result && (
-                  (step.id !== 'research') ? (
+                  (step.id === 'understand' && firstStepThinking) ? (
+                    <ReactMarkdown className="prose prose-invert text-neutral-300 text-base">{firstStepThinking}</ReactMarkdown>
+                  ) : (step.id !== 'research') ? (
                     <ul className="list-disc pl-5 space-y-2 text-neutral-300 text-base">
-                      {step.id === 'understand' && firstStepThinking 
-                        ? extractBulletPoints(firstStepThinking).map((point, i) => (
-                            <li key={i}>{point}</li>
-                          ))
-                        : extractBulletPoints(step.result).map((point, i) => (
-                          <li key={i}>{point}</li>
-                        ))}
+                      {extractBulletPoints(step.result).map((point, i) => (
+                        <li key={i}>{point}</li>
+                      ))}
                     </ul>
                   ) : (
                     <p>{step.result}</p>
