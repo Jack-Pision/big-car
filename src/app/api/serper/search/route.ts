@@ -2,140 +2,198 @@ import { NextRequest } from 'next/server';
 
 export const runtime = 'edge';
 
-const SERPER_API_KEY = "2ae2160086988d4517b81c0dade49cbd98bcb772";
+// In-memory cache for Serper API results
+const searchCache = new Map<string, { data: any, timestamp: number }>();
+const CACHE_TTL = 30 * 60 * 1000; // 30 minutes cache lifetime
 
-// Backend in-memory cache for Serper API results
-const serperBackendCache: Record<string, { data: any, timestamp: number }> = {};
-const CACHE_EXPIRATION_MS = 10 * 60 * 1000; // 10 minutes
-
-// Add in-flight request lock map
-const serperInFlight: Record<string, Promise<any>> = {};
-
-function getSerperBackendCacheKey(query: string, limit: number) {
-  // Normalize query for deduplication
-  return `${query.trim().toLowerCase()}::${limit}`;
+// Generate a cache key from query and limit
+function generateCacheKey(query: string, limit: number): string {
+  return `${query.toLowerCase().trim()}:${limit}`;
 }
 
-async function searchSerperPage(query: string, page: number = 1) {
-  const url = "https://google.serper.dev/search";
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      "X-API-KEY": SERPER_API_KEY,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ 
-      q: query,
-      page: page,
-      num: 50  // Request 50 results per page
-    })
-  });
-  if (!res.ok) return [];
-  const data = await res.json();
-  if (!data.organic) return [];
+// Fetch function with timeout
+async function fetchWithTimeout(url: RequestInfo, options: any, timeout = 10000) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
   
-  return data.organic.map((item: any) => {
-    // Extract domain for favicon
-    let domain = '';
-    try {
-      domain = new URL(item.link).hostname;
-    } catch {}
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    clearTimeout(id);
+    return response;
+  } catch (error) {
+    clearTimeout(id);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('Request timed out after ' + (timeout / 1000) + ' seconds');
+    }
+    throw error;
+  }
+}
+
+// Helper function to process and filter Serper response
+function processSerperResponse(data: any, limit: number, includeHtml: boolean): any {
+  try {
+    // Extract and combine organic results and knowledge graph if available
+    const organic = data.organic || [];
+    const knowledgeGraph = data.knowledgeGraph || {};
     
-    // Use DuckDuckGo favicon service
-    const favicon = domain ? `https://icons.duckduckgo.com/ip3/${domain}.ico` : null;
+    // Process organic results
+    const sources = organic
+      .filter((result: any) => {
+        // Filter out results without title or link
+        return result.title && result.link;
+      })
+      .slice(0, limit) // Limit the number of results
+      .map((result: any) => {
+        // Create a simplified source object
+        const source: any = {
+          title: result.title,
+          url: result.link,
+          snippet: result.snippet || ''
+        };
+        
+        // Only include HTML content if requested
+        if (includeHtml && result.html) {
+          source.html = result.html;
+        }
+        
+        return source;
+      });
     
-    // Extract image if available in the search result
-    let image = null;
-    if (item.imageUrl) {
-      image = item.imageUrl;
-    } else if (data.knowledgeGraph && data.knowledgeGraph.image) {
-      // Use knowledge graph image if available
-      image = data.knowledgeGraph.image.url;
+    // Add knowledge graph as a source if available
+    if (knowledgeGraph.title) {
+      sources.unshift({
+        title: knowledgeGraph.title,
+        url: knowledgeGraph.link || "",
+        snippet: knowledgeGraph.description || ""
+      });
     }
     
+    // Limit to the requested number
+    const limitedSources = sources.slice(0, limit);
+    
+    // Return the processed result
     return {
-      title: item.title,
-      description: item.snippet,
-      url: item.link,
-      icon: '/icons/web-icon.svg',
-      favicon: favicon,
-      image: image,
-      type: 'serper'
+      query: data.searchParameters?.q || "",
+      sources: limitedSources
     };
-  });
-}
-
-async function searchSerper(query: string, limit: number = 50) {  // Update default limit to 50
-  // Make only one API call for page 1
-  const page1Results = await searchSerperPage(query, 1);
-  return page1Results.slice(0, limit);
+  } catch (error) {
+    console.error('Error processing Serper response:', error);
+    // Return a minimal valid response
+    return {
+      query: data.searchParameters?.q || "",
+      sources: []
+    };
+  }
 }
 
 export async function POST(req: NextRequest) {
   try {
+    const SERPER_API_KEY = process.env.SERPER_API_KEY;
+    if (!SERPER_API_KEY) {
+      return new Response(JSON.stringify({ error: 'SERPER_API_KEY is not configured' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
     const body = await req.json();
-    const { query, limit } = body;
+    const { query } = body;
+    
     if (!query) {
-      return new Response(JSON.stringify({ error: 'No query provided' }), { status: 400 });
-    }
-    const key = getSerperBackendCacheKey(query, limit || 50);
-    console.log(`[Serper] Incoming request: "${query}" (normalized: "${key}") at ${new Date().toISOString()}`);
-    const cached = serperBackendCache[key];
-    if (cached && Date.now() - cached.timestamp < CACHE_EXPIRATION_MS) {
-      console.log(`[Serper] Returning cached result for key: ${key}`);
-      return new Response(JSON.stringify(cached.data), {
-        status: 200,
+      return new Response(JSON.stringify({ error: 'Query parameter is required' }), {
+        status: 400,
         headers: { 'Content-Type': 'application/json' }
       });
     }
-    if (typeof serperInFlight[key] !== "undefined") {
-      console.log(`[Serper] Waiting for in-flight request for key: ${key}`);
-      const data = await serperInFlight[key];
-      return new Response(JSON.stringify(data), {
-        status: 200,
+    
+    // Get limit parameter with default value and validation
+    const limit = Math.min(
+      Math.max(1, parseInt(body.limit || '10')), 
+      20
+    ); // Min 1, max 20, default 10
+    
+    // Get the includeHtml parameter with default value
+    const includeHtml = body.includeHtml !== undefined ? body.includeHtml : false;
+    
+    // Check cache first
+    const cacheKey = generateCacheKey(query, limit);
+    const cachedItem = searchCache.get(cacheKey);
+    
+    if (cachedItem && Date.now() - cachedItem.timestamp < CACHE_TTL) {
+      console.log('Using cached Serper API response');
+      return new Response(JSON.stringify(cachedItem.data), {
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'max-age=1800' // 30 minutes
+        }
+      });
+    }
+    
+    console.log(`Calling Serper API for query: ${query}, limit: ${limit}`);
+    
+    // Make the API call with timeout
+    const response = await fetchWithTimeout(
+      'https://google.serper.dev/search',
+      {
+        method: 'POST',
+        headers: {
+          'X-API-KEY': SERPER_API_KEY,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          q: query,
+          gl: 'us',
+          hl: 'en',
+          num: limit * 2 // Request more than needed to ensure we have enough good results
+        })
+      },
+      10000 // 10 second timeout
+    );
+    
+    if (!response.ok) {
+      console.error(`Serper API error: ${response.status} ${response.statusText}`);
+      return new Response(JSON.stringify({ 
+        error: `Serper API error: ${response.status}`,
+        message: 'Failed to get search results'
+      }), {
+        status: response.status,
         headers: { 'Content-Type': 'application/json' }
       });
     }
-    serperInFlight[key] = (async () => {
-      console.log(`[Serper] Making new Serper API call for key: ${key}`);
-      const results = await searchSerper(query, limit || 50);
-      let responseData;
-      if (!results.length) {
-        responseData = {
-          articles: [],
-          summary: 'No relevant Serper search results found.',
-          sources: []
-        };
-      } else {
-        responseData = {
-          articles: results,
-          summary: results.map((a: any) => `- [${a.title}](${a.url}): ${a.description || ''}`).join('\n'),
-          sources: results.map((a: any) => ({ 
-            title: a.title, 
-            url: a.url, 
-            icon: a.icon, 
-            favicon: a.favicon,
-            image: a.image,
-            type: a.type 
-          }))
-        };
+    
+    const data = await response.json();
+    
+    // Process and filter the results
+    const processedResult = processSerperResponse(data, limit, includeHtml);
+    
+    // Cache the processed result
+    searchCache.set(cacheKey, {
+      data: processedResult,
+      timestamp: Date.now()
+    });
+    
+    return new Response(JSON.stringify(processedResult), {
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'max-age=1800' // 30 minutes
       }
-      serperBackendCache[key] = { data: responseData, timestamp: Date.now() };
-      return responseData;
-    })();
-    try {
-      const data = await serperInFlight[key];
-      return new Response(JSON.stringify(data), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    } finally {
-      delete serperInFlight[key];
-    }
+    });
   } catch (error) {
-    console.error('Serper API search error:', error);
-    return new Response(JSON.stringify({ error: 'Failed to fetch Serper API data', details: error instanceof Error ? error.message : String(error) }), {
-      status: 500,
+    console.error('Error in Serper API:', error);
+    
+    // Handle timeout errors specifically
+    const isTimeout = error instanceof Error && error.message.includes('timed out');
+    
+    return new Response(JSON.stringify({
+      error: isTimeout 
+        ? 'Search timed out. Please try again with a more specific query.'
+        : 'Error processing search request',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    }), {
+      status: isTimeout ? 504 : 500,
       headers: { 'Content-Type': 'application/json' }
     });
   }

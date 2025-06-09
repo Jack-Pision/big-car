@@ -76,6 +76,19 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
     try {
       updateStepStatus(stepId, 'active');
       
+      // Make a more concise version of the prompts to reduce token count
+      const conciseSystemPrompt = systemPrompt.length > 500 
+        ? systemPrompt.substring(0, 500) + "..." 
+        : systemPrompt;
+      
+      const conciseUserPrompt = userPrompt.length > 1000
+        ? userPrompt.substring(0, 1000) + "..."
+        : userPrompt;
+      
+      // Add a timeout to avoid hanging on slow responses
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 25000); // 25 second timeout
+      
       const response = await fetch('/api/nvidia', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -83,16 +96,20 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
           messages: [
             {
               role: 'system',
-              content: systemPrompt
+              content: conciseSystemPrompt
             },
             {
               role: 'user',
-              content: userPrompt
+              content: conciseUserPrompt
             }
           ],
-          stream: true // Enable streaming
-        })
+          stream: true,
+          max_tokens: 500 // Limit token generation for faster responses
+        }),
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -146,14 +163,25 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
         throw new Error('No content received from the API');
       }
       
-      updateStepStatus(stepId, 'completed', result);
-      return result;
+      // Limit result size for faster processing in next steps
+      const finalResult = result.length > 2000 ? result.substring(0, 2000) + "..." : result;
+      
+      updateStepStatus(stepId, 'completed', finalResult);
+      return finalResult;
     } catch (err) {
       console.error(`Error in ${stepId} step:`, err);
-      updateStepStatus(stepId, 'error');
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      setError(`Error in ${stepId}: ${errorMessage}`);
-      throw err;
+      // If it's an abort error (timeout), provide a special message
+      const errorMessage = err instanceof Error 
+        ? (err.name === 'AbortError' 
+            ? 'This step took too long to complete. Continuing with partial results.'
+            : err.message) 
+        : String(err);
+      
+      // Still mark as completed but with an error flag
+      updateStepStatus(stepId, 'error', errorMessage);
+      
+      // Return a partial result instead of failing completely
+      return `[Step timed out - proceeding with limited information]`;
     }
   };
 
@@ -162,25 +190,66 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
     try {
       updateStepStatus('research', 'active');
       
-      // Use the deduped Serper request utility with required limit parameter
-      const serperData = await dedupedSerperRequest(query, 10);
+      // Add a timeout for the Serper API call
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
+      // Limit to just 5 results for faster processing
+      const response = await fetch('/api/serper/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          query, 
+          limit: 5, // Reduced from 10 to 5 for faster results
+          includeHtml: false // Skip HTML content to reduce payload size
+        }),
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        throw new Error(`Search API call failed with status: ${response.status}`);
+      }
+      
+      const serperData = await response.json();
       
       if (!serperData || !serperData.sources || serperData.sources.length === 0) {
         throw new Error('No search results found');
       }
       
-      // Format the results for display
-      const formattedResults = serperData.sources.map((source: any, index: number) => 
+      // Limit the source text to reduce payload size in next steps
+      const formattedResults = serperData.sources.slice(0, 5).map((source: any, index: number) => 
         `Source ${index + 1}: ${source.title}\nURL: ${source.url}\n`
       ).join('\n');
       
       updateStepStatus('research', 'completed', formattedResults);
-      return serperData;
+      
+      // Simplify the result object to reduce memory usage
+      return {
+        sources: serperData.sources.slice(0, 5).map((source: any) => ({
+          title: source.title,
+          url: source.url
+        }))
+      };
     } catch (err) {
       console.error('Error in research step:', err);
-      updateStepStatus('research', 'error');
-      setError(`Error in research: ${err instanceof Error ? err.message : String(err)}`);
-      throw err;
+      
+      // If it's an abort error (timeout), provide a special message
+      const errorMessage = err instanceof Error 
+        ? (err.name === 'AbortError' 
+            ? 'Web search took too long to complete. Continuing with limited results.'
+            : err.message) 
+        : String(err);
+      
+      updateStepStatus('research', 'error', errorMessage);
+      
+      // Return a minimal result object instead of failing completely
+      return {
+        sources: [
+          { title: "Search timed out", url: "" }
+        ]
+      };
     }
   };
   
@@ -189,127 +258,180 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
     try {
       setError(null);
       
-      // Step 1: Query Intelligence & Strategy Planning
+      // Shorten the query if it's very long
+      const shortenedQuery = query.length > 500 ? query.substring(0, 500) + "..." : query;
+      
+      // Step 1: Query Intelligence & Strategy Planning - with concise prompt
       console.time('Step 1: Strategy Planning');
-      const strategyPrompt = `You are an AI Search Strategy Planner. Your goal is to analyze the user's query and develop a comprehensive search strategy.\nThink step-by-step to:\n1. Understand the core information need\n2. Identify key concepts and potential subtopics\n3. Develop an effective search strategy with key terms\n4. Anticipate potential challenges or ambiguities\n\nFormat your response as a clear, structured strategy plan.`;
+      const strategyPrompt = `Analyze this query and create a search plan: ${shortenedQuery}`;
       const strategyResult = await executeNvidiaStep(
         'understand',
-        strategyPrompt,
-        `Analyze the following query and develop a comprehensive search strategy: "${query}"`
+        `You are an AI Search Strategy Planner. Create a brief, focused plan.`,
+        strategyPrompt
       );
       console.timeEnd('Step 1: Strategy Planning');
       
-      // Step 2: Multi-Source Web Discovery & Retrieval
+      // Step 2: Multi-Source Web Discovery & Retrieval - with reduced results
       console.time('Step 2: Web Discovery');
-      const serperResults = await executeSerperStep(query);
+      const serperResults = await executeSerperStep(shortenedQuery);
       console.timeEnd('Step 2: Web Discovery');
       
-      // Step 3: Fact-Checking & Source Validation
+      // Step 3: Fact-Checking & Source Validation - with concise prompt
       console.time('Step 3: Fact-Checking');
-      const validationPrompt = `You are an AI Fact-Checker and Source Validator. Your goal is to critically evaluate the search results and validate their reliability.\nThink step-by-step to:\n1. Analyze each source for credibility and relevance\n2. Identify any contradictions or inconsistencies between sources\n3. Assess the quality of information and potential biases\n4. Extract the most reliable facts and information\n\nFormat your response as a clear assessment of the information quality.`;
-      const sourcesText = serperResults.sources.map((s: any) => 
-        `- ${s.title}: ${s.url}`
+      const validationPrompt = `Quickly assess the credibility of these search results for: "${shortenedQuery}"`;
+      const sourcesText = serperResults.sources.map((s: any, i: number) => 
+        `${i+1}. ${s.title}: ${s.url}`
       ).join('\n');
+      
       const validationResult = await executeNvidiaStep(
         'validate',
-        validationPrompt,
-        `Validate the following search results for the query: "${query}"\n\nSearch Results:\n${sourcesText}`
+        `You are an AI Fact-Checker. Briefly validate source credibility.`,
+        `${validationPrompt}\n\nSources:\n${sourcesText}`
       );
       console.timeEnd('Step 3: Fact-Checking');
       
-      // Step 4: Deep Reasoning & Analysis
+      // Step 4: Deep Reasoning & Analysis - with concise prompt
       console.time('Step 4: Deep Reasoning');
-      const analysisPrompt = `You are an AI Deep Reasoning Agent. Your goal is to analyze the validated information and generate insights.\nThink step-by-step to:\n1. Synthesize the validated information\n2. Identify patterns, trends, and connections\n3. Draw logical conclusions\n4. Generate insights that address the original query\n\nFormat your response as a well-structured analysis.`;
+      const analysisPrompt = `Analyze the information and generate key insights for: "${shortenedQuery}"`;
       const analysisResult = await executeNvidiaStep(
         'analyze',
-        analysisPrompt,
-        `Analyze the following validated information for the query: "${query}"\n\nStrategy Plan:\n${strategyResult}\n\nValidated Information:\n${validationResult}`
+        `You are an AI Analysis Agent. Provide clear, focused insights.`,
+        `${analysisPrompt}\n\nStrategy: ${strategyResult}\n\nValidation: ${validationResult}`
       );
       console.timeEnd('Step 4: Deep Reasoning');
       
-      // Step 5: Final Output (to be displayed in main chat)
+      // Step 5: Final Output - with streamlined prompt
       console.time('Step 5: Final Output');
-      const finalOutputPrompt = `You are an AI Answer Generator. Your goal is to create a comprehensive, well-structured final answer.\nThink step-by-step to:\n1. Integrate all insights from the previous steps\n2. Organize the information in a logical flow\n3. Present a balanced, nuanced perspective\n4. Provide clear, actionable conclusions\n\nFormat your response as a definitive answer to the user's query.`;
-      const finalResponse = await fetch('/api/nvidia', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [
-            {
-              role: 'system',
-              content: finalOutputPrompt
-            },
-            {
-              role: 'user',
-              content: `Generate a final, comprehensive answer for the query: "${query}"\n\nStrategy Plan:\n${strategyResult}\n\nWeb Research:\n${sourcesText}\n\nValidation:\n${validationResult}\n\nAnalysis:\n${analysisResult}`
-            }
-          ],
-          stream: true
-        })
-      });
+      // Create a more concise final prompt
+      const finalOutputPrompt = `Create a concise, well-structured answer for the query: "${shortenedQuery}"`;
       
-      if (!finalResponse.ok) {
-        const errorData = await finalResponse.json().catch(() => ({}));
-        throw new Error(
-          errorData.error || 
-          `Final output API call failed with status: ${finalResponse.status}`
-        );
-      }
-      
-      // Handle streaming response for final output
-      const reader = finalResponse.body?.getReader();
-      if (!reader) {
-        throw new Error('No response body available for final output');
-      }
-      
-      let finalOutput = '';
-      const decoder = new TextDecoder();
+      // Add a timeout for the final output
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
       
       try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          
-          const chunk = decoder.decode(value);
-          const lines = chunk.split('\n');
-          
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const data = line.slice(6);
-              if (data === '[DONE]') continue;
-              
-              try {
-                const parsed = JSON.parse(data);
-                const content = parsed.choices?.[0]?.delta?.content || '';
-                if (content) {
-                  finalOutput += content;
-                  setFinalResult(finalOutput); // Update in real-time
+        const finalResponse = await fetch('/api/nvidia', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: [
+              {
+                role: 'system',
+                content: `You are an Answer Generator. Create concise, helpful answers.`
+              },
+              {
+                role: 'user',
+                content: `${finalOutputPrompt}\n\nStrategy: ${strategyResult}\n\nFindings: ${validationResult}\n\nAnalysis: ${analysisResult}`
+              }
+            ],
+            stream: true,
+            max_tokens: 1000 // Limit tokens for faster response
+          }),
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!finalResponse.ok) {
+          throw new Error(`Final output API call failed with status: ${finalResponse.status}`);
+        }
+        
+        // Handle streaming response for final output
+        const reader = finalResponse.body?.getReader();
+        if (!reader) {
+          throw new Error('No response body available for final output');
+        }
+        
+        let finalOutput = '';
+        const decoder = new TextDecoder();
+        
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n');
+            
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                const data = line.slice(6);
+                if (data === '[DONE]') continue;
+                
+                try {
+                  const parsed = JSON.parse(data);
+                  const content = parsed.choices?.[0]?.delta?.content || '';
+                  if (content) {
+                    finalOutput += content;
+                    setFinalResult(finalOutput); // Update in real-time
+                  }
+                } catch (e) {
+                  console.error('Error parsing final output streaming response:', e);
                 }
-              } catch (e) {
-                console.error('Error parsing final output streaming response:', e);
               }
             }
           }
+        } finally {
+          reader.releaseLock();
         }
-      } finally {
-        reader.releaseLock();
+        
+        if (!finalOutput) {
+          throw new Error('No content received for final output');
+        }
+        
+        // Notify parent component that search is complete with final result
+        if (onComplete) {
+          onComplete(finalOutput);
+        }
+        
+        console.timeEnd('Step 5: Final Output');
+      } catch (err) {
+        clearTimeout(timeoutId);
+        console.error('Error in final output step:', err);
+        
+        // If it's a timeout, create a fallback response
+        if (err instanceof Error && err.name === 'AbortError') {
+          const fallbackOutput = `
+# Response for: ${shortenedQuery}
+
+## Key Findings
+${analysisResult.split('\n').slice(0, 5).join('\n')}
+
+## Summary
+Based on the available information, I can provide a partial answer to your query.
+Some steps took longer than expected, but I've compiled the most relevant insights.
+
+*Note: This is a partial response due to processing time constraints.*
+`;
+          
+          setFinalResult(fallbackOutput);
+          if (onComplete) {
+            onComplete(fallbackOutput);
+          }
+        } else {
+          setError(`Error in search: ${err instanceof Error ? err.message : String(err)}`);
+        }
       }
-      
-      if (!finalOutput) {
-        throw new Error('No content received for final output');
-      }
-      
-      // Notify parent component that search is complete with final result
-      if (onComplete) {
-        onComplete(finalOutput);
-      }
-      
-      console.timeEnd('Step 5: Final Output');
       
     } catch (err) {
       console.error('Error in search execution:', err);
       const errorMessage = err instanceof Error ? err.message : String(err);
       setError(`Error in search: ${errorMessage}`);
+      
+      // Provide a fallback response even if the overall process fails
+      const fallbackOutput = `
+# Search Results Limited
+
+I encountered an issue while processing your search query.
+Please try again with a more specific question, or check back later.
+
+Error details: ${errorMessage}
+`;
+      
+      setFinalResult(fallbackOutput);
+      if (onComplete) {
+        onComplete(fallbackOutput);
+      }
     }
   };
 

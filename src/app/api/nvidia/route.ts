@@ -13,8 +13,8 @@ if (!OPENROUTER_API_KEY) {
   throw new Error('OPENROUTER_API_KEY is required');
 }
 
-// Helper function for fetch with timeout
-async function fetchWithTimeout(resource: string, options: any = {}, timeout = 30000) {
+// Update the fetchWithTimeout function to optimize timeout handling
+async function fetchWithTimeout(resource: string, options: any = {}, timeout = 25000) { // Increased to 25 seconds
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
   try {
@@ -28,6 +28,26 @@ async function fetchWithTimeout(resource: string, options: any = {}, timeout = 3
     }
     throw err;
   }
+}
+
+// Add a simple in-memory cache for NVIDIA API responses
+const apiCache = new Map<string, {data: any, timestamp: number}>();
+const CACHE_TTL = 15 * 60 * 1000; // 15 minutes
+
+// Generates a cache key for NVIDIA API calls
+function generateCacheKey(messages: any[], options: any = {}): string {
+  // Create a simplified version of messages for the cache key (just the content)
+  const simplifiedMessages = messages.map(msg => ({
+    role: msg.role,
+    content: msg.content.slice(0, 200) // Only use first 200 chars of content for key
+  }));
+  
+  // Create a key combining the messages and any other options that affect the response
+  return JSON.stringify({
+    messages: simplifiedMessages,
+    temperature: options.temperature || 0.6,
+    max_tokens: options.max_tokens || 1000
+  });
 }
 
 // New function to fetch image analysis from OpenRouter (via our existing proxy)
@@ -113,16 +133,33 @@ async function fetchOpenRouterImageAnalysis(
   return res; // Return the full response object to be processed by the caller
 }
 
+// Update the fetchNvidiaText function to use caching and handle timeouts better
 async function fetchNvidiaText(messages: any[], options: any = {}) {
+  // Generate a cache key for this request
+  const cacheKey = generateCacheKey(messages, options);
+  
+  // Check if we have a cached response
+  const cachedItem = apiCache.get(cacheKey);
+  if (cachedItem && Date.now() - cachedItem.timestamp < CACHE_TTL) {
+    console.log('Using cached NVIDIA API response');
+    return new Response(cachedItem.data, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'max-age=900' // 15 minutes
+      }
+    });
+  }
+  
+  // If not in cache or expired, make the API call
   const payload = {
     model: 'deepseek-ai/deepseek-r1',
     messages,
     temperature: options.temperature || 0.6,
     top_p: options.top_p || 0.95,
-    max_tokens: options.max_tokens || 10000,
+    max_tokens: options.max_tokens || 1000, // Reduced from 10000 to 1000 for faster responses
     presence_penalty: options.presence_penalty || 0.8,
     frequency_penalty: options.frequency_penalty || 0.5,
-    stream: true,
+    stream: options.stream !== undefined ? options.stream : true,
   };
   
   try {
@@ -134,7 +171,7 @@ async function fetchNvidiaText(messages: any[], options: any = {}) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(payload),
-    }, 30000); // 30-second timeout for NVIDIA API
+    }, 25000); // 25-second timeout for NVIDIA API
 
     if (!res.ok) {
       const errorText = await res.text();
@@ -148,12 +185,22 @@ async function fetchNvidiaText(messages: any[], options: any = {}) {
       // Handle specific error cases
       if (res.status === 504) {
         return new Response(JSON.stringify({
-          error: 'Gateway Timeout: The AI service took too long to respond. Please try again.',
+          error: 'Gateway Timeout: The AI service took too long to respond. Please try again with a simpler query.',
           details: errorText
         }), {
           status: 504,
           headers: { 'Content-Type': 'application/json' }
         });
+      }
+      
+      // For streaming requests, we can't cache the response
+      if (!payload.stream) {
+        // Cache the error response too to avoid repeated failures
+        const errorData = JSON.stringify({
+          error: `Nvidia API Error: ${errorText}`,
+          status: res.status
+        });
+        apiCache.set(cacheKey, { data: errorData, timestamp: Date.now() });
       }
       
       return new Response(JSON.stringify({
@@ -165,17 +212,59 @@ async function fetchNvidiaText(messages: any[], options: any = {}) {
       });
     }
     
-    return res;
+    // For streaming responses, we just return the stream
+    if (payload.stream) {
+      return res;
+    }
+    
+    // For non-streaming responses, cache the result
+    const responseData = await res.text();
+    apiCache.set(cacheKey, { data: responseData, timestamp: Date.now() });
+    
+    return new Response(responseData, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'max-age=900' // 15 minutes
+      }
+    });
   } catch (err: any) {
     console.error('Error in fetchNvidiaText:', err);
     const isTimeout = err.message.includes('timed out');
-    return new Response(JSON.stringify({
-      error: isTimeout 
-        ? 'Gateway Timeout: The AI service took too long to respond. Please try again.'
-        : 'Failed to process request',
+    
+    // Create a fallback response for timeouts
+    if (isTimeout) {
+      const fallbackResponse = JSON.stringify({
+        error: 'Gateway Timeout: The AI service took too long to respond. Please try again with a simpler query.',
+        details: err.message,
+        choices: [
+          {
+            message: {
+              content: "I apologize, but the request took too long to process. Please try a simpler query or try again later."
+            }
+          }
+        ]
+      });
+      
+      // Don't cache timeout errors as they may be temporary
+      return new Response(fallbackResponse, {
+        status: 504,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    // For other errors, create a generic error response
+    const errorResponse = JSON.stringify({
+      error: 'Failed to process request',
       details: err.message
-    }), {
-      status: isTimeout ? 504 : 500,
+    });
+    
+    // Cache the error to prevent repeated failures
+    if (!payload.stream) {
+      apiCache.set(cacheKey, { data: errorResponse, timestamp: Date.now() });
+    }
+    
+    return new Response(errorResponse, {
+      status: 500,
       headers: { 'Content-Type': 'application/json' }
     });
   }
@@ -207,112 +296,33 @@ export async function POST(req: NextRequest) {
       });
     }
     
-    // Extract model parameters if provided
+    // Limit message content length to reduce token size and response time
+    const optimizedMessages = body.messages.map((msg: any) => ({
+      ...msg,
+      content: typeof msg.content === 'string' && msg.content.length > 4000 
+        ? msg.content.substring(0, 4000) + "..." 
+        : msg.content
+    }));
+    
+    // Extract any model parameters with reasonable defaults
     const modelParams = {
-      temperature: body.temperature,
-      top_p: body.top_p,
-      max_tokens: body.max_tokens || 10000, // Use max_tokens from request or default to 10000
-      presence_penalty: body.presence_penalty,
-      frequency_penalty: body.frequency_penalty
+      temperature: body.temperature || 0.6,
+      top_p: body.top_p || 0.95,
+      max_tokens: body.max_tokens || 1000, // Reduced from 10000 to 1000 for faster responses
+      presence_penalty: body.presence_penalty || 0.8,
+      frequency_penalty: body.frequency_penalty || 0.5,
+      stream: body.stream !== undefined ? body.stream : true,
     };
     
-    if (body.imageUrls && Array.isArray(body.imageUrls) && body.imageUrls.length > 0) { // Check for imageUrls array
-      console.log(`[API /api/nvidia] Received image request for URLs: ${body.imageUrls.join(', ')}`);
-      
-      // Extract previous user messages and image descriptions
-      const previousUserMessages = body.messages?.filter((m:any) => m.role === 'user') || [];
-      
-      // Extract previous image descriptions from the conversation
-      const previousImageDescriptions = body.previousImageDescriptions || [];
-      
-      // 1. Get image description from OpenRouter with context
-      console.log("[API /api/nvidia] Calling OpenRouter with conversation context...");
-      const openRouterRes = await fetchOpenRouterImageAnalysis(
-        body.imageUrls, 
-        OPENROUTER_API_KEY,
-        previousUserMessages,
-        previousImageDescriptions
-      );
-      
-      if (!openRouterRes.ok) {
-        return openRouterRes; 
-      }
-      
-      const openRouterData = await openRouterRes.json();
-      const imageDescription = openRouterData.choices?.[0]?.message?.content || 'Could not get a description from the image(s).';
-      console.log("[API /api/nvidia] OpenRouter description received:", imageDescription.substring(0, 100) + "...");
-
-      // 2. Construct prompt for Nemotron
-      const userImagePrompt = body.messages?.filter((m:any) => m.role === 'user').pop()?.content || (body.imageUrls.length > 1 ? "Tell me more about these images." : "Tell me more about what was found in the image.");
-
-      // Get the system message from the request which now includes all image contexts
-      const systemMessage = body.messages?.find((m:any) => m.role === 'system')?.content || '';
-      
-      // Extract the image context part if present (everything after the SYSTEM_PROMPT)
-      const imageContext = body.imageUrls.length > 1 
-        ? `A set of ${body.imageUrls.length} images were provided.` 
-        : "An image was provided.";
-      
-      // Create a comprehensive system prompt that includes:
-      // 1. The original system message (which now includes all previous image contexts)
-      // 2. The new image description
-      const nemotronSystemPrompt = `${systemMessage}\n\nLatest image analysis: "${imageDescription}"\n\nThe user has provided the following specific query: "${userImagePrompt}". Based on the image description(s) and the user's query, provide a helpful and detailed response.`;
-      
-      const nemotronMessages = [
-        { role: "system", content: nemotronSystemPrompt },
-        // The user's direct prompt about the image is now part of the system prompt for better context.
-        // We can send a generic follow-up here, or make it more dynamic if needed.
-        { role: "user", content: "Please proceed with the analysis based on my query and the image description." } 
-      ];
-      
-      // 3. Call Nemotron and stream its response
-      console.log("[API /api/nvidia] Calling Nemotron with streaming enabled...");
-      const nemotronRes = await fetchNvidiaText(nemotronMessages, modelParams); // Pass model parameters
-      
-      if (!nemotronRes.ok) {
-          // If Nemotron returns an error (e.g. 4xx, 5xx), it won't be a stream.
-          // We expect our fetchNvidiaText to already convert this to a JSON error Response.
-          return nemotronRes;
-      }
-      
-      // Return the stream directly to the client
-      // Ensure appropriate headers for streaming
-      const headers = new Headers(nemotronRes.headers);
-      headers.set('Content-Type', 'text/event-stream'); // Or 'application/x-ndjson' depending on actual stream format
-      headers.set('Cache-Control', 'no-cache');
-      headers.set('Connection', 'keep-alive');
-
-      return new Response(nemotronRes.body, {
-      status: 200,
-        headers: headers,
-    });
-
-  } else {
-      console.log("[API /api/nvidia] Received text-only request (streaming)...");
-      const { messages } = body;
-      // For text-only, also enable streaming
-      const nemotronRes = await fetchNvidiaText(messages, modelParams); // Pass model parameters
-      
-      if (!nemotronRes.ok) {
-          return nemotronRes;
-      }
-
-      const headers = new Headers(nemotronRes.headers);
-      headers.set('Content-Type', 'text/event-stream');
-      headers.set('Cache-Control', 'no-cache');
-      headers.set('Connection', 'keep-alive');
-      
-      return new Response(nemotronRes.body, {
-        status: 200,
-        headers: headers,
-      });
-    }
+    // Make the API call with optimized messages and parameters
+    return fetchNvidiaText(optimizedMessages, modelParams);
   } catch (err: any) {
     console.error('Error in NVIDIA API route:', err);
     const isTimeout = err.message.includes('timed out');
+    
     return new Response(JSON.stringify({
       error: isTimeout 
-        ? 'Gateway Timeout: The AI service took too long to respond. Please try again.'
+        ? 'Gateway Timeout: The AI service took too long to respond. Please try again with a simpler query.'
         : 'Internal Server Error',
       details: err.message,
       timestamp: new Date().toISOString()
