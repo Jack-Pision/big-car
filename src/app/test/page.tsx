@@ -2833,8 +2833,7 @@ export default function TestChat() {
                 return (
                 <div
                   key={msg.id + '-user-' + i}
-                  className="px-5 py-3 rounded-2xl shadow bg-gray-800 text-white self-end max-w-full text-lg flex flex-col items-end mb-4 relative"
-                  style={{ wordBreak: "break-word" }}
+                  className="px-3 py-2 rounded-xl shadow bg-blue-600 text-white self-end max-w-[80%] text-base flex flex-col items-end mb-2"
                 >
                   {/* Only show message content and images, no menu */}
                     {msg.imageUrls && msg.imageUrls.map((url, index) => (
