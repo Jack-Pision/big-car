@@ -1629,6 +1629,50 @@ function processStreamBuffer(buffer: string): {
   };
 }
 
+// Add prompt handler functions after the BASE_SYSTEM_PROMPT and before the TestChat component
+const getDefaultChatPrompt = (basePrompt: string) => {
+  return `${basePrompt}
+
+IMPORTANT FOR DEFAULT CHAT:
+- Provide direct, conversational answers
+- Use markdown formatting for better readability
+- Never show internal reasoning or thinking process
+- Keep responses clear and concise
+- Format code blocks with proper syntax highlighting
+- Use bullet points or numbered lists when appropriate`;
+};
+
+const getSearchPrompt = (basePrompt: string) => {
+  return `${basePrompt}
+
+IMPORTANT FOR SEARCH:
+- Focus on finding and presenting relevant information
+- Include source citations when available
+- Structure the response with clear sections
+- Highlight key findings
+- Provide a summary of search results`;
+};
+
+const getAdvanceSearchPrompt = (basePrompt: string) => {
+  return `${basePrompt}
+
+${CITATION_INSTRUCTIONS}`;
+};
+
+const getStructuredQueryPrompt = (basePrompt: string, queryType: string, schema: any) => {
+  return `${basePrompt}
+
+IMPORTANT FOR STRUCTURED QUERY (${queryType}):
+- Response MUST be a single JSON object
+- Strictly conform to the provided schema
+- Include all required fields
+- Maintain proper data types
+- No additional text outside the JSON object
+
+Schema:
+${JSON.stringify(schema, null, 2)}`;
+};
+
 export default function TestChat() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<LocalMessage[]>([]);
@@ -1851,7 +1895,6 @@ export default function TestChat() {
     }
 
     // If we get here, we're in default chat mode
-    // Initialize variables at the function scope level
     let userMessageId = '';
     let uploadedImageUrls: string[] = [];
 
@@ -1943,20 +1986,27 @@ export default function TestChat() {
 
       const context = buildConversationContext(convertToConversationMessages(messages));
 
+      // Determine the appropriate prompt based on mode and query type
       let turnSpecificSystemPrompt = BASE_SYSTEM_PROMPT;
-
-      // Add explicit instruction to never show reasoning
-      if (!showAdvanceSearchUI && !input.includes('@AdvanceSearch')) {
-        turnSpecificSystemPrompt += `\n\nIMPORTANT: Provide direct answers without showing your reasoning or thinking process. Never include any step-by-step analysis in your response. Only provide the final answer in a clear, concise format.`;
-      }
-
-      // Remove the thinking mode instructions that were causing reasoning text to appear
-      // if (queryType !== 'conversation') {
-      //   turnSpecificSystemPrompt += `\n\nIMPORTANT: For every response, before answering, think step-by-step and include your reasoning inside <think>...</think> tags. Only after the <think> section, provide your final answer. Example:\n<think>Thinking through the problem step by step...</think>\nFinal answer here.`;
-      // }
-
-      if (uploadedImageUrls.length === 0 && queryType !== 'conversation') {
-        turnSpecificSystemPrompt += `\n\nIMPORTANT: For this query, classified as '${queryType}', your entire response MUST be a single JSON object that strictly conforms to the following JSON schema. Do NOT include any text, markdown, or explanations outside of this JSON object. Adhere to all field types and requirements specified in the schema.\nSchema:\n${JSON.stringify(responseSchema, null, 2)}`;
+      
+      if (activeButton === 'search') {
+        turnSpecificSystemPrompt = getSearchPrompt(BASE_SYSTEM_PROMPT);
+      } else if (activeButton === 'advance' || input.includes('@AdvanceSearch')) {
+        turnSpecificSystemPrompt = getAdvanceSearchPrompt(BASE_SYSTEM_PROMPT);
+      } else {
+        // Default chat mode
+        if (queryType === 'conversation') {
+          turnSpecificSystemPrompt = getDefaultChatPrompt(BASE_SYSTEM_PROMPT);
+        } else if (uploadedImageUrls.length === 0) {
+          turnSpecificSystemPrompt = getStructuredQueryPrompt(
+            BASE_SYSTEM_PROMPT,
+            queryType,
+            responseSchema
+          );
+        } else {
+          // For image queries, use default chat prompt
+          turnSpecificSystemPrompt = getDefaultChatPrompt(BASE_SYSTEM_PROMPT);
+        }
       }
 
       console.log("[handleSend] Turn Specific System Prompt Length:", turnSpecificSystemPrompt.length);
