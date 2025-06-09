@@ -277,20 +277,24 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
     }
   };
   
-  // Helper to render bullet points from markdown or plain text
-  function renderBulletPoints(text: string) {
-    if (!text) return null;
-    // If the text already contains markdown bullets, render as markdown
-    if (/^\s*[-*•]\s+/m.test(text) || /^\s*\d+\.\s+/m.test(text)) {
-      return <ReactMarkdown className="prose prose-invert">{text}</ReactMarkdown>;
+  // Helper to extract bullet points from any text (markdown or plain)
+  function extractBulletPoints(text: string): string[] {
+    if (!text) return [];
+    // Extract markdown bullets
+    const bulletRegex = /^\s*[-*•]\s+(.*)$/gm;
+    let match;
+    const bullets: string[] = [];
+    while ((match = bulletRegex.exec(text)) !== null) {
+      if (match[1]) bullets.push(match[1].trim());
     }
-    // Otherwise, split by newlines and render as bullets
-    const lines = text.split(/\n+/).map(l => l.trim()).filter(Boolean);
-    return (
-      <ul className="list-disc pl-5 space-y-2 text-neutral-300 text-base">
-        {lines.map((line, i) => <li key={i}>{line}</li>)}
-      </ul>
-    );
+    // If no markdown bullets, split by sentences
+    if (bullets.length === 0) {
+      // Remove markdown formatting
+      const plain = text.replace(/[*_`#>\[\]\(\)]/g, '').replace(/\n+/g, ' ');
+      const sentences = plain.split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(Boolean);
+      return sentences;
+    }
+    return bullets;
   }
 
   // Main search execution flow
@@ -303,20 +307,20 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
       
       // Step 1: Query Intelligence & Strategy Planning - with bullet points and aggressive truncation
       console.time('Step 1: Strategy Planning');
-      let systemPrompt = `You are an AI Search Strategy Planner. Break down your understanding and plan as a markdown bullet list.`;
-      let userPrompt = `Analyze this query and create a search plan as a markdown bullet list for clarity.\n\nQuery: ${shortenedQuery}`;
+      let step1SystemPrompt = `You are an AI Search Strategy Planner. Respond with a markdown bullet list (one bullet per sentence or understanding) and do not include paragraphs or prose.`;
+      let step1UserPrompt = `Analyze this query and create a search plan as a markdown bullet list (one bullet per sentence or understanding).\n\nQuery: ${shortenedQuery}`;
       // Aggressively truncate for step 1
-      const safeSystemPrompt = systemPrompt.length > MAX_STEP1_PROMPT_LENGTH
-        ? systemPrompt.substring(0, MAX_STEP1_PROMPT_LENGTH) + '...'
-        : systemPrompt;
-      const safeUserPrompt = userPrompt.length > MAX_STEP1_PROMPT_LENGTH
-        ? userPrompt.substring(0, MAX_STEP1_PROMPT_LENGTH) + '...'
-        : userPrompt;
-      console.log('[Nvidia API] Step 1 prompt length:', safeSystemPrompt.length + safeUserPrompt.length);
+      const step1SystemPromptTruncated = step1SystemPrompt.length > MAX_STEP1_PROMPT_LENGTH
+        ? step1SystemPrompt.substring(0, MAX_STEP1_PROMPT_LENGTH) + '...'
+        : step1SystemPrompt;
+      const step1UserPromptTruncated = step1UserPrompt.length > MAX_STEP1_PROMPT_LENGTH
+        ? step1UserPrompt.substring(0, MAX_STEP1_PROMPT_LENGTH) + '...'
+        : step1UserPrompt;
+      console.log('[Nvidia API] Step 1 prompt length:', step1SystemPromptTruncated.length + step1UserPromptTruncated.length);
       const strategyResult = await executeNvidiaStep(
         'understand',
-        safeSystemPrompt,
-        safeUserPrompt
+        step1SystemPromptTruncated,
+        step1UserPromptTruncated
       );
       console.timeEnd('Step 1: Strategy Planning');
       
@@ -327,24 +331,24 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
       
       // Step 3: Fact-Checking & Source Validation - with bullet points
       console.time('Step 3: Fact-Checking');
-      const validationPrompt = `Quickly assess the credibility of these search results for: "${shortenedQuery}". Present your findings as a markdown bullet list.`;
+      const validationPrompt = `Quickly assess the credibility of these search results for: "${shortenedQuery}". Present your findings as a markdown bullet list (one bullet per sentence or understanding) and do not include paragraphs or prose.`;
       const sourcesText = serperResults.sources.map((s: any, i: number) => 
         `${i+1}. ${s.title}: ${s.url}`
       ).join('\n');
       
       const validationResult = await executeNvidiaStep(
         'validate',
-        `You are an AI Fact-Checker. Present your validation as a markdown bullet list for clarity.`,
+        `You are an AI Fact-Checker. Respond with a markdown bullet list (one bullet per sentence or understanding) and do not include paragraphs or prose.`,
         `${validationPrompt}\n\nSources:\n${sourcesText}`
       );
       console.timeEnd('Step 3: Fact-Checking');
       
       // Step 4: Deep Reasoning & Analysis - with bullet points
       console.time('Step 4: Deep Reasoning');
-      const analysisPrompt = `Analyze the information and generate key insights for: "${shortenedQuery}". Present your insights as a markdown bullet list.`;
+      const analysisPrompt = `Analyze the information and generate key insights for: "${shortenedQuery}". Present your insights as a markdown bullet list (one bullet per sentence or understanding) and do not include paragraphs or prose.`;
       const analysisResult = await executeNvidiaStep(
         'analyze',
-        `You are an AI Analysis Agent. Provide your insights as a markdown bullet list for clarity.`,
+        `You are an AI Analysis Agent. Respond with a markdown bullet list (one bullet per sentence or understanding) and do not include paragraphs or prose.`,
         `${analysisPrompt}\n\nStrategy: ${strategyResult}\n\nValidation: ${validationResult}`
       );
       console.timeEnd('Step 4: Deep Reasoning');
@@ -538,18 +542,16 @@ Error details: ${errorMessage}
           {steps.map((step) => (
             <div key={step.id} className="mb-6">
               <h3 className="text-lg font-medium text-white mb-3">{step.title}</h3>
-              {/* Step content */}
               <div className="text-neutral-300 ml-4">
                 {step.status !== 'error' && step.result && (
-                  // Render as bullet points for all steps except final output and web source
-                  (step.id === 'understand' || step.id === 'validate' || step.id === 'analyze') ? (
-                    renderBulletPoints(step.result)
-                  ) : step.id === 'research' ? (
-                    // Web source step: show as list of sources (existing logic)
-                    <p>{step.result}</p>
+                  (step.id !== 'research') ? (
+                    <ul className="list-disc pl-5 space-y-2 text-neutral-300 text-base">
+                      {extractBulletPoints(step.result).map((point, i) => (
+                        <li key={i}>{point}</li>
+                      ))}
+                    </ul>
                   ) : (
-                    // Final output or other steps: render as markdown
-                    <ReactMarkdown className="prose prose-invert">{step.result}</ReactMarkdown>
+                    <p>{step.result}</p>
                   )
                 )}
                 {step.status !== 'error' && !step.result && step.content && <p>{step.content}</p>}
