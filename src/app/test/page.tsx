@@ -2505,6 +2505,21 @@ export default function TestChat() {
     ) as unknown as ConversationMessage[];
   }
 
+  // Add at the top of TestChat
+  const [activeMode, setActiveMode] = useState<'chat' | 'search' | 'advance'>('chat');
+  const chatAbortController = useRef<AbortController | null>(null);
+  const searchAbortController = useRef<AbortController | null>(null);
+  const advanceAbortController = useRef<AbortController | null>(null);
+
+  function handleModeSwitch(newMode: 'chat' | 'search' | 'advance') {
+    if (activeMode !== newMode) {
+      if (chatAbortController.current) chatAbortController.current.abort();
+      if (searchAbortController.current) searchAbortController.current.abort();
+      if (advanceAbortController.current) advanceAbortController.current.abort();
+    }
+    setActiveMode(newMode);
+  }
+
   return (
     <>
       <div className="min-h-screen flex flex-col px-4 sm:px-4 md:px-8 lg:px-0" style={{ background: '#161618' }}>
