@@ -346,6 +346,16 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
     return `${m}:${s.toString().padStart(2, '0')}`;
   }
 
+  // Utility to extract content inside <think>...</think> tags, or return original if not present
+  function extractThinkContent(text: string): string {
+    if (!text) return '';
+    const match = text.match(/<think>([\s\S]*?)<\/think>/i);
+    if (match && match[1]) {
+      return match[1].trim();
+    }
+    return text;
+  }
+
   // Main search execution flow
   const executeSearch = async (query: string) => {
     try {
@@ -596,10 +606,10 @@ Error details: ${errorMessage}
               <div className="text-neutral-300 ml-4">
                 {step.status !== 'error' && step.result && (
                   (step.id === 'understand' && firstStepThinking) ? (
-                    <ReactMarkdown className="prose prose-invert text-neutral-300 text-base">{firstStepThinking}</ReactMarkdown>
+                    <ReactMarkdown className="prose prose-invert text-neutral-300 text-base">{extractThinkContent(firstStepThinking)}</ReactMarkdown>
                   ) : (step.id !== 'research') ? (
                     <ul className="list-disc pl-5 space-y-2 text-neutral-300 text-base">
-                      {extractBulletPoints(step.result).map((point, i) => (
+                      {extractBulletPoints(extractThinkContent(step.result)).map((point, i) => (
                         <li key={i}>{point}</li>
                       ))}
                     </ul>
