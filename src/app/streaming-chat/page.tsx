@@ -6,6 +6,7 @@ import HamburgerMenu from '../../components/HamburgerMenu';
 import { v4 as uuidv4 } from 'uuid';
 import SearchPopup from '../../components/SearchPopup';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import { MarkdownRenderer } from '../../utils/markdown-utils';
 import { QueryContext } from '../../utils/template-utils';
@@ -610,18 +611,20 @@ CONVERSATION GUIDELINES:
         <div className="bg-white rounded-2xl shadow-lg w-full max-w-[850px] mx-auto flex items-center px-4 py-2 gap-2 sm:gap-3 transition-all duration-200 focus-within:ring-2 focus-within:ring-black/10">
           {/* Action buttons with responsive visibility */}
           <div className="flex space-x-1 sm:space-x-2">
-            <button type="button" aria-label="Search" className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-full border border-gray-200 bg-white hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/20">
-              <svg width="16" height="16" className="sm:w-[18px] sm:h-[18px]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          </button>
+            <Link href="/search-mode">
+              <button type="button" aria-label="Search Mode" className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-full border border-gray-200 bg-white hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/20">
+                <svg width="16" height="16" className="sm:w-[18px] sm:h-[18px]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              </button>
+            </Link>
             <button type="button" aria-label="Reason" className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-full border border-gray-200 bg-white hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/20">
               <svg width="16" height="16" className="sm:w-[18px] sm:h-[18px]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8M12 8v8"/></svg>
-          </button>
+            </button>
             <button type="button" aria-label="Deep research" className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-full border border-gray-200 bg-white hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/20 hidden sm:flex">
               <svg width="16" height="16" className="sm:w-[18px] sm:h-[18px]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-          </button>
+            </button>
             <button type="button" aria-label="Create image" className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-full border border-gray-200 bg-white hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/20 hidden md:flex">
               <svg width="16" height="16" className="sm:w-[18px] sm:h-[18px]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
-          </button>
+            </button>
           </div>
           {/* Input */}
           <input
