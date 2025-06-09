@@ -277,6 +277,22 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
     }
   };
   
+  // Helper to render bullet points from markdown or plain text
+  function renderBulletPoints(text: string) {
+    if (!text) return null;
+    // If the text already contains markdown bullets, render as markdown
+    if (/^\s*[-*•]\s+/m.test(text) || /^\s*\d+\.\s+/m.test(text)) {
+      return <ReactMarkdown className="prose prose-invert">{text}</ReactMarkdown>;
+    }
+    // Otherwise, split by newlines and render as bullets
+    const lines = text.split(/\n+/).map(l => l.trim()).filter(Boolean);
+    return (
+      <ul className="list-disc pl-5 space-y-2 text-neutral-300 text-base">
+        {lines.map((line, i) => <li key={i}>{line}</li>)}
+      </ul>
+    );
+  }
+
   // Main search execution flow
   const executeSearch = async (query: string) => {
     try {
@@ -525,9 +541,14 @@ Error details: ${errorMessage}
               {/* Step content */}
               <div className="text-neutral-300 ml-4">
                 {step.status !== 'error' && step.result && (
-                  step.id === 'research' ? (
+                  // Render as bullet points for all steps except final output and web source
+                  (step.id === 'understand' || step.id === 'validate' || step.id === 'analyze') ? (
+                    renderBulletPoints(step.result)
+                  ) : step.id === 'research' ? (
+                    // Web source step: show as list of sources (existing logic)
                     <p>{step.result}</p>
                   ) : (
+                    // Final output or other steps: render as markdown
                     <ReactMarkdown className="prose prose-invert">{step.result}</ReactMarkdown>
                   )
                 )}
