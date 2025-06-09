@@ -1957,8 +1957,10 @@ export default function TestChat() {
       if (selectedFilesForUpload.length > 0) {
         const clientSideSupabase = createSupabaseClient();
         if (!clientSideSupabase) throw new Error('Supabase client not available');
-        uploadedImageUrls = await Promise.all(
-          selectedFilesForUpload.map(async (file: File) => {
+        
+        // Fix the type error by explicitly typing the Promise.all result
+        const uploadedUrls: string[] = await Promise.all(
+          selectedFilesForUpload.map(async (file: File): Promise<string> => {
             const fileExt = file.name.split('.').pop();
             const fileName = `${Math.random()}.${fileExt}`;
             const filePath = `${fileName}`;
@@ -1979,6 +1981,9 @@ export default function TestChat() {
             return urlData.publicUrl;
           })
         );
+        
+        uploadedImageUrls = uploadedUrls;
+        
         if (uploadedImageUrls.length === 0 && selectedFilesForUpload.length > 0) {
           throw new Error('Failed to get public URLs for any of the uploaded images.');
         }
@@ -2055,51 +2060,38 @@ export default function TestChat() {
         const errorData = await res.text();
         throw new Error(`API request failed with status ${res.status}: ${errorData}`);
       }
-      
-      // REMOVED: Non-streaming block for 'conversation' as server always streams.
-      // if (queryType === 'conversation') { ... } 
-      
-      // All responses from /api/nvidia are now handled as either JSON or stream.
-      // The server always sends 'text/event-stream', so this 'application/json' check
-      // for non-image uploads will likely not be met directly from /api/nvidia.
-      // This block might be relevant if other API routes returned direct JSON.
-      if (res.headers.get('content-type')?.includes('application/json') && uploadedImageUrls.length === 0 && queryType !== 'conversation') {
-        const rawResponseText = await res.text();
-        console.log("[handleSend] Raw AI JSON Response Text (for non-conversation, non-image):", rawResponseText);
 
-        let structuredData;
-        // Ensure parsedQueryType is correctly initialized for this path.
-        // It should be a type that expects structured data (not 'conversation' or 'deep-research' which are handled differently).
-        let parsedQueryType: ContentDisplayType = queryType as unknown as ContentDisplayType; 
-
+      // Handle JSON response for structured queries
+      if (uploadedImageUrls.length === 0 && queryType !== 'conversation') {
+        const jsonData = await res.json();
+        const structuredData = jsonData.choices?.[0]?.message?.content || jsonData.choices?.[0]?.text || jsonData.content || '';
+        let parsedData;
         try {
-          let parsedJson = JSON.parse(rawResponseText);
-          if (typeof parsedJson === 'string') { // Handle double-encoded JSON
-            parsedJson = JSON.parse(parsedJson);
-          }
-          structuredData = parsedJson;
-        } catch (parseError) {
-          console.error("[handleSend] Error parsing AI JSON response (for non-conversation, non-image):", parseError, "Raw content:", rawResponseText);
-          structuredData = { 
-            content: "I apologize for the formatting error in structured data. Here's the raw response:\\n\\n" + rawResponseText 
-          };
-          parsedQueryType = 'conversation'; // Fallback to conversation display for the error
+          parsedData = JSON.parse(structuredData);
+        } catch (e) {
+          console.error("Failed to parse structured data:", e);
+          throw new Error("Failed to parse structured response");
         }
 
         const aiMsg: LocalMessage = {
-        role: "assistant" as const,
+          role: "assistant" as const,
           content: '', 
-          contentType: parsedQueryType,
-          structuredContent: structuredData,
+          contentType: queryType,
+          structuredContent: parsedData,
           id: uuidv4(),
           timestamp: Date.now(),
           parentId: userMessageId,
           webSources: [],
-          isProcessed: true // Mark message as processed
-      };
-      setMessages((prev) => [...prev, aiMsg]);
-      } else { // Default to streaming logic for all other cases (including 'conversation')
-        const reader = res.body!.getReader();
+          isProcessed: true
+        };
+        setMessages((prev) => [...prev, aiMsg]);
+      } else { 
+        // Default to streaming logic for all other cases (including 'conversation')
+        const reader = res.body?.getReader();
+        if (!reader) {
+          throw new Error('No response body available for streaming');
+        }
+
         const decoder = new TextDecoder();
         let buffer = '';
         let done = false;
@@ -2108,18 +2100,17 @@ export default function TestChat() {
         let isReasoningPhase = false; // Flag to track if we're in the reasoning phase
         let hasProcessedFinalContent = false; // Flag to know if we've already shown final content
         
-        // Initialize aiMsg for the streaming case. 
-        // We'll set its contentType more definitively after the stream.
-        let aiMsg: LocalMessage = { 
+        // Initialize aiMsg for streaming
+        const aiMsg: LocalMessage = {
           role: "assistant" as const,
-          content: "", 
+          content: "",
           id: uuidv4(),
           timestamp: Date.now(),
           parentId: userMessageId,
           imageUrls: uploadedImageUrls.length > 0 ? uploadedImageUrls : undefined,
           webSources: [],
-          contentType: 'conversation', // Default to conversation, will be confirmed/overridden after stream
-          isProcessed: true // Mark the assistant message as processed
+          contentType: 'conversation',
+          isProcessed: true
         };
 
         while (!done) {
@@ -2140,26 +2131,21 @@ export default function TestChat() {
                   const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.message?.content || parsed.choices?.[0]?.text || parsed.content || '';
                   
                   if (delta) {
-                    contentBuffer += delta; // Accumulate in buffer instead of showing immediately
+                    contentBuffer += delta;
                     
-                    // Use the new stream buffer processor to intelligently detect final content
+                    // Use the stream buffer processor to detect final content
                     const { showContent, processedContent, hasCompletedReasoning } = processStreamBuffer(contentBuffer);
                     
-                    // If we've detected final content to show
-                    if ((showContent) && !hasProcessedFinalContent) {
+                    if (showContent && !hasProcessedFinalContent) {
                       if (!hasActualContent) {
-                        // First time showing content - initialize
                         hasActualContent = true;
                         aiMsg.content = processedContent;
-                        
-                        // Only now add the message to chat and hide loading
                         setIsProcessing(false);
                         setMessages((prev) => [...prev, { ...aiMsg }]);
                       } else {
-                        // Update existing content
                         aiMsg.content = processedContent;
-                    setMessages((prev) => {
-                      const updatedMessages = [...prev];
+                        setMessages((prev) => {
+                          const updatedMessages = [...prev];
                           const aiIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
                           if (aiIndex !== -1) {
                             updatedMessages[aiIndex] = {
@@ -2167,19 +2153,16 @@ export default function TestChat() {
                               content: processedContent,
                               webSources: aiMsg.webSources,
                               isProcessed: true
-                        };
-                      }
-                      return updatedMessages;
-                    });
+                            };
+                          }
+                          return updatedMessages;
+                        });
                       }
                       
-                      // If we've definitively detected the transition from reasoning to final content,
-                      // mark that we've processed it, so we don't flip back
                       if (hasCompletedReasoning) {
                         hasProcessedFinalContent = true;
                       }
                     } else if (hasActualContent && showContent) {
-                      // We've already started showing content, continue updating
                       aiMsg.content = processedContent;
                       setMessages((prev) => {
                         const updatedMessages = [...prev];
@@ -2195,23 +2178,18 @@ export default function TestChat() {
                         return updatedMessages;
                       });
                     }
-                    // Note: If showContent is false (we detect we're still in reasoning),
-                    // we don't update the display
                   }
                 } catch (err) {
-                  // Skip malformed chunks silently
+                  console.error('Error parsing streaming response:', err);
                   continue;
                 }
               }
             }
           }
         }
-        
+
         // Apply post-processing after streaming is complete
-        // If it was an advance search, it would have been handled by its specific UI state.
-        // Otherwise, it's treated as a conversation, potentially needing post-processing.
         if (showAdvanceSearchUI || input.includes('@AdvanceSearch')) {
-          // Keep the Advance Search processing intact
           const processedResearch = enforceAdvanceSearchStructure(contentBuffer);
           setMessages((prev) => {
             const updatedMessages = [...prev];
@@ -2220,18 +2198,13 @@ export default function TestChat() {
               updatedMessages[msgIndex] = {
                 ...updatedMessages[msgIndex],
                 content: processedResearch,
-                contentType: 'deep-research' // Explicitly set for advance search
+                contentType: 'deep-research'
               };
             }
             return updatedMessages;
           });
-          aiMsg.content = processedResearch;
-          aiMsg.contentType = 'deep-research';
-        } else { // Handles conversation and image description streams
-          // First, try our smart processing to extract final content from the full response
+        } else {
           const { showContent, processedContent, hasCompletedReasoning } = processStreamBuffer(contentBuffer);
-          
-          // If smart processing found a clear final answer, use that
           const finalContent = hasCompletedReasoning ? processedContent : postProcessAIChatResponse(contentBuffer, true);
           
           setMessages((prev) => {
@@ -2241,30 +2214,28 @@ export default function TestChat() {
               updatedMessages[msgIndex] = {
                 ...updatedMessages[msgIndex],
                 content: finalContent,
-                contentType: 'conversation' // Confirmed as conversation
+                contentType: 'conversation'
               };
             }
             return updatedMessages;
           });
-          aiMsg.content = finalContent;
-          aiMsg.contentType = 'conversation';
         }
-        
+
         if (uploadedImageUrls.length > 0) {
-            const { content: cleanedContent } = cleanAIResponse(aiMsg.content);
-            const descriptionSummary = cleanedContent.slice(0, 150) + (cleanedContent.length > 150 ? '...' : '');
-            const newImageCount = imageCounter + uploadedImageUrls.length;
-            setImageCounter(newImageCount);
-            const newImageContexts = uploadedImageUrls.map((url, index) => ({
-                order: imageCounter + index + 1,
-                description: descriptionSummary,
-                imageUrl: url,
-                timestamp: Date.now()
-            }));
-            setImageContexts(prev => {
-                const updated = [...prev, ...newImageContexts];
-                return updated.slice(-10);
-            });
+          const { content: cleanedContent } = cleanAIResponse(aiMsg.content);
+          const descriptionSummary = cleanedContent.slice(0, 150) + (cleanedContent.length > 150 ? '...' : '');
+          const newImageCount = imageCounter + uploadedImageUrls.length;
+          setImageCounter(newImageCount);
+          const newImageContexts = uploadedImageUrls.map((url, index) => ({
+            order: imageCounter + index + 1,
+            description: descriptionSummary,
+            imageUrl: url,
+            timestamp: Date.now()
+          }));
+          setImageContexts(prev => {
+            const updated = [...prev, ...newImageContexts];
+            return updated.slice(-10);
+          });
         }
       }
     } catch (err: any) {
