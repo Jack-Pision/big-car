@@ -190,71 +190,46 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
       setError(null);
       
       // Step 1: Query Intelligence & Strategy Planning
-      const strategyPrompt = `You are an AI Search Strategy Planner. Your goal is to analyze the user's query and develop a comprehensive search strategy.
-Think step-by-step to:
-1. Understand the core information need
-2. Identify key concepts and potential subtopics
-3. Develop an effective search strategy with key terms
-4. Anticipate potential challenges or ambiguities
-
-Format your response as a clear, structured strategy plan.`;
-      
+      console.time('Step 1: Strategy Planning');
+      const strategyPrompt = `You are an AI Search Strategy Planner. Your goal is to analyze the user's query and develop a comprehensive search strategy.\nThink step-by-step to:\n1. Understand the core information need\n2. Identify key concepts and potential subtopics\n3. Develop an effective search strategy with key terms\n4. Anticipate potential challenges or ambiguities\n\nFormat your response as a clear, structured strategy plan.`;
       const strategyResult = await executeNvidiaStep(
         'understand',
         strategyPrompt,
         `Analyze the following query and develop a comprehensive search strategy: "${query}"`
       );
+      console.timeEnd('Step 1: Strategy Planning');
       
       // Step 2: Multi-Source Web Discovery & Retrieval
+      console.time('Step 2: Web Discovery');
       const serperResults = await executeSerperStep(query);
+      console.timeEnd('Step 2: Web Discovery');
       
       // Step 3: Fact-Checking & Source Validation
-      const validationPrompt = `You are an AI Fact-Checker and Source Validator. Your goal is to critically evaluate the search results and validate their reliability.
-Think step-by-step to:
-1. Analyze each source for credibility and relevance
-2. Identify any contradictions or inconsistencies between sources
-3. Assess the quality of information and potential biases
-4. Extract the most reliable facts and information
-
-Format your response as a clear assessment of the information quality.`;
-      
-      // Send both the query and web results to be validated
+      console.time('Step 3: Fact-Checking');
+      const validationPrompt = `You are an AI Fact-Checker and Source Validator. Your goal is to critically evaluate the search results and validate their reliability.\nThink step-by-step to:\n1. Analyze each source for credibility and relevance\n2. Identify any contradictions or inconsistencies between sources\n3. Assess the quality of information and potential biases\n4. Extract the most reliable facts and information\n\nFormat your response as a clear assessment of the information quality.`;
       const sourcesText = serperResults.sources.map((s: any) => 
         `- ${s.title}: ${s.url}`
       ).join('\n');
-      
       const validationResult = await executeNvidiaStep(
         'validate',
         validationPrompt,
         `Validate the following search results for the query: "${query}"\n\nSearch Results:\n${sourcesText}`
       );
+      console.timeEnd('Step 3: Fact-Checking');
       
       // Step 4: Deep Reasoning & Analysis
-      const analysisPrompt = `You are an AI Deep Reasoning Agent. Your goal is to analyze the validated information and generate insights.
-Think step-by-step to:
-1. Synthesize the validated information
-2. Identify patterns, trends, and connections
-3. Draw logical conclusions
-4. Generate insights that address the original query
-
-Format your response as a well-structured analysis.`;
-      
+      console.time('Step 4: Deep Reasoning');
+      const analysisPrompt = `You are an AI Deep Reasoning Agent. Your goal is to analyze the validated information and generate insights.\nThink step-by-step to:\n1. Synthesize the validated information\n2. Identify patterns, trends, and connections\n3. Draw logical conclusions\n4. Generate insights that address the original query\n\nFormat your response as a well-structured analysis.`;
       const analysisResult = await executeNvidiaStep(
         'analyze',
         analysisPrompt,
         `Analyze the following validated information for the query: "${query}"\n\nStrategy Plan:\n${strategyResult}\n\nValidated Information:\n${validationResult}`
       );
+      console.timeEnd('Step 4: Deep Reasoning');
       
       // Step 5: Final Output (to be displayed in main chat)
-      const finalOutputPrompt = `You are an AI Answer Generator. Your goal is to create a comprehensive, well-structured final answer.
-Think step-by-step to:
-1. Integrate all insights from the previous steps
-2. Organize the information in a logical flow
-3. Present a balanced, nuanced perspective
-4. Provide clear, actionable conclusions
-
-Format your response as a definitive answer to the user's query.`;
-      
+      console.time('Step 5: Final Output');
+      const finalOutputPrompt = `You are an AI Answer Generator. Your goal is to create a comprehensive, well-structured final answer.\nThink step-by-step to:\n1. Integrate all insights from the previous steps\n2. Organize the information in a logical flow\n3. Present a balanced, nuanced perspective\n4. Provide clear, actionable conclusions\n\nFormat your response as a definitive answer to the user's query.`;
       const finalResponse = await fetch('/api/nvidia', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -328,6 +303,8 @@ Format your response as a definitive answer to the user's query.`;
       if (onComplete) {
         onComplete(finalOutput);
       }
+      
+      console.timeEnd('Step 5: Final Output');
       
     } catch (err) {
       console.error('Error in search execution:', err);
