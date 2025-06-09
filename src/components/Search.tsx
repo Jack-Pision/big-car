@@ -277,20 +277,17 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
     }
   };
   
-  // Helper to render bullet points from markdown or plain text
+  function stripEmojis(text: string) {
+    // @ts-ignore: Unicode flag requires ES6 or later
+    return text.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F900}-\u{1F9FF}\u{1FA70}-\u{1FAFF}\u{1F1E6}-\u{1F1FF}]/gu, '');
+  }
+
   function renderBulletPoints(text: string) {
     if (!text) return null;
-    // If the text already contains markdown bullets, render as markdown
-    if (/^\s*[-*•]\s+/m.test(text) || /^\s*\d+\.\s+/m.test(text)) {
-      return <ReactMarkdown className="prose prose-invert">{text}</ReactMarkdown>;
-    }
-    // Otherwise, split by newlines and render as bullets
-    const lines = text.split(/\n+/).map(l => l.trim()).filter(Boolean);
-    return (
-      <ul className="list-disc pl-5 space-y-2 text-neutral-300 text-base">
-        {lines.map((line, i) => <li key={i}>{line}</li>)}
-      </ul>
-    );
+    // Strip emojis for search mode
+    const cleanText = stripEmojis(text);
+    // Always render as markdown to support nested lists and formatting
+    return <ReactMarkdown className="prose prose-invert">{cleanText}</ReactMarkdown>;
   }
 
   // Main search execution flow
