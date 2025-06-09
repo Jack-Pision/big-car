@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import styles from './Search.module.css';
 import { dedupedSerperRequest } from '@/utils/api-request-cache';
 import ReactMarkdown from 'react-markdown';
@@ -57,6 +57,9 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
   const [finalResult, setFinalResult] = useState<string>('');
   const [firstStepThinking, setFirstStepThinking] = useState<string>('');
   const [isExpanded, setIsExpanded] = useState(false);
+  const [timer, setTimer] = useState(0);
+  const [timerActive, setTimerActive] = useState(false);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
   
   // Execute search on mount
   useEffect(() => {
@@ -305,6 +308,44 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
     return bullets;
   }
 
+  // Start/stop timer based on step status
+  useEffect(() => {
+    const allCompleted = steps.every(step => step.status === 'completed');
+    if (timerActive && allCompleted) {
+      setTimerActive(false);
+      if (timerRef.current) clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  }, [steps, timerActive]);
+
+  // Timer interval logic
+  useEffect(() => {
+    if (timerActive) {
+      timerRef.current = setInterval(() => {
+        setTimer(t => t + 1);
+      }, 1000);
+    } else if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [timerActive]);
+
+  // Reset timer on new search
+  useEffect(() => {
+    setTimer(0);
+    setTimerActive(true);
+  }, [query]);
+
+  // Helper to format timer
+  function formatTimer(seconds: number) {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  }
+
   // Main search execution flow
   const executeSearch = async (query: string) => {
     try {
@@ -517,6 +558,7 @@ Error details: ${errorMessage}
             <line x1="13.85" y1="10.15" x2="17.15" y2="6.85" />
           </svg>
           <span className="text-lg font-normal text-neutral-200">{query}</span>
+          <span className="ml-3 text-xs font-normal text-neutral-400 bg-neutral-800/60 px-2 py-0.5 rounded-md" style={{ minWidth: 44, textAlign: 'center', letterSpacing: 0.5 }}>{formatTimer(timer)}</span>
         </div>
         <motion.div
           className="absolute right-6 top-1/2 -translate-y-1/2 cursor-pointer"
