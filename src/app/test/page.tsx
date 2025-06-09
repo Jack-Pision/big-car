@@ -1806,7 +1806,7 @@ export default function TestChat() {
     e.preventDefault();
     if (!input.trim()) return;
 
-    // Check if we're in search mode
+    // First check if we're in search mode
     if (activeButton === 'search') {
       // Add user message to chat
       setMessages(prev => [
@@ -1821,18 +1821,36 @@ export default function TestChat() {
         { 
           role: 'search-ui',
           id: uuidv4(), 
-          content: input, // Include the query content
-          query: input,   // Also store as query property for SearchPanel
+          content: input,
+          query: input,
           timestamp: Date.now(),
           isProcessed: true
         }
       ]);
       
-      // Clear input
       setInput('');
       return;
     }
 
+    // Then check if we're in advance search mode
+    if (activeButton === 'advance' || input.includes('@AdvanceSearch')) {
+      setIsAdvanceSearchActive(true);
+      setShowAdvanceSearchUI(true);
+      const researchId = uuidv4();
+      setMessages(prev => [
+        ...prev,
+        { role: "user", content: input, id: uuidv4(), timestamp: Date.now(), isProcessed: true },
+        { role: "deep-research", content: input, researchId, id: uuidv4(), timestamp: Date.now(), isProcessed: true }
+      ]);
+      setInput("");
+      setImagePreviewUrls([]);
+      setSelectedFilesForUpload([]);
+      setIsLoading(false);
+      setIsAiResponding(false);
+      return;
+    }
+
+    // If we get here, we're in default chat mode
     // Initialize variables at the function scope level
     let userMessageId = '';
     let uploadedImageUrls: string[] = [];
@@ -1851,28 +1869,13 @@ export default function TestChat() {
       }
 
       if (!hasInteracted) setHasInteracted(true);
-      // --- FIX: Always reset restoration state for new Advance Search queries ---
+      
+      // Reset any advance search state when in default chat mode
       if (showAdvanceSearchUI) {
-        setIsRestoredFromStorage(false); // Always reset before new query
-        setRestoredDeepResearchState({}); // Clear any old state
-      }
-      setCurrentQuery(input);
-      setIsRestoredFromStorage(false); // Reset the restored flag when sending a new message
-
-      if (showAdvanceSearchUI) {
-        setIsAdvanceSearchActive(true);
-        const researchId = uuidv4();
-        setMessages(prev => [
-          ...prev,
-          { role: "user", content: input, id: uuidv4(), timestamp: Date.now(), isProcessed: true },
-          { role: "deep-research", content: input, researchId, id: uuidv4(), timestamp: Date.now(), isProcessed: true }
-        ]);
-        setInput("");
-        setImagePreviewUrls([]);
-        setSelectedFilesForUpload([]);
-        setIsLoading(false);
-        setIsAiResponding(false);
-        return;
+        setShowAdvanceSearchUI(false);
+        setIsAdvanceSearchActive(false);
+        setIsRestoredFromStorage(false);
+        setRestoredDeepResearchState({});
       }
 
       setIsAiResponding(true);
