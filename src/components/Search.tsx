@@ -89,23 +89,70 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
               role: 'user',
               content: userPrompt
             }
-          ]
+          ],
+          stream: true // Enable streaming
         })
       });
       
       if (!response.ok) {
-        throw new Error(`API call failed with status: ${response.status}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || 
+          `API call failed with status: ${response.status}`
+        );
       }
       
-      const data = await response.json();
-      const result = data.choices?.[0]?.message?.content || 'Step completed successfully.';
+      // Handle streaming response
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('No response body available');
+      }
+      
+      let result = '';
+      const decoder = new TextDecoder();
+      
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          const chunk = decoder.decode(value);
+          const lines = chunk.split('\n');
+          
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+              if (data === '[DONE]') continue;
+              
+              try {
+                const parsed = JSON.parse(data);
+                const content = parsed.choices?.[0]?.delta?.content || '';
+                if (content) {
+                  result += content;
+                  // Update the step content in real-time
+                  updateStepStatus(stepId, 'active', result);
+                }
+              } catch (e) {
+                console.error('Error parsing streaming response:', e);
+              }
+            }
+          }
+        }
+      } finally {
+        reader.releaseLock();
+      }
+      
+      if (!result) {
+        throw new Error('No content received from the API');
+      }
       
       updateStepStatus(stepId, 'completed', result);
       return result;
     } catch (err) {
       console.error(`Error in ${stepId} step:`, err);
       updateStepStatus(stepId, 'error');
-      setError(`Error in ${stepId}: ${err instanceof Error ? err.message : String(err)}`);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      setError(`Error in ${stepId}: ${errorMessage}`);
       throw err;
     }
   };
@@ -221,18 +268,61 @@ Format your response as a definitive answer to the user's query.`;
               role: 'user',
               content: `Generate a final, comprehensive answer for the query: "${query}"\n\nStrategy Plan:\n${strategyResult}\n\nWeb Research:\n${sourcesText}\n\nValidation:\n${validationResult}\n\nAnalysis:\n${analysisResult}`
             }
-          ]
+          ],
+          stream: true
         })
       });
       
       if (!finalResponse.ok) {
-        throw new Error(`Final output API call failed with status: ${finalResponse.status}`);
+        const errorData = await finalResponse.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || 
+          `Final output API call failed with status: ${finalResponse.status}`
+        );
       }
       
-      const finalData = await finalResponse.json();
-      const finalOutput = finalData.choices?.[0]?.message?.content || 'Search completed successfully.';
+      // Handle streaming response for final output
+      const reader = finalResponse.body?.getReader();
+      if (!reader) {
+        throw new Error('No response body available for final output');
+      }
       
-      setFinalResult(finalOutput);
+      let finalOutput = '';
+      const decoder = new TextDecoder();
+      
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          const chunk = decoder.decode(value);
+          const lines = chunk.split('\n');
+          
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+              if (data === '[DONE]') continue;
+              
+              try {
+                const parsed = JSON.parse(data);
+                const content = parsed.choices?.[0]?.delta?.content || '';
+                if (content) {
+                  finalOutput += content;
+                  setFinalResult(finalOutput); // Update in real-time
+                }
+              } catch (e) {
+                console.error('Error parsing final output streaming response:', e);
+              }
+            }
+          }
+        }
+      } finally {
+        reader.releaseLock();
+      }
+      
+      if (!finalOutput) {
+        throw new Error('No content received for final output');
+      }
       
       // Notify parent component that search is complete with final result
       if (onComplete) {
@@ -241,7 +331,8 @@ Format your response as a definitive answer to the user's query.`;
       
     } catch (err) {
       console.error('Error in search execution:', err);
-      setError(`Error in search: ${err instanceof Error ? err.message : String(err)}`);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      setError(`Error in search: ${errorMessage}`);
     }
   };
 

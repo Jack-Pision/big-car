@@ -14,7 +14,7 @@ if (!OPENROUTER_API_KEY) {
 }
 
 // Helper function for fetch with timeout
-async function fetchWithTimeout(resource: string, options: any = {}, timeout = 15000) {
+async function fetchWithTimeout(resource: string, options: any = {}, timeout = 30000) {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
   try {
@@ -24,10 +24,9 @@ async function fetchWithTimeout(resource: string, options: any = {}, timeout = 1
   } catch (err: any) {
     clearTimeout(id);
     if (err.name === 'AbortError') {
-      // Re-throw a specific error for timeout to be caught by the main handler
-      throw new Error('Request timed out'); 
+      throw new Error('Request timed out after ' + (timeout / 1000) + ' seconds');
     }
-    throw err; // Re-throw other errors
+    throw err;
   }
 }
 
@@ -126,28 +125,69 @@ async function fetchNvidiaText(messages: any[], options: any = {}) {
     stream: true,
   };
   
-  // Using fetchWithTimeout for the NVIDIA API call
-  const res = await fetchWithTimeout('https://integrate.api.nvidia.com/v1/chat/completions', {
+  try {
+    // Using fetchWithTimeout with increased timeout for NVIDIA API call
+    const res = await fetchWithTimeout('https://integrate.api.nvidia.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-      'Authorization': `Bearer ${TEXT_API_KEY}`,
+        'Authorization': `Bearer ${TEXT_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(payload),
-  }, 12000); // 12-second timeout for NVIDIA Nemotron
+    }, 30000); // 30-second timeout for NVIDIA API
 
     if (!res.ok) {
       const errorText = await res.text();
-    // Return a Response object with status for consistent error handling upstream
-    return new Response(JSON.stringify({ error: `Nvidia API Error: ${errorText}` }), { status: res.status, headers: { 'Content-Type': 'application/json'} });
+      console.error('Nvidia API error:', {
+        status: res.status,
+        statusText: res.statusText,
+        error: errorText,
+        timestamp: new Date().toISOString()
+      });
+      
+      // Handle specific error cases
+      if (res.status === 504) {
+        return new Response(JSON.stringify({
+          error: 'Gateway Timeout: The AI service took too long to respond. Please try again.',
+          details: errorText
+        }), {
+          status: 504,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+      
+      return new Response(JSON.stringify({
+        error: `Nvidia API Error: ${errorText}`,
+        status: res.status
+      }), {
+        status: res.status,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
+    
     return res;
+  } catch (err: any) {
+    console.error('Error in fetchNvidiaText:', err);
+    const isTimeout = err.message.includes('timed out');
+    return new Response(JSON.stringify({
+      error: isTimeout 
+        ? 'Gateway Timeout: The AI service took too long to respond. Please try again.'
+        : 'Failed to process request',
+      details: err.message
+    }), {
+      status: isTimeout ? 504 : 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
 }
 
 export async function POST(req: NextRequest) {
   const contentType = req.headers.get('content-type') || '';
   if (!contentType.includes('application/json')) {
-    return new Response(JSON.stringify({ error: 'Unsupported content type' }), { 
+    return new Response(JSON.stringify({ 
+      error: 'Unsupported content type',
+      details: 'Request must be application/json'
+    }), { 
       status: 400, 
       headers: { 'Content-Type': 'application/json' } 
     });
@@ -155,6 +195,17 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
+    
+    // Validate required fields
+    if (!body.messages || !Array.isArray(body.messages)) {
+      return new Response(JSON.stringify({
+        error: 'Invalid request format',
+        details: 'messages array is required'
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
     
     // Extract model parameters if provided
     const modelParams = {
@@ -257,11 +308,14 @@ export async function POST(req: NextRequest) {
       });
     }
   } catch (err: any) {
-    console.error("[API /api/nvidia] Error in POST:", err);
-    const isTimeout = err.message === 'Request timed out';
+    console.error('Error in NVIDIA API route:', err);
+    const isTimeout = err.message.includes('timed out');
     return new Response(JSON.stringify({
-      error: isTimeout ? 'Gateway Timeout: The AI service took too long to respond.' : 'Failed to process request',
-      details: err.message || String(err)
+      error: isTimeout 
+        ? 'Gateway Timeout: The AI service took too long to respond. Please try again.'
+        : 'Internal Server Error',
+      details: err.message,
+      timestamp: new Date().toISOString()
     }), {
       status: isTimeout ? 504 : 500,
       headers: { 'Content-Type': 'application/json' }
