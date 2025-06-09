@@ -55,6 +55,7 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
   ]);
   const [error, setError] = useState<string | null>(null);
   const [finalResult, setFinalResult] = useState<string>('');
+  const [firstStepThinking, setFirstStepThinking] = useState<string>('');
   const [isExpanded, setIsExpanded] = useState(false);
   
   // Execute search on mount
@@ -175,6 +176,10 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
                   result += content;
                   // Update the step content in real-time
                   updateStepStatus(stepId, 'active', result);
+                  // Store the raw thinking for the first step
+                  if (stepId === 'understand') {
+                    setFirstStepThinking(prevThinking => prevThinking + content);
+                  }
                 }
               } catch (e) {
                 console.error('Error parsing streaming response:', e);
@@ -304,6 +309,7 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
   const executeSearch = async (query: string) => {
     try {
       setError(null);
+      setFirstStepThinking(''); // Reset the first step thinking for new searches
       
       // Shorten the query if it's very long
       const shortenedQuery = query.length > 500 ? query.substring(0, 500) + "..." : query;
@@ -549,9 +555,13 @@ Error details: ${errorMessage}
                 {step.status !== 'error' && step.result && (
                   (step.id !== 'research') ? (
                     <ul className="list-disc pl-5 space-y-2 text-neutral-300 text-base">
-                      {extractBulletPoints(step.result).map((point, i) => (
-                        <li key={i}>{point}</li>
-                      ))}
+                      {step.id === 'understand' && firstStepThinking 
+                        ? extractBulletPoints(firstStepThinking).map((point, i) => (
+                            <li key={i}>{point}</li>
+                          ))
+                        : extractBulletPoints(step.result).map((point, i) => (
+                          <li key={i}>{point}</li>
+                        ))}
                     </ul>
                   ) : (
                     <p>{step.result}</p>
