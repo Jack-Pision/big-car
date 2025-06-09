@@ -55,7 +55,7 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
   ]);
   const [error, setError] = useState<string | null>(null);
   const [finalResult, setFinalResult] = useState<string>('');
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
   
   // Execute search on mount
   useEffect(() => {
