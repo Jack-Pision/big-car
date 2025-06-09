@@ -1,7 +1,9 @@
+'use client';
 import React, { useState, useEffect } from 'react';
 import styles from './Search.module.css';
 import { dedupedSerperRequest } from '@/utils/api-request-cache';
 import ReactMarkdown from 'react-markdown';
+import { motion } from 'framer-motion';
 
 // Define step types
 type StepStatus = 'pending' | 'active' | 'completed' | 'error';
@@ -53,6 +55,7 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
   ]);
   const [error, setError] = useState<string | null>(null);
   const [finalResult, setFinalResult] = useState<string>('');
+  const [isExpanded, setIsExpanded] = useState(true);
   
   // Execute search on mount
   useEffect(() => {
@@ -450,7 +453,7 @@ Error details: ${errorMessage}
   return (
     <div
       className="w-full mx-auto rounded-lg overflow-hidden bg-[#171717] border border-white/20"
-      style={{ borderRadius: '20px', maxWidth: '969px', height: '300px' }}
+      style={{ borderRadius: '20px', maxWidth: '969px' }}
     >
       {/* Header (fixed) */}
       <div
@@ -468,7 +471,13 @@ Error details: ${errorMessage}
           </svg>
           <span className="text-lg font-normal text-neutral-200">{query}</span>
         </div>
-        <div className="absolute right-6 top-1/2 -translate-y-1/2">
+        <motion.div
+          className="absolute right-6 top-1/2 -translate-y-1/2 cursor-pointer"
+          onClick={() => setIsExpanded((v) => !v)}
+          animate={{ rotate: isExpanded ? 0 : 180 }}
+          transition={{ duration: 0.3 }}
+          style={{ display: 'flex', alignItems: 'center' }}
+        >
           <svg
             viewBox="0 0 24 24"
             width="20"
@@ -481,11 +490,15 @@ Error details: ${errorMessage}
           >
             <polyline points="6 9 12 15 18 9" />
           </svg>
-        </div>
+        </motion.div>
       </div>
-
-      {/* Content (scrollable) */}
-      <div className={`px-6 py-4 overflow-y-auto ${styles['hide-scrollbar']}`} style={{ height: 'calc(300px - 64px)' }}>
+      {/* Content (scrollable, animated height) */}
+      <motion.div
+        className={`px-6 py-4 overflow-y-auto ${styles['hide-scrollbar']}`}
+        animate={{ height: isExpanded ? 300 : 180 }}
+        transition={{ duration: 0.4, ease: 'easeInOut' }}
+        style={{ height: 300 - 64 }}
+      >
         {/* Steps */}
         <div className="space-y-8">
           {steps.map((step) => (
@@ -512,7 +525,7 @@ Error details: ${errorMessage}
             <p className="text-red-400">{error}</p>
           </div>
         )}
-      </div>
+      </motion.div>
     </div>
   );
 };
