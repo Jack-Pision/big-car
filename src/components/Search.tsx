@@ -307,8 +307,8 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
       
       // Step 1: Query Intelligence & Strategy Planning - with bullet points and aggressive truncation
       console.time('Step 1: Strategy Planning');
-      let step1SystemPrompt = `You are an AI Search Strategy Planner. Respond with a markdown bullet list (one bullet per sentence or understanding) and do not include paragraphs or prose.`;
-      let step1UserPrompt = `Analyze this query and create a search plan as a markdown bullet list (one bullet per sentence or understanding).\n\nQuery: ${shortenedQuery}`;
+      let step1SystemPrompt = `You are an AI Search Strategy Planner. Show your thinking process. Respond with ONLY a markdown bullet list (one bullet per understanding) and do not include paragraphs or prose.`;
+      let step1UserPrompt = `Break down your understanding and thinking about this query in bullet points (one bullet per understanding).\n\nQuery: ${shortenedQuery}`;
       // Aggressively truncate for step 1
       const step1SystemPromptTruncated = step1SystemPrompt.length > MAX_STEP1_PROMPT_LENGTH
         ? step1SystemPrompt.substring(0, MAX_STEP1_PROMPT_LENGTH) + '...'
@@ -331,24 +331,24 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
       
       // Step 3: Fact-Checking & Source Validation - with bullet points
       console.time('Step 3: Fact-Checking');
-      const validationPrompt = `Quickly assess the credibility of these search results for: "${shortenedQuery}". Present your findings as a markdown bullet list (one bullet per sentence or understanding) and do not include paragraphs or prose.`;
+      const validationPrompt = `Show your thinking as you assess the credibility of these search results for: "${shortenedQuery}". Present your thinking as a markdown bullet list (one bullet per understanding) and do not include paragraphs or prose.`;
       const sourcesText = serperResults.sources.map((s: any, i: number) => 
         `${i+1}. ${s.title}: ${s.url}`
       ).join('\n');
       
       const validationResult = await executeNvidiaStep(
         'validate',
-        `You are an AI Fact-Checker. Respond with a markdown bullet list (one bullet per sentence or understanding) and do not include paragraphs or prose.`,
+        `You are an AI Fact-Checker. Show your thinking process. Respond with ONLY a markdown bullet list (one bullet per understanding) and do not include paragraphs or prose.`,
         `${validationPrompt}\n\nSources:\n${sourcesText}`
       );
       console.timeEnd('Step 3: Fact-Checking');
       
       // Step 4: Deep Reasoning & Analysis - with bullet points
       console.time('Step 4: Deep Reasoning');
-      const analysisPrompt = `Analyze the information and generate key insights for: "${shortenedQuery}". Present your insights as a markdown bullet list (one bullet per sentence or understanding) and do not include paragraphs or prose.`;
+      const analysisPrompt = `Show your thinking as you analyze the information for: "${shortenedQuery}". Present your thinking process as a markdown bullet list (one bullet per understanding) and do not include paragraphs or prose.`;
       const analysisResult = await executeNvidiaStep(
         'analyze',
-        `You are an AI Analysis Agent. Respond with a markdown bullet list (one bullet per sentence or understanding) and do not include paragraphs or prose.`,
+        `You are an AI Analysis Agent. Show your thinking process. Respond with ONLY a markdown bullet list (one bullet per understanding) and do not include paragraphs or prose.`,
         `${analysisPrompt}\n\nStrategy: ${strategyResult}\n\nValidation: ${validationResult}`
       );
       console.timeEnd('Step 4: Deep Reasoning');
