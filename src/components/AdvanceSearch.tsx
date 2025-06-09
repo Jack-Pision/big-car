@@ -103,6 +103,7 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
   const stepRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const [displayingSteps, setDisplayingSteps] = useState<string[]>([]);
   const rightPanelRef = useRef<HTMLDivElement>(null);
+  const [isExpanded, setIsExpanded] = useState(true);
   
   // Reset finalAnswerSent when steps array changes (new search)
   useEffect(() => {
@@ -616,19 +617,26 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
           <h1 className="text-lg font-normal text-neutral-200">{steps[0]?.title || "Title of the query"}</h1>
         </div>
         {/* Collapse/expand arrow - functional, right-aligned */}
-        <div className="absolute right-6 top-1/2 -translate-y-1/2 cursor-pointer" onClick={() => {
-          if (rightPanelRef.current) {
-            rightPanelRef.current.classList.toggle('h-0');
-            rightPanelRef.current.classList.toggle('overflow-hidden');
-          }
-        }}>
+        <motion.div
+          className="absolute right-6 top-1/2 -translate-y-1/2 cursor-pointer"
+          onClick={() => setIsExpanded((v) => !v)}
+          animate={{ rotate: isExpanded ? 0 : 180 }}
+          transition={{ duration: 0.3 }}
+          style={{ display: 'flex', alignItems: 'center' }}
+        >
           <svg viewBox="0 0 24 24" width="20" height="20" stroke="#E5E5E5" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="18 15 12 9 6 15"></polyline>
           </svg>
-        </div>
+        </motion.div>
       </div>
-      {/* Content panel - All steps, scrollable */}
-      <div ref={rightPanelRef} className="overflow-y-auto px-8 pt-4 pb-2 hide-scrollbar" style={{ maxHeight: '60vh', minHeight: '200px' }}>
+      {/* Content panel - All steps, scrollable, with animated height */}
+      <motion.div
+        ref={rightPanelRef}
+        className="overflow-y-auto px-8 pt-4 pb-2 hide-scrollbar"
+        style={{ minHeight: '200px' }}
+        animate={{ maxHeight: isExpanded ? '60vh' : '340px' }}
+        transition={{ duration: 0.4, ease: 'easeInOut' }}
+      >
         <div className="space-y-8">
           {steps.map((step, idx, arr) => {
             // Only show steps that are in the displayingSteps array
@@ -658,7 +666,7 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
             {error}
           </div>
         )}
-      </div>
+      </motion.div>
     </div>
   );
 };
