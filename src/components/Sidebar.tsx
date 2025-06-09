@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { Session } from '@/lib/types';
-import Link from 'next/link';
 import {
   getSessions,
   deleteSession as deleteSessionFromService,
@@ -105,9 +104,7 @@ export default function Sidebar({
           >
             <div className="flex flex-col h-full relative z-40">
               <div className="flex flex-col items-center justify-center mt-8 mb-2" style={{ height: '64px' }}>
-                <Link href="/">
-                  <img src="/Logo.svg" alt="App Logo" style={{ height: '56px', width: 'auto', display: 'block' }} />
-                </Link>
+                <img src="/Logo.svg" alt="App Logo" style={{ height: '56px', width: 'auto', display: 'block' }} />
               </div>
               <div className="mt-6">
                 <button
@@ -124,32 +121,6 @@ export default function Sidebar({
                   </svg>
                   <span className="font-medium">New chat</span>
                 </button>
-                
-                {/* Navigation Links */}
-                <div className="mx-4 mt-4 mb-2">
-                  <span className="text-xs font-semibold text-gray-300 tracking-wide" style={{ letterSpacing: '0.05em' }}>NAVIGATION</span>
-                </div>
-                <Link href="/" className="mb-1 flex items-center gap-2 px-3 py-2 rounded-lg text-[#e5e7eb] hover:bg-[#232323]/80 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/10 text-left w-full pl-4">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e5e7eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                    <polyline points="9 22 9 12 15 12 15 22"/>
-                  </svg>
-                  <span className="font-medium">Home</span>
-                </Link>
-                <Link href="/streaming-chat" className="mb-1 flex items-center gap-2 px-3 py-2 rounded-lg text-[#e5e7eb] hover:bg-[#232323]/80 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/10 text-left w-full pl-4">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e5e7eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                  </svg>
-                  <span className="font-medium">Chat</span>
-                </Link>
-                <Link href="/search-mode" className="mb-1 flex items-center gap-2 px-3 py-2 rounded-lg text-[#e5e7eb] hover:bg-[#232323]/80 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/10 text-left w-full pl-4">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e5e7eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="11" cy="11" r="8"/>
-                    <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                  </svg>
-                  <span className="font-medium">Search Mode</span>
-                </Link>
-                
                 <div className="mx-4 mt-4 mb-2">
                   <span className="text-xs font-semibold text-gray-300 tracking-wide" style={{ letterSpacing: '0.05em' }}>SESSIONS</span>
                 </div>

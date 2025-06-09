@@ -1050,7 +1050,7 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
       setAnswerAddedToMainChat(true);
     }
   }, [query]);
-
+  
   // Consolidated state restoration logic
   useEffect(() => {
     if (typeof window === 'undefined' || restorationAttemptedRef.current) {
@@ -1058,34 +1058,34 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
     }
 
     restorationAttemptedRef.current = true;
-    const alreadyInMainChat = checkIfAnswerAlreadyInMainChat();
-    setAnswerAddedToMainChat(alreadyInMainChat);
-
+      const alreadyInMainChat = checkIfAnswerAlreadyInMainChat();
+      setAnswerAddedToMainChat(alreadyInMainChat);
+      
     // Try to restore from completed searches first
-    if (isSearchCompleted(query)) {
-      const completedSearch = getCompletedSearch(query);
-      if (completedSearch && completedSearch.finalAnswer) {
-        setRestoredState({
-          steps: completedSearch.steps,
-          activeStepId: completedSearch.activeStepId,
-          isComplete: true,
-          isInProgress: false,
-          webData: completedSearch.webData,
+      if (isSearchCompleted(query)) {
+        const completedSearch = getCompletedSearch(query);
+        if (completedSearch && completedSearch.finalAnswer) {
+          setRestoredState({
+            steps: completedSearch.steps,
+            activeStepId: completedSearch.activeStepId,
+            isComplete: true,
+            isInProgress: false,
+            webData: completedSearch.webData,
           isFullyCompleted: true
-        });
-        
-        setIsBlockRestoredFromStorage(true);
-        setIsSearchAlreadyCompleted(true);
-        setCompletedSearchAnswer(completedSearch.finalAnswer);
-        setCompletedSearchSources(completedSearch.webData?.sources || []);
-        
+          });
+          
+          setIsBlockRestoredFromStorage(true);
+          setIsSearchAlreadyCompleted(true);
+          setCompletedSearchAnswer(completedSearch.finalAnswer);
+          setCompletedSearchSources(completedSearch.webData?.sources || []);
+          
         if (onFinalAnswer && !alreadyInMainChat && typeof completedSearch.finalAnswer === 'string') {
-          setTimeout(() => {
-            onFinalAnswer(completedSearch.finalAnswer as string, completedSearch.webData?.sources || []);
-            markAnswerAddedToMainChat();
-          }, 100);
-        }
-        
+            setTimeout(() => {
+              onFinalAnswer(completedSearch.finalAnswer as string, completedSearch.webData?.sources || []);
+              markAnswerAddedToMainChat();
+            }, 100);
+          }
+          
         // Mark initial load as complete
         setTimeout(() => {
           isInitialLoadRef.current = false;
@@ -1095,10 +1095,10 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
     }
 
     // If not found in completed searches, try localStorage
-    const saved = localStorage.getItem('advanceSearchState');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
+      const saved = localStorage.getItem('advanceSearchState');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
         if (parsed && parsed.steps) {
           const isFullyCompleted = parsed.isFullyCompleted === true && 
                                  parsed.currentQuery === query && 
@@ -1117,30 +1117,30 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
             }
           }
           
-          setRestoredState({
-            steps: parsed.steps,
-            activeStepId: parsed.activeStepId,
-            isComplete: parsed.isComplete,
-            isInProgress: parsed.isInProgress,
+            setRestoredState({
+              steps: parsed.steps,
+              activeStepId: parsed.activeStepId,
+              isComplete: parsed.isComplete,
+              isInProgress: parsed.isInProgress,
             webData: parsed.webData,
             isFullyCompleted
-          });
-          setIsBlockRestoredFromStorage(true);
+            });
+            setIsBlockRestoredFromStorage(true);
+          }
+        } catch (err) {
+          console.error("Error restoring deep research state:", err);
+          setIsBlockRestoredFromStorage(false);
         }
-      } catch (err) {
-        console.error("Error restoring deep research state:", err);
+      } else {
         setIsBlockRestoredFromStorage(false);
       }
-    } else {
-      setIsBlockRestoredFromStorage(false);
-    }
-
+      
     // Mark initial load as complete
-    setTimeout(() => {
-      isInitialLoadRef.current = false;
+      setTimeout(() => {
+        isInitialLoadRef.current = false;
     }, 100);
   }, [query, onFinalAnswer, checkIfAnswerAlreadyInMainChat, markAnswerAddedToMainChat]);
-
+  
   // Reset state when query changes (but not during initial load)
   useEffect(() => {
     if (!isInitialLoadRef.current && query !== previousQuery) {
@@ -1899,60 +1899,60 @@ export default function TestChat() {
     let uploadedImageUrls: string[] = [];
 
     try {
-      if (!input.trim() || isLoading || isAiResponding) return;
+    if (!input.trim() || isLoading || isAiResponding) return;
 
-      let currentActiveSessionId = activeSessionId;
+    let currentActiveSessionId = activeSessionId;
 
-      if (!currentActiveSessionId) {
-        const newSession = createNewSession(input.trim() || (selectedFilesForUpload.length > 0 ? "Image Upload" : undefined));
-        setActiveSessionId(newSession.id);
-        saveActiveSessionId(newSession.id);
-        currentActiveSessionId = newSession.id;
-        setMessages([]);
-      }
+    if (!currentActiveSessionId) {
+      const newSession = createNewSession(input.trim() || (selectedFilesForUpload.length > 0 ? "Image Upload" : undefined));
+      setActiveSessionId(newSession.id);
+      saveActiveSessionId(newSession.id);
+      currentActiveSessionId = newSession.id;
+      setMessages([]);
+    }
 
-      if (!hasInteracted) setHasInteracted(true);
+    if (!hasInteracted) setHasInteracted(true);
       
       // Reset any advance search state when in default chat mode
-      if (showAdvanceSearchUI) {
+    if (showAdvanceSearchUI) {
         setShowAdvanceSearchUI(false);
         setIsAdvanceSearchActive(false);
         setIsRestoredFromStorage(false);
         setRestoredDeepResearchState({});
-      }
+    }
 
-      setIsAiResponding(true);
+    setIsAiResponding(true);
       setIsLoading(true);
-      if (showHeading) setShowHeading(false);
+    if (showHeading) setShowHeading(false);
 
-      const queryType = classifyQuery(input) as QueryClassificationType;
-      const responseSchema = SCHEMAS[queryType] || SCHEMAS.conversation;
+    const queryType = classifyQuery(input) as QueryClassificationType;
+    const responseSchema = SCHEMAS[queryType] || SCHEMAS.conversation;
 
-      console.log("[handleSend] Query:", input);
-      console.log("[handleSend] Classified Query Type:", queryType);
-      console.log("[handleSend] Selected Response Schema Name:", queryType);
+    console.log("[handleSend] Query:", input);
+    console.log("[handleSend] Classified Query Type:", queryType);
+    console.log("[handleSend] Selected Response Schema Name:", queryType);
 
-      aiStreamAbortController.current = new AbortController();
+    aiStreamAbortController.current = new AbortController();
 
       const userMessageForDisplay: LocalMessage = {
-        role: "user" as const,
-        content: input,
-        id: uuidv4(),
-        timestamp: Date.now(),
-        isProcessed: true // Mark the user message as processed
-      };
-      
-      // Store the user message ID to use as parentId for AI responses
+      role: "user" as const,
+      content: input,
+      id: uuidv4(),
+      timestamp: Date.now(),
+      isProcessed: true // Mark the user message as processed
+    };
+    
+    // Store the user message ID to use as parentId for AI responses
       userMessageId = userMessageForDisplay.id!;
 
-      if (selectedFilesForUpload.length > 0 && !input) {
-        userMessageForDisplay.content = "Image selected for analysis.";
-      }
-      if (selectedFilesForUpload.length > 0) {
+    if (selectedFilesForUpload.length > 0 && !input) {
+      userMessageForDisplay.content = "Image selected for analysis.";
+    }
+    if (selectedFilesForUpload.length > 0) {
         (userMessageForDisplay as any).imageUrls = imagePreviewUrls || undefined;
-      }
-      setMessages((prev) => [...prev, userMessageForDisplay]);
-      setInput("");
+    }
+    setMessages((prev) => [...prev, userMessageForDisplay]);
+    setInput("");
 
       if (selectedFilesForUpload.length > 0) {
         const clientSideSupabase = createSupabaseClient();
@@ -1993,7 +1993,7 @@ export default function TestChat() {
 
       // Determine the appropriate prompt based on mode and query type
       let turnSpecificSystemPrompt = BASE_SYSTEM_PROMPT;
-      
+
       if (activeButton === 'search') {
         turnSpecificSystemPrompt = getSearchPrompt(BASE_SYSTEM_PROMPT);
       } else if (activeButton === 'advance' || input.includes('@AdvanceSearch')) {
@@ -2043,9 +2043,9 @@ export default function TestChat() {
         const previousImageDescriptions = imageContexts.map(ctx => ctx.description);
         apiPayload.previousImageDescriptions = previousImageDescriptions;
         if (!userMessageForDisplay.content || userMessageForDisplay.content === "Image selected for analysis.") {
-          if (formattedMessages[lastUserMsgIndex]) {
-            formattedMessages[lastUserMsgIndex].content = "Describe these images.";
-          }
+             if (formattedMessages[lastUserMsgIndex]) {
+                formattedMessages[lastUserMsgIndex].content = "Describe these images.";
+             }
         }
       }
       
@@ -2060,7 +2060,7 @@ export default function TestChat() {
         const errorData = await res.text();
         throw new Error(`API request failed with status ${res.status}: ${errorData}`);
       }
-
+      
       // Handle JSON response for structured queries
       if (uploadedImageUrls.length === 0 && queryType !== 'conversation') {
         const jsonData = await res.json();
@@ -2074,7 +2074,7 @@ export default function TestChat() {
         }
 
         const aiMsg: LocalMessage = {
-          role: "assistant" as const,
+        role: "assistant" as const,
           content: '', 
           contentType: queryType,
           structuredContent: parsedData,
@@ -2083,8 +2083,8 @@ export default function TestChat() {
           parentId: userMessageId,
           webSources: [],
           isProcessed: true
-        };
-        setMessages((prev) => [...prev, aiMsg]);
+      };
+      setMessages((prev) => [...prev, aiMsg]);
       } else { 
         // Default to streaming logic for all other cases (including 'conversation')
         const reader = res.body?.getReader();
@@ -2103,7 +2103,7 @@ export default function TestChat() {
         // Initialize aiMsg for streaming
         const aiMsg: LocalMessage = {
           role: "assistant" as const,
-          content: "",
+          content: "", 
           id: uuidv4(),
           timestamp: Date.now(),
           parentId: userMessageId,
@@ -2144,8 +2144,8 @@ export default function TestChat() {
                         setMessages((prev) => [...prev, { ...aiMsg }]);
                       } else {
                         aiMsg.content = processedContent;
-                        setMessages((prev) => {
-                          const updatedMessages = [...prev];
+                    setMessages((prev) => {
+                      const updatedMessages = [...prev];
                           const aiIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
                           if (aiIndex !== -1) {
                             updatedMessages[aiIndex] = {
@@ -2153,10 +2153,10 @@ export default function TestChat() {
                               content: processedContent,
                               webSources: aiMsg.webSources,
                               isProcessed: true
-                            };
-                          }
-                          return updatedMessages;
-                        });
+                        };
+                      }
+                      return updatedMessages;
+                    });
                       }
                       
                       if (hasCompletedReasoning) {
@@ -2187,7 +2187,7 @@ export default function TestChat() {
             }
           }
         }
-
+        
         // Apply post-processing after streaming is complete
         if (showAdvanceSearchUI || input.includes('@AdvanceSearch')) {
           const processedResearch = enforceAdvanceSearchStructure(contentBuffer);
@@ -2220,22 +2220,22 @@ export default function TestChat() {
             return updatedMessages;
           });
         }
-
+        
         if (uploadedImageUrls.length > 0) {
-          const { content: cleanedContent } = cleanAIResponse(aiMsg.content);
-          const descriptionSummary = cleanedContent.slice(0, 150) + (cleanedContent.length > 150 ? '...' : '');
-          const newImageCount = imageCounter + uploadedImageUrls.length;
-          setImageCounter(newImageCount);
-          const newImageContexts = uploadedImageUrls.map((url, index) => ({
-            order: imageCounter + index + 1,
-            description: descriptionSummary,
-            imageUrl: url,
-            timestamp: Date.now()
-          }));
-          setImageContexts(prev => {
-            const updated = [...prev, ...newImageContexts];
-            return updated.slice(-10);
-          });
+            const { content: cleanedContent } = cleanAIResponse(aiMsg.content);
+            const descriptionSummary = cleanedContent.slice(0, 150) + (cleanedContent.length > 150 ? '...' : '');
+            const newImageCount = imageCounter + uploadedImageUrls.length;
+            setImageCounter(newImageCount);
+            const newImageContexts = uploadedImageUrls.map((url, index) => ({
+                order: imageCounter + index + 1,
+                description: descriptionSummary,
+                imageUrl: url,
+                timestamp: Date.now()
+            }));
+            setImageContexts(prev => {
+                const updated = [...prev, ...newImageContexts];
+                return updated.slice(-10);
+            });
         }
       }
     } catch (err: any) {
@@ -2785,25 +2785,25 @@ export default function TestChat() {
                       } else {
                         // Only check for duplicates for non-empty messages
                         const isDuplicate = answer.length > 0 && messages.some(existingMsg => 
-                          existingMsg.role === "assistant" && 
-                          existingMsg.contentType === 'deep-research' && 
-                          existingMsg.content.includes(answer.substring(0, 100))
-                        );
+                        existingMsg.role === "assistant" && 
+                        existingMsg.contentType === 'deep-research' && 
+                        existingMsg.content.includes(answer.substring(0, 100))
+                      );
                         
                         // Add a new message if not a duplicate
-                        if (!isDuplicate) {
-                          setMessages(prev => [
-                            ...prev,
-                            {
-                              role: "assistant",
-                              content: makeCitationsClickable(answer, sources),
-                              id: uuidv4(),
-                              timestamp: Date.now(),
+                      if (!isDuplicate) {
+                        setMessages(prev => [
+                          ...prev,
+                          {
+                            role: "assistant",
+                            content: makeCitationsClickable(answer, sources),
+                            id: uuidv4(),
+                            timestamp: Date.now(),
                               isProcessed: answer.length > 0,
-                              contentType: 'deep-research',
-                              webSources: sources || []
-                            }
-                          ]);
+                            contentType: 'deep-research',
+                            webSources: sources || []
+                          }
+                        ]);
                         }
                       }
                     }}
