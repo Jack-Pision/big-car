@@ -558,7 +558,7 @@ Error details: ${errorMessage}
             <line x1="13.85" y1="10.15" x2="17.15" y2="6.85" />
           </svg>
           <span className="text-lg font-normal text-neutral-200">{query}</span>
-          <span className="ml-3 text-xs font-normal text-neutral-400 bg-neutral-800/60 px-2 py-0.5 rounded-md" style={{ minWidth: 44, textAlign: 'center', letterSpacing: 0.5 }}>{formatTimer(timer)}</span>
+          <span className="ml-3 text-xs font-normal text-neutral-400" style={{ minWidth: 44, textAlign: 'center', letterSpacing: 0.5 }}>{formatTimer(timer)}</span>
         </div>
         <motion.div
           className="absolute right-6 top-1/2 -translate-y-1/2 cursor-pointer"
