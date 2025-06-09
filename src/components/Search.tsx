@@ -21,6 +21,8 @@ export interface SearchProps {
   onComplete?: (result: string) => void;
 }
 
+const MAX_STEP1_PROMPT_LENGTH = 1500;
+
 const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
   // State for steps
   const [steps, setSteps] = useState<SearchStep[]>([
@@ -262,13 +264,22 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
       // Shorten the query if it's very long
       const shortenedQuery = query.length > 500 ? query.substring(0, 500) + "..." : query;
       
-      // Step 1: Query Intelligence & Strategy Planning - with bullet points
+      // Step 1: Query Intelligence & Strategy Planning - with bullet points and aggressive truncation
       console.time('Step 1: Strategy Planning');
-      const strategyPrompt = `Analyze this query and create a search plan as a markdown bullet list for clarity.\n\nQuery: ${shortenedQuery}`;
+      let systemPrompt = `You are an AI Search Strategy Planner. Break down your understanding and plan as a markdown bullet list.`;
+      let userPrompt = `Analyze this query and create a search plan as a markdown bullet list for clarity.\n\nQuery: ${shortenedQuery}`;
+      // Aggressively truncate for step 1
+      const safeSystemPrompt = systemPrompt.length > MAX_STEP1_PROMPT_LENGTH
+        ? systemPrompt.substring(0, MAX_STEP1_PROMPT_LENGTH) + '...'
+        : systemPrompt;
+      const safeUserPrompt = userPrompt.length > MAX_STEP1_PROMPT_LENGTH
+        ? userPrompt.substring(0, MAX_STEP1_PROMPT_LENGTH) + '...'
+        : userPrompt;
+      console.log('[Nvidia API] Step 1 prompt length:', safeSystemPrompt.length + safeUserPrompt.length);
       const strategyResult = await executeNvidiaStep(
         'understand',
-        `You are an AI Search Strategy Planner. Break down your understanding and plan as a markdown bullet list.`,
-        strategyPrompt
+        safeSystemPrompt,
+        safeUserPrompt
       );
       console.timeEnd('Step 1: Strategy Planning');
       
