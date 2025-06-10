@@ -57,6 +57,7 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
   const [finalResult, setFinalResult] = useState<string>('');
   const [firstStepThinking, setFirstStepThinking] = useState<string>('');
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isFullView, setIsFullView] = useState(false);
   
   // Execute search on mount
   useEffect(() => {
@@ -506,12 +507,6 @@ Error details: ${errorMessage}
     }
   };
 
-  // Calculate the fill percent for the vertical line
-  const completedCount = steps.filter(s => s.status === 'completed').length;
-  const fillPercent = steps.length > 1
-    ? (completedCount / (steps.length - 1)) * 100
-    : 0;
-
   // Render the Search UI
   return (
     <div
@@ -534,6 +529,31 @@ Error details: ${errorMessage}
           </svg>
           <span className="text-lg font-normal text-neutral-200">{query}</span>
         </div>
+        
+        {/* Full View Button */}
+        <motion.div
+          className="absolute right-12 top-1/2 -translate-y-1/2 cursor-pointer"
+          onClick={() => setIsFullView(!isFullView)}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          style={{ display: 'flex', alignItems: 'center' }}
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="20"
+            height="20"
+            stroke="#E5E5E5"
+            strokeWidth="2"
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+            <line x1="9" y1="3" x2="9" y2="21" />
+          </svg>
+        </motion.div>
+        
+        {/* Expand/Collapse Arrow Button */}
         <motion.div
           className="absolute right-6 top-1/2 -translate-y-1/2 cursor-pointer"
           onClick={() => setIsExpanded((v) => !v)}
@@ -562,67 +582,29 @@ Error details: ${errorMessage}
         transition={{ duration: 0.4, ease: 'easeInOut' }}
         style={{ height: 300 - 64 }}
       >
-        <div className="flex flex-row relative min-h-[260px]">
-          {/* Progress bar container */}
-          <div className="relative flex flex-col items-center mr-6" style={{ width: '24px', minHeight: '220px' }}>
-            {/* Background line */}
-            <div className="absolute left-1/2 -translate-x-1/2 w-0.5 h-full bg-neutral-700 z-0 rounded" />
-            {/* Cyan progress fill */}
-            <div
-              className="absolute left-1/2 -translate-x-1/2 w-0.5 bg-cyan-500 z-10 rounded transition-all duration-700"
-              style={{
-                height: `${fillPercent}%`,
-                bottom: 0,
-              }}
-            />
-            {/* Step dots */}
-            {steps.map((step, idx) => {
-              const isCompleted = step.status === 'completed';
-              return (
-                <div
-                  key={step.id}
-                  className="relative z-20 flex flex-col items-center"
-                  style={{
-                    position: 'absolute',
-                    top: `calc(${(idx / (steps.length - 1)) * 100}% - 8px)`,
-                    left: '50%',
-                    transform: 'translate(-50%, 0)',
-                  }}
-                >
-                  <span
-                    className={`w-4 h-4 rounded-full border-2 transition-all duration-500
-                      ${isCompleted ? 'border-cyan-500 bg-cyan-500' : 'border-neutral-500 bg-neutral-900'}
-                    `}
-                  ></span>
-                </div>
-              );
-            })}
-          </div>
-          {/* Steps content */}
-          <div className="flex-1 space-y-8">
-            {steps.map((step, idx) => (
-              <div key={step.id} className="mb-6">
-                <h3 className="text-lg font-medium text-white mb-3">{step.title}</h3>
-                <div className="text-neutral-300 ml-4">
-                  {step.status !== 'error' && step.result && (
-                    (step.id === 'understand' && firstStepThinking) ? (
-                      <ReactMarkdown className="prose prose-invert text-neutral-300 text-base">{extractThinkContent(firstStepThinking)}</ReactMarkdown>
-                    ) : (step.id !== 'research') ? (
-                      <ul className="list-disc pl-5 space-y-2 text-neutral-300 text-base">
-                        {extractBulletPoints(extractThinkContent(step.result)).map((point, i) => (
-                          <li key={i}>{point}</li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p>{step.result}</p>
-                    )
-                  )}
-                  {step.status !== 'error' && !step.result && step.content && <p>{step.content}</p>}
-                  {step.status === 'error' && <p className="text-red-400">An error occurred while processing this step.</p>}
-                </div>
+        <div className="space-y-8">
+          {steps.map((step, idx) => (
+            <div key={step.id} className="mb-6">
+              <h3 className="text-lg font-medium text-white mb-3">{step.title}</h3>
+              <div className="text-neutral-300 ml-4">
+                {step.status !== 'error' && step.result && (
+                  (step.id === 'understand' && firstStepThinking) ? (
+                    <ReactMarkdown className="prose prose-invert text-neutral-300 text-base">{extractThinkContent(firstStepThinking)}</ReactMarkdown>
+                  ) : (step.id !== 'research') ? (
+                    <ul className="list-disc pl-5 space-y-2 text-neutral-300 text-base">
+                      {extractBulletPoints(extractThinkContent(step.result)).map((point, i) => (
+                        <li key={i}>{point}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p>{step.result}</p>
+                  )
+                )}
+                {step.status !== 'error' && !step.result && step.content && <p>{step.content}</p>}
+                {step.status === 'error' && <p className="text-red-400">An error occurred while processing this step.</p>}
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
         {/* Error display */}
         {error && (
@@ -631,6 +613,67 @@ Error details: ${errorMessage}
           </div>
         )}
       </motion.div>
+      
+      {/* Full View Panel (shows on right side of main chat when Full View button is clicked) */}
+      {isFullView && (
+        <div 
+          className="fixed top-0 right-0 h-full w-96 bg-black/95 border-l border-neutral-800 z-50 overflow-y-auto"
+          style={{ boxShadow: '-4px 0 15px rgba(0, 0, 0, 0.3)' }}
+        >
+          <div className="p-4">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl text-white font-medium">Advanced Search Results</h2>
+              <button 
+                className="text-neutral-400 hover:text-white"
+                onClick={() => setIsFullView(false)}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+            
+            <div className="space-y-8">
+              {steps.map((step, idx) => (
+                <div key={step.id} className="mb-6 border-b border-neutral-800 pb-4">
+                  <h3 className="text-lg font-medium text-white mb-3">{step.title}</h3>
+                  <div className="text-neutral-300">
+                    {step.status !== 'error' && step.result && (
+                      (step.id === 'understand' && firstStepThinking) ? (
+                        <ReactMarkdown className="prose prose-invert text-neutral-300 text-base">{extractThinkContent(firstStepThinking)}</ReactMarkdown>
+                      ) : (step.id !== 'research') ? (
+                        <ul className="list-disc pl-5 space-y-2 text-neutral-300 text-base">
+                          {extractBulletPoints(extractThinkContent(step.result)).map((point, i) => (
+                            <li key={i}>{point}</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p>{step.result}</p>
+                      )
+                    )}
+                    {step.status !== 'error' && !step.result && step.content && <p>{step.content}</p>}
+                    {step.status === 'error' && <p className="text-red-400">An error occurred while processing this step.</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            {error && (
+              <div className="mt-6 p-4 bg-red-900/30 border border-red-700 rounded-lg">
+                <p className="text-red-400">{error}</p>
+              </div>
+            )}
+            
+            {finalResult && (
+              <div className="mt-6 p-4 bg-neutral-900 rounded-lg">
+                <h3 className="text-lg font-medium text-white mb-3">Final Result</h3>
+                <ReactMarkdown className="prose prose-invert text-neutral-300 text-base">{finalResult}</ReactMarkdown>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
