@@ -4,7 +4,6 @@ import styles from './Search.module.css';
 import { dedupedSerperRequest } from '@/utils/api-request-cache';
 import ReactMarkdown from 'react-markdown';
 import { motion } from 'framer-motion';
-import ResizablePanel from '../components/ResizablePanel';
 
 // Define step types
 type StepStatus = 'pending' | 'active' | 'completed' | 'error';
@@ -508,14 +507,6 @@ Error details: ${errorMessage}
     }
   };
 
-  // Inside the Search component function, add a useEffect to handle responsive layout
-  useEffect(() => {
-    // Set a cleanup function to ensure padding is reset on unmount
-    return () => {
-      document.body.style.paddingRight = '0';
-    };
-  }, []);
-
   // Render the Search UI
   return (
     <div
@@ -589,6 +580,7 @@ Error details: ${errorMessage}
           </svg>
         </motion.div>
       </div>
+      
       {/* Content (scrollable, animated height) */}
       <motion.div
         className={`px-6 py-4 overflow-y-auto ${styles['hide-scrollbar']}`}
@@ -628,54 +620,68 @@ Error details: ${errorMessage}
         )}
       </motion.div>
       
-      {/* Full View Panel (shows on right side of main chat when Full View button is clicked) */}
+      {/* Full View Modal (shows as a full screen dialog when Full View button is clicked) */}
       {isFullView && (
-        <ResizablePanel 
-          isOpen={isFullView} 
-          onClose={() => setIsFullView(false)}
-          title="Advanced Search Results"
-          initialWidth={420}
-        >
-          <div className="space-y-8">
-            {steps.map((step, idx) => (
-              <div key={step.id} className="mb-8 border-b border-neutral-800 pb-6">
-                <h3 className="text-lg font-medium text-white mb-4 flex items-center">
-                  <span className="text-cyan-400 mr-2">{idx + 1}.</span> {step.title}
-                </h3>
-                <div className="text-neutral-300">
-                  {step.status !== 'error' && step.result && (
-                    (step.id === 'understand' && firstStepThinking) ? (
-                      <ReactMarkdown className="prose prose-invert text-neutral-300 text-base">{extractThinkContent(firstStepThinking)}</ReactMarkdown>
-                    ) : (step.id !== 'research') ? (
-                      <ul className="list-disc pl-5 space-y-2 text-neutral-300 text-base">
-                        {extractBulletPoints(extractThinkContent(step.result)).map((point, i) => (
-                          <li key={i}>{point}</li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p>{step.result}</p>
-                    )
-                  )}
-                  {step.status !== 'error' && !step.result && step.content && <p>{step.content}</p>}
-                  {step.status === 'error' && <p className="text-red-400">An error occurred while processing this step.</p>}
+        <div className="fixed inset-0 bg-black/80 z-50 overflow-y-auto" onClick={() => setIsFullView(false)}>
+          <div 
+            className="mx-auto my-12 p-6 bg-[#171717] max-w-3xl rounded-lg border border-white/20"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl text-white font-medium">Advanced Search Results</h2>
+              <button 
+                className="text-white hover:text-cyan-400 transition-colors p-2"
+                onClick={() => setIsFullView(false)}
+                aria-label="Close panel"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-8 max-h-[70vh] overflow-y-auto pr-2">
+              {steps.map((step, idx) => (
+                <div key={step.id} className="mb-8 border-b border-neutral-800 pb-6">
+                  <h3 className="text-lg font-medium text-white mb-4 flex items-center">
+                    <span className="text-cyan-400 mr-2">{idx + 1}.</span> {step.title}
+                  </h3>
+                  <div className="text-neutral-300">
+                    {step.status !== 'error' && step.result && (
+                      (step.id === 'understand' && firstStepThinking) ? (
+                        <ReactMarkdown className="prose prose-invert text-neutral-300 text-base">{extractThinkContent(firstStepThinking)}</ReactMarkdown>
+                      ) : (step.id !== 'research') ? (
+                        <ul className="list-disc pl-5 space-y-2 text-neutral-300 text-base">
+                          {extractBulletPoints(extractThinkContent(step.result)).map((point, i) => (
+                            <li key={i}>{point}</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p>{step.result}</p>
+                      )
+                    )}
+                    {step.status !== 'error' && !step.result && step.content && <p>{step.content}</p>}
+                    {step.status === 'error' && <p className="text-red-400">An error occurred while processing this step.</p>}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+              
+              {error && (
+                <div className="mt-6 p-4 bg-red-900/30 border border-red-700 rounded-lg">
+                  <p className="text-red-400">{error}</p>
+                </div>
+              )}
+              
+              {finalResult && (
+                <div className="mt-6 p-4 bg-neutral-900 rounded-lg">
+                  <h3 className="text-lg font-medium text-white mb-3">Final Result</h3>
+                  <ReactMarkdown className="prose prose-invert text-neutral-300 text-base">{finalResult}</ReactMarkdown>
+                </div>
+              )}
+            </div>
           </div>
-          
-          {error && (
-            <div className="mt-6 p-4 bg-red-900/30 border border-red-700 rounded-lg">
-              <p className="text-red-400">{error}</p>
-            </div>
-          )}
-          
-          {finalResult && (
-            <div className="mt-6 p-4 bg-neutral-900 rounded-lg">
-              <h3 className="text-lg font-medium text-white mb-3">Final Result</h3>
-              <ReactMarkdown className="prose prose-invert text-neutral-300 text-base">{finalResult}</ReactMarkdown>
-            </div>
-          )}
-        </ResizablePanel>
+        </div>
       )}
     </div>
   );

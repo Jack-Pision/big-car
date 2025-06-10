@@ -6,7 +6,6 @@
 body {
   @apply bg-white text-neutral-900;
   font-family: 'Roboto', Arial, Helvetica, sans-serif;
-  transition: padding-right 0.3s ease;
 }
 
 @layer base {
@@ -496,131 +495,8 @@ textarea::-webkit-scrollbar-thumb,
   border-radius: 0;
 }
 
-/* Resizable panel styles */
-body {
-  transition: padding-right 0.3s ease;
-}
-
-/* Add smooth transitions for resize operations */
-.container, .wrapper, .panel, .content {
-  transition: width 0.3s ease, margin 0.3s ease, padding 0.3s ease;
-}
-
-/* Adjust main content when panel is open */
-.panel-adjusted {
-  width: calc(100% - var(--panel-width, 0px));
-  transition: width 0.3s ease;
-}
-
-main.panel-adjusted .container {
-  max-width: calc(100% - 40px);
-  margin-right: 0;
-  transition: max-width 0.3s ease;
-}
-
-/* Hide scrollbar when panel is active */
-body.panel-active {
-  overflow: hidden;
-}
-
-/* Ensure panel is always visible and extends full height */
-.full-height {
-  height: 100vh;
-  position: fixed;
-  top: 0;
-  right: 0;
-}
-
-/* Ensure that absolute positioned elements respect the right panel space */
-.right-panel-aware {
-  transition: right 0.3s ease;
-}
-
-/* Enhanced panel styles for visibility above header/footer */
-body.panel-open {
-  overflow-x: hidden;
-}
-
-/* Super high z-index panel styling to ensure visibility */
-/* These styles ensure the panel is visible above ALL other elements */
-body.panel-open .fixed[style*="z-index: 99995"],
-body.panel-open #panel-root,
-body.panel-open [id="panel-root"] {
-  position: fixed !important;
-  z-index: 99995 !important;
-  height: 100vh !important;
-}
-
-body.panel-open .fixed[style*="z-index: 99990"] {
-  position: fixed !important;
-  z-index: 99990 !important;
-}
-
-/* Force all other panels to have lower z-index */
-body.panel-open [class*="panel"]:not(#panel-root) {
-  z-index: 1 !important;
-}
-
-/* Reset any other fixed elements that might have high z-index */
-body.panel-open header,
-body.panel-open [class*="header"],
-body.panel-open footer,
-body.panel-open [class*="footer"],
-body.panel-open .fixed:not(#panel-root):not([style*="z-index: 99"]),
-body.panel-open .absolute:not(#panel-root):not([style*="z-index: 99"]) {
-  z-index: 10 !important;
-}
-
-/* Remove blur effect from backdrop overlay */
-.fixed.inset-0.bg-black\/30.backdrop-blur-\[2px\] {
-  backdrop-filter: none;
-}
-
-/* Fix main content area to prevent blurry effect when panel is open */
-body.panel-open .panel-adjusted {
-  filter: none !important;
-  transform: none !important;
-  transition: width 0.3s ease;
-}
-
-/* Fix for blur issue on left side when panel is open */
-body.panel-open main,
-body.panel-open #__next,
-body.panel-open [class*="container"] {
-  transform: none !important;
-  filter: none !important;
-  backdrop-filter: none !important;
-}
-
-/* Make resize handle more visible */
-.absolute.left-0.top-0.bottom-0.w-6 .w-1\.5.h-32 {
-  box-shadow: 0 0 8px rgba(0, 255, 255, 0.3);
-}
-
-/* Ensure the panel sits on top of ALL interface elements */
-.fixed.inset-0[style*="z-index: 99990"],
-.fixed[id="panel-root"],
-#panel-root {
-  position: fixed !important;
-  pointer-events: auto !important;
-  z-index: 99995 !important;
-  height: 100vh !important;
-}
-
-/* Style input elements to adjust properly when panel is open */
-.panel-open .floating-input-card,
-.panel-open .chat-input-container {
-  width: calc(100% - var(--panel-width, 0px));
-  max-width: calc(600px + var(--panel-width, 0px));
-  transition: width 0.3s ease, max-width 0.3s ease;
-}
-
-/* Make resize handle more visible */
-.absolute.left-0.top-0.bottom-0.w-5 .w-1.h-24 {
-  box-shadow: 0 0 8px rgba(0, 255, 255, 0.3);
-}
-
-/* Add a class to prevent blur effects when panel is open */
+/* Remove all panel-related classes */
+/* 
 body.prevent-blur * {
   filter: none !important;
   backdrop-filter: none !important;
@@ -631,34 +507,5 @@ body.panel-open .panel-adjusted {
   filter: none !important;
   transform: none !important;
   transition: width 0.3s ease;
-}
-
-/* Ensure the footer stays behind other elements */
-footer, 
-.footer, 
-[class*="footer"] {
-  z-index: 5 !important;
-}
-
-/* Ensure input container appears above footer */
-.chat-input-container,
-.floating-input-card,
-[class*="input"] {
-  z-index: 15 !important;
-  position: relative;
-}
-
-/* Reset any other fixed elements that might have high z-index */
-body.panel-open header,
-body.panel-open [class*="header"],
-body.panel-open footer,
-body.panel-open [class*="footer"],
-body.panel-open .fixed:not(#panel-root):not([style*="z-index: 99"]),
-body.panel-open .absolute:not(#panel-root):not([style*="z-index: 99"]) {
-  z-index: 10 !important;
-}
-
-body.panel-open footer,
-body.panel-open [class*="footer"] {
-  z-index: 5 !important;
 } 
+*/ 
