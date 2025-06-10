@@ -568,7 +568,33 @@ body.panel-open footer,
 body.panel-open [class*="footer"],
 body.panel-open .fixed:not(#panel-root):not([style*="z-index: 99"]),
 body.panel-open .absolute:not(#panel-root):not([style*="z-index: 99"]) {
-  z-index: 50 !important;
+  z-index: 10 !important;
+}
+
+/* Remove blur effect from backdrop overlay */
+.fixed.inset-0.bg-black\/30.backdrop-blur-\[2px\] {
+  backdrop-filter: none;
+}
+
+/* Fix main content area to prevent blurry effect when panel is open */
+body.panel-open .panel-adjusted {
+  filter: none !important;
+  transform: none !important;
+  transition: width 0.3s ease;
+}
+
+/* Fix for blur issue on left side when panel is open */
+body.panel-open main,
+body.panel-open #__next,
+body.panel-open [class*="container"] {
+  transform: none !important;
+  filter: none !important;
+  backdrop-filter: none !important;
+}
+
+/* Make resize handle more visible */
+.absolute.left-0.top-0.bottom-0.w-6 .w-1\.5.h-32 {
+  box-shadow: 0 0 8px rgba(0, 255, 255, 0.3);
 }
 
 /* Ensure the panel sits on top of ALL interface elements */
@@ -592,4 +618,17 @@ body.panel-open .absolute:not(#panel-root):not([style*="z-index: 99"]) {
 /* Make resize handle more visible */
 .absolute.left-0.top-0.bottom-0.w-5 .w-1.h-24 {
   box-shadow: 0 0 8px rgba(0, 255, 255, 0.3);
+}
+
+/* Add a class to prevent blur effects when panel is open */
+body.prevent-blur * {
+  filter: none !important;
+  backdrop-filter: none !important;
+  transform: none !important;
+}
+
+body.panel-open .panel-adjusted {
+  filter: none !important;
+  transform: none !important;
+  transition: width 0.3s ease;
 } 
