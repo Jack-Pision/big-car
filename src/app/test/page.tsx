@@ -1934,7 +1934,7 @@ export default function TestChat() {
 
     aiStreamAbortController.current = new AbortController();
 
-      const userMessageId = uuidv4();
+      let userMessageId = uuidv4();
       const userMessageForDisplay: LocalMessage = {
       role: "user" as const,
       content: input,
@@ -1943,8 +1943,8 @@ export default function TestChat() {
       isProcessed: true // Mark the user message as processed
     };
     
-    // Store the user message ID to use as parentId for AI responses
-      userMessageId = userMessageForDisplay.id!;
+    // Ensure we're using the final ID from the message object
+    userMessageId = userMessageForDisplay.id!;
 
     if (selectedFilesForUpload.length > 0 && !input) {
       userMessageForDisplay.content = "Image selected for analysis.";
