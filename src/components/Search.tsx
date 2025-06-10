@@ -509,7 +509,7 @@ Error details: ${errorMessage}
   // Calculate the fill percent for the vertical line
   const completedCount = steps.filter(s => s.status === 'completed').length;
   const fillPercent = steps.length > 1
-    ? ((completedCount - 1) / (steps.length - 1)) * 100
+    ? (completedCount / (steps.length - 1)) * 100
     : 0;
 
   // Render the Search UI
@@ -564,12 +564,12 @@ Error details: ${errorMessage}
       >
         <div className="flex flex-row relative min-h-[260px]">
           {/* Progress bar container */}
-          <div className="relative flex flex-col items-center mr-6" style={{ width: '32px', minHeight: '220px' }}>
+          <div className="relative flex flex-col items-center mr-6" style={{ width: '24px', minHeight: '220px' }}>
             {/* Background line */}
-            <div className="absolute left-1/2 -translate-x-1/2 w-1 h-full bg-neutral-700 z-0 rounded" />
+            <div className="absolute left-1/2 -translate-x-1/2 w-0.5 h-full bg-neutral-700 z-0 rounded" />
             {/* Cyan progress fill */}
             <div
-              className="absolute left-1/2 -translate-x-1/2 w-1 bg-cyan-500 z-10 rounded transition-all duration-700"
+              className="absolute left-1/2 -translate-x-1/2 w-0.5 bg-cyan-500 z-10 rounded transition-all duration-700"
               style={{
                 height: `${fillPercent}%`,
                 bottom: 0,
