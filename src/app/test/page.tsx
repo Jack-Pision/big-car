@@ -1934,10 +1934,11 @@ export default function TestChat() {
 
     aiStreamAbortController.current = new AbortController();
 
+      const userMessageId = uuidv4();
       const userMessageForDisplay: LocalMessage = {
       role: "user" as const,
       content: input,
-      id: uuidv4(),
+      id: userMessageId,
       timestamp: Date.now(),
       isProcessed: true // Mark the user message as processed
     };
@@ -2520,6 +2521,37 @@ export default function TestChat() {
     setActiveMode(newMode);
   }
 
+  // Add a new function to handle retry/regenerate
+  const handleRetry = (originalQuery: string) => {
+    // Create a slightly modified query to ensure a different response
+    const retryQuery = `${originalQuery} (please provide alternative information)`;
+    
+    // Find the last user message to get the original query
+    const lastUserMessage = [...messages].reverse().find(msg => msg.role === 'user');
+    
+    if (lastUserMessage) {
+      // Add the messages to the chat
+      setMessages(prev => [
+        ...prev,
+        {
+          role: 'user',
+          id: uuidv4(),
+          content: retryQuery,
+          timestamp: Date.now(),
+          isProcessed: true
+        }
+      ]);
+      
+      // Submit the modified query
+      // We're using the input state to leverage the existing handleSend function
+      setInput(retryQuery);
+      setTimeout(() => {
+        const form = document.querySelector('form');
+        if (form) form.dispatchEvent(new Event('submit', { cancelable: true }));
+      }, 100);
+    }
+  };
+
   return (
     <>
       <div className="min-h-screen flex flex-col px-4 sm:px-4 md:px-8 lg:px-0" style={{ background: '#161618' }}>
@@ -2702,7 +2734,7 @@ export default function TestChat() {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.3, ease: "easeOut" }}
-                      className="w-full text-left flex flex-col items-start ai-response-text mb-4"
+                      className="w-full text-left flex flex-col items-start ai-response-text mb-4 relative"
                       style={{ color: '#fff', maxWidth: '100%', overflowWrap: 'break-word' }}
                     >
                       {msg.webSources && msg.webSources.length > 0 && (
@@ -2715,6 +2747,26 @@ export default function TestChat() {
                         data={msg.structuredContent} 
                         type={msg.contentType} 
                       />
+                      
+                      {/* Retry button for structured content */}
+                      {msg.isProcessed && !isAiResponding && (
+                        <button
+                          onClick={() => {
+                            // Find the corresponding user message
+                            const userMsgIndex = messages.findIndex(m => m.id === msg.parentId);
+                            const userMsg = userMsgIndex >= 0 ? messages[userMsgIndex] : 
+                                          messages.find(m => m.role === 'user' && m.timestamp && m.timestamp < (msg.timestamp || Infinity));
+                            if (userMsg) handleRetry(userMsg.content);
+                          }}
+                          className="absolute left-0 bottom-0 p-2 text-white opacity-60 hover:opacity-100 transition-opacity"
+                          aria-label="Retry with different response"
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                            <path d="M3 3v5h5"></path>
+                          </svg>
+                        </button>
+                      )}
                     </motion.div>
                   );
                 }
@@ -2751,6 +2803,26 @@ export default function TestChat() {
                           children={processedContent}
                             />
     </div>
+                    )}
+                    
+                    {/* Retry button for text content */}
+                    {msg.isProcessed && !isAiResponding && !isStoppedMsg && (
+                      <button
+                        onClick={() => {
+                          // Find the corresponding user message
+                          const userMsgIndex = messages.findIndex(m => m.id === msg.parentId);
+                          const userMsg = userMsgIndex >= 0 ? messages[userMsgIndex] : 
+                                        messages.find(m => m.role === 'user' && m.timestamp && m.timestamp < (msg.timestamp || Infinity));
+                          if (userMsg) handleRetry(userMsg.content);
+                        }}
+                        className="absolute left-0 bottom-0 p-2 text-white opacity-60 hover:opacity-100 transition-opacity"
+                        aria-label="Retry with different response"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                          <path d="M3 3v5h5"></path>
+                        </svg>
+                      </button>
                     )}
                   </motion.div>
                 );
