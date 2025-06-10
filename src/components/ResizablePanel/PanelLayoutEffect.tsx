@@ -21,28 +21,48 @@ export default function PanelLayoutEffect() {
       const inputContainer = document.querySelector('.chat-input-container');
       
       if (hasPanelOpen) {
-        // Apply panel-adjusted class to main container
+        // Apply panel-adjusted class to main container without adding any transform/filter effects
         mainContainer?.classList.add('panel-adjusted');
         
         // Ensure header and footer don't overlap panel
         if (header) {
           header.classList.add('panel-adjusted');
+          // Ensure header stays in background
+          if (header instanceof HTMLElement) {
+            header.style.zIndex = '10';
+          }
         }
         
         if (footer) {
           footer.classList.add('panel-adjusted');
+          // Ensure footer stays in background
+          if (footer instanceof HTMLElement) {
+            footer.style.zIndex = '10';
+          }
         }
         
         // Adjust input width if exists
         if (inputContainer) {
           inputContainer.classList.add('panel-adjusted');
         }
+
+        // Prevent any blur effects on main content
+        document.body.classList.add('prevent-blur');
       } else {
         // Remove adjustments when panel is closed
         mainContainer?.classList.remove('panel-adjusted');
         header?.classList.remove('panel-adjusted');
         footer?.classList.remove('panel-adjusted');
         inputContainer?.classList.remove('panel-adjusted');
+        document.body.classList.remove('prevent-blur');
+        
+        // Reset z-index for header and footer
+        if (header instanceof HTMLElement) {
+          header.style.zIndex = '';
+        }
+        if (footer instanceof HTMLElement) {
+          footer.style.zIndex = '';
+        }
       }
     };
 
