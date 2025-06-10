@@ -535,7 +535,7 @@ Error details: ${errorMessage}
         
         {/* Expand/Collapse Arrow Button */}
         <motion.div
-          className="absolute right-12 top-1/2 -translate-y-1/2 cursor-pointer"
+          className="absolute right-6 top-1/2 -translate-y-1/2 cursor-pointer"
           onClick={() => setIsExpanded((v) => !v)}
           animate={{ rotate: isExpanded ? 0 : 180 }}
           transition={{ duration: 0.3 }}
