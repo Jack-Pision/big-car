@@ -17,7 +17,7 @@ const ResizablePanel: React.FC<ResizablePanelProps> = ({
   onClose,
   title = "Advanced Search Results",
   children,
-  initialWidth = 384, // w-96
+  initialWidth = 420, // Increased default width
   minWidth = 300,
   maxWidth = 800
 }) => {
@@ -71,6 +71,14 @@ const ResizablePanel: React.FC<ResizablePanelProps> = ({
       document.documentElement.style.setProperty('--panel-width', `${width}px`);
       // Add a class to the body to help with styling
       document.body.classList.add('panel-open');
+      
+      // Force all other panels to lower z-index if possible
+      const otherPanels = document.querySelectorAll('[class*="panel"]:not(#panel-root)');
+      otherPanels.forEach(panel => {
+        if (panel instanceof HTMLElement) {
+          panel.style.zIndex = '1';
+        }
+      });
     }
     
     return () => {
@@ -90,46 +98,69 @@ const ResizablePanel: React.FC<ResizablePanelProps> = ({
 
   return (
     <>
-      {/* Semi-transparent backdrop overlay */}
+      {/* Semi-transparent backdrop overlay - higher z-index */}
       <div 
-        className="fixed inset-0 bg-black/20 backdrop-blur-[1px]"
-        style={{ zIndex: 9990 }}
+        className="fixed inset-0 bg-black/30 backdrop-blur-[2px]"
+        style={{ 
+          zIndex: 99990,
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+        }}
         onClick={onClose}
       />
       
-      {/* The panel itself */}
+      {/* The panel itself - ultra high z-index */}
       <div 
-        className="fixed inset-y-0 right-0 flex flex-col transition-all duration-300"
+        id="panel-root"
+        className="fixed inset-0 right-0 flex flex-col transition-all duration-300"
         style={{ 
           width: `${width}px`,
-          zIndex: 9995
+          zIndex: 99995,
+          height: '100vh',
+          position: 'fixed',
+          top: 0,
+          right: 0,
+          bottom: 0,
+          left: 'auto',
         }}
         ref={panelRef}
       >
         {/* Resize handle - wider for better UX */}
         <div 
-          className="absolute left-0 top-0 bottom-0 w-5 cursor-ew-resize flex items-center justify-center"
-          style={{ zIndex: 9996 }}
+          className="absolute left-0 top-0 bottom-0 w-6 cursor-ew-resize flex items-center justify-center"
+          style={{ 
+            zIndex: 99996,
+            position: 'absolute',
+            top: 0,
+            bottom: 0,
+            left: 0,
+            height: '100%',
+          }}
           ref={resizeHandleRef}
           onMouseDown={handleResizeStart}
         >
           {/* Visual indicator for resize handle */}
-          <div className="w-1 h-28 bg-cyan-500/70 rounded-full opacity-80 hover:opacity-100 hover:bg-cyan-400 transition-all shadow-[0_0_8px_rgba(0,255,255,0.4)]"></div>
+          <div className="w-1.5 h-32 bg-cyan-500 rounded-full opacity-90 hover:opacity-100 hover:bg-cyan-400 transition-all shadow-[0_0_12px_rgba(0,255,255,0.6)]"></div>
         </div>
         
         {/* Panel content */}
         <div 
-          className="flex-1 bg-black/95 border-l border-cyan-800/50 overflow-y-auto overflow-x-hidden w-full h-full shadow-xl" 
+          className="flex-1 bg-black/95 border-l-2 border-cyan-800/60 overflow-y-auto overflow-x-hidden w-full h-full shadow-2xl" 
           style={{ 
-            boxShadow: '-4px 0 20px rgba(0, 0, 0, 0.5)',
-            zIndex: 9997
+            boxShadow: '-6px 0 25px rgba(0, 0, 0, 0.7)',
+            zIndex: 99997,
+            height: '100vh',
+            minHeight: '100%',
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="p-4 pt-6 h-full flex flex-col">
+          <div className="p-5 pt-6 h-full flex flex-col">
             <div 
-              className="flex justify-between items-center mb-6 sticky top-0 bg-black/95 py-2 border-b border-cyan-900/30"
-              style={{ zIndex: 9998 }}
+              className="flex justify-between items-center mb-6 sticky top-0 bg-black/95 py-3 border-b border-cyan-900/40"
+              style={{ zIndex: 99998 }}
             >
               <h2 className="text-xl text-white font-medium">{title}</h2>
               <button 
@@ -144,7 +175,7 @@ const ResizablePanel: React.FC<ResizablePanelProps> = ({
               </button>
             </div>
             
-            <div className="space-y-4 pb-16 flex-1 overflow-y-auto">
+            <div className="space-y-4 pb-20 flex-1 overflow-y-auto">
               {children}
             </div>
           </div>
