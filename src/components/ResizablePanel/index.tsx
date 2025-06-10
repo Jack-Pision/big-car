@@ -39,6 +39,10 @@ const ResizablePanel: React.FC<ResizablePanelProps> = ({
       const clampedWidth = Math.max(minWidth, Math.min(maxWidth, newWidth));
       
       setWidth(clampedWidth);
+      
+      // Update document body style to make the main content responsive
+      document.body.style.paddingRight = `${clampedWidth}px`;
+      document.documentElement.style.setProperty('--panel-width', `${clampedWidth}px`);
     };
 
     const handleMouseUp = () => {
@@ -60,6 +64,19 @@ const ResizablePanel: React.FC<ResizablePanelProps> = ({
     };
   }, [isResizing, minWidth, maxWidth]);
 
+  // Apply/remove panel width effect on mount/unmount
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.paddingRight = `${width}px`;
+      document.documentElement.style.setProperty('--panel-width', `${width}px`);
+    }
+    
+    return () => {
+      document.body.style.paddingRight = '0';
+      document.documentElement.style.setProperty('--panel-width', '0px');
+    };
+  }, [isOpen, width]);
+
   // Start resize operation
   const handleResizeStart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -70,26 +87,29 @@ const ResizablePanel: React.FC<ResizablePanelProps> = ({
 
   return (
     <div 
-      className="flex fixed top-0 right-0 h-full z-50 overflow-hidden transition-all duration-300"
+      className="fixed top-0 right-0 h-screen z-50 flex flex-col transition-all duration-300"
       style={{ width: `${width}px` }}
       ref={panelRef}
     >
-      {/* Resize handle */}
+      {/* Resize handle - wider for better UX */}
       <div 
-        className="absolute left-0 top-0 w-2 h-full cursor-ew-resize z-10 hover:bg-cyan-500/20"
+        className="absolute left-0 top-0 w-4 h-full cursor-ew-resize z-10 flex items-center justify-center"
         ref={resizeHandleRef}
         onMouseDown={handleResizeStart}
-      />
+      >
+        {/* Visual indicator for resize handle */}
+        <div className="w-1 h-16 bg-neutral-700 rounded-full opacity-50 hover:opacity-100 hover:bg-cyan-500 transition-all"></div>
+      </div>
       
       {/* Panel content */}
-      <div className="flex-1 bg-black/95 border-l border-neutral-800 overflow-y-auto overflow-x-hidden" 
+      <div className="flex-1 bg-black/95 border-l border-neutral-800 overflow-y-auto overflow-x-hidden w-full h-full" 
         style={{ boxShadow: '-4px 0 15px rgba(0, 0, 0, 0.3)' }}
       >
-        <div className="p-4">
-          <div className="flex justify-between items-center mb-6">
+        <div className="p-4 pt-6 h-full">
+          <div className="flex justify-between items-center mb-6 sticky top-0 bg-black/95 py-2 z-10">
             <h2 className="text-xl text-white font-medium">{title}</h2>
             <button 
-              className="text-white hover:text-cyan-400 transition-colors"
+              className="text-white hover:text-cyan-400 transition-colors p-2"
               onClick={onClose}
               aria-label="Close panel"
             >
@@ -100,7 +120,7 @@ const ResizablePanel: React.FC<ResizablePanelProps> = ({
             </button>
           </div>
           
-          <div className="space-y-4">
+          <div className="space-y-4 pb-16">
             {children}
           </div>
         </div>

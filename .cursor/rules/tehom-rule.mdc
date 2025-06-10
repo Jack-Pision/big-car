@@ -13,7 +13,8 @@ alwaysApply: true
 
 5. Try to provide modern and standard solutions.
 
-
 6. We are developing an AI chatbot so keep that in mind.
 
 7. Always make changes where user asks you to do, don't do anything extra
+
+8. ** Always save push and commit after every change/query

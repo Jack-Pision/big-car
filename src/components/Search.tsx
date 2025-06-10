@@ -508,11 +508,23 @@ Error details: ${errorMessage}
     }
   };
 
+  // Inside the Search component function, add a useEffect to handle responsive layout
+  useEffect(() => {
+    // Set a cleanup function to ensure padding is reset on unmount
+    return () => {
+      document.body.style.paddingRight = '0';
+    };
+  }, []);
+
   // Render the Search UI
   return (
     <div
-      className="w-full mx-auto rounded-lg overflow-hidden bg-[#171717] border border-white/20"
-      style={{ borderRadius: '20px', maxWidth: '969px' }}
+      className="w-full mx-auto rounded-lg overflow-hidden bg-[#171717] border border-white/20 relative"
+      style={{ 
+        borderRadius: '20px', 
+        maxWidth: '969px',
+        transition: 'all 0.3s ease'
+      }}
     >
       {/* Header (fixed) */}
       <div
