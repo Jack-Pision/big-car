@@ -89,49 +89,68 @@ const ResizablePanel: React.FC<ResizablePanelProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div 
-      className="fixed inset-y-0 right-0 z-[100] flex flex-col transition-all duration-300"
-      style={{ 
-        width: `${width}px`,
-      }}
-      ref={panelRef}
-    >
-      {/* Resize handle - wider for better UX */}
+    <>
+      {/* Semi-transparent backdrop overlay */}
       <div 
-        className="absolute left-0 top-0 bottom-0 w-5 cursor-ew-resize z-10 flex items-center justify-center"
-        ref={resizeHandleRef}
-        onMouseDown={handleResizeStart}
-      >
-        {/* Visual indicator for resize handle */}
-        <div className="w-1 h-24 bg-cyan-500/70 rounded-full opacity-80 hover:opacity-100 hover:bg-cyan-400 transition-all"></div>
-      </div>
+        className="fixed inset-0 bg-black/20 backdrop-blur-[1px]"
+        style={{ zIndex: 9990 }}
+        onClick={onClose}
+      />
       
-      {/* Panel content */}
+      {/* The panel itself */}
       <div 
-        className="flex-1 bg-black/95 border-l border-cyan-800/50 overflow-y-auto overflow-x-hidden w-full h-full shadow-xl" 
-        style={{ boxShadow: '-4px 0 20px rgba(0, 0, 0, 0.5)' }}
+        className="fixed inset-y-0 right-0 flex flex-col transition-all duration-300"
+        style={{ 
+          width: `${width}px`,
+          zIndex: 9995
+        }}
+        ref={panelRef}
       >
-        <div className="p-4 pt-6 h-full flex flex-col">
-          <div className="flex justify-between items-center mb-6 sticky top-0 bg-black/95 py-2 z-10 border-b border-cyan-900/30">
-            <h2 className="text-xl text-white font-medium">{title}</h2>
-            <button 
-              className="text-white hover:text-cyan-400 transition-colors p-2"
-              onClick={onClose}
-              aria-label="Close panel"
+        {/* Resize handle - wider for better UX */}
+        <div 
+          className="absolute left-0 top-0 bottom-0 w-5 cursor-ew-resize flex items-center justify-center"
+          style={{ zIndex: 9996 }}
+          ref={resizeHandleRef}
+          onMouseDown={handleResizeStart}
+        >
+          {/* Visual indicator for resize handle */}
+          <div className="w-1 h-28 bg-cyan-500/70 rounded-full opacity-80 hover:opacity-100 hover:bg-cyan-400 transition-all shadow-[0_0_8px_rgba(0,255,255,0.4)]"></div>
+        </div>
+        
+        {/* Panel content */}
+        <div 
+          className="flex-1 bg-black/95 border-l border-cyan-800/50 overflow-y-auto overflow-x-hidden w-full h-full shadow-xl" 
+          style={{ 
+            boxShadow: '-4px 0 20px rgba(0, 0, 0, 0.5)',
+            zIndex: 9997
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="p-4 pt-6 h-full flex flex-col">
+            <div 
+              className="flex justify-between items-center mb-6 sticky top-0 bg-black/95 py-2 border-b border-cyan-900/30"
+              style={{ zIndex: 9998 }}
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
-          </div>
-          
-          <div className="space-y-4 pb-16 flex-1 overflow-y-auto">
-            {children}
+              <h2 className="text-xl text-white font-medium">{title}</h2>
+              <button 
+                className="text-white hover:text-cyan-400 transition-colors p-2"
+                onClick={onClose}
+                aria-label="Close panel"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+            
+            <div className="space-y-4 pb-16 flex-1 overflow-y-auto">
+              {children}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

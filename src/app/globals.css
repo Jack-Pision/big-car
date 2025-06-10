@@ -541,10 +541,16 @@ body.panel-open {
   overflow-x: hidden;
 }
 
-/* Ensure the panel has higher z-index than header/footer */
-.fixed.inset-y-0.right-0.z-\[100\] {
-  z-index: 100 !important; /* Higher than any other elements */
-  pointer-events: auto !important;
+/* Super high z-index panel styling to ensure visibility */
+/* These styles ensure the panel is visible above ALL other elements */
+body.panel-open .fixed[style*="z-index: 9995"] {
+  position: fixed !important;
+  z-index: 9995 !important;
+}
+
+body.panel-open .fixed[style*="z-index: 9990"] {
+  position: fixed !important;
+  z-index: 9990 !important;
 }
 
 /* Ensure panel content is visible at all viewport heights */
@@ -553,12 +559,31 @@ body.panel-open {
   transition: padding-right 0.3s ease;
 }
 
-/* Make sure the header and footer don't obscure the panel */
+/* Respect stacking context for all potential header/footer elements */
 .panel-open header,
-.panel-open footer {
+.panel-open footer,
+.panel-open [class*="header"],
+.panel-open [class*="footer"],
+.panel-open .fixed,
+.panel-open .sticky {
   padding-right: var(--panel-width, 0px);
   width: 100%;
   transition: padding-right 0.3s ease;
+}
+
+/* Ensure the panel sits on top of ALL interface elements */
+.fixed.inset-0[style*="z-index: 9990"],
+.fixed.inset-y-0.right-0[style*="z-index: 9995"] {
+  position: fixed !important;
+  pointer-events: auto !important;
+}
+
+/* Targeting any fixed headers or footers to prevent them from covering the panel */
+header.fixed,
+.fixed[class*="header"],
+footer.fixed,
+.fixed[class*="footer"] {
+  z-index: 50;
 }
 
 /* Style input elements to adjust properly when panel is open */
