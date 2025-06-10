@@ -506,10 +506,9 @@ Error details: ${errorMessage}
     }
   };
 
-  // Calculate progress for the vertical bar
+  // Calculate the fill percent for the vertical line
   const completedCount = steps.filter(s => s.status === 'completed').length;
-  const currentStepIdx = steps.findIndex(s => s.status === 'active');
-  const progressPercent = steps.length > 1
+  const fillPercent = steps.length > 1
     ? ((completedCount - 1) / (steps.length - 1)) * 100
     : 0;
 
@@ -572,14 +571,13 @@ Error details: ${errorMessage}
             <div
               className="absolute left-1/2 -translate-x-1/2 w-1 bg-cyan-500 z-10 rounded transition-all duration-700"
               style={{
-                height: `${progressPercent}%`,
+                height: `${fillPercent}%`,
                 bottom: 0,
               }}
             />
             {/* Step dots */}
             {steps.map((step, idx) => {
               const isCompleted = step.status === 'completed';
-              const isActive = step.status === 'active';
               return (
                 <div
                   key={step.id}
@@ -593,11 +591,8 @@ Error details: ${errorMessage}
                 >
                   <span
                     className={`w-4 h-4 rounded-full border-2 transition-all duration-500
-                      ${isCompleted ? 'border-cyan-500 bg-cyan-500 scale-110' :
-                        isActive ? 'border-cyan-400 bg-neutral-900 shadow-[0_0_8px_2px_rgba(34,211,238,0.7)] scale-125' :
-                        'border-neutral-500 bg-neutral-900 scale-100'}
+                      ${isCompleted ? 'border-cyan-500 bg-cyan-500' : 'border-neutral-500 bg-neutral-900'}
                     `}
-                    style={{ boxShadow: isActive ? '0 0 12px 2px rgba(34,211,238,0.7)' : undefined }}
                   ></span>
                 </div>
               );
