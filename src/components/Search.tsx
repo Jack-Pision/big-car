@@ -567,9 +567,11 @@ Error details: ${errorMessage}
           {steps.map((step, idx) => (
             <div key={step.id} className="mb-4">
               <h3 className={`text-base font-medium mb-2 ${
-                step.status !== 'completed' 
-                ? styles['step-title'] 
-                : styles['step-title-completed']
+                step.status === 'active' 
+                ? styles['step-title-active']
+                : step.status === 'completed'
+                ? styles['step-title-completed']
+                : styles['step-title']
               }`}>{step.title}</h3>
               <div className="text-neutral-300 ml-4">
                 {step.status !== 'error' && step.result && (
