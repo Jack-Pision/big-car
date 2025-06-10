@@ -1091,9 +1091,9 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
           isInitialLoadRef.current = false;
         }, 100);
         return;
+        }
       }
-    }
-
+      
     // If not found in completed searches, try localStorage
       const saved = localStorage.getItem('advanceSearchState');
       if (saved) {

@@ -464,11 +464,11 @@ const AdvanceSearch: React.FC<AdvanceSearchProps> = ({
 
     // For completed synthesize step, always direct to main chat
     if (step.status === 'completed') {
-      return (
+        return (
         <div className="text-cyan-400 text-base font-medium">
           Response ready! See main chat for the full answer.
-        </div>
-      );
+          </div>
+        );
     }
     
     return null;
