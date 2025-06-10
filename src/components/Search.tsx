@@ -57,9 +57,6 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
   const [finalResult, setFinalResult] = useState<string>('');
   const [firstStepThinking, setFirstStepThinking] = useState<string>('');
   const [isExpanded, setIsExpanded] = useState(false);
-  const [timer, setTimer] = useState(0);
-  const [timerActive, setTimerActive] = useState(false);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
   
   // Execute search on mount
   useEffect(() => {
@@ -308,45 +305,6 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
     return bullets;
   }
 
-  // Start/stop timer based on step status
-  useEffect(() => {
-    // Check specifically for the 4th step (analyze) completion
-    const analyzeStep = steps.find(step => step.id === 'analyze');
-    if (timerActive && analyzeStep?.status === 'completed') {
-      setTimerActive(false);
-      if (timerRef.current) clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-  }, [steps, timerActive]);
-
-  // Timer interval logic
-  useEffect(() => {
-    if (timerActive) {
-      timerRef.current = setInterval(() => {
-        setTimer(t => t + 1);
-      }, 1000);
-    } else if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [timerActive]);
-
-  // Reset timer on new search
-  useEffect(() => {
-    setTimer(0);
-    setTimerActive(true);
-  }, [query]);
-
-  // Helper to format timer
-  function formatTimer(seconds: number) {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m}:${s.toString().padStart(2, '0')}`;
-  }
-
   // Utility to extract content inside <think>...</think> tags, or return original if not present
   function extractThinkContent(text: string): string {
     if (!text) return '';
@@ -548,6 +506,13 @@ Error details: ${errorMessage}
     }
   };
 
+  // Calculate progress for the vertical bar
+  const completedCount = steps.filter(s => s.status === 'completed').length;
+  const currentStepIdx = steps.findIndex(s => s.status === 'active');
+  const progressPercent = steps.length > 1
+    ? ((completedCount - 1) / (steps.length - 1)) * 100
+    : 0;
+
   // Render the Search UI
   return (
     <div
@@ -569,7 +534,6 @@ Error details: ${errorMessage}
             <line x1="13.85" y1="10.15" x2="17.15" y2="6.85" />
           </svg>
           <span className="text-lg font-normal text-neutral-200">{query}</span>
-          <span className="ml-3 text-xs font-normal text-neutral-400" style={{ minWidth: 44, textAlign: 'center', letterSpacing: 0.5 }}>{formatTimer(timer)}</span>
         </div>
         <motion.div
           className="absolute right-6 top-1/2 -translate-y-1/2 cursor-pointer"
@@ -599,30 +563,71 @@ Error details: ${errorMessage}
         transition={{ duration: 0.4, ease: 'easeInOut' }}
         style={{ height: 300 - 64 }}
       >
-        {/* Steps */}
-        <div className="space-y-8">
-          {steps.map((step) => (
-            <div key={step.id} className="mb-6">
-              <h3 className="text-lg font-medium text-white mb-3">{step.title}</h3>
-              <div className="text-neutral-300 ml-4">
-                {step.status !== 'error' && step.result && (
-                  (step.id === 'understand' && firstStepThinking) ? (
-                    <ReactMarkdown className="prose prose-invert text-neutral-300 text-base">{extractThinkContent(firstStepThinking)}</ReactMarkdown>
-                  ) : (step.id !== 'research') ? (
-                    <ul className="list-disc pl-5 space-y-2 text-neutral-300 text-base">
-                      {extractBulletPoints(extractThinkContent(step.result)).map((point, i) => (
-                        <li key={i}>{point}</li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p>{step.result}</p>
-                  )
-                )}
-                {step.status !== 'error' && !step.result && step.content && <p>{step.content}</p>}
-                {step.status === 'error' && <p className="text-red-400">An error occurred while processing this step.</p>}
+        <div className="flex flex-row relative min-h-[260px]">
+          {/* Progress bar container */}
+          <div className="relative flex flex-col items-center mr-6" style={{ width: '32px', minHeight: '220px' }}>
+            {/* Background line */}
+            <div className="absolute left-1/2 -translate-x-1/2 w-1 h-full bg-neutral-700 z-0 rounded" />
+            {/* Cyan progress fill */}
+            <div
+              className="absolute left-1/2 -translate-x-1/2 w-1 bg-cyan-500 z-10 rounded transition-all duration-700"
+              style={{
+                height: `${progressPercent}%`,
+                bottom: 0,
+              }}
+            />
+            {/* Step dots */}
+            {steps.map((step, idx) => {
+              const isCompleted = step.status === 'completed';
+              const isActive = step.status === 'active';
+              return (
+                <div
+                  key={step.id}
+                  className="relative z-20 flex flex-col items-center"
+                  style={{
+                    position: 'absolute',
+                    top: `calc(${(idx / (steps.length - 1)) * 100}% - 8px)`,
+                    left: '50%',
+                    transform: 'translate(-50%, 0)',
+                  }}
+                >
+                  <span
+                    className={`w-4 h-4 rounded-full border-2 transition-all duration-500
+                      ${isCompleted ? 'border-cyan-500 bg-cyan-500 scale-110' :
+                        isActive ? 'border-cyan-400 bg-neutral-900 shadow-[0_0_8px_2px_rgba(34,211,238,0.7)] scale-125' :
+                        'border-neutral-500 bg-neutral-900 scale-100'}
+                    `}
+                    style={{ boxShadow: isActive ? '0 0 12px 2px rgba(34,211,238,0.7)' : undefined }}
+                  ></span>
+                </div>
+              );
+            })}
+          </div>
+          {/* Steps content */}
+          <div className="flex-1 space-y-8">
+            {steps.map((step, idx) => (
+              <div key={step.id} className="mb-6">
+                <h3 className="text-lg font-medium text-white mb-3">{step.title}</h3>
+                <div className="text-neutral-300 ml-4">
+                  {step.status !== 'error' && step.result && (
+                    (step.id === 'understand' && firstStepThinking) ? (
+                      <ReactMarkdown className="prose prose-invert text-neutral-300 text-base">{extractThinkContent(firstStepThinking)}</ReactMarkdown>
+                    ) : (step.id !== 'research') ? (
+                      <ul className="list-disc pl-5 space-y-2 text-neutral-300 text-base">
+                        {extractBulletPoints(extractThinkContent(step.result)).map((point, i) => (
+                          <li key={i}>{point}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p>{step.result}</p>
+                    )
+                  )}
+                  {step.status !== 'error' && !step.result && step.content && <p>{step.content}</p>}
+                  {step.status === 'error' && <p className="text-red-400">An error occurred while processing this step.</p>}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
         {/* Error display */}
         {error && (
