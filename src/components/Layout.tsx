@@ -1,9 +1,14 @@
+'use client';
+
 import React, { useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
 import Header from './Header';
 import Footer from './Footer';
 
-const Layout: React.FC = () => {
+interface LayoutProps {
+  children: React.ReactNode;
+}
+
+const Layout: React.FC<LayoutProps> = ({ children }) => {
   // Add an effect to handle resize events and adjust layout accordingly
   useEffect(() => {
     const handleResize = () => {
@@ -48,7 +53,7 @@ const Layout: React.FC = () => {
       <Header />
       <main className="flex-1 transition-all duration-300 relative z-0">
         <div className="container mx-auto py-8 px-4 sm:px-6 lg:px-8">
-          <Outlet />
+          {children}
         </div>
       </main>
       <Footer />
