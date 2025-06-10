@@ -310,8 +310,9 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
 
   // Start/stop timer based on step status
   useEffect(() => {
-    const allCompleted = steps.every(step => step.status === 'completed');
-    if (timerActive && allCompleted) {
+    // Check specifically for the 4th step (analyze) completion
+    const analyzeStep = steps.find(step => step.id === 'analyze');
+    if (timerActive && analyzeStep?.status === 'completed') {
       setTimerActive(false);
       if (timerRef.current) clearInterval(timerRef.current);
       timerRef.current = null;
