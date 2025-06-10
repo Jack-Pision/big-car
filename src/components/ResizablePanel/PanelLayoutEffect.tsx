@@ -16,10 +16,33 @@ export default function PanelLayoutEffect() {
       
       // Update any elements that need to be responsive to the panel
       const mainContainer = document.querySelector('main');
-      if (mainContainer && hasPanelOpen) {
-        mainContainer.classList.add('panel-adjusted');
-      } else if (mainContainer) {
-        mainContainer.classList.remove('panel-adjusted');
+      const header = document.querySelector('header');
+      const footer = document.querySelector('footer');
+      const inputContainer = document.querySelector('.chat-input-container');
+      
+      if (hasPanelOpen) {
+        // Apply panel-adjusted class to main container
+        mainContainer?.classList.add('panel-adjusted');
+        
+        // Ensure header and footer don't overlap panel
+        if (header) {
+          header.classList.add('panel-adjusted');
+        }
+        
+        if (footer) {
+          footer.classList.add('panel-adjusted');
+        }
+        
+        // Adjust input width if exists
+        if (inputContainer) {
+          inputContainer.classList.add('panel-adjusted');
+        }
+      } else {
+        // Remove adjustments when panel is closed
+        mainContainer?.classList.remove('panel-adjusted');
+        header?.classList.remove('panel-adjusted');
+        footer?.classList.remove('panel-adjusted');
+        inputContainer?.classList.remove('panel-adjusted');
       }
     };
 
@@ -34,7 +57,17 @@ export default function PanelLayoutEffect() {
       });
     });
     
+    // Create another observer to watch for class changes on body
+    const bodyObserver = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.attributeName === 'class') {
+          handleResize();
+        }
+      });
+    });
+    
     observer.observe(document.documentElement, { attributes: true });
+    bodyObserver.observe(document.body, { attributes: true });
     
     // Run once on mount to set initial state
     handleResize();
@@ -42,6 +75,7 @@ export default function PanelLayoutEffect() {
     return () => {
       window.removeEventListener('resize', handleResize);
       observer.disconnect();
+      bodyObserver.disconnect();
     };
   }, []);
 

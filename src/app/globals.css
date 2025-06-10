@@ -534,4 +534,42 @@ body.panel-active {
 /* Ensure that absolute positioned elements respect the right panel space */
 .right-panel-aware {
   transition: right 0.3s ease;
+}
+
+/* Enhanced panel styles for visibility above header/footer */
+body.panel-open {
+  overflow-x: hidden;
+}
+
+/* Ensure the panel has higher z-index than header/footer */
+.fixed.inset-y-0.right-0.z-\[100\] {
+  z-index: 100 !important; /* Higher than any other elements */
+  pointer-events: auto !important;
+}
+
+/* Ensure panel content is visible at all viewport heights */
+.panel-open main {
+  padding-right: var(--panel-width, 0px);
+  transition: padding-right 0.3s ease;
+}
+
+/* Make sure the header and footer don't obscure the panel */
+.panel-open header,
+.panel-open footer {
+  padding-right: var(--panel-width, 0px);
+  width: 100%;
+  transition: padding-right 0.3s ease;
+}
+
+/* Style input elements to adjust properly when panel is open */
+.panel-open .floating-input-card,
+.panel-open .chat-input-container {
+  width: calc(100% - var(--panel-width, 0px));
+  max-width: calc(600px + var(--panel-width, 0px));
+  transition: width 0.3s ease, max-width 0.3s ease;
+}
+
+/* Make resize handle more visible */
+.absolute.left-0.top-0.bottom-0.w-5 .w-1.h-24 {
+  box-shadow: 0 0 8px rgba(0, 255, 255, 0.3);
 } 

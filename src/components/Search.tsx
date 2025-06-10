@@ -560,6 +560,7 @@ Error details: ${errorMessage}
             fill="none"
             strokeLinecap="round"
             strokeLinejoin="round"
+            className={isFullView ? "text-cyan-400" : "text-white"}
           >
             <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
             <line x1="9" y1="3" x2="9" y2="21" />
@@ -633,11 +634,14 @@ Error details: ${errorMessage}
           isOpen={isFullView} 
           onClose={() => setIsFullView(false)}
           title="Advanced Search Results"
+          initialWidth={420}
         >
           <div className="space-y-8">
             {steps.map((step, idx) => (
-              <div key={step.id} className="mb-6 border-b border-neutral-800 pb-4">
-                <h3 className="text-lg font-medium text-white mb-3">{step.title}</h3>
+              <div key={step.id} className="mb-8 border-b border-neutral-800 pb-6">
+                <h3 className="text-lg font-medium text-white mb-4 flex items-center">
+                  <span className="text-cyan-400 mr-2">{idx + 1}.</span> {step.title}
+                </h3>
                 <div className="text-neutral-300">
                   {step.status !== 'error' && step.result && (
                     (step.id === 'understand' && firstStepThinking) ? (
