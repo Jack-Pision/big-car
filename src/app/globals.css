@@ -631,4 +631,34 @@ body.panel-open .panel-adjusted {
   filter: none !important;
   transform: none !important;
   transition: width 0.3s ease;
+}
+
+/* Ensure the footer stays behind other elements */
+footer, 
+.footer, 
+[class*="footer"] {
+  z-index: 5 !important;
+}
+
+/* Ensure input container appears above footer */
+.chat-input-container,
+.floating-input-card,
+[class*="input"] {
+  z-index: 15 !important;
+  position: relative;
+}
+
+/* Reset any other fixed elements that might have high z-index */
+body.panel-open header,
+body.panel-open [class*="header"],
+body.panel-open footer,
+body.panel-open [class*="footer"],
+body.panel-open .fixed:not(#panel-root):not([style*="z-index: 99"]),
+body.panel-open .absolute:not(#panel-root):not([style*="z-index: 99"]) {
+  z-index: 10 !important;
+}
+
+body.panel-open footer,
+body.panel-open [class*="footer"] {
+  z-index: 5 !important;
 } 
