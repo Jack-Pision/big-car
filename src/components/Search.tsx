@@ -566,7 +566,11 @@ Error details: ${errorMessage}
         <div className="space-y-6">
           {steps.map((step, idx) => (
             <div key={step.id} className="mb-4">
-              <h3 className={`text-base font-medium mb-2 ${step.status !== 'completed' ? 'text-cyan-400 animate-pulse' : 'text-white'}`}>{step.title}</h3>
+              <h3 className={`text-base font-medium mb-2 ${
+                step.status !== 'completed' 
+                ? styles['step-title'] 
+                : styles['step-title-completed']
+              }`}>{step.title}</h3>
               <div className="text-neutral-300 ml-4">
                 {step.status !== 'error' && step.result && (
                   (step.id === 'understand' && firstStepThinking) ? (
