@@ -534,4 +534,70 @@ body.panel-active {
 /* Ensure that absolute positioned elements respect the right panel space */
 .right-panel-aware {
   transition: right 0.3s ease;
+}
+
+/* Higher z-index for panel to appear over header/footer */
+.fixed {
+  z-index: var(--z-index, 50);
+}
+
+.z-\[100\] {
+  --z-index: 100 !important;
+  z-index: 100 !important;
+}
+
+/* Panel adjustments */
+body.panel-open {
+  overflow-x: hidden;
+}
+
+/* Make sure the input adjusts when panel is open */
+.panel-adjusted-input {
+  width: calc(100% - var(--panel-width, 0px)) !important;
+  max-width: calc(100% - var(--panel-width, 0px) - 2rem) !important;
+  transition: width 0.3s ease, max-width 0.3s ease;
+}
+
+/* Ensure the panel doesn't get hidden by header/footer */
+.fixed.right-0.h-screen {
+  height: 100vh !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+}
+
+/* Improve the panel scrolling */
+.fixed.right-0.h-screen .overflow-y-auto {
+  max-height: 100vh;
+  scrollbar-width: thin;
+}
+
+/* Ensure the chat UI adjusts for the panel */
+.chat-container,
+.chat-messages,
+.chat-input-container {
+  transition: width 0.3s ease, max-width 0.3s ease, padding-right 0.3s ease;
+}
+
+body.panel-open .chat-container,
+body.panel-open .chat-messages,
+body.panel-open .chat-input-container {
+  width: calc(100% - var(--panel-width, 0px));
+  max-width: calc(100% - var(--panel-width, 0px));
+}
+
+/* Adjust any fixed elements for the panel */
+body.panel-open .chat-input-container,
+body.panel-open .chat-header {
+  right: var(--panel-width, 0px);
+}
+
+/* Ensure specific inputs adjust */
+body.panel-open .floating-input-card,
+body.panel-open .ask-input-container {
+  width: calc(100% - var(--panel-width, 0px) - 2rem) !important;
+  max-width: calc(600px - var(--panel-width, 0px) * 0.5) !important;
+  margin-left: auto;
+  margin-right: auto;
+  transition: width 0.3s ease, max-width 0.3s ease;
 } 

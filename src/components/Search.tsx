@@ -4,7 +4,7 @@ import styles from './Search.module.css';
 import { dedupedSerperRequest } from '@/utils/api-request-cache';
 import ReactMarkdown from 'react-markdown';
 import { motion } from 'framer-motion';
-import ResizablePanel from '../components/ResizablePanel';
+import ResizablePanel from './ResizablePanel';
 
 // Define step types
 type StepStatus = 'pending' | 'active' | 'completed' | 'error';
@@ -627,12 +627,15 @@ Error details: ${errorMessage}
         )}
       </motion.div>
       
-      {/* Full View Panel (shows on right side of main chat when Full View button is clicked) */}
+      {/* Full View Panel using updated ResizablePanel component */}
       {isFullView && (
         <ResizablePanel 
           isOpen={isFullView} 
           onClose={() => setIsFullView(false)}
           title="Advanced Search Results"
+          initialWidth={450}
+          minWidth={350}
+          maxWidth={800}
         >
           <div className="space-y-8">
             {steps.map((step, idx) => (
