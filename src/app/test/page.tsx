@@ -2533,7 +2533,7 @@ export default function TestChat() {
       {/* Conversation area (scrollable) */}
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto w-full flex flex-col items-center justify-center relative px-4 sm:px-4 md:px-8 lg:px-0 pt-14"
+        className="flex-1 overflow-y-auto w-full flex flex-col items-center justify-center relative px-4 sm:px-4 md:px-8 lg:px-0 pt-8"
           style={{ paddingBottom: `${isChatEmpty && !hasInteracted ? 0 : inputBarHeight + EXTRA_GAP}px` }}
       >
           {/* Centered wrapper for heading and input */}
@@ -2833,7 +2833,7 @@ export default function TestChat() {
                 return (
                 <div
                   key={msg.id + '-user-' + i}
-                  className="px-3 py-2 rounded-xl shadow bg-blue-600 text-white self-end max-w-[80%] text-base flex flex-col items-end mb-2"
+                  className="px-3 py-2 rounded-xl shadow bg-cyan-500 text-white self-end max-w-[80%] text-base flex flex-col items-end mb-2"
                 >
                   {/* Only show message content and images, no menu */}
                     {msg.imageUrls && msg.imageUrls.map((url, index) => (

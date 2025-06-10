@@ -530,7 +530,7 @@ Error details: ${errorMessage}
             <line x1="6.85" y1="17.15" x2="10.15" y2="13.85" />
             <line x1="13.85" y1="10.15" x2="17.15" y2="6.85" />
           </svg>
-          <span className="text-lg font-normal text-neutral-200">{query}</span>
+          <span className="text-base font-normal text-neutral-200">{query}</span>
         </div>
         
         {/* Expand/Collapse Arrow Button */}
@@ -563,26 +563,26 @@ Error details: ${errorMessage}
         transition={{ duration: 0.4, ease: 'easeInOut' }}
         style={{ height: 300 - 64 }}
       >
-        <div className="space-y-8">
+        <div className="space-y-6">
           {steps.map((step, idx) => (
-            <div key={step.id} className="mb-6">
-              <h3 className="text-lg font-medium text-white mb-3">{step.title}</h3>
+            <div key={step.id} className="mb-4">
+              <h3 className={`text-base font-medium mb-2 ${step.status !== 'completed' ? 'text-cyan-400 animate-pulse' : 'text-white'}`}>{step.title}</h3>
               <div className="text-neutral-300 ml-4">
                 {step.status !== 'error' && step.result && (
                   (step.id === 'understand' && firstStepThinking) ? (
-                    <ReactMarkdown className="prose prose-invert text-neutral-300 text-base">{extractThinkContent(firstStepThinking)}</ReactMarkdown>
+                    <ReactMarkdown className="prose prose-invert text-neutral-300 text-sm">{extractThinkContent(firstStepThinking)}</ReactMarkdown>
                   ) : (step.id !== 'research') ? (
-                    <ul className="list-disc pl-5 space-y-2 text-neutral-300 text-base">
+                    <ul className="list-disc pl-5 space-y-1 text-neutral-300 text-sm">
                       {extractBulletPoints(extractThinkContent(step.result)).map((point, i) => (
                         <li key={i}>{point}</li>
                       ))}
                     </ul>
                   ) : (
-                    <p>{step.result}</p>
+                    <p className="text-sm">{step.result}</p>
                   )
                 )}
-                {step.status !== 'error' && !step.result && step.content && <p>{step.content}</p>}
-                {step.status === 'error' && <p className="text-red-400">An error occurred while processing this step.</p>}
+                {step.status !== 'error' && !step.result && step.content && <p className="text-sm">{step.content}</p>}
+                {step.status === 'error' && <p className="text-red-400 text-sm">An error occurred while processing this step.</p>}
               </div>
             </div>
           ))}
@@ -590,7 +590,7 @@ Error details: ${errorMessage}
         {/* Error display */}
         {error && (
           <div className="mt-6 p-4 bg-red-900/30 border border-red-700 rounded-lg">
-            <p className="text-red-400">{error}</p>
+            <p className="text-red-400 text-sm">{error}</p>
           </div>
         )}
       </motion.div>
