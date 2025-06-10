@@ -4,7 +4,7 @@ import styles from './Search.module.css';
 import { dedupedSerperRequest } from '@/utils/api-request-cache';
 import ReactMarkdown from 'react-markdown';
 import { motion } from 'framer-motion';
-import ResizablePanel from './ResizablePanel/index';
+import ResizablePanel from '@/components/ResizablePanel';
 
 // Define step types
 type StepStatus = 'pending' | 'active' | 'completed' | 'error';

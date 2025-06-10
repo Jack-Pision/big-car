@@ -606,20 +606,20 @@ body.panel-open .ask-input-container {
 
 /* Force content to be visible */
 body {
-  display: block !important;
+  /* display: block !important;
   visibility: visible !important;
   opacity: 1 !important;
   background: linear-gradient(90deg, #fee140 0%, #fa709a 100%) !important;
   min-height: 100vh !important;
-  color: white !important;
+  color: white !important; */
 }
 
 /* Make sure the search mode page is visible */
 .min-h-screen {
-  display: block !important;
+  /* display: block !important;
   visibility: visible !important;
   opacity: 1 !important;
-  min-height: 100vh !important;
+  min-height: 100vh !important; */
 }
 
 /* Fix panel visibility */
@@ -629,13 +629,13 @@ body {
 
 /* Make sure the panel content is visible */
 .fixed.right-0.h-screen {
-  display: flex !important;
+  /* display: flex !important;
   visibility: visible !important;
-  opacity: 1 !important;
+  opacity: 1 !important; */
 }
 
 /* Ensure the main content is not overridden */
 #__next {
-  min-height: 100vh !important;
-  display: block !important;
+  /* min-height: 100vh !important;
+  display: block !important; */
 } 

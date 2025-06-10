@@ -12,5 +12,5 @@ const SYSTEM_PROMPT = `You are a helpful AI assistant. Format your responses usi
 5. Keep descriptions concise but informative - adapt length based on complexity.`;
 
 export default function Home() {
-  redirect('/search-mode');
+  redirect('/test');
 } 

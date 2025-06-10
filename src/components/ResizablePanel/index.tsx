@@ -52,9 +52,6 @@ const ResizablePanel: React.FC<ResizablePanelProps> = ({
       if (inputContainer) {
         inputContainer.classList.add('panel-adjusted-input');
       }
-      
-      // Log for debugging
-      console.log('Panel resized to width:', clampedWidth);
     };
 
     const handleMouseUp = () => {
@@ -78,8 +75,6 @@ const ResizablePanel: React.FC<ResizablePanelProps> = ({
 
   // Apply/remove panel width effect on mount/unmount
   useEffect(() => {
-    console.log('ResizablePanel effect. isOpen:', isOpen);
-    
     if (isOpen) {
       document.body.style.paddingRight = `${width}px`;
       document.documentElement.style.setProperty('--panel-width', `${width}px`);
@@ -90,8 +85,6 @@ const ResizablePanel: React.FC<ResizablePanelProps> = ({
       if (inputContainer) {
         inputContainer.classList.add('panel-adjusted-input');
       }
-      
-      console.log('Panel opened with width:', width);
     }
     
     return () => {
@@ -104,8 +97,6 @@ const ResizablePanel: React.FC<ResizablePanelProps> = ({
       if (inputContainer) {
         inputContainer.classList.remove('panel-adjusted-input');
       }
-      
-      console.log('Panel closed');
     };
   }, [isOpen, width]);
 
@@ -113,22 +104,14 @@ const ResizablePanel: React.FC<ResizablePanelProps> = ({
   const handleResizeStart = (e: React.MouseEvent) => {
     e.preventDefault();
     setIsResizing(true);
-    console.log('Started resizing panel');
   };
 
   if (!isOpen) return null;
-  
-  console.log('Rendering panel with width:', width);
 
   return (
     <div 
-      className="fixed top-0 right-0 h-screen z-[9999] flex flex-col transition-all duration-300"
-      style={{ 
-        width: `${width}px`, 
-        display: 'flex',
-        visibility: 'visible',
-        opacity: 1
-      }}
+      className="fixed top-0 right-0 h-screen z-[100] flex flex-col transition-all duration-300"
+      style={{ width: `${width}px` }}
       ref={panelRef}
     >
       {/* Resize handle - wider for better UX */}
@@ -146,9 +129,7 @@ const ResizablePanel: React.FC<ResizablePanelProps> = ({
         style={{ 
           boxShadow: '-4px 0 15px rgba(0, 0, 0, 0.3)',
           paddingTop: '56px',  // Header height
-          paddingBottom: '56px', // Footer height
-          display: 'flex',
-          flexDirection: 'column'
+          paddingBottom: '56px' // Footer height
         }}
       >
         <div className="p-4 h-full">
