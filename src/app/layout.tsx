@@ -14,6 +14,12 @@ const CacheDebug = dynamic(
   { ssr: false }
 );
 
+// Dynamically load PanelLayoutEffect with no SSR to handle panel resize
+const PanelLayoutEffect = dynamic(
+  () => import('@/components/ResizablePanel/PanelLayoutEffect'),
+  { ssr: false }
+);
+
 export const metadata: Metadata = {
   title: 'Tehom AI',
   description: 'A modern chatbot interface for AI study assistance',
@@ -37,6 +43,7 @@ export default function RootLayout({
         <Analytics />
         <SpeedInsights />
         <CacheDebug />
+        <PanelLayoutEffect />
       </body>
     </html>
   );

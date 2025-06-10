@@ -6,6 +6,7 @@
 body {
   @apply bg-white text-neutral-900;
   font-family: 'Roboto', Arial, Helvetica, sans-serif;
+  transition: padding-right 0.3s ease;
 }
 
 @layer base {
@@ -493,4 +494,44 @@ textarea::-webkit-scrollbar-thumb,
   background-color: transparent;
   padding: 0;
   border-radius: 0;
+}
+
+/* Resizable panel styles */
+body {
+  transition: padding-right 0.3s ease;
+}
+
+/* Add smooth transitions for resize operations */
+.container, .wrapper, .panel, .content {
+  transition: width 0.3s ease, margin 0.3s ease, padding 0.3s ease;
+}
+
+/* Adjust main content when panel is open */
+.panel-adjusted {
+  width: calc(100% - var(--panel-width, 0px));
+  transition: width 0.3s ease;
+}
+
+main.panel-adjusted .container {
+  max-width: calc(100% - 40px);
+  margin-right: 0;
+  transition: max-width 0.3s ease;
+}
+
+/* Hide scrollbar when panel is active */
+body.panel-active {
+  overflow: hidden;
+}
+
+/* Ensure panel is always visible and extends full height */
+.full-height {
+  height: 100vh;
+  position: fixed;
+  top: 0;
+  right: 0;
+}
+
+/* Ensure that absolute positioned elements respect the right panel space */
+.right-panel-aware {
+  transition: right 0.3s ease;
 } 
