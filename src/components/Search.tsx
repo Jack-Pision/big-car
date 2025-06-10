@@ -60,7 +60,6 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
   const [timer, setTimer] = useState(0);
   const [timerActive, setTimerActive] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const [activeTab, setActiveTab] = useState<'steps' | 'thinking'>('steps');
   
   // Execute search on mount
   useEffect(() => {
@@ -549,81 +548,89 @@ Error details: ${errorMessage}
     }
   };
 
-  // Tab navigation UI
-  const renderTabs = () => (
-    <div className="flex items-center border-b border-neutral-800 mb-4">
-      <button
-        className={`px-4 py-2 text-base font-medium focus:outline-none transition-colors ${activeTab === 'steps' ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-neutral-400'}`}
-        onClick={() => setActiveTab('steps')}
-      >
-        Steps
-      </button>
-      <button
-        className={`px-4 py-2 text-base font-medium focus:outline-none transition-colors ${activeTab === 'thinking' ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-neutral-400'}`}
-        onClick={() => setActiveTab('thinking')}
-      >
-        Thinking
-      </button>
-    </div>
-  );
-
-  // Thinking tab content (show all thinking or just first step)
-  const renderThinking = () => (
-    <div className="px-6 py-4 text-neutral-300 whitespace-pre-line">
-      {firstStepThinking ? (
-        <ReactMarkdown className="prose prose-invert text-neutral-300 text-base">{extractThinkContent(firstStepThinking)}</ReactMarkdown>
-      ) : (
-        <span>No AI thinking available yet.</span>
-      )}
-    </div>
-  );
-
   // Render the Search UI
   return (
-    <div className="bg-neutral-950 rounded-lg shadow-lg w-full max-w-2xl mx-auto mt-8">
-      {renderTabs()}
-      {activeTab === 'steps' ? (
+    <div
+      className="w-full mx-auto rounded-lg overflow-hidden bg-[#171717] border border-white/20"
+      style={{ borderRadius: '20px', maxWidth: '969px' }}
+    >
+      {/* Header (fixed) */}
+      <div
+        className="relative flex items-center px-6 py-4 bg-[#171717]"
+        style={{ minHeight: '64px' }}
+      >
+        <div className="flex items-center gap-3">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-400">
+            <circle cx="12" cy="12" r="3" />
+            <circle cx="19" cy="5" r="2" />
+            <circle cx="5" cy="19" r="2" />
+            <line x1="14.15" y1="14.15" x2="17" y2="17" />
+            <line x1="6.85" y1="17.15" x2="10.15" y2="13.85" />
+            <line x1="13.85" y1="10.15" x2="17.15" y2="6.85" />
+          </svg>
+          <span className="text-lg font-normal text-neutral-200">{query}</span>
+          <span className="ml-3 text-xs font-normal text-neutral-400" style={{ minWidth: 44, textAlign: 'center', letterSpacing: 0.5 }}>{formatTimer(timer)}</span>
+        </div>
         <motion.div
-          className={`px-6 py-4 overflow-y-auto ${styles['hide-scrollbar']}`}
-          animate={{ height: isExpanded ? 300 : 180 }}
-          transition={{ duration: 0.4, ease: 'easeInOut' }}
-          style={{ height: 300 - 64 }}
+          className="absolute right-6 top-1/2 -translate-y-1/2 cursor-pointer"
+          onClick={() => setIsExpanded((v) => !v)}
+          animate={{ rotate: isExpanded ? 0 : 180 }}
+          transition={{ duration: 0.3 }}
+          style={{ display: 'flex', alignItems: 'center' }}
         >
-          {/* Steps */}
-          <div className="space-y-8">
-            {steps.map((step) => (
-              <div key={step.id} className="mb-6">
-                <h3 className="text-lg font-medium text-white mb-3">{step.title}</h3>
-                <div className="text-neutral-300 ml-4">
-                  {step.status !== 'error' && step.result && (
-                    (step.id === 'understand' && firstStepThinking) ? (
-                      <ReactMarkdown className="prose prose-invert text-neutral-300 text-base">{extractThinkContent(firstStepThinking)}</ReactMarkdown>
-                    ) : (step.id !== 'research') ? (
-                      <ul className="list-disc pl-5 space-y-2 text-neutral-300 text-base">
-                        {extractBulletPoints(extractThinkContent(step.result)).map((point, i) => (
-                          <li key={i}>{point}</li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p>{step.result}</p>
-                    )
-                  )}
-                  {step.status !== 'error' && !step.result && step.content && <p>{step.content}</p>}
-                  {step.status === 'error' && <p className="text-red-400">An error occurred while processing this step.</p>}
-                </div>
-              </div>
-            ))}
-          </div>
-          {/* Error display */}
-          {error && (
-            <div className="mt-6 p-4 bg-red-900/30 border border-red-700 rounded-lg">
-              <p className="text-red-400">{error}</p>
-            </div>
-          )}
+          <svg
+            viewBox="0 0 24 24"
+            width="20"
+            height="20"
+            stroke="#E5E5E5"
+            strokeWidth="2"
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
         </motion.div>
-      ) : (
-        renderThinking()
-      )}
+      </div>
+      {/* Content (scrollable, animated height) */}
+      <motion.div
+        className={`px-6 py-4 overflow-y-auto ${styles['hide-scrollbar']}`}
+        animate={{ height: isExpanded ? 300 : 180 }}
+        transition={{ duration: 0.4, ease: 'easeInOut' }}
+        style={{ height: 300 - 64 }}
+      >
+        {/* Steps */}
+        <div className="space-y-8">
+          {steps.map((step) => (
+            <div key={step.id} className="mb-6">
+              <h3 className="text-lg font-medium text-white mb-3">{step.title}</h3>
+              <div className="text-neutral-300 ml-4">
+                {step.status !== 'error' && step.result && (
+                  (step.id === 'understand' && firstStepThinking) ? (
+                    <ReactMarkdown className="prose prose-invert text-neutral-300 text-base">{extractThinkContent(firstStepThinking)}</ReactMarkdown>
+                  ) : (step.id !== 'research') ? (
+                    <ul className="list-disc pl-5 space-y-2 text-neutral-300 text-base">
+                      {extractBulletPoints(extractThinkContent(step.result)).map((point, i) => (
+                        <li key={i}>{point}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p>{step.result}</p>
+                  )
+                )}
+                {step.status !== 'error' && !step.result && step.content && <p>{step.content}</p>}
+                {step.status === 'error' && <p className="text-red-400">An error occurred while processing this step.</p>}
+              </div>
+            </div>
+          ))}
+        </div>
+        {/* Error display */}
+        {error && (
+          <div className="mt-6 p-4 bg-red-900/30 border border-red-700 rounded-lg">
+            <p className="text-red-400">{error}</p>
+          </div>
+        )}
+      </motion.div>
     </div>
   );
 };
