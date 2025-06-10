@@ -43,15 +43,6 @@ const ResizablePanel: React.FC<ResizablePanelProps> = ({
       // Update document body style to make the main content responsive
       document.body.style.paddingRight = `${clampedWidth}px`;
       document.documentElement.style.setProperty('--panel-width', `${clampedWidth}px`);
-      
-      // Add a class to indicate panel is open - helps with styling other elements
-      document.body.classList.add('panel-open');
-      
-      // Update any input container width
-      const inputContainer = document.querySelector('.floating-input-card');
-      if (inputContainer) {
-        inputContainer.classList.add('panel-adjusted-input');
-      }
     };
 
     const handleMouseUp = () => {
@@ -78,25 +69,11 @@ const ResizablePanel: React.FC<ResizablePanelProps> = ({
     if (isOpen) {
       document.body.style.paddingRight = `${width}px`;
       document.documentElement.style.setProperty('--panel-width', `${width}px`);
-      document.body.classList.add('panel-open');
-      
-      // Update any input container width
-      const inputContainer = document.querySelector('.floating-input-card');
-      if (inputContainer) {
-        inputContainer.classList.add('panel-adjusted-input');
-      }
     }
     
     return () => {
       document.body.style.paddingRight = '0';
       document.documentElement.style.setProperty('--panel-width', '0px');
-      document.body.classList.remove('panel-open');
-      
-      // Reset input container width
-      const inputContainer = document.querySelector('.floating-input-card');
-      if (inputContainer) {
-        inputContainer.classList.remove('panel-adjusted-input');
-      }
     };
   }, [isOpen, width]);
 
@@ -110,7 +87,7 @@ const ResizablePanel: React.FC<ResizablePanelProps> = ({
 
   return (
     <div 
-      className="fixed top-0 right-0 h-screen z-[100] flex flex-col transition-all duration-300"
+      className="fixed top-0 right-0 h-screen z-50 flex flex-col transition-all duration-300"
       style={{ width: `${width}px` }}
       ref={panelRef}
     >
@@ -126,13 +103,9 @@ const ResizablePanel: React.FC<ResizablePanelProps> = ({
       
       {/* Panel content */}
       <div className="flex-1 bg-black/95 border-l border-neutral-800 overflow-y-auto overflow-x-hidden w-full h-full" 
-        style={{ 
-          boxShadow: '-4px 0 15px rgba(0, 0, 0, 0.3)',
-          paddingTop: '56px',  // Header height
-          paddingBottom: '56px' // Footer height
-        }}
+        style={{ boxShadow: '-4px 0 15px rgba(0, 0, 0, 0.3)' }}
       >
-        <div className="p-4 h-full">
+        <div className="p-4 pt-6 h-full">
           <div className="flex justify-between items-center mb-6 sticky top-0 bg-black/95 py-2 z-10">
             <h2 className="text-xl text-white font-medium">{title}</h2>
             <button 

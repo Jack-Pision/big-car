@@ -21,28 +21,6 @@ export default function PanelLayoutEffect() {
       } else if (mainContainer) {
         mainContainer.classList.remove('panel-adjusted');
       }
-      
-      // Update any fixed bottom inputs
-      const inputContainer = document.querySelector('.floating-input-card');
-      if (inputContainer && hasPanelOpen) {
-        inputContainer.classList.add('panel-adjusted-input');
-      } else if (inputContainer) {
-        inputContainer.classList.remove('panel-adjusted-input');
-      }
-      
-      // Add class to body for other styling purposes
-      if (hasPanelOpen) {
-        document.body.classList.add('panel-open');
-      } else {
-        document.body.classList.remove('panel-open');
-      }
-      
-      // Ensure panel is on top of other elements
-      const panel = document.querySelector('.fixed.right-0.h-screen');
-      if (panel) {
-        // Force the panel to have a higher z-index than any other elements
-        panel.classList.add('z-[100]');
-      }
     };
 
     window.addEventListener('resize', handleResize);
@@ -56,17 +34,7 @@ export default function PanelLayoutEffect() {
       });
     });
     
-    // Create another observer for body class changes
-    const bodyObserver = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        if (mutation.attributeName === 'class') {
-          handleResize();
-        }
-      });
-    });
-    
     observer.observe(document.documentElement, { attributes: true });
-    bodyObserver.observe(document.body, { attributes: true });
     
     // Run once on mount to set initial state
     handleResize();
@@ -74,7 +42,6 @@ export default function PanelLayoutEffect() {
     return () => {
       window.removeEventListener('resize', handleResize);
       observer.disconnect();
-      bodyObserver.disconnect();
     };
   }, []);
 
