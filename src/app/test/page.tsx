@@ -2758,7 +2758,7 @@ export default function TestChat() {
                                           messages.find(m => m.role === 'user' && m.timestamp && m.timestamp < (msg.timestamp || Infinity));
                             if (userMsg) handleRetry(userMsg.content);
                           }}
-                          className="absolute left-0 bottom-0 p-2 mb-4 ml-2 text-white opacity-80 hover:opacity-100 transition-opacity"
+                          className="absolute left-0 bottom-0 p-2 mb-4 ml-4 text-white opacity-80 hover:opacity-100 transition-opacity"
                           aria-label="Retry with different response"
                         >
                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -2815,7 +2815,7 @@ export default function TestChat() {
                                         messages.find(m => m.role === 'user' && m.timestamp && m.timestamp < (msg.timestamp || Infinity));
                           if (userMsg) handleRetry(userMsg.content);
                         }}
-                        className="absolute left-0 bottom-0 p-2 mb-4 ml-2 text-white opacity-80 hover:opacity-100 transition-opacity"
+                        className="absolute left-0 bottom-0 p-2 mb-4 ml-4 text-white opacity-80 hover:opacity-100 transition-opacity"
                         aria-label="Retry with different response"
                       >
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
