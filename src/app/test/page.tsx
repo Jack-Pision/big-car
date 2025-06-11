@@ -1618,8 +1618,8 @@ function processStreamBuffer(buffer: string): {
   processedContent: string;
   hasCompletedReasoning: boolean;
 } {
-  // Don't show anything until we have some content
-  if (!buffer || buffer.length < 10) {
+  // Show content once we have a minimal amount (reduced threshold for faster response)
+  if (!buffer || buffer.length < 5) {
     return { 
       showContent: false, 
       processedContent: '',
@@ -1677,20 +1677,35 @@ function processStreamBuffer(buffer: string): {
   // Check if we've completed the reasoning phase based on our patterns
   const hasCompletedReasoning = reasoningPatterns.some(pattern => pattern.test(processedBuffer));
   
-  // More conservative length-based heuristics - require more content before showing
+  // Two-stage threshold approach:
+  // 1. Lower threshold for initial display (25 chars)
+  // 2. Higher threshold for showing content with potential reasoning (50 chars)
+  const hasMinimalContent = processedBuffer.length > 25;
   const hasSubstantialContent = processedBuffer.length > 50;
   
-  // Be more conservative about showing content - only show if:
-  // 1. We've definitely completed reasoning, OR
-  // 2. We have substantial content AND no signs of reasoning
-  const shouldShow = hasCompletedReasoning || (hasSubstantialContent && !isCurrentlyReasoning);
+  // Show content faster with a more balanced approach:
+  // 1. Show immediately if reasoning is complete (highest priority)
+  // 2. Show if we have substantial content and no reasoning detected
+  // 3. Show minimal content if it doesn't look like reasoning and has complete sentences
+  const hasCompleteSentence = /[.!?]\s*$/.test(processedBuffer.trim()) || processedBuffer.length > 80;
+  const shouldShow = 
+    hasCompletedReasoning || 
+    (hasSubstantialContent && !isCurrentlyReasoning) || 
+    (hasMinimalContent && !isCurrentlyReasoning && hasCompleteSentence);
 
-  // Apply extractFinalAnswer more aggressively to filter out reasoning content
+  // Apply filtering for reasoning content
   let cleanedContent = processedBuffer;
   
-  // Always attempt to extract final answer, not just when reasoning is detected
-  if (cleanedContent.length > 40) {
+  // For initial display with minimal content, do lighter processing
+  // For substantial content, apply more thorough filtering
+  if (hasSubstantialContent) {
     cleanedContent = extractFinalAnswer(cleanedContent);
+  } else if (isCurrentlyReasoning) {
+    // For minimal content with reasoning detected, still try basic extraction
+    const lastSentenceMatch = cleanedContent.match(/(?:[.!?]\s+)([^.!?]+[.!?])$/);
+    if (lastSentenceMatch && lastSentenceMatch[1] && lastSentenceMatch[1].length > 15) {
+      cleanedContent = lastSentenceMatch[1]; 
+    }
   }
   
   // Always apply post-processing to clean up the content
@@ -2027,6 +2042,8 @@ export default function TestChat() {
     }
     setMessages((prev) => [...prev, userMessageForDisplay]);
     setInput("");
+    
+    // We'll rely on faster stream processing rather than a temporary message
 
       if (selectedFilesForUpload.length > 0) {
         const clientSideSupabase = createSupabaseClient();
@@ -2107,6 +2124,13 @@ export default function TestChat() {
         frequency_penalty: 0.2,  // OPTIMIZATION 3: Decreased from 0.5 
         presence_penalty: 0.2,   // OPTIMIZATION 3: Decreased from 0.8
       };
+      
+      // Optimize for faster initial responses in default chat mode
+      if (queryType === 'conversation') {
+        apiPayload.temperature = 0.75;  // Slight increase for faster generation
+        apiPayload.frequency_penalty = 0.1;  // Further reduce to speed up initial response
+        apiPayload.presence_penalty = 0.1;  // Further reduce to speed up initial response
+      }
       
       if (uploadedImageUrls.length > 0) {
         const lastUserMsgIndex = formattedMessages.length - 1;
@@ -2215,20 +2239,52 @@ export default function TestChat() {
                         hasActualContent = true;
                         aiMsg.content = processedContent;
                         setIsProcessing(false);
-                        setMessages((prev) => [...prev, { ...aiMsg }]);
+                        
+                        // Replace the temporary message if it exists
+                        setMessages((prev) => {
+                          const updatedMessages = [...prev];
+                          const aiIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
+                          // If not found by ID, try finding by parent ID (for temporary message replacement)
+                          const tempIndex = aiIndex === -1 ? 
+                            updatedMessages.findIndex(m => m.parentId === userMessageId && 
+                              m.content === "Thinking...") : -1;
+                          
+                          const indexToUpdate = aiIndex !== -1 ? aiIndex : tempIndex;
+                          
+                          if (indexToUpdate !== -1) {
+                            updatedMessages[indexToUpdate] = {
+                              ...updatedMessages[indexToUpdate],
+                              id: aiMsg.id, // Ensure consistent ID
+                              content: processedContent,
+                              webSources: aiMsg.webSources,
+                              isStreaming: false,
+                              isProcessed: true
+                            };
+                          }
+                      return updatedMessages;
+                    });
                       } else {
                         aiMsg.content = processedContent;
                     setMessages((prev) => {
                       const updatedMessages = [...prev];
                           const aiIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
-                          if (aiIndex !== -1) {
-                            updatedMessages[aiIndex] = {
-                              ...updatedMessages[aiIndex],
+                          // If not found by ID, try finding by parent ID (for temporary message replacement)
+                          const tempIndex = aiIndex === -1 ? 
+                            updatedMessages.findIndex(m => m.parentId === userMessageId && 
+                              m.content === "Thinking...") : -1;
+                          
+                          const indexToUpdate = aiIndex !== -1 ? aiIndex : tempIndex;
+                          
+                          if (indexToUpdate !== -1) {
+                            updatedMessages[indexToUpdate] = {
+                              ...updatedMessages[indexToUpdate],
+                              id: aiMsg.id, // Ensure consistent ID
                               content: processedContent,
                               webSources: aiMsg.webSources,
+                              isStreaming: false,
                               isProcessed: true
-                        };
-                      }
+                            };
+                          }
                       return updatedMessages;
                     });
                       }
@@ -2241,11 +2297,20 @@ export default function TestChat() {
                       setMessages((prev) => {
                         const updatedMessages = [...prev];
                         const aiIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
-                        if (aiIndex !== -1) {
-                          updatedMessages[aiIndex] = {
-                            ...updatedMessages[aiIndex],
+                        // If not found by ID, try finding by parent ID (for temporary message replacement)
+                        const tempIndex = aiIndex === -1 ? 
+                          updatedMessages.findIndex(m => m.parentId === userMessageId && 
+                            m.content === "Thinking...") : -1;
+                        
+                        const indexToUpdate = aiIndex !== -1 ? aiIndex : tempIndex;
+                        
+                        if (indexToUpdate !== -1) {
+                          updatedMessages[indexToUpdate] = {
+                            ...updatedMessages[indexToUpdate],
+                            id: aiMsg.id, // Ensure consistent ID
                             content: processedContent,
                             webSources: aiMsg.webSources,
+                            isStreaming: false,
                             isProcessed: true
                           };
                         }
