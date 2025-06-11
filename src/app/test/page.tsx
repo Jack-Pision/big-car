@@ -55,7 +55,7 @@ type ContentDisplayType = 'tutorial' | 'comparison' | 'informational_summary' | 
 
 const BASE_SYSTEM_PROMPT = `You are Tehom AI, a helpful and intelligent assistant. Respond in a natural, conversational tone. Always write in markdown formatting in every output dynamically. Feel free to show your thinking process using <think> tags.
 
-IMPORTANT: For general conversation, do NOT format your responses as JSON structures. Always provide plain text or simple markdown responses. Never return JSON objects or arrays in your replies unless specifically requested to do so.`;
+IMPORTANT: For general conversation, do NOT format your responses as JSON structures. Always provide plain text or simple markdown responses. Never return JSON objects or arrays in your replies unless specifically requested to do so. For default chat mode, do NOT use structured formats like Summary Tables, Conclusion sections, or heavily formatted outputs with multiple headers.`;
 
 const CITATION_INSTRUCTIONS = `IMPORTANT: You are a Deep Research AI assistant. Follow this three-step process:
 
@@ -1622,72 +1622,101 @@ function processStreamBuffer(buffer: string): {
       return { 
         showContent: true, 
         processedContent: handlePotentialJsonInConversation(buffer),
-        hasCompletedReasoning: true
+        hasCompletedReasoning: true  
       };
     } catch (e) {
-      // Not complete JSON yet, continue with normal processing
+      // Not valid JSON yet or incomplete
     }
   }
 
-  // We want to preserve the think tags in default chat mode
-  // so we don't filter them out anymore
-  const processedBuffer = buffer;
-
-  // If buffer only contained thinking tags and nothing else, don't show yet
-  if (!processedBuffer.trim()) {
-    return { 
-      showContent: false, 
-      processedContent: '',
-      hasCompletedReasoning: false
-    };
-  }
-
-  // Check if we detect reasoning content (heuristic)
-  const isCurrentlyReasoning = isReasoningContent(processedBuffer);
+  // Check for and clean advanced search structure elements in the streamed content
+  let processedContent = buffer;
   
-  // Has the reasoning phase been completed? (i.e. we have content after reasoning)
-  // We look for signs of a transition from reasoning to final content
-  const reasoningPatterns = [
-    /thinking through this step[\s\S]*?Let me provide|thinking[\s\S]*?Here's|reasoning[\s\S]*?Therefore|analyzing[\s\S]*?In conclusion/i,
-    /Let me think[\s\S]*?Based on this|Let me analyze[\s\S]*?So the answer|Let me solve[\s\S]*?Thus|Let me work[\s\S]*?Hence/i,
-    /I'll approach[\s\S]*?The answer is|I need to consider[\s\S]*?In summary|step by step[\s\S]*?In conclusion/i,
-    /first[\s\S]*?second[\s\S]*?third[\s\S]*?therefore/i,
-    /thinking aloud[\s\S]*?to summarize/i,
-    /I'll break this down[\s\S]*?In summary/i,
-    /Let's analyze[\s\S]*?In conclusion/i,
-    /Let me understand[\s\S]*?Therefore/i,
-    /I'll examine[\s\S]*?Based on this/i,
-    /analyzing[\s\S]*?To summarize/i,
-  ];
-
-  // Check if we've completed the reasoning phase based on our patterns
-  const hasCompletedReasoning = reasoningPatterns.some(pattern => pattern.test(processedBuffer));
+  // Early detection of advanced search structure formation
+  const hasSummaryTableMarker = processedContent.includes("## Summary Table");
+  const hasConclusionMarker = processedContent.includes("## Conclusion");
+  const hasMarkdownTableStart = processedContent.includes("| ") && processedContent.includes(" |") && processedContent.includes("\n|");
   
-  // More conservative length-based heuristics - require more content before showing
-  const hasSubstantialContent = processedBuffer.length > 50;
-  
-  // Be more conservative about showing content - only show if:
-  // 1. We've definitely completed reasoning, OR
-  // 2. We have substantial content AND no signs of reasoning
-  const shouldShow = hasCompletedReasoning || (hasSubstantialContent && !isCurrentlyReasoning);
-
-  // Apply extractFinalAnswer more aggressively to filter out reasoning content
-  let cleanedContent = processedBuffer;
-  
-  // Always attempt to extract final answer, not just when reasoning is detected
-  if (cleanedContent.length > 40) {
-    // Don't extract final answer for default chat anymore - show raw content with think tags
-    // cleanedContent = extractFinalAnswer(cleanedContent);
+  // If we detect advanced search patterns forming, clean them
+  if (hasSummaryTableMarker || hasConclusionMarker || hasMarkdownTableStart) {
+    // Apply cleaning rules for specific patterns
+    if (hasSummaryTableMarker) {
+      processedContent = processedContent.replace(/##\s*Summary\s*Table[\s\S]*?(?=##|$)/gi, '');
+    }
+    if (hasConclusionMarker) {
+      processedContent = processedContent.replace(/##\s*Conclusion\s*/gi, '');
+    }
+    if (hasMarkdownTableStart) {
+      processedContent = processedContent.replace(/\|[\s\S]*?\|[\s\S]*?\|[\s\S]*?(?=\n\n|\n$|$)/g, '');
+    }
+    
+    // Remove any section headers
+    processedContent = processedContent.replace(/##\s*[A-Za-z][A-Za-z\s]+/gi, '');
+    
+    // Clean up spacing
+    processedContent = processedContent.replace(/\n{3,}/g, '\n\n').trim();
   }
   
-  // Don't apply post-processing for default chat
-  // cleanedContent = postProcessAIChatResponse(cleanedContent, true);
+  // Check if reasoning is complete (keep this logic intact)
+  const hasCompletedReasoning = 
+    processedContent.includes('</think>') && 
+    !processedContent.endsWith('</think>') &&
+    processedContent.lastIndexOf('</think>') < processedContent.length - 10;
   
-  return {
-    showContent: true, // Always show content for default chat
-    processedContent: cleanedContent.trim(),
-    hasCompletedReasoning: hasCompletedReasoning
+  return { 
+    showContent: true, 
+    processedContent,
+    hasCompletedReasoning
   };
+}
+
+/**
+ * Detects and cleans advanced search structure from default chat messages
+ * @param content The chat message content to check and clean
+ * @returns An object with detection flag and cleaned content
+ */
+function detectAndCleanAdvancedStructure(content: string): { 
+  hasAdvancedStructure: boolean;
+  cleanedContent: string;
+} {
+  if (!content) return { hasAdvancedStructure: false, cleanedContent: content };
+  
+  // Check for advanced search structural elements
+  const hasSummaryTable = content.includes("## Summary Table");
+  const hasConclusion = content.includes("## Conclusion");
+  const hasMarkdownTable = (content.match(/\|\s*-+\s*\|/g)?.length || 0) > 0;
+  const hasMultipleHeaders = (content.match(/##\s+[A-Za-z]/g)?.length || 0) >= 2;
+  
+  const hasAdvancedStructure = hasSummaryTable || 
+                              (hasConclusion && hasMultipleHeaders) || 
+                              (hasMarkdownTable && hasMultipleHeaders);
+  
+  if (!hasAdvancedStructure) {
+    return { hasAdvancedStructure: false, cleanedContent: content };
+  }
+  
+  // Clean the content if advanced structure is detected
+  let cleanedContent = content;
+  
+  // Remove summary table section (including the table)
+  cleanedContent = cleanedContent.replace(/##\s*Summary\s*Table[\s\S]*?(?=##|$)/gi, '');
+  
+  // Remove markdown tables (matching table headers and separators)
+  cleanedContent = cleanedContent.replace(/\|[\s\S]*?\|[\s\S]*?\|[\s\S]*?(?=\n\n|\n$|$)/g, '');
+  
+  // Remove conclusion header but keep its content
+  cleanedContent = cleanedContent.replace(/##\s*Conclusion\s*/gi, '');
+  
+  // Remove any other section headers that might be part of the structure
+  cleanedContent = cleanedContent.replace(/##\s*[A-Za-z][A-Za-z\s]+/gi, '');
+  
+  // Fix spacing issues from removals
+  cleanedContent = cleanedContent.replace(/\n{3,}/g, '\n\n');
+  
+  // Clean up trailing whitespace
+  cleanedContent = cleanedContent.trim();
+  
+  return { hasAdvancedStructure, cleanedContent };
 }
 
 // Add prompt handler functions after the BASE_SYSTEM_PROMPT and before the TestChat component
@@ -1703,7 +1732,10 @@ IMPORTANT FOR DEFAULT CHAT:
   </think>
 - After your thinking process, provide your final answer
 - Use markdown formatting for better readability
-- Format code blocks with proper syntax highlighting`;
+- Format code blocks with proper syntax highlighting
+- DO NOT use structured formats like Summary Tables or Conclusion sections
+- DO NOT use multiple section headers (##) in your responses
+- Keep your responses conversational and natural`;
 };
 
 const getSearchPrompt = (basePrompt: string) => {
@@ -2285,14 +2317,16 @@ export default function TestChat() {
             return updatedMessages;
           });
         } else {
-          // For default chat, use raw content with no processing
+          // For default chat, detect if it has advanced search structure and clean it if needed
+          const { hasAdvancedStructure, cleanedContent } = detectAndCleanAdvancedStructure(contentBuffer);
+          
           setMessages((prev) => {
             const updatedMessages = [...prev];
             const msgIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
             if (msgIndex !== -1) {
               updatedMessages[msgIndex] = {
                 ...updatedMessages[msgIndex],
-                content: contentBuffer, // Use raw content buffer with think tags preserved
+                content: hasAdvancedStructure ? cleanedContent : contentBuffer,
                 contentType: 'conversation',
                 isProcessed: true // Ensure message is marked as processed
               };
