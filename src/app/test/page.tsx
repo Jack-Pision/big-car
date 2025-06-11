@@ -2552,6 +2552,17 @@ export default function TestChat() {
     }
   };
 
+  // Function to handle copying content to clipboard
+  const handleCopy = (content: string) => {
+    navigator.clipboard.writeText(content)
+      .then(() => {
+        console.log('Content copied to clipboard');
+      })
+      .catch(err => {
+        console.error('Failed to copy content to clipboard', err);
+      });
+  };
+
   return (
     <>
       <div className="min-h-screen flex flex-col px-4 sm:px-4 md:px-8 lg:px-0" style={{ background: '#161618' }}>
@@ -2750,7 +2761,19 @@ export default function TestChat() {
                       
                       {/* Retry button for structured content */}
                       {msg.isProcessed && !isAiResponding && (
-                        <div className="w-full flex justify-start mt-2">
+                        <div className="w-full flex justify-between mt-2">
+                          <button
+                            onClick={() => handleCopy(JSON.stringify(msg.structuredContent, null, 2))}
+                            className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
+                            aria-label="Copy response"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                            <span className="text-xs">Copy</span>
+                          </button>
+                          
                           <button
                             onClick={() => {
                               // Find the corresponding user message
@@ -2810,7 +2833,19 @@ export default function TestChat() {
                     
                     {/* Retry button for text content */}
                     {msg.isProcessed && !isAiResponding && !isStoppedMsg && (
-                      <div className="w-full flex justify-start mt-2">
+                      <div className="w-full flex justify-between mt-2">
+                        <button
+                          onClick={() => handleCopy(msg.content)}
+                          className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
+                          aria-label="Copy response"
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                          </svg>
+                          <span className="text-xs">Copy</span>
+                        </button>
+                        
                         <button
                           onClick={() => {
                             // Find the corresponding user message
