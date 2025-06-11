@@ -2750,22 +2750,25 @@ export default function TestChat() {
                       
                       {/* Retry button for structured content */}
                       {msg.isProcessed && !isAiResponding && (
-                        <button
-                          onClick={() => {
-                            // Find the corresponding user message
-                            const userMsgIndex = messages.findIndex(m => m.id === msg.parentId);
-                            const userMsg = userMsgIndex >= 0 ? messages[userMsgIndex] : 
-                                          messages.find(m => m.role === 'user' && m.timestamp && m.timestamp < (msg.timestamp || Infinity));
-                            if (userMsg) handleRetry(userMsg.content);
-                          }}
-                          className="absolute left-0 bottom-0 p-2 mb-4 ml-4 text-white opacity-80 hover:opacity-100 transition-opacity"
-                          aria-label="Retry with different response"
-                        >
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
-                            <path d="M3 3v5h5"></path>
-                          </svg>
-                        </button>
+                        <div className="w-full flex justify-start mt-2">
+                          <button
+                            onClick={() => {
+                              // Find the corresponding user message
+                              const userMsgIndex = messages.findIndex(m => m.id === msg.parentId);
+                              const userMsg = userMsgIndex >= 0 ? messages[userMsgIndex] : 
+                                            messages.find(m => m.role === 'user' && m.timestamp && m.timestamp < (msg.timestamp || Infinity));
+                              if (userMsg) handleRetry(userMsg.content);
+                            }}
+                            className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
+                            aria-label="Retry with different response"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                              <path d="M3 3v5h5"></path>
+                            </svg>
+                            <span className="text-xs">Retry</span>
+                          </button>
+                        </div>
                       )}
                     </motion.div>
                   );
@@ -2807,22 +2810,25 @@ export default function TestChat() {
                     
                     {/* Retry button for text content */}
                     {msg.isProcessed && !isAiResponding && !isStoppedMsg && (
-                      <button
-                        onClick={() => {
-                          // Find the corresponding user message
-                          const userMsgIndex = messages.findIndex(m => m.id === msg.parentId);
-                          const userMsg = userMsgIndex >= 0 ? messages[userMsgIndex] : 
-                                        messages.find(m => m.role === 'user' && m.timestamp && m.timestamp < (msg.timestamp || Infinity));
-                          if (userMsg) handleRetry(userMsg.content);
-                        }}
-                        className="absolute left-0 bottom-0 p-2 mb-4 ml-4 text-white opacity-80 hover:opacity-100 transition-opacity"
-                        aria-label="Retry with different response"
-                      >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
-                          <path d="M3 3v5h5"></path>
-                        </svg>
-                      </button>
+                      <div className="w-full flex justify-start mt-2">
+                        <button
+                          onClick={() => {
+                            // Find the corresponding user message
+                            const userMsgIndex = messages.findIndex(m => m.id === msg.parentId);
+                            const userMsg = userMsgIndex >= 0 ? messages[userMsgIndex] : 
+                                          messages.find(m => m.role === 'user' && m.timestamp && m.timestamp < (msg.timestamp || Infinity));
+                            if (userMsg) handleRetry(userMsg.content);
+                          }}
+                          className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
+                          aria-label="Retry with different response"
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                            <path d="M3 3v5h5"></path>
+                          </svg>
+                          <span className="text-xs">Retry</span>
+                        </button>
+                      </div>
                     )}
                   </motion.div>
                 );
