@@ -1362,7 +1362,17 @@ function extractFinalAnswer(text: string): string {
     /This means[,:]?\s+(.+)/i,
     /To put it simply[,:]?\s+(.+)/i,
     /Simply put[,:]?\s+(.+)/i,
-    /My name is\s+(.+)/i
+    /My name is\s+(.+)/i,
+    /To summarize[,:]?\s+(.+)/i,
+    /In essence[,:]?\s+(.+)/i,
+    /Putting it together[,:]?\s+(.+)/i,
+    /To conclude[,:]?\s+(.+)/i,
+    /In brief[,:]?\s+(.+)/i,
+    /In a nutshell[,:]?\s+(.+)/i,
+    /To sum up[,:]?\s+(.+)/i,
+    /In short[,:]?\s+(.+)/i,
+    /My conclusion is[,:]?\s+(.+)/i,
+    /My final answer is[,:]?\s+(.+)/i
   ];
   
   // Loop through each pattern and check if it matches
@@ -1374,16 +1384,25 @@ function extractFinalAnswer(text: string): string {
     }
   }
   
-  // If we find paragraphs after reasoning, try to extract them
+  // Try more aggressively to remove reasoning content
+  // Split by paragraphs and check each for reasoning
   const paragraphs = text.split('\n\n');
   if (paragraphs.length > 1) {
-    // Check if first paragraph is reasoning and later ones aren't
+    // Check if first paragraph is reasoning
     if (isReasoningContent(paragraphs[0])) {
-      // Find the first non-reasoning paragraph
+      // Try to find the first non-reasoning paragraph
       for (let i = 1; i < paragraphs.length; i++) {
+        // If paragraph is substantial enough (20+ chars) and not reasoning
         if (!isReasoningContent(paragraphs[i]) && paragraphs[i].trim().length > 20) {
+          // Return everything from this paragraph onwards
           return paragraphs.slice(i).join('\n\n');
         }
+      }
+      
+      // If all paragraphs have reasoning, try to return only the last paragraph
+      // which often contains a conclusion even if it has some reasoning indicators
+      if (paragraphs[paragraphs.length - 1].length > 50) {
+        return paragraphs[paragraphs.length - 1];
       }
     }
   }
@@ -1419,9 +1438,19 @@ function extractFinalAnswer(text: string): string {
     }
   }
   
-  // Last resort: just return the last 70% of the text
+  // If we couldn't find a clear transition, check for a content section starting with a heading
+  const headingMatch = text.match(/#{1,3}\s+([^\n]+)/);
+  if (headingMatch) {
+    const headingPos = text.indexOf(headingMatch[0]);
+    if (headingPos > 0) {
+      // Return everything from the first heading onwards
+      return text.substring(headingPos);
+    }
+  }
+  
+  // Last resort: just return the last 60% of the text
   // This is based on the observation that reasoning usually appears at the beginning
-  const startPosition = Math.floor(text.length * 0.3);
+  const startPosition = Math.floor(text.length * 0.4);
   return text.substring(startPosition);
 }
 
@@ -1456,17 +1485,42 @@ function isReasoningContent(text: string): boolean {
     'when we consider', 'let\'s reason', 'this requires',
     'what do we know', 'given that', 'we can determine',
     'let\'s establish', 'going to approach', 'trying to figure out',
-    'mapping out', 'outlining', 'conceptualizing', 'i\'ll try to'
+    'mapping out', 'outlining', 'conceptualizing', 'i\'ll try to',
+    // New reasoning keywords
+    'alright,', 'okay,', 'i\'ll help', 'i need to understand', 
+    'to address this', 'i\'ll explore', 'i\'ll investigate',
+    'let\'s explore', 'i can see that', 'to approach this',
+    'i\'ll need to', 'we should examine', 'i\'ll outline',
+    'i can approach', 'in this case', 'for this query',
+    'i\'ll provide', 'i\'ll first', 'i\'ll now',
+    'breaking this into', 'looking at this', 'analyzing this',
+    'addressing your question', 'tackling this problem',
+    'addressing this task', 'starting with', 'beginning with',
+    'understanding the problem', 'understanding the question',
+    'understanding your query', 'unpacking this', 'diving into',
+    'to solve this problem', 'taking a step back', 'thinking broadly',
+    'from a broader perspective', 'from my analysis', 'based on this information',
+    'according to my understanding', 'to fully address', 'to properly answer',
+    'to accurately respond', 'i can definitely help', 'i\'ll assist you',
+    'to help with this', 'based on your question', 'based on what you\'ve asked'
   ];
   
   const lowerText = text.toLowerCase();
+  
+  // Check for reasoning keywords at beginning of text
+  const firstFewChars = lowerText.trim().slice(0, 50);
+  for (const keyword of reasoningKeywords) {
+    if (firstFewChars.includes(keyword)) {
+      return true;
+    }
+  }
   
   // Check for reasoning keywords - Only check at the beginning of the text or a new paragraph
   // This reduces false positives for casual mentions of these terms
   const paragraphs = lowerText.split('\n\n');
   for (const paragraph of paragraphs) {
-    // Check first 40 characters of each paragraph for reasoning keywords
-    const paragraphStart = paragraph.trim().slice(0, 40);
+    // Check first 50 characters (up from 40) of each paragraph for reasoning keywords
+    const paragraphStart = paragraph.trim().slice(0, 50);
     for (const keyword of reasoningKeywords) {
       if (paragraphStart.includes(keyword)) {
         return true;
@@ -1488,7 +1542,18 @@ function isReasoningContent(text: string): boolean {
     /^(The first thing|The next step|The final step|One important aspect|Another consideration)/i,
     /^(Let me break|Let me walk|Let me guide|Let me help|Let me show)/i,
     /^(In order to|Before I|So I|Therefore I|Thus, I)/i,
-    /^(When we|When I|If we|If I) (look at|consider|analyze|examine|think about)/i
+    /^(When we|When I|If we|If I) (look at|consider|analyze|examine|think about)/i,
+    // New reasoning patterns
+    /^(Alright|Okay|I'll help|Let's dive into|To address)/i,
+    /^(I can see that|I'll outline|I can approach|In this case|For this query)/i,
+    /^(I'll provide|I'll first|I'll now|Breaking this|Looking at this)/i,
+    /^(Addressing your|Tackling this|Starting with|Beginning with|Understanding the)/i,
+    /^(From a|Based on|According to|To fully|To properly|To accurately)/i,
+    /^(I understand that|I can help|I'll assist|Let me assist|Let me provide)/i,
+    /^(For your|Regarding your|Concerning your|About your|To elaborate)/i,
+    /^(Let me clarify|Let me explain|Let me elaborate|Let me share|Let me offer)/i,
+    /^(I'm happy to|I'd be happy to|I'd love to|I'm glad to|I'll now)/i,
+    /^(Here's how|Here's what|Here's a|Here's my|Here, I'll)/i,
   ];
   
   for (const pattern of reasoningPatterns) {
@@ -1511,7 +1576,16 @@ function isReasoningContent(text: string): boolean {
     /one\W+(?:.*\W+)two\W+(?:.*\W+)three/i,
     /begins with\W+(?:.*\W+)then\W+(?:.*\W+)finally/i,
     /start by\W+(?:.*\W+)next\W+(?:.*\W+)finally/i,
-    /begin by\W+(?:.*\W+)then\W+(?:.*\W+)lastly/i
+    /begin by\W+(?:.*\W+)then\W+(?:.*\W+)lastly/i,
+    // New sequential patterns
+    /initially\W+(?:.*\W+)then\W+(?:.*\W+)finally/i,
+    /first\W+(?:.*\W+)next\W+(?:.*\W+)finally/i,
+    /first\W+(?:.*\W+)then\W+(?:.*\W+)lastly/i,
+    /first\W+(?:.*\W+)next\W+(?:.*\W+)last/i,
+    /to begin\W+(?:.*\W+)next\W+(?:.*\W+)finally/i,
+    /starting with\W+(?:.*\W+)followed by\W+(?:.*\W+)finally/i,
+    /starting with\W+(?:.*\W+)then\W+(?:.*\W+)ending with/i,
+    /begin with\W+(?:.*\W+)move to\W+(?:.*\W+)finish with/i
   ];
   
   for (const pattern of sequentialPatterns) {
@@ -1520,18 +1594,12 @@ function isReasoningContent(text: string): boolean {
     }
   }
   
-  // Check for reasoning structure transitions
-  const transitionWords = [
-    'therefore', 'thus', 'hence', 'so', 'as a result', 'consequently',
-    'it follows that', 'we can conclude', 'this means that', 'this implies',
-    'which suggests', 'indicating that'
-  ];
-  
   // Check if text has reasoning structure with "if...then" or condition analysis
   const hasReasoningStructure = 
     (lowerText.includes("if") && lowerText.includes("then")) ||
     (lowerText.includes("when") && lowerText.includes("we get")) ||
-    (lowerText.includes("because") && lowerText.includes("this means"));
+    (lowerText.includes("because") && lowerText.includes("this means")) ||
+    (lowerText.includes("consider") && lowerText.includes("we find"));
     
   if (hasReasoningStructure) {
     return true;
@@ -1551,7 +1619,7 @@ function processStreamBuffer(buffer: string): {
   hasCompletedReasoning: boolean;
 } {
   // Don't show anything until we have some content
-  if (!buffer || buffer.length < 5) {
+  if (!buffer || buffer.length < 10) {
     return { 
       showContent: false, 
       processedContent: '',
@@ -1576,7 +1644,7 @@ function processStreamBuffer(buffer: string): {
     }
   }
 
-  // Remove thinking tags
+  // Remove thinking tags and their content
   const processedBuffer = buffer.replace(/<think>[\s\S]*?<\/think>/gi, '');
 
   // If buffer only contained thinking tags and nothing else, don't show yet
@@ -1599,27 +1667,33 @@ function processStreamBuffer(buffer: string): {
     /I'll approach[\s\S]*?The answer is|I need to consider[\s\S]*?In summary|step by step[\s\S]*?In conclusion/i,
     /first[\s\S]*?second[\s\S]*?third[\s\S]*?therefore/i,
     /thinking aloud[\s\S]*?to summarize/i,
+    /I'll break this down[\s\S]*?In summary/i,
+    /Let's analyze[\s\S]*?In conclusion/i,
+    /Let me understand[\s\S]*?Therefore/i,
+    /I'll examine[\s\S]*?Based on this/i,
+    /analyzing[\s\S]*?To summarize/i,
   ];
 
   // Check if we've completed the reasoning phase based on our patterns
   const hasCompletedReasoning = reasoningPatterns.some(pattern => pattern.test(processedBuffer));
   
-  // Length-based heuristics for showing content - OPTIMIZATION 1: Reduce threshold from 40 to 20
-  const hasSubstantialContent = processedBuffer.length > 20;
+  // More conservative length-based heuristics - require more content before showing
+  const hasSubstantialContent = processedBuffer.length > 50;
   
-  // If we've completed reasoning or have substantial non-reasoning content, show it
-  // Prioritize showing completed reasoning, but fallback to showing substantial content
+  // Be more conservative about showing content - only show if:
+  // 1. We've definitely completed reasoning, OR
+  // 2. We have substantial content AND no signs of reasoning
   const shouldShow = hasCompletedReasoning || (hasSubstantialContent && !isCurrentlyReasoning);
 
-  // Final content cleaning for display
+  // Apply extractFinalAnswer more aggressively to filter out reasoning content
   let cleanedContent = processedBuffer;
   
-  // Apply extractFinalAnswer to filter out reasoning content
-  if (isCurrentlyReasoning && cleanedContent.length > 50) {
+  // Always attempt to extract final answer, not just when reasoning is detected
+  if (cleanedContent.length > 40) {
     cleanedContent = extractFinalAnswer(cleanedContent);
   }
   
-  // Always apply postProcessAIChatResponse and handlePotentialJsonInConversation to the content
+  // Always apply post-processing to clean up the content
   cleanedContent = postProcessAIChatResponse(cleanedContent, true);
   
   return {
@@ -1635,7 +1709,9 @@ const getDefaultChatPrompt = (basePrompt: string) => {
 
 IMPORTANT FOR DEFAULT CHAT:
 - Use markdown formatting for better readability
-- Never show internal reasoning or thinking process
+- NEVER show internal reasoning, thinking process, or step-by-step analysis
+- NEVER use phrases like "let me think", "analyzing", "I'll break this down", etc.
+- Always provide direct, final answers without showing how you arrived at them
 - Format code blocks with proper syntax highlighting`;
 };
 
@@ -2204,7 +2280,7 @@ export default function TestChat() {
           });
         } else {
           const { showContent, processedContent, hasCompletedReasoning } = processStreamBuffer(contentBuffer);
-          const finalContent = hasCompletedReasoning ? processedContent : postProcessAIChatResponse(contentBuffer, true);
+          const finalContent = postProcessAIChatResponse(extractFinalAnswer(contentBuffer), true);
           
           setMessages((prev) => {
             const updatedMessages = [...prev];
