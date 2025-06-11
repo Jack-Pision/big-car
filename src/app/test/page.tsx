@@ -2554,12 +2554,45 @@ export default function TestChat() {
 
   // Function to handle copying content to clipboard
   const handleCopy = (content: string) => {
-    navigator.clipboard.writeText(content)
+    // For structured content that might be an object, ensure it's a string
+    const textToCopy = typeof content === 'object' ? JSON.stringify(content, null, 2) : content;
+    
+    navigator.clipboard.writeText(textToCopy)
       .then(() => {
         console.log('Content copied to clipboard');
+        // Create a temporary element for the toast notification
+        const toast = document.createElement('div');
+        toast.textContent = 'Copied to clipboard!';
+        toast.style.position = 'fixed';
+        toast.style.bottom = '20px';
+        toast.style.left = '50%';
+        toast.style.transform = 'translateX(-50%)';
+        toast.style.backgroundColor = '#22c55e';
+        toast.style.color = '#fff';
+        toast.style.padding = '8px 16px';
+        toast.style.borderRadius = '4px';
+        toast.style.zIndex = '9999';
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.3s ease';
+        
+        document.body.appendChild(toast);
+        
+        // Animate in
+        setTimeout(() => {
+          toast.style.opacity = '1';
+        }, 10);
+        
+        // Remove after 2 seconds
+        setTimeout(() => {
+          toast.style.opacity = '0';
+          setTimeout(() => {
+            document.body.removeChild(toast);
+          }, 300);
+        }, 2000);
       })
       .catch(err => {
         console.error('Failed to copy content to clipboard', err);
+        alert('Failed to copy content. Please try again.');
       });
   };
 
@@ -2759,11 +2792,11 @@ export default function TestChat() {
                         type={msg.contentType} 
                       />
                       
-                      {/* Retry button for structured content */}
+                      {/* Action buttons for structured content */}
                       {msg.isProcessed && !isAiResponding && (
-                        <div className="w-full flex justify-between mt-2">
+                        <div className="w-full flex justify-start gap-2 mt-2">
                           <button
-                            onClick={() => handleCopy(JSON.stringify(msg.structuredContent, null, 2))}
+                            onClick={() => handleCopy(msg.structuredContent)}
                             className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
                             aria-label="Copy response"
                           >
@@ -2831,11 +2864,11 @@ export default function TestChat() {
     </div>
                     )}
                     
-                    {/* Retry button for text content */}
+                    {/* Action buttons for text content */}
                     {msg.isProcessed && !isAiResponding && !isStoppedMsg && (
-                      <div className="w-full flex justify-between mt-2">
+                      <div className="w-full flex justify-start gap-2 mt-2">
                         <button
-                          onClick={() => handleCopy(msg.content)}
+                          onClick={() => handleCopy(cleanContent)}
                           className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
                           aria-label="Copy response"
                         >
