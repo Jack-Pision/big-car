@@ -2236,11 +2236,14 @@ export default function TestChat() {
                       console.log('Default chat mode - received delta:', delta);
                       console.log('Current contentBuffer:', contentBuffer.substring(0, 100) + (contentBuffer.length > 100 ? '...' : ''));
                       
+                      // Simple filter to remove <think> tags but preserve other content
+                      const filteredContent = contentBuffer.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+                      
                       if (!hasActualContent) {
                         hasActualContent = true;
-                        aiMsg.content = contentBuffer;
+                        aiMsg.content = filteredContent;
                         setIsProcessing(false);
-                        console.log('First content update - setting message with content length:', contentBuffer.length);
+                        console.log('First content update - setting message with content length:', filteredContent.length);
                         
                         // Replace the temporary message if it exists
                         setMessages((prev) => {
@@ -2258,7 +2261,7 @@ export default function TestChat() {
                             updatedMessages[indexToUpdate] = {
                               ...updatedMessages[indexToUpdate],
                               id: aiMsg.id, // Ensure consistent ID
-                              content: contentBuffer,
+                              content: filteredContent,
                               webSources: aiMsg.webSources,
                               isStreaming: false,
                               isProcessed: true
@@ -2267,7 +2270,7 @@ export default function TestChat() {
                           return updatedMessages;
                         });
                       } else {
-                        aiMsg.content = contentBuffer;
+                        aiMsg.content = filteredContent;
                         setMessages((prev) => {
                           const updatedMessages = [...prev];
                           const aiIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
@@ -2282,7 +2285,7 @@ export default function TestChat() {
                             updatedMessages[indexToUpdate] = {
                               ...updatedMessages[indexToUpdate],
                               id: aiMsg.id, // Ensure consistent ID
-                              content: contentBuffer,
+                              content: filteredContent,
                               webSources: aiMsg.webSources,
                               isStreaming: false,
                               isProcessed: true
@@ -3115,7 +3118,8 @@ export default function TestChat() {
                       )}
                       
                       <div className="w-full max-w-full overflow-hidden whitespace-pre-wrap">
-                        {msg.content}
+                        {(msg.content && msg.content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim()) || 
+                        "(The AI is still thinking. Please wait for a response...)"}
                       </div>
                       
                       {/* Action buttons for text content */}
