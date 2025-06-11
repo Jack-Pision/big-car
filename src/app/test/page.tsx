@@ -3093,6 +3093,81 @@ export default function TestChat() {
                   );
                 }
 
+                const isDefaultChat = msg.contentType === 'conversation' || (msg.role === 'assistant' && !msg.contentType);
+                console.log('Main render - Message ID:', msg.id, 'isDefaultChat:', isDefaultChat, 'contentType:', msg.contentType);
+                
+                if (isDefaultChat) {
+                  // Use our custom renderMessageContent function for default chat messages
+                  return (
+                    <motion.div
+                      key={msg.id + '-default-' + i}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, ease: "easeOut" }}
+                      className="w-full text-left flex flex-col items-start ai-response-text mb-4 relative"
+                      style={{ color: '#fff', maxWidth: '100%', overflowWrap: 'break-word' }}
+                    >
+                      {msg.webSources && msg.webSources.length > 0 && (
+                        <>
+                          <WebSourcesCarousel sources={msg.webSources} />
+                          <div style={{ height: '1.5rem' }} />
+                        </>
+                      )}
+                      
+                      <div className="w-full max-w-full overflow-hidden whitespace-pre-wrap">
+                        {msg.content}
+                      </div>
+                      
+                      {/* Action buttons for text content */}
+                      {msg.isProcessed && (
+                        <div className="w-full flex justify-start gap-2 mt-2">
+                          <button
+                            onClick={() => handleCopy(msg.content)}
+                            className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
+                            aria-label="Copy response"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                            <span className="text-xs">Copy</span>
+                          </button>
+                          
+                          <button
+                            onClick={() => {
+                              try {
+                                const userMsgIndex = messages.findIndex(m => m.id === msg.parentId);
+                                let userMsg = userMsgIndex >= 0 ? messages[userMsgIndex] : 
+                                            messages.find(m => m.role === 'user' && m.timestamp && m.timestamp < (msg.timestamp || Infinity));
+                                
+                                if (!userMsg) {
+                                  userMsg = [...messages].reverse().find(m => m.role === 'user');
+                                }
+                                
+                                if (userMsg) {
+                                  handleRetry(userMsg.content);
+                                } else {
+                                  console.error('Could not find a user message to retry');
+                                }
+                              } catch (error) {
+                                console.error('Error handling retry button click:', error);
+                              }
+                            }}
+                            className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
+                            aria-label="Retry with different response"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                              <path d="M3 3v5h5"></path>
+                            </svg>
+                            <span className="text-xs">Retry</span>
+                          </button>
+                        </div>
+                      )}
+                    </motion.div>
+                  );
+                }
+
                 const { content: rawContent } = cleanAIResponse(msg.content);
                 const cleanContent = rawContent.replace(/<thinking-indicator.*?>\n<\/thinking-indicator>\n|<thinking-indicator.*?\/>/g, '');
                 const isStoppedMsg = cleanContent.trim() === '[Response stopped by user]';
