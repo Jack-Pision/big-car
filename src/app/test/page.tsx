@@ -41,7 +41,7 @@ import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import Image from 'next/image';
 import rehypeRaw from 'rehype-raw';
 import { isSearchCompleted, getCompletedSearch, saveCompletedSearch } from '@/utils/advance-search-state';
-import { MarkdownRenderer } from '@/utils/markdown-utils';
+// MarkdownRenderer is replaced with direct ReactMarkdown usage
 import { Message as BaseMessage } from '@/utils/conversation-context';
 import SearchPanel from '@/components/Search';
 import { Message as ConversationMessage } from "@/utils/conversation-context";
@@ -2470,15 +2470,45 @@ export default function TestChat() {
           }
           return <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="prose dark:prose-invert max-w-none">{`Unsupported structured content: ${JSON.stringify(msg.structuredContent)}`}</ReactMarkdown>;
       }
-    } else if (msg.content) {
+    }     else if (msg.content) {
       const isDefaultChat = msg.contentType === 'conversation' || (msg.role === 'assistant' && !msg.contentType);
       if (isDefaultChat) {
         // Display raw content without post-processing for default chat
+        // Custom components for MarkdownRenderer to handle <think> tags
         return (
-          <MarkdownRenderer 
-            content={msg.content}
+          <ReactMarkdown 
+            remarkPlugins={[remarkGfm]} 
+            rehypePlugins={[rehypeRaw]} 
             className="prose dark:prose-invert max-w-none default-chat-markdown"
-          />
+            components={{
+              // Custom renderer for <think> tags to display them properly
+              p: ({node, ...props}) => {
+                const content = String(props.children);
+                if (content.includes('<think>') && content.includes('</think>')) {
+                  // Extract think content and wrap it in a styled div
+                  const beforeThink = content.split('<think>')[0];
+                  const thinkContent = content.split('<think>')[1]?.split('</think>')[0];
+                  const afterThink = content.split('</think>')[1];
+                  
+                  return (
+                    <div>
+                      {beforeThink && <p>{beforeThink}</p>}
+                      {thinkContent && (
+                        <div className="bg-gray-800 border border-gray-700 p-3 my-2 rounded-md text-cyan-300">
+                          <div className="font-semibold mb-1 text-sm text-cyan-400">AI Thinking Process:</div>
+                          <p className="whitespace-pre-line">{thinkContent}</p>
+                        </div>
+                      )}
+                      {afterThink && <p>{afterThink}</p>}
+                    </div>
+                  );
+                }
+                return <p {...props} />;
+              }
+            }}
+          >
+            {msg.content}
+          </ReactMarkdown>
         );
       }
       let content = msg.content.trim();
@@ -2954,6 +2984,7 @@ export default function TestChat() {
                 }
 
                 const { content: rawContent } = cleanAIResponse(msg.content);
+                // Don't filter out <think> tags, only remove thinking indicators
                 const cleanContent = rawContent.replace(/<thinking-indicator.*?>\n<\/thinking-indicator>\n|<thinking-indicator.*?\/>/g, '');
                 const isStoppedMsg = cleanContent.trim() === '[Response stopped by user]';
                 const processedContent = makeCitationsClickable(cleanContent, msg.webSources || []);
@@ -2978,10 +3009,37 @@ export default function TestChat() {
                           <span className="text-sm text-white italic font-light mb-2">[Response stopped by user]</span>
                         ) : (
                           <div className="w-full max-w-full overflow-hidden">
+                        {/* Customize ReactMarkdown to handle <think> tags properly */}
                         <ReactMarkdown 
                           remarkPlugins={[remarkGfm]} 
                           rehypePlugins={[rehypeRaw]} 
                           className="prose dark:prose-invert max-w-none"
+                          components={{
+                            // Custom renderer for <think> tags to display them properly
+                            p: ({node, ...props}) => {
+                              const content = String(props.children);
+                              if (content.includes('<think>') && content.includes('</think>')) {
+                                // Extract think content and wrap it in a styled div
+                                const beforeThink = content.split('<think>')[0];
+                                const thinkContent = content.split('<think>')[1]?.split('</think>')[0];
+                                const afterThink = content.split('</think>')[1];
+                                
+                                return (
+                                  <div>
+                                    {beforeThink && <p>{beforeThink}</p>}
+                                    {thinkContent && (
+                                      <div className="bg-gray-800 border border-gray-700 p-3 my-2 rounded-md text-cyan-300">
+                                        <div className="font-semibold mb-1 text-sm text-cyan-400">AI Thinking Process:</div>
+                                        <p className="whitespace-pre-line">{thinkContent}</p>
+                                      </div>
+                                    )}
+                                    {afterThink && <p>{afterThink}</p>}
+                                  </div>
+                                );
+                              }
+                              return <p {...props} />;
+                            }
+                          }}
                           children={processedContent}
                             />
     </div>
