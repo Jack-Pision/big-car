@@ -2233,10 +2233,14 @@ export default function TestChat() {
                     
                     // For default chat, skip all processing and show content directly
                     if (queryType === 'conversation') {
+                      console.log('Default chat mode - received delta:', delta);
+                      console.log('Current contentBuffer:', contentBuffer.substring(0, 100) + (contentBuffer.length > 100 ? '...' : ''));
+                      
                       if (!hasActualContent) {
                         hasActualContent = true;
                         aiMsg.content = contentBuffer;
                         setIsProcessing(false);
+                        console.log('First content update - setting message with content length:', contentBuffer.length);
                         
                         // Replace the temporary message if it exists
                         setMessages((prev) => {
@@ -2248,6 +2252,7 @@ export default function TestChat() {
                               m.content === "Thinking...") : -1;
                           
                           const indexToUpdate = aiIndex !== -1 ? aiIndex : tempIndex;
+                          console.log('Message update - found index:', indexToUpdate, 'aiIndex:', aiIndex, 'tempIndex:', tempIndex);
                           
                           if (indexToUpdate !== -1) {
                             updatedMessages[indexToUpdate] = {
@@ -2587,6 +2592,8 @@ export default function TestChat() {
 
   // Fix the renderMessageContent function to use LocalMessage
   const renderMessageContent = (msg: LocalMessage) => {
+    console.log('Rendering message:', msg.id, 'content type:', msg.contentType, 'role:', msg.role, 'content length:', msg.content?.length || 0);
+    
     if (msg.contentType && msg.structuredContent) {
       switch (msg.contentType) {
         case 'tutorial':
@@ -2605,8 +2612,11 @@ export default function TestChat() {
       }
     } else if (msg.content) {
       const isDefaultChat = msg.contentType === 'conversation' || (msg.role === 'assistant' && !msg.contentType);
+      console.log('Message has content, isDefaultChat:', isDefaultChat);
+      
       if (isDefaultChat) {
         // For default chat mode, display raw content without processing or markdown rendering
+        console.log('Rendering default chat with raw content');
         return (
           <div className="whitespace-pre-wrap">{msg.content}</div>
         );
