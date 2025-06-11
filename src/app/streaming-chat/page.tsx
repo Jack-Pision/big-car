@@ -11,7 +11,6 @@ import { MarkdownRenderer } from '../../utils/markdown-utils';
 import { QueryContext } from '../../utils/template-utils';
 import IntelligentMarkdown from '../../components/IntelligentMarkdown';
 import React from 'react';
-import { filterAIThinking } from '../../utils/content-filter';
 
 const NVIDIA_API_URL = "/api/nvidia";
 
@@ -208,14 +207,14 @@ export default function StreamingChat() {
     setFadeIn(true);
     
     const interval = setInterval(() => {
-      // Use our centralized filtering function for consistency
-      const filteredDisplayed = filterAIThinking(streamedContent);
+      // Display raw content without filtering
+      const rawContent = streamedContent;
       
       // Decide how much content to show based on current position
-      const charsPerFrame = Math.max(1, Math.floor(filteredDisplayed.length / 200));
+      const charsPerFrame = Math.max(1, Math.floor(rawContent.length / 200));
       
       // Calculate new position
-      const newPosition = Math.min(i + charsPerFrame, filteredDisplayed.length);
+      const newPosition = Math.min(i + charsPerFrame, rawContent.length);
       
       // Check if we're entering a special block
       let shouldSkipToEnd = false;
@@ -253,8 +252,8 @@ export default function StreamingChat() {
       // Update position based on block skipping logic
       i = shouldSkipToEnd ? skipToPosition : newPosition;
       
-      // Update displayed content
-      setDisplayed(filteredDisplayed.slice(0, i));
+      // Update displayed content - without filtering
+      setDisplayed(rawContent.slice(0, i));
       
       if (i >= streamedContent.length) {
         clearInterval(interval);
@@ -265,13 +264,12 @@ export default function StreamingChat() {
         // Short delay before moving streamed content to the message array
         setTimeout(() => {
           setAiTyping(false);
-          // Use filtered content for the final message
-          const finalFilteredContent = filterAIThinking(streamedContent);
+          // Use raw content for the final message
           setMessages((prev) => [
             ...prev.slice(0, -1),
             { 
               ...prev[prev.length - 1], 
-              content: finalFilteredContent,
+              content: streamedContent,
               userQuery: prev[prev.length - 2]?.userQuery || ''
             },
           ]);
@@ -404,10 +402,8 @@ export default function StreamingChat() {
     // Reset chunk buffer
     chunkBufferRef.current = [];
     
-    // Updated system prompt to prevent showing internal thinking
-    const systemPrompt = `You're Tehom AI, a smart and friendly assistant. When you answer questions, just give your final answer clearly and naturally. Don't show your thinking process, steps, or how you're figuring things out. Avoid saying things like "let me think" or "first, I need to analyze this."
-
-Just respond like you already know the answer—confident and helpful. Keep your tone natural and easy to read. Be clear and complete, but don't be overly brief or too wordy. Also, don't include any comments about how you're forming your answer—just deliver the answer itself, smoothly. ${isFollowUp ? 'This is a follow-up question. Answer directly without repeating previous information.' : ''}`;
+    // System prompt without instructions to hide reasoning
+    const systemPrompt = `You're Tehom AI, a smart and friendly assistant. Feel free to show your thought process and reasoning as you work through questions. ${isFollowUp ? 'This is a follow-up question.' : ''}`;
 
     const payload = {
       model: "deepseek-ai/deepseek-r1",
@@ -479,12 +475,10 @@ Just respond like you already know the answer—confident and helpful. Keep your
               fullText += delta;
               chunkBufferRef.current.push(delta);
               
-              // Increase buffer size for better context and process larger chunks
-              if (chunkBufferRef.current.length >= 25 || done) {
-                // Use our centralized filtering function
-                let filteredText = filterAIThinking(fullText);
-                
-                updateStreamedContentDebounced(filteredText);
+              // Process chunks without filtering - just pass through raw content
+              if (chunkBufferRef.current.length >= 5 || done) {
+                // Pass through raw content without filtering
+                updateStreamedContentDebounced(fullText);
                 chunkBufferRef.current = [];
               }
             }
@@ -498,9 +492,8 @@ Just respond like you already know the answer—confident and helpful. Keep your
       
       // Cache the successful response
       if (didRespond) {
-        // Filter before caching to ensure cached responses are also clean
-        const filteredResponse = filterAIThinking(fullText);
-        cacheResponse(cacheKey, filteredResponse);
+        // Cache raw response without filtering
+        cacheResponse(cacheKey, fullText);
       }
       
     } catch (err: any) {
