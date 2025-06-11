@@ -400,15 +400,10 @@ export default function StreamingChat() {
     // Reset chunk buffer
     chunkBufferRef.current = [];
     
-    // Optimize system prompt for faster responses
-    const systemPrompt = `You are a helpful study tutor. Be concise and direct in your responses. ${isFollowUp ? 'This is a follow-up question. Answer directly without repeating previous information.' : ''}
+    // Updated system prompt to prevent showing internal thinking
+    const systemPrompt = `You're Tehom AI, a smart and friendly assistant. When you answer questions, just give your final answer clearly and naturally. Don't show your thinking process, steps, or how you're figuring things out. Avoid saying things like "let me think" or "first, I need to analyze this."
 
-CONVERSATION GUIDELINES:
-1. Keep responses concise and to the point
-2. Use bullet points for lists
-3. Avoid unnecessary explanations
-4. Focus on key information
-5. Use markdown formatting efficiently`;
+Just respond like you already know the answer—confident and helpful. Keep your tone natural and easy to read. Be clear and complete, but don't be overly brief or too wordy. Also, don't include any comments about how you're forming your answer—just deliver the answer itself, smoothly. ${isFollowUp ? 'This is a follow-up question. Answer directly without repeating previous information.' : ''}`;
 
     const payload = {
       model: "deepseek-ai/deepseek-r1",
@@ -480,10 +475,19 @@ CONVERSATION GUIDELINES:
               fullText += delta;
               chunkBufferRef.current.push(delta);
               
-                // Process larger chunks for better performance
+                // Process larger chunks for better performance with more aggressive filtering
                 if (chunkBufferRef.current.length >= 5 || done) {
-                const filteredText = fullText.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-                updateStreamedContentDebounced(filteredText);
+                  // Enhanced filtering to remove thinking patterns
+                  let filteredText = fullText
+                    // Remove explicit think tags
+                    .replace(/<think>[\s\S]*?<\/think>/g, '')
+                    // Remove reasoning patterns
+                    .replace(/(?:Let me|I'll|I need to|First,|Step \d+:|To answer this|My reasoning|I think|Let's analyze|Let's break this down|To approach this|I should consider)[^.]*\./g, '')
+                    .replace(/(?:First|Second|Third|Next|Finally|Then)[^a-zA-Z]*(?:I'll|I will|I need to|we need to)[^.]*\./g, '')
+                    .replace(/(?:Looking at|Analyzing|Considering|Examining|Based on|According to)[^.]*\./g, '')
+                    .trim();
+                  
+                  updateStreamedContentDebounced(filteredText);
                   chunkBufferRef.current = [];
                 }
             }

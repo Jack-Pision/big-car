@@ -178,21 +178,9 @@ export default function TemplatedChat() {
     let didRespond = false;
     let fullText = "";
     let timeoutId: NodeJS.Timeout | null = null;
-    const systemPrompt = `You are a helpful study tutor specializing in technical subjects like Computer Engineering. Follow these strict guidelines:
+    const systemPrompt = `You're Tehom AI, a smart and friendly assistant specializing in technical subjects like Computer Engineering. When you answer questions, just give your final answer clearly and naturally. Don't show your thinking process, steps, or how you're figuring things out. Avoid saying things like "let me think" or "first, I need to analyze this."
 
-RESPONSE STYLE:
-1. Be extremely concise, direct, and to the point.
-2. Avoid unnecessary introductions, summaries, or conclusions.
-3. Deliver information in a clean, efficient manner without fluff.
-4. Prefer short, punchy sentences over verbose explanations.
-5. Avoid disclaimers, repetition, or restatements of what was already covered.
-
-ANTI-REPETITION RULES:
-1. Never summarize previous responses.
-2. Do not restate the question in your answer.
-3. Do not acknowledge your understanding of the question.
-4. Avoid phrases like "As an AI" or "As mentioned earlier".
-5. Do not end responses with invitations for more questions.
+Just respond like you already know the answer—confident and helpful. Keep your tone natural and easy to read. Be clear and complete, but don't be overly brief or too wordy. Also, don't include any comments about how you're forming your answer—just deliver the answer itself, smoothly.
 
 MARKDOWN FORMATTING GUIDELINES:
 1. Structure: Always use proper markdown with clean structure.
@@ -201,22 +189,13 @@ MARKDOWN FORMATTING GUIDELINES:
    - For unordered lists, use "- **Item Title:** Item description..." (Dash, bold title, and text on the same line).
    - If there's no specific title for a list item, use "1. Item description..." or "- Item description...".
    - Ensure list items are single-spaced (no blank lines between items within the same list).
-   - Add a blank line *before* the start of a list block and *after* the end of a list block, but not within it.
 3. Headings: 
    - Use "# ", "## ", "### " etc. for headings, with a space after the #.
    - Add blank lines after all headings.
 4. Emphasis:
    - Use **bold** for important terms or section titles.
    - Use *italics* sparingly for emphasis.
-   - Do not put spaces inside emphasis markers (e.g., use **bold** not ** bold **).
-5. Paragraphs:
-   - Separate paragraphs with a single blank line.
-   - Don't split paragraphs unnecessarily.
-  
-Your replies should have excellent markdown formatting that looks good even in plain text. Avoid extra blank lines, especially within list structures.
-Example of a good list:
-1. **Water Droplets:** Most clouds are made of water droplets, like the ones you see in fog, but way up high.
-2. **Ice Crystals:** High up in the sky, where it's really cold, clouds can also be made of ice crystals.`;
+   - Do not put spaces inside emphasis markers (e.g., use **bold** not ** bold **).`;
 
     const payload = {
       model: "nvidia/llama-3.1-nemotron-ultra-253b-v1",
@@ -268,8 +247,15 @@ Example of a good list:
             if (delta) {
               didRespond = true;
               fullText += delta;
-              // Remove <think>...</think> tags from the streamed content
-              const filteredText = fullText.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+              // Enhanced filtering to remove thinking patterns
+              let filteredText = fullText
+                // Remove explicit think tags
+                .replace(/<think>[\s\S]*?<\/think>/g, '')
+                // Remove reasoning patterns
+                .replace(/(?:Let me|I'll|I need to|First,|Step \d+:|To answer this|My reasoning|I think|Let's analyze|Let's break this down|To approach this|I should consider)[^.]*\./g, '')
+                .replace(/(?:First|Second|Third|Next|Finally|Then)[^a-zA-Z]*(?:I'll|I will|I need to|we need to)[^.]*\./g, '')
+                .replace(/(?:Looking at|Analyzing|Considering|Examining|Based on|According to)[^.]*\./g, '')
+                .trim();
               setStreamedContent(filteredText);
             }
             if (data.error) {
