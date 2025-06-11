@@ -1618,8 +1618,8 @@ function processStreamBuffer(buffer: string): {
   processedContent: string;
   hasCompletedReasoning: boolean;
 } {
-  // Show content once we have a minimal amount (reduced threshold for faster response)
-  if (!buffer || buffer.length < 5) {
+  // Don't show anything until we have some content
+  if (!buffer || buffer.length < 10) {
     return { 
       showContent: false, 
       processedContent: '',
@@ -1677,35 +1677,20 @@ function processStreamBuffer(buffer: string): {
   // Check if we've completed the reasoning phase based on our patterns
   const hasCompletedReasoning = reasoningPatterns.some(pattern => pattern.test(processedBuffer));
   
-  // Two-stage threshold approach:
-  // 1. Lower threshold for initial display (25 chars)
-  // 2. Higher threshold for showing content with potential reasoning (50 chars)
-  const hasMinimalContent = processedBuffer.length > 25;
+  // More conservative length-based heuristics - require more content before showing
   const hasSubstantialContent = processedBuffer.length > 50;
   
-  // Show content faster with a more balanced approach:
-  // 1. Show immediately if reasoning is complete (highest priority)
-  // 2. Show if we have substantial content and no reasoning detected
-  // 3. Show minimal content if it doesn't look like reasoning and has complete sentences
-  const hasCompleteSentence = /[.!?]\s*$/.test(processedBuffer.trim()) || processedBuffer.length > 80;
-  const shouldShow = 
-    hasCompletedReasoning || 
-    (hasSubstantialContent && !isCurrentlyReasoning) || 
-    (hasMinimalContent && !isCurrentlyReasoning && hasCompleteSentence);
+  // Be more conservative about showing content - only show if:
+  // 1. We've definitely completed reasoning, OR
+  // 2. We have substantial content AND no signs of reasoning
+  const shouldShow = hasCompletedReasoning || (hasSubstantialContent && !isCurrentlyReasoning);
 
-  // Apply filtering for reasoning content
+  // Apply extractFinalAnswer more aggressively to filter out reasoning content
   let cleanedContent = processedBuffer;
   
-  // For initial display with minimal content, do lighter processing
-  // For substantial content, apply more thorough filtering
-  if (hasSubstantialContent) {
+  // Always attempt to extract final answer, not just when reasoning is detected
+  if (cleanedContent.length > 40) {
     cleanedContent = extractFinalAnswer(cleanedContent);
-  } else if (isCurrentlyReasoning) {
-    // For minimal content with reasoning detected, still try basic extraction
-    const lastSentenceMatch = cleanedContent.match(/(?:[.!?]\s+)([^.!?]+[.!?])$/);
-    if (lastSentenceMatch && lastSentenceMatch[1] && lastSentenceMatch[1].length > 15) {
-      cleanedContent = lastSentenceMatch[1]; 
-    }
   }
   
   // Always apply post-processing to clean up the content
@@ -2042,8 +2027,6 @@ export default function TestChat() {
     }
     setMessages((prev) => [...prev, userMessageForDisplay]);
     setInput("");
-    
-    // We'll rely on faster stream processing rather than a temporary message
 
       if (selectedFilesForUpload.length > 0) {
         const clientSideSupabase = createSupabaseClient();
@@ -2124,13 +2107,6 @@ export default function TestChat() {
         frequency_penalty: 0.2,  // OPTIMIZATION 3: Decreased from 0.5 
         presence_penalty: 0.2,   // OPTIMIZATION 3: Decreased from 0.8
       };
-      
-      // Optimize for faster initial responses in default chat mode
-      if (queryType === 'conversation') {
-        apiPayload.temperature = 0.75;  // Slight increase for faster generation
-        apiPayload.frequency_penalty = 0.1;  // Further reduce to speed up initial response
-        apiPayload.presence_penalty = 0.1;  // Further reduce to speed up initial response
-      }
       
       if (uploadedImageUrls.length > 0) {
         const lastUserMsgIndex = formattedMessages.length - 1;
@@ -2231,156 +2207,50 @@ export default function TestChat() {
                   if (delta) {
                     contentBuffer += delta;
                     
-                    // For default chat, skip all processing and show content directly
-                    if (queryType === 'conversation') {
-                      console.log('Default chat mode - received delta:', delta);
-                      console.log('Current contentBuffer:', contentBuffer.substring(0, 100) + (contentBuffer.length > 100 ? '...' : ''));
-                      
-                      // Simple filter to remove <think> tags but preserve other content
-                      const filteredContent = contentBuffer.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
-                      
+                    // Use the stream buffer processor to detect final content
+                    const { showContent, processedContent, hasCompletedReasoning } = processStreamBuffer(contentBuffer);
+                    
+                    if (showContent && !hasProcessedFinalContent) {
                       if (!hasActualContent) {
                         hasActualContent = true;
-                        aiMsg.content = filteredContent;
-                        setIsProcessing(false);
-                        console.log('First content update - setting message with content length:', filteredContent.length);
-                        
-                        // Replace the temporary message if it exists
-                        setMessages((prev) => {
-                          const updatedMessages = [...prev];
-                          const aiIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
-                          // If not found by ID, try finding by parent ID (for temporary message replacement)
-                          const tempIndex = aiIndex === -1 ? 
-                            updatedMessages.findIndex(m => m.parentId === userMessageId && 
-                              m.content === "Thinking...") : -1;
-                          
-                          const indexToUpdate = aiIndex !== -1 ? aiIndex : tempIndex;
-                          console.log('Message update - found index:', indexToUpdate, 'aiIndex:', aiIndex, 'tempIndex:', tempIndex);
-                          
-                          if (indexToUpdate !== -1) {
-                            updatedMessages[indexToUpdate] = {
-                              ...updatedMessages[indexToUpdate],
-                              id: aiMsg.id, // Ensure consistent ID
-                              content: filteredContent,
-                              webSources: aiMsg.webSources,
-                              isStreaming: false,
-                              isProcessed: true
-                            };
-                          }
-                          return updatedMessages;
-                        });
-                      } else {
-                        aiMsg.content = filteredContent;
-                        setMessages((prev) => {
-                          const updatedMessages = [...prev];
-                          const aiIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
-                          // If not found by ID, try finding by parent ID (for temporary message replacement)
-                          const tempIndex = aiIndex === -1 ? 
-                            updatedMessages.findIndex(m => m.parentId === userMessageId && 
-                              m.content === "Thinking...") : -1;
-                          
-                          const indexToUpdate = aiIndex !== -1 ? aiIndex : tempIndex;
-                          
-                          if (indexToUpdate !== -1) {
-                            updatedMessages[indexToUpdate] = {
-                              ...updatedMessages[indexToUpdate],
-                              id: aiMsg.id, // Ensure consistent ID
-                              content: filteredContent,
-                              webSources: aiMsg.webSources,
-                              isStreaming: false,
-                              isProcessed: true
-                            };
-                          }
-                          return updatedMessages;
-                        });
-                      }
-                    } else {
-                      // For non-default chat modes, use the original processing logic
-                      const { showContent, processedContent, hasCompletedReasoning } = processStreamBuffer(contentBuffer);
-                      
-                      if (showContent && !hasProcessedFinalContent) {
-                        if (!hasActualContent) {
-                          hasActualContent = true;
-                          aiMsg.content = processedContent;
-                          setIsProcessing(false);
-                          
-                          // Replace the temporary message if it exists
-                          setMessages((prev) => {
-                            const updatedMessages = [...prev];
-                            const aiIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
-                            // If not found by ID, try finding by parent ID (for temporary message replacement)
-                            const tempIndex = aiIndex === -1 ? 
-                              updatedMessages.findIndex(m => m.parentId === userMessageId && 
-                                m.content === "Thinking...") : -1;
-                            
-                            const indexToUpdate = aiIndex !== -1 ? aiIndex : tempIndex;
-                            
-                            if (indexToUpdate !== -1) {
-                              updatedMessages[indexToUpdate] = {
-                                ...updatedMessages[indexToUpdate],
-                                id: aiMsg.id, // Ensure consistent ID
-                                content: processedContent,
-                                webSources: aiMsg.webSources,
-                                isStreaming: false,
-                                isProcessed: true
-                              };
-                            }
-                            return updatedMessages;
-                          });
-                        } else {
-                          aiMsg.content = processedContent;
-                          setMessages((prev) => {
-                            const updatedMessages = [...prev];
-                            const aiIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
-                            // If not found by ID, try finding by parent ID (for temporary message replacement)
-                            const tempIndex = aiIndex === -1 ? 
-                              updatedMessages.findIndex(m => m.parentId === userMessageId && 
-                                m.content === "Thinking...") : -1;
-                            
-                            const indexToUpdate = aiIndex !== -1 ? aiIndex : tempIndex;
-                            
-                            if (indexToUpdate !== -1) {
-                              updatedMessages[indexToUpdate] = {
-                                ...updatedMessages[indexToUpdate],
-                                id: aiMsg.id, // Ensure consistent ID
-                                content: processedContent,
-                                webSources: aiMsg.webSources,
-                                isStreaming: false,
-                                isProcessed: true
-                              };
-                            }
-                            return updatedMessages;
-                          });
-                        }
-                        
-                        if (hasCompletedReasoning) {
-                          hasProcessedFinalContent = true;
-                        }
-                      } else if (hasActualContent && showContent) {
                         aiMsg.content = processedContent;
-                        setMessages((prev) => {
-                          const updatedMessages = [...prev];
+                        setIsProcessing(false);
+                        setMessages((prev) => [...prev, { ...aiMsg }]);
+                      } else {
+                        aiMsg.content = processedContent;
+                    setMessages((prev) => {
+                      const updatedMessages = [...prev];
                           const aiIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
-                          // If not found by ID, try finding by parent ID (for temporary message replacement)
-                          const tempIndex = aiIndex === -1 ? 
-                            updatedMessages.findIndex(m => m.parentId === userMessageId && 
-                              m.content === "Thinking...") : -1;
-                          
-                          const indexToUpdate = aiIndex !== -1 ? aiIndex : tempIndex;
-                          
-                          if (indexToUpdate !== -1) {
-                            updatedMessages[indexToUpdate] = {
-                              ...updatedMessages[indexToUpdate],
-                              id: aiMsg.id, // Ensure consistent ID
+                          if (aiIndex !== -1) {
+                            updatedMessages[aiIndex] = {
+                              ...updatedMessages[aiIndex],
                               content: processedContent,
                               webSources: aiMsg.webSources,
-                              isStreaming: false,
                               isProcessed: true
-                            };
-                          }
-                          return updatedMessages;
-                        });
+                        };
                       }
+                      return updatedMessages;
+                    });
+                      }
+                      
+                      if (hasCompletedReasoning) {
+                        hasProcessedFinalContent = true;
+                      }
+                    } else if (hasActualContent && showContent) {
+                      aiMsg.content = processedContent;
+                      setMessages((prev) => {
+                        const updatedMessages = [...prev];
+                        const aiIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
+                        if (aiIndex !== -1) {
+                          updatedMessages[aiIndex] = {
+                            ...updatedMessages[aiIndex],
+                            content: processedContent,
+                            webSources: aiMsg.webSources,
+                            isProcessed: true
+                          };
+                        }
+                        return updatedMessages;
+                      });
                     }
                   }
                 } catch (err) {
@@ -2408,8 +2278,7 @@ export default function TestChat() {
             }
             return updatedMessages;
           });
-        } else if (queryType !== 'conversation') {
-          // For non-default chat, apply post-processing
+        } else {
           const { showContent, processedContent, hasCompletedReasoning } = processStreamBuffer(contentBuffer);
           const finalContent = postProcessAIChatResponse(extractFinalAnswer(contentBuffer), true);
           
@@ -2426,25 +2295,11 @@ export default function TestChat() {
             }
             return updatedMessages;
           });
-        } else {
-          // For default chat, just ensure the message is fully processed
-          setMessages((prev) => {
-            const updatedMessages = [...prev];
-            const msgIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
-            if (msgIndex !== -1) {
-              updatedMessages[msgIndex] = {
-                ...updatedMessages[msgIndex],
-                content: contentBuffer,
-                contentType: 'conversation',
-                isProcessed: true // Ensure message is marked as processed
-              };
-            }
-            return updatedMessages;
-          });
         }
         
         if (uploadedImageUrls.length > 0) {
-            const descriptionSummary = aiMsg.content.slice(0, 150) + (aiMsg.content.length > 150 ? '...' : '');
+            const { content: cleanedContent } = cleanAIResponse(aiMsg.content);
+            const descriptionSummary = cleanedContent.slice(0, 150) + (cleanedContent.length > 150 ? '...' : '');
             const newImageCount = imageCounter + uploadedImageUrls.length;
             setImageCounter(newImageCount);
             const newImageContexts = uploadedImageUrls.map((url, index) => ({
@@ -2595,8 +2450,6 @@ export default function TestChat() {
 
   // Fix the renderMessageContent function to use LocalMessage
   const renderMessageContent = (msg: LocalMessage) => {
-    console.log('Rendering message:', msg.id, 'content type:', msg.contentType, 'role:', msg.role, 'content length:', msg.content?.length || 0);
-    
     if (msg.contentType && msg.structuredContent) {
       switch (msg.contentType) {
         case 'tutorial':
@@ -2615,13 +2468,14 @@ export default function TestChat() {
       }
     } else if (msg.content) {
       const isDefaultChat = msg.contentType === 'conversation' || (msg.role === 'assistant' && !msg.contentType);
-      console.log('Message has content, isDefaultChat:', isDefaultChat);
-      
       if (isDefaultChat) {
-        // For default chat mode, display raw content without processing or markdown rendering
-        console.log('Rendering default chat with raw content');
+        const processedContent = postProcessAIChatResponse(msg.content, true);
+        // Use the MarkdownRenderer component for consistent rendering
         return (
-          <div className="whitespace-pre-wrap">{msg.content}</div>
+          <MarkdownRenderer 
+            content={processedContent}
+            className="prose dark:prose-invert max-w-none default-chat-markdown"
+          />
         );
       }
       let content = msg.content.trim();
@@ -3096,82 +2950,6 @@ export default function TestChat() {
                   );
                 }
 
-                const isDefaultChat = msg.contentType === 'conversation' || (msg.role === 'assistant' && !msg.contentType);
-                console.log('Main render - Message ID:', msg.id, 'isDefaultChat:', isDefaultChat, 'contentType:', msg.contentType);
-                
-                if (isDefaultChat) {
-                  // Use our custom renderMessageContent function for default chat messages
-                  return (
-                    <motion.div
-                      key={msg.id + '-default-' + i}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, ease: "easeOut" }}
-                      className="w-full text-left flex flex-col items-start ai-response-text mb-4 relative"
-                      style={{ color: '#fff', maxWidth: '100%', overflowWrap: 'break-word' }}
-                    >
-                      {msg.webSources && msg.webSources.length > 0 && (
-                        <>
-                          <WebSourcesCarousel sources={msg.webSources} />
-                          <div style={{ height: '1.5rem' }} />
-                        </>
-                      )}
-                      
-                      <div className="w-full max-w-full overflow-hidden whitespace-pre-wrap">
-                        {(msg.content && msg.content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim()) || 
-                        "(The AI is still thinking. Please wait for a response...)"}
-                      </div>
-                      
-                      {/* Action buttons for text content */}
-                      {msg.isProcessed && (
-                        <div className="w-full flex justify-start gap-2 mt-2">
-                          <button
-                            onClick={() => handleCopy(msg.content)}
-                            className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
-                            aria-label="Copy response"
-                          >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                            </svg>
-                            <span className="text-xs">Copy</span>
-                          </button>
-                          
-                          <button
-                            onClick={() => {
-                              try {
-                                const userMsgIndex = messages.findIndex(m => m.id === msg.parentId);
-                                let userMsg = userMsgIndex >= 0 ? messages[userMsgIndex] : 
-                                            messages.find(m => m.role === 'user' && m.timestamp && m.timestamp < (msg.timestamp || Infinity));
-                                
-                                if (!userMsg) {
-                                  userMsg = [...messages].reverse().find(m => m.role === 'user');
-                                }
-                                
-                                if (userMsg) {
-                                  handleRetry(userMsg.content);
-                                } else {
-                                  console.error('Could not find a user message to retry');
-                                }
-                              } catch (error) {
-                                console.error('Error handling retry button click:', error);
-                              }
-                            }}
-                            className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
-                            aria-label="Retry with different response"
-                          >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
-                              <path d="M3 3v5h5"></path>
-                            </svg>
-                            <span className="text-xs">Retry</span>
-                          </button>
-                        </div>
-                      )}
-                    </motion.div>
-                  );
-                }
-
                 const { content: rawContent } = cleanAIResponse(msg.content);
                 const cleanContent = rawContent.replace(/<thinking-indicator.*?>\n<\/thinking-indicator>\n|<thinking-indicator.*?\/>/g, '');
                 const isStoppedMsg = cleanContent.trim() === '[Response stopped by user]';
@@ -3252,7 +3030,7 @@ export default function TestChat() {
                           </svg>
                           <span className="text-xs">Retry</span>
                         </button>
-                      </div>
+    </div>
                     )}
                   </motion.div>
                 );
