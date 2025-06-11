@@ -2199,7 +2199,8 @@ export default function TestChat() {
               updatedMessages[msgIndex] = {
                 ...updatedMessages[msgIndex],
                 content: processedResearch,
-                contentType: 'deep-research'
+                contentType: 'deep-research',
+                isProcessed: true // Ensure message is marked as processed
               };
             }
             return updatedMessages;
@@ -2215,7 +2216,8 @@ export default function TestChat() {
               updatedMessages[msgIndex] = {
                 ...updatedMessages[msgIndex],
                 content: finalContent,
-                contentType: 'conversation'
+                contentType: 'conversation',
+                isProcessed: true // Ensure message is marked as processed
               };
             }
             return updatedMessages;
@@ -2523,77 +2525,108 @@ export default function TestChat() {
 
   // Add a new function to handle retry/regenerate
   const handleRetry = (originalQuery: string) => {
-    // Create a slightly modified query to ensure a different response
-    const retryQuery = `${originalQuery} (please provide alternative information)`;
-    
-    // Find the last user message to get the original query
-    const lastUserMessage = [...messages].reverse().find(msg => msg.role === 'user');
-    
-    if (lastUserMessage) {
-      // Add the messages to the chat
-      setMessages(prev => [
-        ...prev,
-        {
-          role: 'user',
-          id: uuidv4(),
-          content: retryQuery,
-          timestamp: Date.now(),
-          isProcessed: true
-        }
-      ]);
+    try {
+      // Create a slightly modified query to ensure a different response
+      const retryQuery = `${originalQuery} (please provide alternative information)`;
       
-      // Submit the modified query
-      // We're using the input state to leverage the existing handleSend function
-      setInput(retryQuery);
-      setTimeout(() => {
-        const form = document.querySelector('form');
-        if (form) form.dispatchEvent(new Event('submit', { cancelable: true }));
-      }, 100);
+      // Find the last user message to get the original query
+      const lastUserMessage = [...messages].reverse().find(msg => msg.role === 'user');
+      
+      if (lastUserMessage) {
+        console.log('Retrying with query:', retryQuery);
+        
+        // Add the messages to the chat
+        setMessages(prev => [
+          ...prev,
+          {
+            role: 'user',
+            id: uuidv4(),
+            content: retryQuery,
+            timestamp: Date.now(),
+            isProcessed: true
+          }
+        ]);
+        
+        // Submit the modified query
+        // We're using the input state to leverage the existing handleSend function
+        setInput(retryQuery);
+        
+        // Give a small delay to ensure state is updated before submitting
+        setTimeout(() => {
+          const form = document.querySelector('form');
+          if (form) {
+            console.log('Submitting retry form');
+            form.dispatchEvent(new Event('submit', { cancelable: true }));
+          } else {
+            console.error('Form element not found for retry submission');
+          }
+        }, 200);
+      } else {
+        console.error('No user message found for retry');
+      }
+    } catch (error) {
+      console.error('Error in handleRetry:', error);
     }
   };
 
   // Function to handle copying content to clipboard
-  const handleCopy = (content: string) => {
-    // For structured content that might be an object, ensure it's a string
-    const textToCopy = typeof content === 'object' ? JSON.stringify(content, null, 2) : content;
-    
-    navigator.clipboard.writeText(textToCopy)
-      .then(() => {
-        console.log('Content copied to clipboard');
-        // Create a temporary element for the toast notification
-        const toast = document.createElement('div');
-        toast.textContent = 'Copied to clipboard!';
-        toast.style.position = 'fixed';
-        toast.style.bottom = '20px';
-        toast.style.left = '50%';
-        toast.style.transform = 'translateX(-50%)';
-        toast.style.backgroundColor = '#22c55e';
-        toast.style.color = '#fff';
-        toast.style.padding = '8px 16px';
-        toast.style.borderRadius = '4px';
-        toast.style.zIndex = '9999';
-        toast.style.opacity = '0';
-        toast.style.transition = 'opacity 0.3s ease';
-        
-        document.body.appendChild(toast);
-        
-        // Animate in
-        setTimeout(() => {
-          toast.style.opacity = '1';
-        }, 10);
-        
-        // Remove after 2 seconds
-        setTimeout(() => {
+  const handleCopy = (content: string | any) => {
+    try {
+      // For structured content that might be an object, ensure it's a string
+      let textToCopy = '';
+      
+      if (typeof content === 'object') {
+        // If it's an object, format it as JSON
+        textToCopy = JSON.stringify(content, null, 2);
+      } else if (typeof content === 'string') {
+        // If it's a string, use it directly
+        textToCopy = content;
+      } else {
+        // For any other type, convert to string
+        textToCopy = String(content);
+      }
+      
+      navigator.clipboard.writeText(textToCopy)
+        .then(() => {
+          console.log('Content copied to clipboard');
+          // Create a temporary element for the toast notification
+          const toast = document.createElement('div');
+          toast.textContent = 'Copied to clipboard!';
+          toast.style.position = 'fixed';
+          toast.style.bottom = '20px';
+          toast.style.left = '50%';
+          toast.style.transform = 'translateX(-50%)';
+          toast.style.backgroundColor = '#22c55e';
+          toast.style.color = '#fff';
+          toast.style.padding = '8px 16px';
+          toast.style.borderRadius = '4px';
+          toast.style.zIndex = '9999';
           toast.style.opacity = '0';
+          toast.style.transition = 'opacity 0.3s ease';
+          
+          document.body.appendChild(toast);
+          
+          // Animate in
           setTimeout(() => {
-            document.body.removeChild(toast);
-          }, 300);
-        }, 2000);
-      })
-      .catch(err => {
-        console.error('Failed to copy content to clipboard', err);
-        alert('Failed to copy content. Please try again.');
-      });
+            toast.style.opacity = '1';
+          }, 10);
+          
+          // Remove after 2 seconds
+          setTimeout(() => {
+            toast.style.opacity = '0';
+            setTimeout(() => {
+              document.body.removeChild(toast);
+            }, 300);
+          }, 2000);
+        })
+        .catch(err => {
+          console.error('Failed to copy content to clipboard', err);
+          alert('Failed to copy content. Please try again.');
+        });
+    } catch (error) {
+      console.error('Error preparing content for clipboard:', error);
+      alert('Failed to prepare content for copying. Please try again.');
+    }
   };
 
   return (
@@ -2809,11 +2842,25 @@ export default function TestChat() {
                           
                           <button
                             onClick={() => {
-                              // Find the corresponding user message
-                              const userMsgIndex = messages.findIndex(m => m.id === msg.parentId);
-                              const userMsg = userMsgIndex >= 0 ? messages[userMsgIndex] : 
+                              try {
+                                // Find the corresponding user message
+                                const userMsgIndex = messages.findIndex(m => m.id === msg.parentId);
+                                let userMsg = userMsgIndex >= 0 ? messages[userMsgIndex] : 
                                             messages.find(m => m.role === 'user' && m.timestamp && m.timestamp < (msg.timestamp || Infinity));
-                              if (userMsg) handleRetry(userMsg.content);
+                                
+                                // If we still don't have a user message, use the last one as fallback
+                                if (!userMsg) {
+                                  userMsg = [...messages].reverse().find(m => m.role === 'user');
+                                }
+                                
+                                if (userMsg) {
+                                  handleRetry(userMsg.content);
+                                } else {
+                                  console.error('Could not find a user message to retry');
+                                }
+                              } catch (error) {
+                                console.error('Error handling retry button click:', error);
+                              }
                             }}
                             className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
                             aria-label="Retry with different response"
@@ -2881,11 +2928,25 @@ export default function TestChat() {
                         
                         <button
                           onClick={() => {
-                            // Find the corresponding user message
-                            const userMsgIndex = messages.findIndex(m => m.id === msg.parentId);
-                            const userMsg = userMsgIndex >= 0 ? messages[userMsgIndex] : 
+                            try {
+                              // Find the corresponding user message
+                              const userMsgIndex = messages.findIndex(m => m.id === msg.parentId);
+                              let userMsg = userMsgIndex >= 0 ? messages[userMsgIndex] : 
                                           messages.find(m => m.role === 'user' && m.timestamp && m.timestamp < (msg.timestamp || Infinity));
-                            if (userMsg) handleRetry(userMsg.content);
+                              
+                              // If we still don't have a user message, use the last one as fallback
+                              if (!userMsg) {
+                                userMsg = [...messages].reverse().find(m => m.role === 'user');
+                              }
+                              
+                              if (userMsg) {
+                                handleRetry(userMsg.content);
+                              } else {
+                                console.error('Could not find a user message to retry');
+                              }
+                            } catch (error) {
+                              console.error('Error handling retry button click:', error);
+                            }
                           }}
                           className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
                           aria-label="Retry with different response"
