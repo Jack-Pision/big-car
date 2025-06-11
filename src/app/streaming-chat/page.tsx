@@ -11,6 +11,7 @@ import { MarkdownRenderer } from '../../utils/markdown-utils';
 import { QueryContext } from '../../utils/template-utils';
 import IntelligentMarkdown from '../../components/IntelligentMarkdown';
 import React from 'react';
+import { filterAIThinking } from '../../utils/content-filter';
 
 const NVIDIA_API_URL = "/api/nvidia";
 
@@ -207,7 +208,8 @@ export default function StreamingChat() {
     setFadeIn(true);
     
     const interval = setInterval(() => {
-      const filteredDisplayed = streamedContent.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+      // Use our centralized filtering function for consistency
+      const filteredDisplayed = filterAIThinking(streamedContent);
       
       // Decide how much content to show based on current position
       const charsPerFrame = Math.max(1, Math.floor(filteredDisplayed.length / 200));
@@ -263,11 +265,13 @@ export default function StreamingChat() {
         // Short delay before moving streamed content to the message array
         setTimeout(() => {
           setAiTyping(false);
+          // Use filtered content for the final message
+          const finalFilteredContent = filterAIThinking(streamedContent);
           setMessages((prev) => [
             ...prev.slice(0, -1),
             { 
               ...prev[prev.length - 1], 
-              content: streamedContent,
+              content: finalFilteredContent,
               userQuery: prev[prev.length - 2]?.userQuery || ''
             },
           ]);
@@ -475,21 +479,14 @@ Just respond like you already know the answer—confident and helpful. Keep your
               fullText += delta;
               chunkBufferRef.current.push(delta);
               
-                // Process larger chunks for better performance with more aggressive filtering
-                if (chunkBufferRef.current.length >= 5 || done) {
-                  // Enhanced filtering to remove thinking patterns
-                  let filteredText = fullText
-                    // Remove explicit think tags
-                    .replace(/<think>[\s\S]*?<\/think>/g, '')
-                    // Remove reasoning patterns
-                    .replace(/(?:Let me|I'll|I need to|First,|Step \d+:|To answer this|My reasoning|I think|Let's analyze|Let's break this down|To approach this|I should consider)[^.]*\./g, '')
-                    .replace(/(?:First|Second|Third|Next|Finally|Then)[^a-zA-Z]*(?:I'll|I will|I need to|we need to)[^.]*\./g, '')
-                    .replace(/(?:Looking at|Analyzing|Considering|Examining|Based on|According to)[^.]*\./g, '')
-                    .trim();
-                  
-                  updateStreamedContentDebounced(filteredText);
-                  chunkBufferRef.current = [];
-                }
+              // Increase buffer size for better context and process larger chunks
+              if (chunkBufferRef.current.length >= 15 || done) {
+                // Use our centralized filtering function
+                let filteredText = filterAIThinking(fullText);
+                
+                updateStreamedContentDebounced(filteredText);
+                chunkBufferRef.current = [];
+              }
             }
             } catch (err) {
               console.warn('Skipping malformed JSON chunk:', dataStr);
@@ -501,7 +498,9 @@ Just respond like you already know the answer—confident and helpful. Keep your
       
       // Cache the successful response
       if (didRespond) {
-        cacheResponse(cacheKey, fullText);
+        // Filter before caching to ensure cached responses are also clean
+        const filteredResponse = filterAIThinking(fullText);
+        cacheResponse(cacheKey, filteredResponse);
       }
       
     } catch (err: any) {

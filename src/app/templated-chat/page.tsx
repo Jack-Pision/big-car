@@ -8,6 +8,7 @@ import SearchPopup from '../../components/SearchPopup';
 import { useRouter } from 'next/navigation';
 import { EnhancedMarkdownRenderer } from '../../components/EnhancedMarkdownRenderer';
 import { QueryContext } from '../../utils/template-utils';
+import { filterAIThinking } from '../../utils/content-filter';
 
 const NVIDIA_API_URL = "/api/nvidia";
 
@@ -247,15 +248,8 @@ MARKDOWN FORMATTING GUIDELINES:
             if (delta) {
               didRespond = true;
               fullText += delta;
-              // Enhanced filtering to remove thinking patterns
-              let filteredText = fullText
-                // Remove explicit think tags
-                .replace(/<think>[\s\S]*?<\/think>/g, '')
-                // Remove reasoning patterns
-                .replace(/(?:Let me|I'll|I need to|First,|Step \d+:|To answer this|My reasoning|I think|Let's analyze|Let's break this down|To approach this|I should consider)[^.]*\./g, '')
-                .replace(/(?:First|Second|Third|Next|Finally|Then)[^a-zA-Z]*(?:I'll|I will|I need to|we need to)[^.]*\./g, '')
-                .replace(/(?:Looking at|Analyzing|Considering|Examining|Based on|According to)[^.]*\./g, '')
-                .trim();
+              // Use our centralized filtering function
+              let filteredText = filterAIThinking(fullText);
               setStreamedContent(filteredText);
             }
             if (data.error) {
