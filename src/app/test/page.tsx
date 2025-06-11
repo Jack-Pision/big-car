@@ -1634,12 +1634,9 @@ const getDefaultChatPrompt = (basePrompt: string) => {
   return `${basePrompt}
 
 IMPORTANT FOR DEFAULT CHAT:
-- Provide direct, conversational answers
 - Use markdown formatting for better readability
 - Never show internal reasoning or thinking process
-- Keep responses clear and concise
-- Format code blocks with proper syntax highlighting
-- Use bullet points or numbered lists when appropriate`;
+- Format code blocks with proper syntax highlighting`;
 };
 
 const getSearchPrompt = (basePrompt: string) => {
