@@ -2793,7 +2793,7 @@ export default function TestChat() {
                       />
                       
                       {/* Action buttons for structured content */}
-                      {msg.isProcessed && !isAiResponding && (
+                      {msg.isProcessed && (
                         <div className="w-full flex justify-start gap-2 mt-2">
                           <button
                             onClick={() => handleCopy(msg.structuredContent)}
@@ -2865,7 +2865,7 @@ export default function TestChat() {
                     )}
                     
                     {/* Action buttons for text content */}
-                    {msg.isProcessed && !isAiResponding && !isStoppedMsg && (
+                    {msg.isProcessed && !isStoppedMsg && (
                       <div className="w-full flex justify-start gap-2 mt-2">
                         <button
                           onClick={() => handleCopy(cleanContent)}
