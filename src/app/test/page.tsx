@@ -30,7 +30,6 @@ import {
   getActiveSessionId
 } from '@/lib/session-service';
 import { SCHEMAS } from '@/lib/output-schemas';
-import { classifyQuery } from '@/lib/query-classifier';
 import DynamicResponseRenderer from '@/components/DynamicResponseRenderer';
 import TutorialDisplay, { TutorialData } from '@/components/TutorialDisplay';
 import ComparisonDisplay, { ComparisonData } from '@/components/ComparisonDisplay';
@@ -1741,6 +1740,7 @@ IMPORTANT FOR STRUCTURED QUERY (${queryType}):
 - Include all required fields
 - Maintain proper data types
 - No additional text outside the JSON object
+- ONLY use this format when explicitly requested by the user
 
 Schema:
 ${JSON.stringify(schema, null, 2)}`;
@@ -1998,12 +1998,12 @@ export default function TestChat() {
       setIsLoading(true);
     if (showHeading) setShowHeading(false);
 
-    const queryType = classifyQuery(input) as QueryClassificationType;
-    const responseSchema = SCHEMAS[queryType] || SCHEMAS.conversation;
+    // Always use conversation type for default chat instead of classifying
+    const queryType = "conversation";
+    const responseSchema = SCHEMAS.conversation;
 
     console.log("[handleSend] Query:", input);
-    console.log("[handleSend] Classified Query Type:", queryType);
-    console.log("[handleSend] Selected Response Schema Name:", queryType);
+    console.log("[handleSend] Using default conversation mode");
 
     aiStreamAbortController.current = new AbortController();
 
@@ -2073,19 +2073,8 @@ export default function TestChat() {
       } else if (activeButton === 'advance' || input.includes('@AdvanceSearch')) {
         turnSpecificSystemPrompt = getAdvanceSearchPrompt(BASE_SYSTEM_PROMPT);
       } else {
-        // Default chat mode
-        if (queryType === 'conversation') {
-          turnSpecificSystemPrompt = getDefaultChatPrompt(BASE_SYSTEM_PROMPT);
-        } else if (uploadedImageUrls.length === 0) {
-          turnSpecificSystemPrompt = getStructuredQueryPrompt(
-            BASE_SYSTEM_PROMPT,
-            queryType,
-            responseSchema
-          );
-        } else {
-          // For image queries, use default chat prompt
-          turnSpecificSystemPrompt = getDefaultChatPrompt(BASE_SYSTEM_PROMPT);
-        }
+        // Always use default chat prompt for regular chat
+        turnSpecificSystemPrompt = getDefaultChatPrompt(BASE_SYSTEM_PROMPT);
       }
 
       console.log("[handleSend] Turn Specific System Prompt Length:", turnSpecificSystemPrompt.length);
