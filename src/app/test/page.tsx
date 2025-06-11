@@ -1708,9 +1708,6 @@ const getDefaultChatPrompt = (basePrompt: string) => {
 
 IMPORTANT FOR DEFAULT CHAT:
 - Use markdown formatting for better readability
-- NEVER show internal reasoning, thinking process, or step-by-step analysis
-- NEVER use phrases like "let me think", "analyzing", "I'll break this down", etc.
-- Always provide direct, final answers without showing how you arrived at them
 - Format code blocks with proper syntax highlighting`;
 };
 
@@ -2196,19 +2193,63 @@ export default function TestChat() {
                   if (delta) {
                     contentBuffer += delta;
                     
-                    // Use the stream buffer processor to detect final content
-                    const { showContent, processedContent, hasCompletedReasoning } = processStreamBuffer(contentBuffer);
-                    
-                    if (showContent && !hasProcessedFinalContent) {
+                    // For default chat mode, don't process - just show raw content
+                    if (!showAdvanceSearchUI && !input.includes('@AdvanceSearch')) {
                       if (!hasActualContent) {
                         hasActualContent = true;
-                        aiMsg.content = processedContent;
+                        aiMsg.content = contentBuffer;
                         setIsProcessing(false);
                         setMessages((prev) => [...prev, { ...aiMsg }]);
                       } else {
+                        aiMsg.content = contentBuffer;
+                        setMessages((prev) => {
+                          const updatedMessages = [...prev];
+                          const aiIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
+                          if (aiIndex !== -1) {
+                            updatedMessages[aiIndex] = {
+                              ...updatedMessages[aiIndex],
+                              content: contentBuffer,
+                              webSources: aiMsg.webSources,
+                              isProcessed: true
+                            };
+                          }
+                          return updatedMessages;
+                        });
+                      }
+                    } else {
+                      // For advanced search mode, keep existing processing
+                      const { showContent, processedContent, hasCompletedReasoning } = processStreamBuffer(contentBuffer);
+                      
+                      if (showContent && !hasProcessedFinalContent) {
+                        if (!hasActualContent) {
+                          hasActualContent = true;
+                          aiMsg.content = processedContent;
+                          setIsProcessing(false);
+                          setMessages((prev) => [...prev, { ...aiMsg }]);
+                        } else {
+                          aiMsg.content = processedContent;
+                          setMessages((prev) => {
+                            const updatedMessages = [...prev];
+                            const aiIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
+                            if (aiIndex !== -1) {
+                              updatedMessages[aiIndex] = {
+                                ...updatedMessages[aiIndex],
+                                content: processedContent,
+                                webSources: aiMsg.webSources,
+                                isProcessed: true
+                              };
+                            }
+                            return updatedMessages;
+                          });
+                        }
+                        
+                        if (hasCompletedReasoning) {
+                          hasProcessedFinalContent = true;
+                        }
+                      } else if (hasActualContent && showContent) {
                         aiMsg.content = processedContent;
-                    setMessages((prev) => {
-                      const updatedMessages = [...prev];
+                        setMessages((prev) => {
+                          const updatedMessages = [...prev];
                           const aiIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
                           if (aiIndex !== -1) {
                             updatedMessages[aiIndex] = {
@@ -2216,30 +2257,11 @@ export default function TestChat() {
                               content: processedContent,
                               webSources: aiMsg.webSources,
                               isProcessed: true
-                        };
+                            };
+                          }
+                          return updatedMessages;
+                        });
                       }
-                      return updatedMessages;
-                    });
-                      }
-                      
-                      if (hasCompletedReasoning) {
-                        hasProcessedFinalContent = true;
-                      }
-                    } else if (hasActualContent && showContent) {
-                      aiMsg.content = processedContent;
-                      setMessages((prev) => {
-                        const updatedMessages = [...prev];
-                        const aiIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
-                        if (aiIndex !== -1) {
-                          updatedMessages[aiIndex] = {
-                            ...updatedMessages[aiIndex],
-                            content: processedContent,
-                            webSources: aiMsg.webSources,
-                            isProcessed: true
-                          };
-                        }
-                        return updatedMessages;
-                      });
                     }
                   }
                 } catch (err) {
@@ -2268,16 +2290,14 @@ export default function TestChat() {
             return updatedMessages;
           });
         } else {
-          const { showContent, processedContent, hasCompletedReasoning } = processStreamBuffer(contentBuffer);
-          const finalContent = postProcessAIChatResponse(extractFinalAnswer(contentBuffer), true);
-          
+          // For default chat, don't apply any post-processing
           setMessages((prev) => {
             const updatedMessages = [...prev];
             const msgIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
             if (msgIndex !== -1) {
               updatedMessages[msgIndex] = {
                 ...updatedMessages[msgIndex],
-                content: finalContent,
+                content: contentBuffer, // Use raw content buffer
                 contentType: 'conversation',
                 isProcessed: true // Ensure message is marked as processed
               };
@@ -2458,11 +2478,10 @@ export default function TestChat() {
     } else if (msg.content) {
       const isDefaultChat = msg.contentType === 'conversation' || (msg.role === 'assistant' && !msg.contentType);
       if (isDefaultChat) {
-        const processedContent = postProcessAIChatResponse(msg.content, true);
-        // Use the MarkdownRenderer component for consistent rendering
+        // Display raw content without post-processing for default chat
         return (
           <MarkdownRenderer 
-            content={processedContent}
+            content={msg.content}
             className="prose dark:prose-invert max-w-none default-chat-markdown"
           />
         );
