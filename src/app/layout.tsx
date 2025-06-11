@@ -3,16 +3,9 @@ import { Inter } from 'next/font/google';
 import { Toaster } from 'react-hot-toast';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/next';
-import dynamic from 'next/dynamic';
 import type { Metadata } from 'next'
 
 const inter = Inter({ subsets: ['latin'] });
-
-// Dynamically load CacheDebug component with no SSR to avoid localStorage errors
-const CacheDebug = dynamic(
-  () => import('@/components/Debug/CacheDebug'),
-  { ssr: false }
-);
 
 export const metadata: Metadata = {
   title: 'Tehom AI',
@@ -36,7 +29,6 @@ export default function RootLayout({
         {children}
         <Analytics />
         <SpeedInsights />
-        <CacheDebug />
       </body>
     </html>
   );
