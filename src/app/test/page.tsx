@@ -53,7 +53,7 @@ type QueryType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversa
 type QueryClassificationType = keyof typeof SCHEMAS;
 type ContentDisplayType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversation' | 'deep-research';
 
-const BASE_SYSTEM_PROMPT = `You are Tehom AI, a helpful and intelligent assistant. Respond in a natural, conversational tone. Do not show internal reasoning, interpretive commentary, or self-narration. provide the answer in a friendly structured. Always write in markdown formatting in every output dynamically.
+const BASE_SYSTEM_PROMPT = `You are Tehom AI, a helpful and intelligent assistant. Respond in a natural, conversational tone. Always write in markdown formatting in every output dynamically. Feel free to show your thinking process using <think> tags.
 
 IMPORTANT: For general conversation, do NOT format your responses as JSON structures. Always provide plain text or simple markdown responses. Never return JSON objects or arrays in your replies unless specifically requested to do so.`;
 
@@ -122,24 +122,10 @@ function cleanAIResponse(text: string): ProcessedResponse {
   }
 
   let cleanedText = text;
-  let processedContent = '';
-
-  // Find and process <think> tags
-  const thinkTagRegex = /<think>([\s\S]*?)<\/think>/gi;
-  let match;
-  let lastIndex = 0;
-
-  while ((match = thinkTagRegex.exec(cleanedText)) !== null) {
-    // Add the text before the think tag
-    processedContent += cleanedText.slice(lastIndex, match.index);
-    lastIndex = match.index + match[0].length;
-  }
-
-  // Add any remaining text
-  processedContent += cleanedText.slice(lastIndex);
-
+  
+  // We want to preserve <think> tags, so we return the original text
   return {
-    content: processedContent.trim()
+    content: cleanedText.trim()
   };
 }
 
@@ -948,8 +934,8 @@ function cleanText(text: string): string {
 function cleanAIOutput(text: string): string {
   let cleanedText = text;
   
-  // Remove <think> tags and their content
-  cleanedText = cleanedText.replace(/<think>[\s\S]*?<\/think>/g, '');
+  // We want to preserve <think> tags, so we don't remove them anymore
+  // cleanedText = cleanedText.replace(/<think>[\s\S]*?<\/think>/g, '');
   
   // Remove content about search plans and strategy
   cleanedText = cleanedText.replace(/I'll search for[\s\S]*?(?=\n\n)/g, '');
@@ -1643,8 +1629,9 @@ function processStreamBuffer(buffer: string): {
     }
   }
 
-  // Remove thinking tags and their content
-  const processedBuffer = buffer.replace(/<think>[\s\S]*?<\/think>/gi, '');
+  // We want to preserve the think tags in default chat mode
+  // so we don't filter them out anymore
+  const processedBuffer = buffer;
 
   // If buffer only contained thinking tags and nothing else, don't show yet
   if (!processedBuffer.trim()) {
@@ -1689,14 +1676,15 @@ function processStreamBuffer(buffer: string): {
   
   // Always attempt to extract final answer, not just when reasoning is detected
   if (cleanedContent.length > 40) {
-    cleanedContent = extractFinalAnswer(cleanedContent);
+    // Don't extract final answer for default chat anymore - show raw content with think tags
+    // cleanedContent = extractFinalAnswer(cleanedContent);
   }
   
-  // Always apply post-processing to clean up the content
-  cleanedContent = postProcessAIChatResponse(cleanedContent, true);
+  // Don't apply post-processing for default chat
+  // cleanedContent = postProcessAIChatResponse(cleanedContent, true);
   
   return {
-    showContent: shouldShow,
+    showContent: true, // Always show content for default chat
     processedContent: cleanedContent.trim(),
     hasCompletedReasoning: hasCompletedReasoning
   };
@@ -1707,6 +1695,13 @@ const getDefaultChatPrompt = (basePrompt: string) => {
   return `${basePrompt}
 
 IMPORTANT FOR DEFAULT CHAT:
+- You are encouraged to show your thinking process using <think> tags, like this:
+  <think>
+  First, I need to analyze this question...
+  Here's what I know about this topic...
+  My reasoning process is...
+  </think>
+- After your thinking process, provide your final answer
 - Use markdown formatting for better readability
 - Format code blocks with proper syntax highlighting`;
 };
@@ -2290,14 +2285,14 @@ export default function TestChat() {
             return updatedMessages;
           });
         } else {
-          // For default chat, don't apply any post-processing
+          // For default chat, use raw content with no processing
           setMessages((prev) => {
             const updatedMessages = [...prev];
             const msgIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
             if (msgIndex !== -1) {
               updatedMessages[msgIndex] = {
                 ...updatedMessages[msgIndex],
-                content: contentBuffer, // Use raw content buffer
+                content: contentBuffer, // Use raw content buffer with think tags preserved
                 contentType: 'conversation',
                 isProcessed: true // Ensure message is marked as processed
               };
