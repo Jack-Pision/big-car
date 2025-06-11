@@ -295,7 +295,7 @@ export default function StreamingChat() {
     debounceTimerRef.current = setTimeout(() => {
       setStreamedContent(newContent);
       debounceTimerRef.current = null;
-    }, 50);
+    }, 100);
   }, []);
 
   // Chat management functions
@@ -480,7 +480,7 @@ Just respond like you already know the answer—confident and helpful. Keep your
               chunkBufferRef.current.push(delta);
               
               // Increase buffer size for better context and process larger chunks
-              if (chunkBufferRef.current.length >= 15 || done) {
+              if (chunkBufferRef.current.length >= 25 || done) {
                 // Use our centralized filtering function
                 let filteredText = filterAIThinking(fullText);
                 
