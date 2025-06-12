@@ -4,21 +4,40 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
+import rehypeRaw from 'rehype-raw';
+import { v4 as uuidv4 } from 'uuid';
+import { useRouter } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
+import Image from 'next/image';
+import Split from 'react-split';
 import 'katex/dist/katex.min.css';
+
+// UI Components
 import Sidebar from '../../components/Sidebar';
 import HamburgerMenu from '../../components/HamburgerMenu';
-import { useRouter } from 'next/navigation';
-import { supabase, createSupabaseClient } from '@/lib/supabase-client';
-import { motion } from 'framer-motion';
 import TextReveal from '@/components/TextReveal';
-import AdvanceSearch from '@/components/AdvanceSearch';
-import { useDeepResearch } from '@/hooks/useDeepResearch';
-import { WebSource } from '@/utils/source-utils/index';
-import { v4 as uuidv4 } from 'uuid';
 import EmptyBox from '@/components/EmptyBox';
 import WebSourcesCarousel from '../../components/WebSourcesCarousel';
+import TutorialDisplay, { TutorialData } from '@/components/TutorialDisplay';
+import ComparisonDisplay, { ComparisonData } from '@/components/ComparisonDisplay';
+import InformationalSummaryDisplay, { InformationalSummaryData } from '@/components/InformationalSummaryDisplay';
+import ConversationDisplay from '@/components/ConversationDisplay';
+import DynamicResponseRenderer from '@/components/DynamicResponseRenderer';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+
+// Icons
+import { Bot, User, Paperclip, Send, XCircle, Search, Trash2, PlusCircle, Settings, Zap, ExternalLink, AlertTriangle } from 'lucide-react';
+import { PiMagnifyingGlassBold, PiPaperPlaneRightFill, PiSmileyBold } from 'react-icons/pi';
+import { GrChat } from 'react-icons/gr';
+
+// Utils & Types
+import { supabase, createSupabaseClient } from '@/lib/supabase-client';
 import { formatMessagesForApi, enhanceSystemPrompt, buildConversationContext } from '@/utils/conversation-context';
+import { Message as ConversationMessage, Message as BaseMessage } from "@/utils/conversation-context";
 import { Session } from '@/lib/types';
+import { SCHEMAS } from '@/lib/output-schemas';
+import { WebSource } from '@/utils/source-utils/index';
 import {
   createNewSession,
   getSessionMessages,
@@ -27,31 +46,16 @@ import {
   getSessionTitleFromMessage,
   getSessions as getSessionsFromService,
   saveActiveSessionId,
-  getActiveSessionId
+  getActiveSessionId,
+  deleteSessionFromService
 } from '@/lib/session-service';
-import { SCHEMAS } from '@/lib/output-schemas';
-import DynamicResponseRenderer from '@/components/DynamicResponseRenderer';
-import TutorialDisplay, { TutorialData } from '@/components/TutorialDisplay';
-import ComparisonDisplay, { ComparisonData } from '@/components/ComparisonDisplay';
-import InformationalSummaryDisplay, { InformationalSummaryData } from '@/components/InformationalSummaryDisplay';
-import ConversationDisplay from '@/components/ConversationDisplay';
-import { Bot, User, Paperclip, Send, XCircle, Search, Trash2, PlusCircle, Settings, Zap, ExternalLink, AlertTriangle } from 'lucide-react';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import Image from 'next/image';
-import rehypeRaw from 'rehype-raw';
-import { isSearchCompleted, getCompletedSearch, saveCompletedSearch } from '@/utils/advance-search-state';
-// MarkdownRenderer is replaced with direct ReactMarkdown usage
-import { Message as BaseMessage } from '@/utils/conversation-context';
-import SearchPanel from '@/components/Search';
-import { Message as ConversationMessage } from "@/utils/conversation-context";
 
-// Define a type that includes all possible query types (including the ones in SCHEMAS and 'conversation')
-type QueryType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversation' | 'deep-research';
+// Define a type that includes all possible query types (without 'deep-research')
+type QueryType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversation';
 
 // Define types for query classification and content display
 type QueryClassificationType = keyof typeof SCHEMAS;
-type ContentDisplayType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversation' | 'deep-research';
+type ContentDisplayType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversation';
 
 const BASE_SYSTEM_PROMPT = `You are Tehom AI, a helpful and intelligent assistant. Respond in a natural, conversational tone. Always write in markdown formatting in every output dynamically. Feel free to show your thinking process using <think> tags.
 
@@ -1749,12 +1753,6 @@ IMPORTANT FOR SEARCH:
 - Provide a summary of search results`;
 };
 
-const getAdvanceSearchPrompt = (basePrompt: string) => {
-  return `${basePrompt}
-
-${CITATION_INSTRUCTIONS}`;
-};
-
 const getStructuredQueryPrompt = (basePrompt: string, queryType: string, schema: any) => {
   return `${basePrompt}
 
@@ -1801,51 +1799,8 @@ export default function TestChat() {
 
   const aiStreamAbortController = useRef<AbortController | null>(null);
 
-  // Separate UI state from processing state for Advance Search
-  const [showAdvanceSearchUI, setShowAdvanceSearchUI] = useState(false); // UI state for the button
-  const [isAdvanceSearchActive, setIsAdvanceSearchActive] = useState(false); // Processing state
-  const [currentQuery, setCurrentQuery] = useState('');
+  // Remove all advanced search related state
   
-  // Add state for tracking Advance Search conversation history
-  const [advanceSearchHistory, setAdvanceSearchHistory] = useState<{
-    previousQueries: string[];
-    previousResponses: string[];
-  }>({
-    previousQueries: [],
-    previousResponses: []
-  });
-  
-  // Add state to track if the chat was restored from storage
-  const [isRestoredFromStorage, setIsRestoredFromStorage] = useState(false);
-  
-  // Add state to hold the restored deep research state
-  const [restoredDeepResearchState, setRestoredDeepResearchState] = useState<{
-    steps?: any[];
-    activeStepId?: string | null;
-    isComplete?: boolean;
-    isInProgress?: boolean;
-    webData?: any | null;
-  }>({});
-  
-  // Deep Research hook - now passing processing state instead of UI state
-  const {
-    steps,
-    activeStepId,
-    isComplete,
-    isInProgress,
-    error,
-    webData
-  } = useDeepResearch(
-    isAdvanceSearchActive, 
-    currentQuery, 
-    advanceSearchHistory,
-    isRestoredFromStorage, // Pass the flag to control process start
-    restoredDeepResearchState // Pass the restored state
-  );
-
-  const [manualStepId, setManualStepId] = useState<string | null>(null);
-  const isFinalStepComplete = steps[steps.length - 1]?.status === 'completed';
-
   const [emptyBoxes, setEmptyBoxes] = useState<string[]>([]); // Array of box IDs
 
   const [showPulsingDot, setShowPulsingDot] = useState(false);
@@ -1878,14 +1833,12 @@ export default function TestChat() {
       setMessages(processedMessages);
       setShowHeading(false);
       setHasInteracted(true);
-      setIsRestoredFromStorage(true); // Set the flag to indicate restoration from storage
     } else {
       // Show welcome page for new users
       setShowHeading(true);
       setHasInteracted(false);
       setActiveSessionId(null);
       setMessages([]);
-      setIsRestoredFromStorage(false); // Not restored from storage
     }
   }, []);
 
@@ -1934,14 +1887,7 @@ export default function TestChat() {
     }
   }, [messages]);
 
-  // Hide the Deep Research view when research completes and AI responds
-  useEffect(() => {
-    if (isComplete && !isAiResponding) {
-      // Only hide the research view when both research is complete and AI has responded
-      setIsAdvanceSearchActive(false); // Turn off the processing state
-      // But keep the UI state the same for the next query
-    }
-  }, [isComplete, isAiResponding]);
+  // Removed advanced search view effect
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
@@ -2089,13 +2035,11 @@ export default function TestChat() {
 
       const context = buildConversationContext(convertToConversationMessages(messages));
 
-      // Determine the appropriate prompt based on mode and query type
-      let turnSpecificSystemPrompt = BASE_SYSTEM_PROMPT;
+      // Choose the appropriate system prompt based on the active button
+      let turnSpecificSystemPrompt = '';
 
       if (activeButton === 'search') {
         turnSpecificSystemPrompt = getSearchPrompt(BASE_SYSTEM_PROMPT);
-      } else if (activeButton === 'advance' || input.includes('@AdvanceSearch')) {
-        turnSpecificSystemPrompt = getAdvanceSearchPrompt(BASE_SYSTEM_PROMPT);
       } else {
         // Always use default chat prompt for regular chat
         turnSpecificSystemPrompt = getDefaultChatPrompt(BASE_SYSTEM_PROMPT);
@@ -2220,60 +2164,39 @@ export default function TestChat() {
                   if (delta) {
                     contentBuffer += delta;
                     
-                    // For default chat mode, don't process - just show raw content
-                    if (!showAdvanceSearchUI && !input.includes('@AdvanceSearch')) {
+                    // For default chat mode, just show raw content
+                    if (!hasActualContent) {
+                      hasActualContent = true;
+                      aiMsg.content = contentBuffer;
+                      setIsProcessing(false);
+                      setMessages((prev) => [...prev, { ...aiMsg }]);
+                    } else {
+                      aiMsg.content = contentBuffer;
+                      setMessages((prev) => {
+                        const updatedMessages = [...prev];
+                        const aiIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
+                        if (aiIndex !== -1) {
+                          updatedMessages[aiIndex] = {
+                            ...updatedMessages[aiIndex],
+                            content: contentBuffer,
+                            webSources: aiMsg.webSources,
+                            isProcessed: true
+                          };
+                        }
+                        return updatedMessages;
+                      });
+                    }
+                      
+                    // Process streaming buffer for search or regular chat
+                    const { showContent, processedContent, hasCompletedReasoning } = processStreamBuffer(contentBuffer);
+                    
+                    if (showContent && !hasProcessedFinalContent) {
                       if (!hasActualContent) {
                         hasActualContent = true;
-                        aiMsg.content = contentBuffer;
+                        aiMsg.content = processedContent;
                         setIsProcessing(false);
                         setMessages((prev) => [...prev, { ...aiMsg }]);
                       } else {
-                        aiMsg.content = contentBuffer;
-                        setMessages((prev) => {
-                          const updatedMessages = [...prev];
-                          const aiIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
-                          if (aiIndex !== -1) {
-                            updatedMessages[aiIndex] = {
-                              ...updatedMessages[aiIndex],
-                              content: contentBuffer,
-                              webSources: aiMsg.webSources,
-                              isProcessed: true
-                            };
-                          }
-                          return updatedMessages;
-                        });
-                      }
-                    } else {
-                      // For advanced search mode, keep existing processing
-                      const { showContent, processedContent, hasCompletedReasoning } = processStreamBuffer(contentBuffer);
-                      
-                      if (showContent && !hasProcessedFinalContent) {
-                        if (!hasActualContent) {
-                          hasActualContent = true;
-                          aiMsg.content = processedContent;
-                          setIsProcessing(false);
-                          setMessages((prev) => [...prev, { ...aiMsg }]);
-                        } else {
-                          aiMsg.content = processedContent;
-                          setMessages((prev) => {
-                            const updatedMessages = [...prev];
-                            const aiIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
-                            if (aiIndex !== -1) {
-                              updatedMessages[aiIndex] = {
-                                ...updatedMessages[aiIndex],
-                                content: processedContent,
-                                webSources: aiMsg.webSources,
-                                isProcessed: true
-                              };
-                            }
-                            return updatedMessages;
-                          });
-                        }
-                        
-                        if (hasCompletedReasoning) {
-                          hasProcessedFinalContent = true;
-                        }
-                      } else if (hasActualContent && showContent) {
                         aiMsg.content = processedContent;
                         setMessages((prev) => {
                           const updatedMessages = [...prev];
@@ -2289,6 +2212,10 @@ export default function TestChat() {
                           return updatedMessages;
                         });
                       }
+                      
+                      if (hasCompletedReasoning) {
+                        hasProcessedFinalContent = true;
+                      }
                     }
                   }
                 } catch (err) {
@@ -2301,39 +2228,22 @@ export default function TestChat() {
         }
         
         // Apply post-processing after streaming is complete
-        if (showAdvanceSearchUI || input.includes('@AdvanceSearch')) {
-          const processedResearch = enforceAdvanceSearchStructure(contentBuffer);
-          setMessages((prev) => {
-            const updatedMessages = [...prev];
-            const msgIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
-            if (msgIndex !== -1) {
-              updatedMessages[msgIndex] = {
-                ...updatedMessages[msgIndex],
-                content: processedResearch,
-                contentType: 'deep-research',
-                isProcessed: true // Ensure message is marked as processed
-              };
-            }
-            return updatedMessages;
-          });
-        } else {
-          // For default chat, detect if it has advanced search structure and clean it if needed
-          const { hasAdvancedStructure, cleanedContent } = detectAndCleanAdvancedStructure(contentBuffer);
-          
-          setMessages((prev) => {
-            const updatedMessages = [...prev];
-            const msgIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
-            if (msgIndex !== -1) {
-              updatedMessages[msgIndex] = {
-                ...updatedMessages[msgIndex],
-                content: hasAdvancedStructure ? cleanedContent : contentBuffer,
-                contentType: 'conversation',
-                isProcessed: true // Ensure message is marked as processed
-              };
-            }
-            return updatedMessages;
-          });
-        }
+        // For default chat, detect if it has advanced search structure and clean it if needed
+        const { hasAdvancedStructure, cleanedContent } = detectAndCleanAdvancedStructure(contentBuffer);
+        
+        setMessages((prev) => {
+          const updatedMessages = [...prev];
+          const msgIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
+          if (msgIndex !== -1) {
+            updatedMessages[msgIndex] = {
+              ...updatedMessages[msgIndex],
+              content: hasAdvancedStructure ? cleanedContent : contentBuffer,
+              contentType: 'conversation',
+              isProcessed: true // Ensure message is marked as processed
+            };
+          }
+          return updatedMessages;
+        });
         
         if (uploadedImageUrls.length > 0) {
             const { content: cleanedContent } = cleanAIResponse(aiMsg.content);
@@ -2432,13 +2342,7 @@ export default function TestChat() {
     setEmptyBoxes(prev => prev.filter(id => id !== boxId));
   };
 
-  // Add a function to clear the Advance Search conversation history
-  function clearAdvanceSearchHistory() {
-    setAdvanceSearchHistory({
-      previousQueries: [],
-      previousResponses: []
-    });
-  }
+  // Removed clearAdvanceSearchHistory function
 
   const handleSelectSession = (sessionId: string) => {
     if (!sessionId) { // Handling deletion or empty selection case
@@ -2459,14 +2363,9 @@ export default function TestChat() {
     setInput('');
     setImagePreviewUrls([]);
     setSelectedFilesForUpload([]);
-    setCurrentQuery(''); // Clear current query when switching sessions
-    setAdvanceSearchHistory({ previousQueries: [], previousResponses: [] }); // Reset deep research history
-    setIsAdvanceSearchActive(false); // Reset deep research active state
-    setShowAdvanceSearchUI(false); // Reset deep research UI toggle
     setShowHeading(messages.length === 0); // Show heading if the loaded session is empty
     setHasInteracted(true); // Assume interaction when a session is selected
     setSidebarOpen(false); // Close sidebar
-    setIsRestoredFromStorage(true); // Set flag to indicate restoration from storage
   };
 
   const handleNewChatRequest = () => {
@@ -2474,16 +2373,11 @@ export default function TestChat() {
     setInput('');
     setImagePreviewUrls([]);
     setSelectedFilesForUpload([]);
-    setCurrentQuery('');
-    setAdvanceSearchHistory({ previousQueries: [], previousResponses: [] });
-    setIsAdvanceSearchActive(false);
-    setShowAdvanceSearchUI(false);
     setShowHeading(true); // Show welcoming heading
     setHasInteracted(false); // Reset interaction state
     setActiveSessionId(null);
     saveActiveSessionId(null); // Clear the active session
     setMessages([]);
-    setIsRestoredFromStorage(false); // Reset the restored flag
   };
 
   // Fix the renderMessageContent function to use LocalMessage
@@ -2573,65 +2467,15 @@ export default function TestChat() {
   // Key for localStorage
   const ADVANCE_SEARCH_STORAGE_KEY = 'advanceSearchState';
 
-  // Restore Advance Search state from localStorage on mount
+  // Removed advanced search restore effect
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(ADVANCE_SEARCH_STORAGE_KEY);
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (parsed && parsed.steps && parsed.currentQuery) {
-            // Restore all the necessary state from localStorage
-            setCurrentQuery(parsed.currentQuery);
-            setAdvanceSearchHistory(parsed.advanceSearchHistory || { previousQueries: [], previousResponses: [] });
-            
-            // Set the restored deep research state
-            setRestoredDeepResearchState({
-              steps: parsed.steps,
-              activeStepId: parsed.activeStepId,
-              isComplete: parsed.isComplete,
-              isInProgress: parsed.isInProgress,
-              webData: parsed.webData
-            });
-            
-            // Set the isRestoredFromStorage flag to true to prevent API calls
-            setIsRestoredFromStorage(true);
-            
-            // Also restore the UI state to show the advance search
-            setShowAdvanceSearchUI(true);
-            
-            // Check if we should also make the advance search active
-            if (parsed.isComplete) {
-              setIsAdvanceSearchActive(true);
-            }
-          }
-        } catch (err) {
-          console.error("Error restoring advance search state:", err);
-        }
-      }
-      
-      // Mark that initial load is complete after trying to restore
-      setTimeout(() => {
-        isInitialLoadRef.current = false;
-      }, 500);
-    }
+    // Just mark initial load as complete
+    setTimeout(() => {
+      isInitialLoadRef.current = false;
+    }, 500);
   }, []); // Only run once on mount
 
-  // Save Advance Search state to localStorage whenever it changes
-  useEffect(() => {
-    if (showAdvanceSearchUI) {
-      const stateToSave = {
-        steps,
-        activeStepId,
-        isComplete,
-        isInProgress,
-        webData,
-        currentQuery,
-        advanceSearchHistory
-      };
-      localStorage.setItem(ADVANCE_SEARCH_STORAGE_KEY, JSON.stringify(stateToSave));
-    }
-  }, [steps, activeStepId, isComplete, isInProgress, webData, currentQuery, advanceSearchHistory, showAdvanceSearchUI]);
+  // Removed advanced search state save effect
 
   // Add at the top of the component
   const [activeButton, setActiveButton] = useState<string | null>(null);
@@ -2649,16 +2493,14 @@ export default function TestChat() {
   }
 
   // Add at the top of TestChat
-  const [activeMode, setActiveMode] = useState<'chat' | 'search' | 'advance'>('chat');
+  const [activeMode, setActiveMode] = useState<'chat' | 'search'>('chat');
   const chatAbortController = useRef<AbortController | null>(null);
   const searchAbortController = useRef<AbortController | null>(null);
-  const advanceAbortController = useRef<AbortController | null>(null);
 
-  function handleModeSwitch(newMode: 'chat' | 'search' | 'advance') {
+  function handleModeSwitch(newMode: 'chat' | 'search') {
     if (activeMode !== newMode) {
       if (chatAbortController.current) chatAbortController.current.abort();
       if (searchAbortController.current) searchAbortController.current.abort();
-      if (advanceAbortController.current) advanceAbortController.current.abort();
     }
     setActiveMode(newMode);
   }
