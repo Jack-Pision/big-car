@@ -1942,14 +1942,9 @@ export default function TestChat() {
     setInput('');
     setImagePreviewUrls([]);
     setSelectedFilesForUpload([]);
-    setCurrentQuery(''); // Clear current query when switching sessions
-    setAdvanceSearchHistory({ previousQueries: [], previousResponses: [] }); // Reset deep research history
-    setIsAdvanceSearchActive(false); // Reset deep research active state
-    setShowAdvanceSearchUI(false); // Reset deep research UI toggle
     setShowHeading(messages.length === 0); // Show heading if the loaded session is empty
     setHasInteracted(true); // Assume interaction when a session is selected
     setSidebarOpen(false); // Close sidebar
-    setIsRestoredFromStorage(true); // Set flag to indicate restoration from storage
   };
 
   const handleNewChatRequest = () => {
@@ -1957,16 +1952,11 @@ export default function TestChat() {
     setInput('');
     setImagePreviewUrls([]);
     setSelectedFilesForUpload([]);
-    setCurrentQuery('');
-    setAdvanceSearchHistory({ previousQueries: [], previousResponses: [] });
-    setIsAdvanceSearchActive(false);
-    setShowAdvanceSearchUI(false);
     setShowHeading(true); // Show welcoming heading
     setHasInteracted(false); // Reset interaction state
     setActiveSessionId(null);
     saveActiveSessionId(null); // Clear the active session
     setMessages([]);
-    setIsRestoredFromStorage(false); // Reset the restored flag
   };
 
   // Fix the renderMessageContent function to use LocalMessage
@@ -2053,68 +2043,7 @@ export default function TestChat() {
     return null;
   };
 
-  // Key for localStorage
-  const ADVANCE_SEARCH_STORAGE_KEY = 'advanceSearchState';
 
-  // Restore Advance Search state from localStorage on mount
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(ADVANCE_SEARCH_STORAGE_KEY);
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (parsed && parsed.steps && parsed.currentQuery) {
-            // Restore all the necessary state from localStorage
-            setCurrentQuery(parsed.currentQuery);
-            setAdvanceSearchHistory(parsed.advanceSearchHistory || { previousQueries: [], previousResponses: [] });
-            
-            // Set the restored deep research state
-            setRestoredDeepResearchState({
-              steps: parsed.steps,
-              activeStepId: parsed.activeStepId,
-              isComplete: parsed.isComplete,
-              isInProgress: parsed.isInProgress,
-              webData: parsed.webData
-            });
-            
-            // Set the isRestoredFromStorage flag to true to prevent API calls
-            setIsRestoredFromStorage(true);
-            
-            // Also restore the UI state to show the advance search
-            setShowAdvanceSearchUI(true);
-            
-            // Check if we should also make the advance search active
-            if (parsed.isComplete) {
-              setIsAdvanceSearchActive(true);
-            }
-          }
-        } catch (err) {
-          console.error("Error restoring advance search state:", err);
-        }
-      }
-      
-      // Mark that initial load is complete after trying to restore
-      setTimeout(() => {
-        isInitialLoadRef.current = false;
-      }, 500);
-    }
-  }, []); // Only run once on mount
-
-  // Save Advance Search state to localStorage whenever it changes
-  useEffect(() => {
-    if (showAdvanceSearchUI) {
-      const stateToSave = {
-        steps,
-        activeStepId,
-        isComplete,
-        isInProgress,
-        webData,
-        currentQuery,
-        advanceSearchHistory
-      };
-      localStorage.setItem(ADVANCE_SEARCH_STORAGE_KEY, JSON.stringify(stateToSave));
-    }
-  }, [steps, activeStepId, isComplete, isInProgress, webData, currentQuery, advanceSearchHistory, showAdvanceSearchUI]);
 
   // Add at the top of the component
   const [activeButton, setActiveButton] = useState<string | null>(null);
