@@ -1420,6 +1420,35 @@ export default function TestChat() {
       setHasInteracted(false);
       setActiveSessionId(null);
       setMessages([]);
+      
+      // ADD TEST MESSAGE TO VERIFY THINK TAG RENDERING
+      setTimeout(() => {
+        setMessages([
+          {
+            role: "user" as const,
+            content: "Test think tags",
+            id: uuidv4(),
+            timestamp: Date.now(),
+            isProcessed: true
+          },
+          {
+            role: "assistant" as const,
+            content: `<think>
+Let me analyze this test request...
+I need to verify that think tags are rendering properly...
+This should appear in a gray box with cyan text...
+</think>
+
+This is a test message to verify that think tags are rendering correctly. If you can see a gray box above with my thinking process, then the rendering system is working!`,
+            id: uuidv4(),
+            timestamp: Date.now(),
+            isProcessed: true,
+            contentType: 'conversation'
+          }
+        ]);
+        setHasInteracted(true);
+        setShowHeading(false);
+      }, 1000);
     }
   }, []);
 
