@@ -1052,37 +1052,6 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
       setAnswerAddedToMainChat(alreadyInMainChat);
       
     // Removed advanced search restoration logic
-      if (false) {
-        const completedSearch = null;
-        if (completedSearch && completedSearch.finalAnswer) {
-          setRestoredState({
-            steps: completedSearch.steps,
-            activeStepId: completedSearch.activeStepId,
-            isComplete: true,
-            isInProgress: false,
-            webData: completedSearch.webData,
-          isFullyCompleted: true
-          });
-          
-          setIsBlockRestoredFromStorage(true);
-          setIsSearchAlreadyCompleted(true);
-          setCompletedSearchAnswer(completedSearch.finalAnswer);
-          setCompletedSearchSources(completedSearch.webData?.sources || []);
-          
-        if (onFinalAnswer && !alreadyInMainChat && typeof completedSearch.finalAnswer === 'string') {
-            setTimeout(() => {
-              onFinalAnswer(completedSearch.finalAnswer as string, completedSearch.webData?.sources || []);
-              markAnswerAddedToMainChat();
-            }, 100);
-          }
-          
-        // Mark initial load as complete
-        setTimeout(() => {
-          isInitialLoadRef.current = false;
-        }, 100);
-        return;
-        }
-      }
       
     // If not found in completed searches, try localStorage
       const saved = localStorage.getItem('advanceSearchState');
@@ -1162,28 +1131,7 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
     webData: null
   };
   
-  // Save state to localStorage when it changes
-  useEffect(() => {
-    if (steps.length > 0 && typeof window !== 'undefined') {
-      const stateToSave = {
-        steps,
-        activeStepId,
-        isComplete,
-        isInProgress,
-        webData,
-        currentQuery: query
-      };
-      localStorage.setItem('advanceSearchState', JSON.stringify(stateToSave));
-      
-      // If search is complete, save it to our completed searches registry
-      if (isComplete && steps[steps.length - 1]?.status === 'completed' && steps[steps.length - 1]?.output) {
-        // Get the final answer
-        const finalAnswer = steps[steps.length - 1].output;
-        
-        // Removed saveCompletedSearch call
-      }
-    }
-  }, [steps, activeStepId, isComplete, isInProgress, webData, query, conversationHistory]);
+  // Removed localStorage save logic for advanced search
   
   // Wrap the onFinalAnswer callback to prevent duplicate calls
   const safeOnFinalAnswer = useCallback((answer: string, sources?: any[]) => {
@@ -1238,17 +1186,7 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
       markAnswerAddedToMainChat();
       
       // Save the final answer to our completed searches
-      saveCompletedSearch({
-        query,
-        steps,
-        activeStepId,
-        isComplete,
-        isInProgress,
-        webData,
-        finalAnswer: synthStep.output,
-        timestamp: Date.now(),
-        conversationHistory
-      });
+      // Removed saveCompletedSearch call
     }
   }, [steps, isComplete, query, activeStepId, isInProgress, webData, conversationHistory, answerAddedToMainChat, handleStreamingSynthesisOutput, markAnswerAddedToMainChat]);
   
