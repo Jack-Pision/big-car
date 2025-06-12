@@ -1,41 +1,22 @@
 "use client";
-import { useState, useRef, useLayoutEffect, useEffect, useCallback } from "react";
+import React, { useState, useRef, useLayoutEffect, useEffect, useCallback } from "react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
-import rehypeRaw from 'rehype-raw';
-import { v4 as uuidv4 } from 'uuid';
-import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
-import Image from 'next/image';
-import Split from 'react-split';
 import 'katex/dist/katex.min.css';
-
-// UI Components
 import Sidebar from '../../components/Sidebar';
 import HamburgerMenu from '../../components/HamburgerMenu';
+import { useRouter } from 'next/navigation';
+import { supabase, createSupabaseClient } from '@/lib/supabase-client';
+import { motion, AnimatePresence } from 'framer-motion';
 import TextReveal from '@/components/TextReveal';
+import { WebSource } from '@/utils/source-utils/index';
+import { v4 as uuidv4 } from 'uuid';
 import EmptyBox from '@/components/EmptyBox';
 import WebSourcesCarousel from '../../components/WebSourcesCarousel';
-import TutorialDisplay, { TutorialData } from '@/components/TutorialDisplay';
-import ComparisonDisplay, { ComparisonData } from '@/components/ComparisonDisplay';
-import InformationalSummaryDisplay, { InformationalSummaryData } from '@/components/InformationalSummaryDisplay';
-import ConversationDisplay from '@/components/ConversationDisplay';
-import DynamicResponseRenderer from '@/components/DynamicResponseRenderer';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
-
-// Icons
-import { Bot, User, Paperclip, Send, XCircle, Search, Trash2, PlusCircle, Settings, Zap, ExternalLink, AlertTriangle } from 'lucide-react';
-
-// Utils & Types
-import { supabase, createSupabaseClient } from '@/lib/supabase-client';
 import { formatMessagesForApi, enhanceSystemPrompt, buildConversationContext } from '@/utils/conversation-context';
-import { Message as ConversationMessage, Message as BaseMessage } from "@/utils/conversation-context";
 import { Session } from '@/lib/types';
-import { SCHEMAS } from '@/lib/output-schemas';
-import { WebSource } from '@/utils/source-utils/index';
 import {
   createNewSession,
   getSessionMessages,
@@ -46,8 +27,22 @@ import {
   saveActiveSessionId,
   getActiveSessionId
 } from '@/lib/session-service';
+import { SCHEMAS } from '@/lib/output-schemas';
+import DynamicResponseRenderer from '@/components/DynamicResponseRenderer';
+import TutorialDisplay, { TutorialData } from '@/components/TutorialDisplay';
+import ComparisonDisplay, { ComparisonData } from '@/components/ComparisonDisplay';
+import InformationalSummaryDisplay, { InformationalSummaryData } from '@/components/InformationalSummaryDisplay';
+import ConversationDisplay from '@/components/ConversationDisplay';
+import { Bot, User, Paperclip, Send, XCircle, Search, Trash2, PlusCircle, Settings, Zap, ExternalLink, AlertTriangle } from 'lucide-react';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import Image from 'next/image';
+import rehypeRaw from 'rehype-raw';
+import { Message as BaseMessage } from '@/utils/conversation-context';
+import SearchPanel from '@/components/Search';
+import { Message as ConversationMessage } from "@/utils/conversation-context";
 
-// Define a type that includes all possible query types (without 'deep-research')
+// Define a type that includes all possible query types (including the ones in SCHEMAS and 'conversation')
 type QueryType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversation';
 
 // Define types for query classification and content display
@@ -57,61 +52,6 @@ type ContentDisplayType = 'tutorial' | 'comparison' | 'informational_summary' | 
 const BASE_SYSTEM_PROMPT = `You are Tehom AI, a helpful and intelligent assistant. Respond in a natural, conversational tone. Always write in markdown formatting in every output dynamically. Feel free to show your thinking process using <think> tags.
 
 IMPORTANT: For general conversation, do NOT format your responses as JSON structures. Always provide plain text or simple markdown responses. Never return JSON objects or arrays in your replies unless specifically requested to do so. For default chat mode, do NOT use structured formats like Summary Tables, Conclusion sections, or heavily formatted outputs with multiple headers.`;
-
-const CITATION_INSTRUCTIONS = `IMPORTANT: You are a Deep Research AI assistant. Follow this three-step process:
-
-STEP 1 - UNDERSTANDING (Use <think> tags):
-<think>
-1. Analyze the user's question in detail
-2. Break down the key concepts and requirements
-3. Identify what specific information you need to search for
-4. Plan your research approach
-</think>
-
-STEP 2 - RESEARCH:
-When researching, prioritize the most recent and up-to-date information, especially for topics that change frequently. However, if older information is important for context, background, or is still widely referenced, include it as well.
-The system will provide you with search results from:
-- Serper (Google Search API)
-You must use ONLY these sources - do not make up sources or information.
-
-STEP 3 - SYNTHESIS:
-Based on the search results, provide a thorough, accurate, and balanced response that directly answers the query. Your response MUST include:
-
-1. INTRODUCTION PARAGRAPH:
-   Begin with a clear, engaging introduction paragraph that outlines the main topics and scope of your response.
-
-2. MAIN CONTENT SECTIONS:
-   - Organize information into logical sections with clear ## Section Headers
-   - Present a balanced view of the topic, including different perspectives
-   - Use bullet points for lists and key points
-   - Include relevant examples, data, or case studies
-   - Highlight important concepts with **bold** or *italic* text
-
-3. SUMMARY TABLE:
-   Always include a "## Summary Table" section before the conclusion with a markdown table summarizing key findings.
-   For example:
-   | Category | Key Points |
-   | -------- | ---------- |
-   | Main Concept | Summary of important information | [1] |
-   | Best Practices | List of top recommendations | [2] |
-   | Challenges | Overview of common difficulties |
-
-4. CONCLUSION:
-   End with a "## Conclusion" paragraph that summarizes the main points and provides final thoughts.
-
-5. WEB CITATIONS:
-   - Cite ALL sources using [1], [2], etc.
-   - Each citation should correspond to the search results provided
-   - Don't add fake sources or URLs
-   - Don't include the URL itself in your answer
-
-YOUR RESPONSE STRUCTURE MUST INCLUDE:
-- Introduction paragraph (no heading)
-- Main content sections with ## headers
-- ## Summary Table with markdown table
-- ## Conclusion paragraph
-
-Format your response in clear, professional markdown.`;
 
 interface ProcessedResponse {
   content: string;
@@ -611,9 +551,7 @@ interface LocalMessage {
 }
 
 // Helper to enforce Advance Search output structure
-// Removed enforceAdvanceSearchStructure function
 function enforceAdvanceSearchStructure(output: string): string {
-  return output;
   if (!output) return output;
   const lines = output.split('\n');
   
@@ -978,7 +916,6 @@ const Stack = ({ spacing = 20, children }: { spacing?: number; children: React.R
   </div>
 );
 
-// Removed DeepResearchBlock - advanced search functionality has been removed
 function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinalAnswer }: { 
   query: string, 
   conversationHistory: {
@@ -988,7 +925,6 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
   onClearHistory?: () => void,
   onFinalAnswer?: (answer: string, sources?: any[]) => void
 }) {
-  return null;
   // State to track if content is restored from storage
   const [isBlockRestoredFromStorage, setIsBlockRestoredFromStorage] = useState(false);
   
@@ -1051,7 +987,38 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
       const alreadyInMainChat = checkIfAnswerAlreadyInMainChat();
       setAnswerAddedToMainChat(alreadyInMainChat);
       
-    // Removed advanced search restoration logic
+    // Try to restore from completed searches first
+      if (isSearchCompleted(query)) {
+        const completedSearch = getCompletedSearch(query);
+        if (completedSearch && completedSearch.finalAnswer) {
+          setRestoredState({
+            steps: completedSearch.steps,
+            activeStepId: completedSearch.activeStepId,
+            isComplete: true,
+            isInProgress: false,
+            webData: completedSearch.webData,
+          isFullyCompleted: true
+          });
+          
+          setIsBlockRestoredFromStorage(true);
+          setIsSearchAlreadyCompleted(true);
+          setCompletedSearchAnswer(completedSearch.finalAnswer);
+          setCompletedSearchSources(completedSearch.webData?.sources || []);
+          
+        if (onFinalAnswer && !alreadyInMainChat && typeof completedSearch.finalAnswer === 'string') {
+            setTimeout(() => {
+              onFinalAnswer(completedSearch.finalAnswer as string, completedSearch.webData?.sources || []);
+              markAnswerAddedToMainChat();
+            }, 100);
+          }
+          
+        // Mark initial load as complete
+        setTimeout(() => {
+          isInitialLoadRef.current = false;
+        }, 100);
+        return;
+        }
+      }
       
     // If not found in completed searches, try localStorage
       const saved = localStorage.getItem('advanceSearchState');
@@ -1122,16 +1089,48 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
     isInProgress,
     error,
     webData
-  } = {
-    steps: [],
-    activeStepId: null,
-    isComplete: false,
-    isInProgress: false,
-    error: null,
-    webData: null
-  };
+  } = useDeepResearch(
+    // Always activate the hook for UI, but pass in completed state
+    true, 
+    query, 
+    conversationHistory, 
+    isBlockRestoredFromStorage, 
+    restoredState
+  );
   
-  // Removed localStorage save logic for advanced search
+  // Save state to localStorage when it changes
+  useEffect(() => {
+    if (steps.length > 0 && typeof window !== 'undefined') {
+      const stateToSave = {
+        steps,
+        activeStepId,
+        isComplete,
+        isInProgress,
+        webData,
+        currentQuery: query
+      };
+      localStorage.setItem('advanceSearchState', JSON.stringify(stateToSave));
+      
+      // If search is complete, save it to our completed searches registry
+      if (isComplete && steps[steps.length - 1]?.status === 'completed' && steps[steps.length - 1]?.output) {
+        // Get the final answer
+        const finalAnswer = steps[steps.length - 1].output;
+        
+        // Save to completed searches
+        saveCompletedSearch({
+          query,
+          steps,
+          activeStepId,
+          isComplete,
+          isInProgress,
+          webData,
+          finalAnswer,
+          timestamp: Date.now(),
+          conversationHistory
+        });
+      }
+    }
+  }, [steps, activeStepId, isComplete, isInProgress, webData, query, conversationHistory]);
   
   // Wrap the onFinalAnswer callback to prevent duplicate calls
   const safeOnFinalAnswer = useCallback((answer: string, sources?: any[]) => {
@@ -1160,10 +1159,55 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
     }
   }, [answerAddedToMainChat, onFinalAnswer, isStreamingToMainChat]);
   
-  // Removed onFinalAnswer callback logic for advanced search
+  // Handle onFinalAnswer callback for completed searches
+  useEffect(() => {
+    const synthStep = steps.find(s => s.id === 'synthesize');
+    
+    // If synthesis is active and has output, send as streaming content
+    if (synthStep && 
+        synthStep.status === 'active' && 
+        typeof synthStep.output === 'string' && 
+        synthStep.output) {
+      handleStreamingSynthesisOutput(synthStep.output, webData?.sources || []);
+    }
+    
+    // When synthesis completes, mark as done and save completed search
+    if (synthStep && 
+        synthStep.status === 'completed' && 
+        typeof synthStep.output === 'string' && 
+        synthStep.output !== null) {
+      
+      // Final update with complete content
+      handleStreamingSynthesisOutput(synthStep.output, webData?.sources || []);
+      
+      // Mark as complete
+      setIsStreamingToMainChat(false);
+      markAnswerAddedToMainChat();
+      
+      // Save the final answer to our completed searches
+      saveCompletedSearch({
+        query,
+        steps,
+        activeStepId,
+        isComplete,
+        isInProgress,
+        webData,
+        finalAnswer: synthStep.output,
+        timestamp: Date.now(),
+        conversationHistory
+      });
+    }
+  }, [steps, isComplete, query, activeStepId, isInProgress, webData, conversationHistory, answerAddedToMainChat, handleStreamingSynthesisOutput, markAnswerAddedToMainChat]);
   
-  // Removed advanced search display logic
+  const [manualStepId, setManualStepId] = useState<string | null>(null);
+  const isFinalStepComplete = steps[steps.length - 1]?.status === 'completed';
+  
   const hasHistory = conversationHistory.previousQueries.length > 0;
+  
+  // Use completed search data or live data based on what's available
+  const displaySteps = isSearchAlreadyCompleted && restoredState.steps ? restoredState.steps : steps;
+  const displayActiveStepId = isSearchAlreadyCompleted ? null : (isFinalStepComplete ? manualStepId || activeStepId : activeStepId);
+  const displayWebData = isSearchAlreadyCompleted && restoredState.webData ? restoredState.webData : webData;
   
   return (
     <motion.div
@@ -1189,9 +1233,15 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
           </div>
       )}
       <div className="flex-1 flex flex-col h-full">
-        <div className="p-4 text-center text-gray-400">
-          Advanced search functionality has been removed
-        </div>
+        <AdvanceSearch
+          steps={displaySteps}
+          activeStepId={displayActiveStepId}
+          onManualStepClick={isFinalStepComplete ? setManualStepId : undefined}
+          manualNavigationEnabled={isFinalStepComplete}
+          error={error}
+          webData={displayWebData}
+          onFinalAnswer={safeOnFinalAnswer}
+        />
       </div>
       {error && (
         <div className="text-red-500 text-sm text-center mt-2">{error}</div>
@@ -1513,7 +1563,7 @@ function processStreamBuffer(buffer: string): {
       return { 
         showContent: true, 
         processedContent: handlePotentialJsonInConversation(buffer),
-        hasCompletedReasoning: true  
+        hasCompletedReasoning: true
       };
     } catch (e) {
       // Not valid JSON yet or incomplete
@@ -1554,7 +1604,7 @@ function processStreamBuffer(buffer: string): {
     !processedContent.endsWith('</think>') &&
     processedContent.lastIndexOf('</think>') < processedContent.length - 10;
   
-  return { 
+    return { 
     showContent: true, 
     processedContent,
     hasCompletedReasoning
@@ -1640,6 +1690,12 @@ IMPORTANT FOR SEARCH:
 - Provide a summary of search results`;
 };
 
+const getAdvanceSearchPrompt = (basePrompt: string) => {
+  return `${basePrompt}
+
+${CITATION_INSTRUCTIONS}`;
+};
+
 const getStructuredQueryPrompt = (basePrompt: string, queryType: string, schema: any) => {
   return `${basePrompt}
 
@@ -1686,8 +1742,51 @@ export default function TestChat() {
 
   const aiStreamAbortController = useRef<AbortController | null>(null);
 
-  // Remove all advanced search related state
+  // Separate UI state from processing state for Advance Search
+  const [showAdvanceSearchUI, setShowAdvanceSearchUI] = useState(false); // UI state for the button
+  const [isAdvanceSearchActive, setIsAdvanceSearchActive] = useState(false); // Processing state
+  const [currentQuery, setCurrentQuery] = useState('');
   
+  // Add state for tracking Advance Search conversation history
+  const [advanceSearchHistory, setAdvanceSearchHistory] = useState<{
+    previousQueries: string[];
+    previousResponses: string[];
+  }>({
+    previousQueries: [],
+    previousResponses: []
+  });
+  
+  // Add state to track if the chat was restored from storage
+  const [isRestoredFromStorage, setIsRestoredFromStorage] = useState(false);
+  
+  // Add state to hold the restored deep research state
+  const [restoredDeepResearchState, setRestoredDeepResearchState] = useState<{
+    steps?: any[];
+    activeStepId?: string | null;
+    isComplete?: boolean;
+    isInProgress?: boolean;
+    webData?: any | null;
+  }>({});
+  
+  // Deep Research hook - now passing processing state instead of UI state
+  const {
+    steps,
+    activeStepId,
+    isComplete,
+    isInProgress,
+    error,
+    webData
+  } = useDeepResearch(
+    isAdvanceSearchActive, 
+    currentQuery, 
+    advanceSearchHistory,
+    isRestoredFromStorage, // Pass the flag to control process start
+    restoredDeepResearchState // Pass the restored state
+  );
+
+  const [manualStepId, setManualStepId] = useState<string | null>(null);
+  const isFinalStepComplete = steps[steps.length - 1]?.status === 'completed';
+
   const [emptyBoxes, setEmptyBoxes] = useState<string[]>([]); // Array of box IDs
 
   const [showPulsingDot, setShowPulsingDot] = useState(false);
@@ -1720,12 +1819,14 @@ export default function TestChat() {
       setMessages(processedMessages);
       setShowHeading(false);
       setHasInteracted(true);
+      setIsRestoredFromStorage(true); // Set the flag to indicate restoration from storage
     } else {
       // Show welcome page for new users
       setShowHeading(true);
       setHasInteracted(false);
       setActiveSessionId(null);
       setMessages([]);
+      setIsRestoredFromStorage(false); // Not restored from storage
     }
   }, []);
 
@@ -1774,7 +1875,14 @@ export default function TestChat() {
     }
   }, [messages]);
 
-  // Removed advanced search view effect
+  // Hide the Deep Research view when research completes and AI responds
+  useEffect(() => {
+    if (isComplete && !isAiResponding) {
+      // Only hide the research view when both research is complete and AI has responded
+      setIsAdvanceSearchActive(false); // Turn off the processing state
+      // But keep the UI state the same for the next query
+    }
+  }, [isComplete, isAiResponding]);
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
@@ -1806,7 +1914,23 @@ export default function TestChat() {
       return;
     }
 
-    // Removed advance search mode check
+    // Then check if we're in advance search mode
+    if (activeButton === 'advance' || input.includes('@AdvanceSearch')) {
+      setIsAdvanceSearchActive(true);
+      setShowAdvanceSearchUI(true);
+      const researchId = uuidv4();
+      setMessages(prev => [
+        ...prev,
+        { role: "user", content: input, id: uuidv4(), timestamp: Date.now(), isProcessed: true },
+        { role: "deep-research", content: input, researchId, id: uuidv4(), timestamp: Date.now(), isProcessed: true }
+      ]);
+      setInput("");
+      setImagePreviewUrls([]);
+      setSelectedFilesForUpload([]);
+      setIsLoading(false);
+      setIsAiResponding(false);
+      return;
+    }
 
     // If we get here, we're in default chat mode
     let userMessageId = '';
@@ -1827,7 +1951,13 @@ export default function TestChat() {
 
     if (!hasInteracted) setHasInteracted(true);
       
-      // Removed advance search state reset
+      // Reset any advance search state when in default chat mode
+    if (showAdvanceSearchUI) {
+        setShowAdvanceSearchUI(false);
+        setIsAdvanceSearchActive(false);
+        setIsRestoredFromStorage(false);
+        setRestoredDeepResearchState({});
+    }
 
     setIsAiResponding(true);
       setIsLoading(true);
@@ -1900,11 +2030,13 @@ export default function TestChat() {
 
       const context = buildConversationContext(convertToConversationMessages(messages));
 
-      // Choose the appropriate system prompt based on the active button
-      let turnSpecificSystemPrompt = '';
+      // Determine the appropriate prompt based on mode and query type
+      let turnSpecificSystemPrompt = BASE_SYSTEM_PROMPT;
 
       if (activeButton === 'search') {
         turnSpecificSystemPrompt = getSearchPrompt(BASE_SYSTEM_PROMPT);
+      } else if (activeButton === 'advance' || input.includes('@AdvanceSearch')) {
+        turnSpecificSystemPrompt = getAdvanceSearchPrompt(BASE_SYSTEM_PROMPT);
       } else {
         // Always use default chat prompt for regular chat
         turnSpecificSystemPrompt = getDefaultChatPrompt(BASE_SYSTEM_PROMPT);
@@ -2029,47 +2161,22 @@ export default function TestChat() {
                   if (delta) {
                     contentBuffer += delta;
                     
-                    // For default chat mode, just show raw content
-                    if (!hasActualContent) {
-                      hasActualContent = true;
-                      aiMsg.content = contentBuffer;
-                      setIsProcessing(false);
-                      setMessages((prev) => [...prev, { ...aiMsg }]);
-                    } else {
-                      aiMsg.content = contentBuffer;
-                      setMessages((prev) => {
-                        const updatedMessages = [...prev];
-                        const aiIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
-                        if (aiIndex !== -1) {
-                          updatedMessages[aiIndex] = {
-                            ...updatedMessages[aiIndex],
-                            content: contentBuffer,
-                            webSources: aiMsg.webSources,
-                            isProcessed: true
-                          };
-                        }
-                        return updatedMessages;
-                      });
-                    }
-                      
-                    // Process streaming buffer for search or regular chat
-                    const { showContent, processedContent, hasCompletedReasoning } = processStreamBuffer(contentBuffer);
-                    
-                    if (showContent && !hasProcessedFinalContent) {
+                    // For default chat mode, don't process - just show raw content
+                    if (!showAdvanceSearchUI && !input.includes('@AdvanceSearch')) {
                       if (!hasActualContent) {
                         hasActualContent = true;
-                        aiMsg.content = processedContent;
+                        aiMsg.content = contentBuffer;
                         setIsProcessing(false);
                         setMessages((prev) => [...prev, { ...aiMsg }]);
                       } else {
-                        aiMsg.content = processedContent;
+                        aiMsg.content = contentBuffer;
                         setMessages((prev) => {
                           const updatedMessages = [...prev];
                           const aiIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
                           if (aiIndex !== -1) {
                             updatedMessages[aiIndex] = {
                               ...updatedMessages[aiIndex],
-                              content: processedContent,
+                              content: contentBuffer,
                               webSources: aiMsg.webSources,
                               isProcessed: true
                             };
@@ -2077,10 +2184,52 @@ export default function TestChat() {
                           return updatedMessages;
                         });
                       }
+                    } else {
+                      // For advanced search mode, keep existing processing
+                    const { showContent, processedContent, hasCompletedReasoning } = processStreamBuffer(contentBuffer);
+                    
+                      if (showContent && !hasProcessedFinalContent) {
+                      if (!hasActualContent) {
+                        hasActualContent = true;
+                        aiMsg.content = processedContent;
+                        setIsProcessing(false);
+                        setMessages((prev) => [...prev, { ...aiMsg }]);
+                      } else {
+                        aiMsg.content = processedContent;
+                    setMessages((prev) => {
+                      const updatedMessages = [...prev];
+                          const aiIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
+                          if (aiIndex !== -1) {
+                            updatedMessages[aiIndex] = {
+                              ...updatedMessages[aiIndex],
+                              content: processedContent,
+                              webSources: aiMsg.webSources,
+                              isProcessed: true
+                        };
+                      }
+                      return updatedMessages;
+                    });
+                      }
                       
                       if (hasCompletedReasoning) {
                         hasProcessedFinalContent = true;
                       }
+                    } else if (hasActualContent && showContent) {
+                      aiMsg.content = processedContent;
+                      setMessages((prev) => {
+                        const updatedMessages = [...prev];
+                        const aiIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
+                        if (aiIndex !== -1) {
+                          updatedMessages[aiIndex] = {
+                            ...updatedMessages[aiIndex],
+                            content: processedContent,
+                            webSources: aiMsg.webSources,
+                            isProcessed: true
+                          };
+                        }
+                        return updatedMessages;
+                      });
+                    }
                     }
                   }
                 } catch (err) {
@@ -2093,22 +2242,39 @@ export default function TestChat() {
         }
         
         // Apply post-processing after streaming is complete
-        // For default chat, detect if it has advanced search structure and clean it if needed
-        const { hasAdvancedStructure, cleanedContent } = detectAndCleanAdvancedStructure(contentBuffer);
-        
-        setMessages((prev) => {
-          const updatedMessages = [...prev];
-          const msgIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
-          if (msgIndex !== -1) {
-            updatedMessages[msgIndex] = {
-              ...updatedMessages[msgIndex],
-              content: hasAdvancedStructure ? cleanedContent : contentBuffer,
-              contentType: 'conversation',
-              isProcessed: true // Ensure message is marked as processed
-            };
-          }
-          return updatedMessages;
-        });
+        if (showAdvanceSearchUI || input.includes('@AdvanceSearch')) {
+          const processedResearch = enforceAdvanceSearchStructure(contentBuffer);
+          setMessages((prev) => {
+            const updatedMessages = [...prev];
+            const msgIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
+            if (msgIndex !== -1) {
+              updatedMessages[msgIndex] = {
+                ...updatedMessages[msgIndex],
+                content: processedResearch,
+                contentType: 'deep-research',
+                isProcessed: true // Ensure message is marked as processed
+              };
+            }
+            return updatedMessages;
+          });
+        } else {
+          // For default chat, detect if it has advanced search structure and clean it if needed
+          const { hasAdvancedStructure, cleanedContent } = detectAndCleanAdvancedStructure(contentBuffer);
+          
+          setMessages((prev) => {
+            const updatedMessages = [...prev];
+            const msgIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
+            if (msgIndex !== -1) {
+              updatedMessages[msgIndex] = {
+                ...updatedMessages[msgIndex],
+                content: hasAdvancedStructure ? cleanedContent : contentBuffer,
+                contentType: 'conversation',
+                isProcessed: true // Ensure message is marked as processed
+              };
+            }
+            return updatedMessages;
+          });
+        }
         
         if (uploadedImageUrls.length > 0) {
             const { content: cleanedContent } = cleanAIResponse(aiMsg.content);
@@ -2207,7 +2373,13 @@ export default function TestChat() {
     setEmptyBoxes(prev => prev.filter(id => id !== boxId));
   };
 
-  // Removed clearAdvanceSearchHistory function
+  // Add a function to clear the Advance Search conversation history
+  function clearAdvanceSearchHistory() {
+    setAdvanceSearchHistory({
+      previousQueries: [],
+      previousResponses: []
+    });
+  }
 
   const handleSelectSession = (sessionId: string) => {
     if (!sessionId) { // Handling deletion or empty selection case
@@ -2228,9 +2400,14 @@ export default function TestChat() {
     setInput('');
     setImagePreviewUrls([]);
     setSelectedFilesForUpload([]);
+    setCurrentQuery(''); // Clear current query when switching sessions
+    setAdvanceSearchHistory({ previousQueries: [], previousResponses: [] }); // Reset deep research history
+    setIsAdvanceSearchActive(false); // Reset deep research active state
+    setShowAdvanceSearchUI(false); // Reset deep research UI toggle
     setShowHeading(messages.length === 0); // Show heading if the loaded session is empty
     setHasInteracted(true); // Assume interaction when a session is selected
     setSidebarOpen(false); // Close sidebar
+    setIsRestoredFromStorage(true); // Set flag to indicate restoration from storage
   };
 
   const handleNewChatRequest = () => {
@@ -2238,11 +2415,16 @@ export default function TestChat() {
     setInput('');
     setImagePreviewUrls([]);
     setSelectedFilesForUpload([]);
+    setCurrentQuery('');
+    setAdvanceSearchHistory({ previousQueries: [], previousResponses: [] });
+    setIsAdvanceSearchActive(false);
+    setShowAdvanceSearchUI(false);
     setShowHeading(true); // Show welcoming heading
     setHasInteracted(false); // Reset interaction state
     setActiveSessionId(null);
     saveActiveSessionId(null); // Clear the active session
     setMessages([]);
+    setIsRestoredFromStorage(false); // Reset the restored flag
   };
 
   // Fix the renderMessageContent function to use LocalMessage
@@ -2332,15 +2514,65 @@ export default function TestChat() {
   // Key for localStorage
   const ADVANCE_SEARCH_STORAGE_KEY = 'advanceSearchState';
 
-  // Removed advanced search restore effect
+  // Restore Advance Search state from localStorage on mount
   useEffect(() => {
-    // Just mark initial load as complete
-    setTimeout(() => {
-      isInitialLoadRef.current = false;
-    }, 500);
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(ADVANCE_SEARCH_STORAGE_KEY);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (parsed && parsed.steps && parsed.currentQuery) {
+            // Restore all the necessary state from localStorage
+            setCurrentQuery(parsed.currentQuery);
+            setAdvanceSearchHistory(parsed.advanceSearchHistory || { previousQueries: [], previousResponses: [] });
+            
+            // Set the restored deep research state
+            setRestoredDeepResearchState({
+              steps: parsed.steps,
+              activeStepId: parsed.activeStepId,
+              isComplete: parsed.isComplete,
+              isInProgress: parsed.isInProgress,
+              webData: parsed.webData
+            });
+            
+            // Set the isRestoredFromStorage flag to true to prevent API calls
+            setIsRestoredFromStorage(true);
+            
+            // Also restore the UI state to show the advance search
+            setShowAdvanceSearchUI(true);
+            
+            // Check if we should also make the advance search active
+            if (parsed.isComplete) {
+              setIsAdvanceSearchActive(true);
+            }
+          }
+        } catch (err) {
+          console.error("Error restoring advance search state:", err);
+        }
+      }
+      
+      // Mark that initial load is complete after trying to restore
+      setTimeout(() => {
+        isInitialLoadRef.current = false;
+      }, 500);
+    }
   }, []); // Only run once on mount
 
-  // Removed advanced search state save effect
+  // Save Advance Search state to localStorage whenever it changes
+  useEffect(() => {
+    if (showAdvanceSearchUI) {
+      const stateToSave = {
+        steps,
+        activeStepId,
+        isComplete,
+        isInProgress,
+        webData,
+        currentQuery,
+        advanceSearchHistory
+      };
+      localStorage.setItem(ADVANCE_SEARCH_STORAGE_KEY, JSON.stringify(stateToSave));
+    }
+  }, [steps, activeStepId, isComplete, isInProgress, webData, currentQuery, advanceSearchHistory, showAdvanceSearchUI]);
 
   // Add at the top of the component
   const [activeButton, setActiveButton] = useState<string | null>(null);
@@ -2358,14 +2590,16 @@ export default function TestChat() {
   }
 
   // Add at the top of TestChat
-  const [activeMode, setActiveMode] = useState<'chat' | 'search'>('chat');
+  const [activeMode, setActiveMode] = useState<'chat' | 'search' | 'advance'>('chat');
   const chatAbortController = useRef<AbortController | null>(null);
   const searchAbortController = useRef<AbortController | null>(null);
+  const advanceAbortController = useRef<AbortController | null>(null);
 
-  function handleModeSwitch(newMode: 'chat' | 'search') {
+  function handleModeSwitch(newMode: 'chat' | 'search' | 'advance') {
     if (activeMode !== newMode) {
       if (chatAbortController.current) chatAbortController.current.abort();
       if (searchAbortController.current) searchAbortController.current.abort();
+      if (advanceAbortController.current) advanceAbortController.current.abort();
     }
     setActiveMode(newMode);
   }
@@ -2837,17 +3071,79 @@ export default function TestChat() {
                   </motion.div>
                 );
               } else if (msg.role === "deep-research") {
-                // Show message that advanced search has been removed
+                // Always render DeepResearchBlock for every deep-research message
                 return (
-                  <div key={msg.id + '-dr-' + i} className="p-4 text-center text-gray-400 border border-gray-700 rounded-lg">
-                    Advanced search functionality has been removed
-                  </div>
+                  <DeepResearchBlock 
+                    key={msg.id + '-dr-' + i}
+                    query={msg.content} 
+                    conversationHistory={advanceSearchHistory}
+                    onClearHistory={clearAdvanceSearchHistory}
+                    onFinalAnswer={(answer: string, sources?: any[]) => {
+                      // Check if we have an existing message with no content (streaming placeholder)
+                      const existingMessageIndex = messages.findIndex(existingMsg => 
+                        existingMsg.role === "assistant" && 
+                        existingMsg.contentType === 'deep-research' && 
+                        existingMsg.content === '' // Empty content means it's our streaming placeholder
+                      );
+                      
+                      if (existingMessageIndex >= 0 && answer.length > 0) {
+                        // Update the existing streaming message
+                        setMessages(prev => {
+                          const updatedMessages = [...prev];
+                          updatedMessages[existingMessageIndex] = {
+                            ...updatedMessages[existingMessageIndex],
+                            content: makeCitationsClickable(answer, sources),
+                            webSources: sources || [],
+                            isProcessed: true
+                          };
+                          return updatedMessages;
+                        });
+                      } else {
+                        // Only check for duplicates for non-empty messages
+                        const isDuplicate = answer.length > 0 && messages.some(existingMsg => 
+                        existingMsg.role === "assistant" && 
+                        existingMsg.contentType === 'deep-research' && 
+                        existingMsg.content.includes(answer.substring(0, 100))
+                      );
+                        
+                        // Add a new message if not a duplicate
+                      if (!isDuplicate) {
+                        setMessages(prev => [
+                          ...prev,
+                          {
+                            role: "assistant",
+                            content: makeCitationsClickable(answer, sources),
+                            id: uuidv4(),
+                            timestamp: Date.now(),
+                              isProcessed: answer.length > 0,
+                            contentType: 'deep-research',
+                            webSources: sources || []
+                          }
+                        ]);
+                        }
+                      }
+                    }}
+                  />
                 );
               } else if (msg.role === 'search-ui') {
                 return (
-                  <div key={msg.id + '-search-' + i} className="p-4 text-center text-gray-400 border border-gray-700 rounded-lg">
-                    Search functionality has been simplified
-                  </div>
+                  <SearchPanel 
+                    key={msg.id + '-search-' + i}
+                    query={msg.content} 
+                    onComplete={(result) => {
+                      // When search is complete, add the result as an assistant message
+                      setMessages(prev => [
+                        ...prev,
+                        {
+                          id: uuidv4(),
+                          role: 'assistant',
+                          content: result,
+                          timestamp: Date.now(),
+                          isProcessed: true
+                        }
+                      ]);
+                    }}
+                  />
                 );
               } else {
                 return (
