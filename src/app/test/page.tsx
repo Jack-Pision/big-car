@@ -49,7 +49,17 @@ type QueryType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversa
 type QueryClassificationType = keyof typeof SCHEMAS;
 type ContentDisplayType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversation';
 
-const BASE_SYSTEM_PROMPT = `You are Tehom AI, a helpful and intelligent assistant. Respond in a natural, conversational tone. Always write in markdown formatting in every output dynamically. Feel free to show your thinking process using <think> tags.
+const BASE_SYSTEM_PROMPT = `You are Tehom AI, a helpful and intelligent assistant. Respond in a natural, conversational tone. Always write in markdown formatting in every output dynamically. 
+
+CRITICAL: Always show your thinking process using <think> tags before providing your final answer. This is required for all responses. Use this format:
+
+<think>
+Let me think about this question...
+I need to consider...
+My reasoning is...
+</think>
+
+Then provide your final answer after the thinking process.
 
 IMPORTANT: For general conversation, do NOT format your responses as JSON structures. Always provide plain text or simple markdown responses. Never return JSON objects or arrays in your replies unless specifically requested to do so. For default chat mode, do NOT use structured formats like Summary Tables, Conclusion sections, or heavily formatted outputs with multiple headers.`;
 
@@ -1293,18 +1303,22 @@ const getDefaultChatPrompt = (basePrompt: string) => {
   return `${basePrompt}
 
 IMPORTANT FOR DEFAULT CHAT:
-- You are encouraged to show your thinking process using <think> tags, like this:
-  <think>
-  First, I need to analyze this question...
-  Here's what I know about this topic...
-  My reasoning process is...
-  </think>
-- After your thinking process, provide your final answer
+- ALWAYS use <think> tags to show your reasoning process before answering
+- Structure your response as: thinking process in <think> tags, then your final answer
 - Use markdown formatting for better readability
 - Format code blocks with proper syntax highlighting
 - DO NOT use structured formats like Summary Tables or Conclusion sections
 - DO NOT use multiple section headers (##) in your responses
-- Keep your responses conversational and natural`;
+- Keep your responses conversational and natural
+
+Example format:
+<think>
+I need to analyze this question about...
+The key points to consider are...
+Based on my reasoning...
+</think>
+
+[Your final answer here]`;
 };
 
 const getSearchPrompt = (basePrompt: string) => {
