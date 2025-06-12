@@ -1910,15 +1910,16 @@ export default function TestChat() {
                     // Combine all thinking content
                     const combinedThinkContent = allThinkContent.join('\n\n');
                     
-                    // Update global thinking content if we have new content
-                    if (combinedThinkContent && combinedThinkContent.length > 5) {
-                      // Add to our persistent thinking content
+                    // Only update if we have a new complete sentence or substantial update
+                    const lastUpdate = allThinkingContent.length > 0 ? allThinkingContent[allThinkingContent.length - 1] : '';
+                    const newContent = allThinkContent.length > 0 ? allThinkContent[allThinkContent.length - 1] : '';
+                    // Check for sentence-ending punctuation or substantial length
+                    const isCompleteSentence = /[.!?]\s*$/.test(newContent);
+                    const isSubstantial = newContent.length > 30;
+                    if ((isCompleteSentence || isSubstantial) && newContent !== lastUpdate) {
                       if (!hasThinkingContent) {
-                        // First thinking content
                         allThinkingContent = allThinkContent;
                         hasThinkingContent = true;
-                        
-                        // Create the thinking message once
                         setMessages((prev) => [...prev, {
                           role: "assistant" as const,
                           content: `<think>${combinedThinkContent}</think>`,
@@ -1928,14 +1929,11 @@ export default function TestChat() {
                           isProcessed: false
                         }]);
                       } else {
-                        // Merge with existing thinking content
                         for (const content of allThinkContent) {
                           if (!allThinkingContent.includes(content)) {
                             allThinkingContent.push(content);
                           }
                         }
-                        
-                        // Update the thinking message with all accumulated content
                         const updatedThinkContent = allThinkingContent.join('\n\n');
                         setMessages((prev) => prev.map(msg => 
                           msg.id === persistentThinkingId
