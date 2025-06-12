@@ -39,7 +39,7 @@ import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import Image from 'next/image';
 import rehypeRaw from 'rehype-raw';
 import { Message as BaseMessage } from '@/utils/conversation-context';
-import SearchPanel from '@/components/Search';
+import Search from '@/components/Search';
 import { Message as ConversationMessage } from "@/utils/conversation-context";
 
 // Define a type that includes all possible query types (including the ones in SCHEMAS and 'conversation')
@@ -1712,21 +1712,38 @@ export default function TestChat() {
                     if (true) {
                       if (!hasActualContent) {
                         hasActualContent = true;
-                        aiMsg.content = contentBuffer;
-                        setIsProcessing(false);
-                        setMessages((prev) => [...prev, { ...aiMsg }]);
+                        
+                        // Create the assistant message immediately when we start getting content
+                        setMessages((prev) => {
+                          // Check if we already have an assistant message for this response
+                          const lastMessage = prev[prev.length - 1];
+                          if (lastMessage && lastMessage.role === "assistant" && lastMessage.isStreaming) {
+                            // Update existing streaming message
+                            return prev.map((msg, index) => 
+                              index === prev.length - 1 
+                                ? { ...msg, content: contentBuffer, isStreaming: true }
+                                : msg
+                            );
+                          } else {
+                            // Create new assistant message
+                            return [...prev, {
+                              role: "assistant" as const,
+                              content: contentBuffer,
+                              id: uuidv4(),
+                              timestamp: Date.now(),
+                              isStreaming: true,
+                              isProcessed: false
+                            }];
+                          }
+                        });
                       } else {
-                        aiMsg.content = contentBuffer;
+                        // Update existing message
                         setMessages((prev) => {
                           const updatedMessages = [...prev];
-                          const aiIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
-                          if (aiIndex !== -1) {
-                            updatedMessages[aiIndex] = {
-                              ...updatedMessages[aiIndex],
-                              content: contentBuffer,
-                              webSources: aiMsg.webSources,
-                              isProcessed: true
-                            };
+                          const lastMessage = updatedMessages[updatedMessages.length - 1];
+                          if (lastMessage && lastMessage.role === "assistant") {
+                            lastMessage.content = contentBuffer;
+                            lastMessage.isStreaming = true;
                           }
                           return updatedMessages;
                         });
@@ -2061,12 +2078,11 @@ export default function TestChat() {
   }
 
   // Add at the top of TestChat
-  const [activeMode, setActiveMode] = useState<'chat' | 'search' | 'advance'>('chat');
+  const [activeMode, setActiveMode] = useState<'chat' | 'search'>('chat');
   const chatAbortController = useRef<AbortController | null>(null);
   const searchAbortController = useRef<AbortController | null>(null);
-  const advanceAbortController = useRef<AbortController | null>(null);
 
-  function handleModeSwitch(newMode: 'chat' | 'search' | 'advance') {
+  function handleModeSwitch(newMode: 'chat' | 'search') {
     setActiveMode(newMode);
     setActiveButton(newMode);
   }
@@ -2248,17 +2264,17 @@ export default function TestChat() {
                     {/* Search button */}
                     <button
                       type="button"
-                      className={`rounded-full transition flex items-center justify-center gap-1.5 px-3 py-1.5 flex-shrink-0 text-xs font-medium
+                      className={`
+                        flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 
                         ${activeButton === 'search' ? 'bg-gray-800 text-cyan-400' : 'bg-gray-800 text-gray-400 opacity-60'}
-                        hover:bg-gray-700`}
-                      style={{ height: "36px" }}
-                      onClick={() => handleButtonClick('search')}
+                        hover:opacity-100 hover:scale-105 active:scale-95
+                      `}
                     >
-                      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" style={{ color: activeButton === 'search' ? '#22d3ee' : '#a3a3a3' }}>
-                        <circle cx="11" cy="11" r="7"/>
-                        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: activeButton === 'search' ? '#22d3ee' : '#a3a3a3' }}>
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
                       </svg>
-                      <span className="text-xs font-medium">Search</span>
+                      Search
                     </button>
 
                     {/* Deep Research button (Advance Search) */}
@@ -2569,21 +2585,12 @@ export default function TestChat() {
                 );
               } else if (msg.role === 'search-ui') {
                 return (
-                  <SearchPanel 
-                    key={msg.id + '-search-' + i}
-                    query={msg.content} 
-                    onComplete={(result) => {
-                      // When search is complete, add the result as an assistant message
-                      setMessages(prev => [
-                        ...prev,
-                        {
-                          id: uuidv4(),
-                          role: 'assistant',
-                          content: result,
-                          timestamp: Date.now(),
-                          isProcessed: true
-                        }
-                      ]);
+                  <Search
+                    key={msg.id}
+                    query={msg.query || msg.content}
+                    onComplete={(result: any) => {
+                      // Handle search completion if needed
+                      console.log('Search completed:', result);
                     }}
                   />
                 );
