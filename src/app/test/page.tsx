@@ -33,7 +33,7 @@ import TutorialDisplay, { TutorialData } from '@/components/TutorialDisplay';
 import ComparisonDisplay, { ComparisonData } from '@/components/ComparisonDisplay';
 import InformationalSummaryDisplay, { InformationalSummaryData } from '@/components/InformationalSummaryDisplay';
 import ConversationDisplay from '@/components/ConversationDisplay';
-import { Bot, User, Paperclip, Send, XCircle, Search, Trash2, PlusCircle, Settings, Zap, ExternalLink, AlertTriangle } from 'lucide-react';
+import { Bot, User, Paperclip, Send, XCircle, Search as SearchIcon, Trash2, PlusCircle, Settings, Zap, ExternalLink, AlertTriangle } from 'lucide-react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import Image from 'next/image';
@@ -2161,12 +2161,8 @@ export default function TestChat() {
 
   // Hide the Deep Research view when research completes and AI responds
   useEffect(() => {
-    if (isComplete && !isAiResponding) {
-      // Only hide the research view when both research is complete and AI has responded
-      setIsAdvanceSearchActive(false); // Turn off the processing state
-      // But keep the UI state the same for the next query
-    }
-  }, [isComplete, isAiResponding]);
+    // Removed advanced search logic
+  }, [isAiResponding]);
 
   return (
     <>
