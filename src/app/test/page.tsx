@@ -752,123 +752,83 @@ function formatBulletPoint(bulletText: string): string {
     }
   }
   
-  // Ensure proper sentence count
-  const contentPart = text.replace(/^[- ]+\*\*[^*]+\*\*: ?/, '');
-  const cleanedContent = cleanText(contentPart);
-  const limitedContent = limitSentences(cleanedContent, 3, 4);
-  
-  // Extract citation if it exists
-  const citationMatch = contentPart.match(/\[(\d+)\]$/);
-  const citation = citationMatch ? ` [${citationMatch[1]}]` : '';
-  
-  // Rebuild bullet with citation at the end
-  const bulletStart = text.match(/^[- ]+\*\*[^*]+\*\*: ?/)?.[0] || '- ';
-  return `${bulletStart}${limitedContent}${citation}`;
+  return text;
 }
 
 /**
- * Process the summary table section
- * Ensures proper markdown table format
+ * Process table section content
+ * Ensures proper table formatting with citations
  */
 function processTableSection(lines: string[]): string {
-  // First line is the section heading, which we already processed
-  let tableContent = '## Summary Table\n';
-  let tableLines = lines.filter(line => line.trim());
+  let tableContent = '';
+  let inTable = false;
   
-  // Check if we have proper table format
-  const hasTableHeader = tableLines.some(line => line.includes('|') && line.includes('--'));
-  
-  if (tableLines.length >= 2 && hasTableHeader) {
-    // We have a proper table, clean it up
-    for (const line of tableLines) {
-      if (line.includes('|')) {
-        tableContent += line + '\n';
-      }
+  for (const line of lines) {
+    if (line.includes('|')) {
+      inTable = true;
+      tableContent += line + '\n';
+    } else if (inTable && line.trim() === '') {
+      // End of table
+      break;
+    } else if (!inTable) {
+      // Content before table
+      tableContent += line + '\n';
     }
-  } else {
-    // Create a default table
-    tableContent += '| Category | Information | Source |\n';
-    tableContent += '| -------- | ----------- | ------ |\n';
-    tableContent += '| Key Finding | Main insight from research | [1] |\n';
-    tableContent += '| Best Practice | Recommended approach | [2] |\n';
-    tableContent += '| Consideration | Important factor to note | [3] |\n';
   }
   
   return tableContent;
 }
 
 /**
- * Process the conclusion paragraph
- * Ensures it's a proper paragraph without citations
+ * Process conclusion section
+ * Ensures proper conclusion formatting
  */
 function processConclusion(lines: string[]): string {
-  // Join all lines that aren't part of a table
   let fullText = lines
-    .filter(line => line.trim() && !line.includes('|'))
+    .filter(line => line.trim())
     .join(' ')
     .trim();
   
-  // Remove citations
-  fullText = fullText.replace(/\[\d+\]/g, '');
+  // Limit to 3-4 sentences
+  fullText = limitSentences(fullText, 3, 4);
   
-  // Limit to 4-5 sentences
-  fullText = limitSentences(fullText, 4, 5);
-  
-  // Remove any HTML tags or markdown formatting
+  // Clean text
   fullText = cleanText(fullText);
   
-  return '## Conclusion\n' + fullText;
+  return fullText;
 }
 
 /**
  * Limit text to a specific number of sentences
  */
 function limitSentences(text: string, minSentences: number, maxSentences: number): string {
-  // Split into sentences
-  const sentenceRegex = /[.!?]+(?:\s|$)/;
-  let sentences: string[] = [];
-  let remaining = text;
-  let match;
+  if (!text) return text;
   
-  // Manually find sentence boundaries instead of using matchAll
-  while ((match = sentenceRegex.exec(remaining)) !== null) {
-    const endPos = match.index + match[0].length;
-    sentences.push(remaining.substring(0, endPos));
-    
-    if (sentences.length >= maxSentences) break;
-    
-    remaining = remaining.substring(endPos);
-    if (!remaining.trim()) break;
+  // Split by sentence endings
+  const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+  
+  if (sentences.length <= minSentences) {
+    return text;
   }
   
-  // Add any remaining text as the last sentence if we haven't hit our max
-  if (remaining.trim() && sentences.length < maxSentences) {
-    sentences.push(remaining);
+  if (sentences.length > maxSentences) {
+    return sentences.slice(0, maxSentences).join('. ') + '.';
   }
   
-  // Join all sentences (or keep original if no sentence breaks found)
-  return sentences.length > 0 ? sentences.join('') : text;
+  return text;
 }
 
 /**
- * Clean text by removing HTML, strange characters, and excess formatting
+ * Clean text of unwanted formatting
  */
 function cleanText(text: string): string {
-  let cleaned = text;
-  
-  // Remove HTML tags
-  cleaned = cleaned.replace(/<[^>]*>?/gm, '');
-  
-  // Remove URLs
-  cleaned = cleaned.replace(/https?:\/\/[^\s]+/g, '[link]');
-  
-  // Remove strange characters
-  cleaned = cleaned.replace(/[^\x20-\x7E\s]/g, '');
-  
-  // Remove excess whitespace
-  cleaned = cleaned.replace(/\s+/g, ' ').trim();
-  
-  return cleaned;
+  return text
+    .replace(/<[^>]*>/g, '') // Remove HTML tags
+    .replace(/\*\*([^*]+)\*\*/g, '$1') // Remove bold formatting
+    .replace(/\*([^*]+)\*/g, '$1') // Remove italic formatting
+    .replace(/\[\d+\]/g, '') // Remove citations
+    .replace(/\s+/g, ' ') // Normalize whitespace
+    .trim();
 }
 
 // Helper to clean AI output
@@ -916,339 +876,7 @@ const Stack = ({ spacing = 20, children }: { spacing?: number; children: React.R
   </div>
 );
 
-function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinalAnswer }: { 
-  query: string, 
-  conversationHistory: {
-    previousQueries: string[];
-    previousResponses: string[];
-  },
-  onClearHistory?: () => void,
-  onFinalAnswer?: (answer: string, sources?: any[]) => void
-}) {
-  // State to track if content is restored from storage
-  const [isBlockRestoredFromStorage, setIsBlockRestoredFromStorage] = useState(false);
-  
-  // State to track if this search is already completed
-  const [isSearchAlreadyCompleted, setIsSearchAlreadyCompleted] = useState(false);
-  
-  // Add ref to track initial load and restoration
-  const isInitialLoadRef = useRef(true);
-  const restorationAttemptedRef = useRef(false);
-  
-  // Track if answer has been added to the main chat to prevent duplicates
-  const [answerAddedToMainChat, setAnswerAddedToMainChat] = useState(false);
-  
-  // Store final answer for completed searches
-  const [completedSearchAnswer, setCompletedSearchAnswer] = useState<string | null>(null);
-  const [completedSearchSources, setCompletedSearchSources] = useState<any[] | null>(null);
-  
-  // Track if we're streaming the response to main chat
-  const [isStreamingToMainChat, setIsStreamingToMainChat] = useState(false);
-  const streamedContentRef = useRef<string>('');
-  
-  // State to hold restored deep research state
-  const [restoredState, setRestoredState] = useState<{
-    steps?: any[];
-    activeStepId?: string | null;
-    isComplete?: boolean;
-    isInProgress?: boolean;
-    webData?: any | null;
-    isFullyCompleted?: boolean;
-  }>({});
-  
-  // Store the previous query to detect changes
-  const [previousQuery, setPreviousQuery] = useState(query);
-  
-  // Check if the main chat already contains this answer
-  const checkIfAnswerAlreadyInMainChat = useCallback(() => {
-    const answerKey = `advance_search_answer_added_${query.trim().toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem(answerKey) === 'true';
-    }
-    return false;
-  }, [query]);
-  
-  // Mark an answer as added to the main chat
-  const markAnswerAddedToMainChat = useCallback(() => {
-    const answerKey = `advance_search_answer_added_${query.trim().toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(answerKey, 'true');
-      setAnswerAddedToMainChat(true);
-    }
-  }, [query]);
-  
-  // Consolidated state restoration logic
-  useEffect(() => {
-    if (typeof window === 'undefined' || restorationAttemptedRef.current) {
-      return;
-    }
 
-    restorationAttemptedRef.current = true;
-      const alreadyInMainChat = checkIfAnswerAlreadyInMainChat();
-      setAnswerAddedToMainChat(alreadyInMainChat);
-      
-    // Try to restore from completed searches first
-      if (isSearchCompleted(query)) {
-        const completedSearch = getCompletedSearch(query);
-        if (completedSearch && completedSearch.finalAnswer) {
-          setRestoredState({
-            steps: completedSearch.steps,
-            activeStepId: completedSearch.activeStepId,
-            isComplete: true,
-            isInProgress: false,
-            webData: completedSearch.webData,
-          isFullyCompleted: true
-          });
-          
-          setIsBlockRestoredFromStorage(true);
-          setIsSearchAlreadyCompleted(true);
-          setCompletedSearchAnswer(completedSearch.finalAnswer);
-          setCompletedSearchSources(completedSearch.webData?.sources || []);
-          
-        if (onFinalAnswer && !alreadyInMainChat && typeof completedSearch.finalAnswer === 'string') {
-            setTimeout(() => {
-              onFinalAnswer(completedSearch.finalAnswer as string, completedSearch.webData?.sources || []);
-              markAnswerAddedToMainChat();
-            }, 100);
-          }
-          
-        // Mark initial load as complete
-        setTimeout(() => {
-          isInitialLoadRef.current = false;
-        }, 100);
-        return;
-        }
-      }
-      
-    // If not found in completed searches, try localStorage
-      const saved = localStorage.getItem('advanceSearchState');
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-        if (parsed && parsed.steps) {
-          const isFullyCompleted = parsed.isFullyCompleted === true && 
-                                 parsed.currentQuery === query && 
-                                 parsed.finalAnswer;
-          
-          if (isFullyCompleted) {
-            setIsSearchAlreadyCompleted(true);
-            setCompletedSearchAnswer(parsed.finalAnswer);
-            setCompletedSearchSources(parsed.webData?.sources || []);
-            
-            if (onFinalAnswer && !alreadyInMainChat && typeof parsed.finalAnswer === 'string') {
-              setTimeout(() => {
-                onFinalAnswer(parsed.finalAnswer as string, parsed.webData?.sources || []);
-                markAnswerAddedToMainChat();
-              }, 100);
-            }
-          }
-          
-            setRestoredState({
-              steps: parsed.steps,
-              activeStepId: parsed.activeStepId,
-              isComplete: parsed.isComplete,
-              isInProgress: parsed.isInProgress,
-            webData: parsed.webData,
-            isFullyCompleted
-            });
-            setIsBlockRestoredFromStorage(true);
-          }
-        } catch (err) {
-          console.error("Error restoring deep research state:", err);
-          setIsBlockRestoredFromStorage(false);
-        }
-      } else {
-        setIsBlockRestoredFromStorage(false);
-      }
-      
-    // Mark initial load as complete
-      setTimeout(() => {
-        isInitialLoadRef.current = false;
-    }, 100);
-  }, [query, onFinalAnswer, checkIfAnswerAlreadyInMainChat, markAnswerAddedToMainChat]);
-  
-  // Reset state when query changes (but not during initial load)
-  useEffect(() => {
-    if (!isInitialLoadRef.current && query !== previousQuery) {
-      setPreviousQuery(query);
-      setIsBlockRestoredFromStorage(false);
-      setIsSearchAlreadyCompleted(false);
-      setCompletedSearchAnswer(null);
-      setCompletedSearchSources(null);
-      setAnswerAddedToMainChat(false);
-      restorationAttemptedRef.current = false;
-    }
-  }, [query, previousQuery]);
-  
-  // Always set the first parameter to true to ensure it processes the query
-  // regardless of the parent component's state, EXCEPT when the search is already completed
-  const {
-    steps,
-    activeStepId,
-    isComplete,
-    isInProgress,
-    error,
-    webData
-  } = useDeepResearch(
-    // Always activate the hook for UI, but pass in completed state
-    true, 
-    query, 
-    conversationHistory, 
-    isBlockRestoredFromStorage, 
-    restoredState
-  );
-  
-  // Save state to localStorage when it changes
-  useEffect(() => {
-    if (steps.length > 0 && typeof window !== 'undefined') {
-      const stateToSave = {
-        steps,
-        activeStepId,
-        isComplete,
-        isInProgress,
-        webData,
-        currentQuery: query
-      };
-      localStorage.setItem('advanceSearchState', JSON.stringify(stateToSave));
-      
-      // If search is complete, save it to our completed searches registry
-      if (isComplete && steps[steps.length - 1]?.status === 'completed' && steps[steps.length - 1]?.output) {
-        // Get the final answer
-        const finalAnswer = steps[steps.length - 1].output;
-        
-        // Save to completed searches
-        saveCompletedSearch({
-          query,
-          steps,
-          activeStepId,
-          isComplete,
-          isInProgress,
-          webData,
-          finalAnswer,
-          timestamp: Date.now(),
-          conversationHistory
-        });
-      }
-    }
-  }, [steps, activeStepId, isComplete, isInProgress, webData, query, conversationHistory]);
-  
-  // Wrap the onFinalAnswer callback to prevent duplicate calls
-  const safeOnFinalAnswer = useCallback((answer: string, sources?: any[]) => {
-    if (!answerAddedToMainChat && onFinalAnswer) {
-      onFinalAnswer(answer, sources);
-      markAnswerAddedToMainChat();
-    }
-  }, [answerAddedToMainChat, onFinalAnswer, markAnswerAddedToMainChat]);
-
-  // New function to handle streaming synthesis output to the main chat
-  const handleStreamingSynthesisOutput = useCallback((content: string, sources?: any[]) => {
-    if (!answerAddedToMainChat && onFinalAnswer && content) {
-      if (!isStreamingToMainChat) {
-        // Create an initial message with empty content to start the streaming process
-        setIsStreamingToMainChat(true);
-        onFinalAnswer('', sources);
-        streamedContentRef.current = '';
-      }
-      
-      // Only send updates if we've added more content
-      if (content.length > streamedContentRef.current.length) {
-        streamedContentRef.current = content;
-        // Call onFinalAnswer with updated content
-        onFinalAnswer(content, sources);
-      }
-    }
-  }, [answerAddedToMainChat, onFinalAnswer, isStreamingToMainChat]);
-  
-  // Handle onFinalAnswer callback for completed searches
-  useEffect(() => {
-    const synthStep = steps.find(s => s.id === 'synthesize');
-    
-    // If synthesis is active and has output, send as streaming content
-    if (synthStep && 
-        synthStep.status === 'active' && 
-        typeof synthStep.output === 'string' && 
-        synthStep.output) {
-      handleStreamingSynthesisOutput(synthStep.output, webData?.sources || []);
-    }
-    
-    // When synthesis completes, mark as done and save completed search
-    if (synthStep && 
-        synthStep.status === 'completed' && 
-        typeof synthStep.output === 'string' && 
-        synthStep.output !== null) {
-      
-      // Final update with complete content
-      handleStreamingSynthesisOutput(synthStep.output, webData?.sources || []);
-      
-      // Mark as complete
-      setIsStreamingToMainChat(false);
-      markAnswerAddedToMainChat();
-      
-      // Save the final answer to our completed searches
-      saveCompletedSearch({
-        query,
-        steps,
-        activeStepId,
-        isComplete,
-        isInProgress,
-        webData,
-        finalAnswer: synthStep.output,
-        timestamp: Date.now(),
-        conversationHistory
-      });
-    }
-  }, [steps, isComplete, query, activeStepId, isInProgress, webData, conversationHistory, answerAddedToMainChat, handleStreamingSynthesisOutput, markAnswerAddedToMainChat]);
-  
-  const [manualStepId, setManualStepId] = useState<string | null>(null);
-  const isFinalStepComplete = steps[steps.length - 1]?.status === 'completed';
-  
-  const hasHistory = conversationHistory.previousQueries.length > 0;
-  
-  // Use completed search data or live data based on what's available
-  const displaySteps = isSearchAlreadyCompleted && restoredState.steps ? restoredState.steps : steps;
-  const displayActiveStepId = isSearchAlreadyCompleted ? null : (isFinalStepComplete ? manualStepId || activeStepId : activeStepId);
-  const displayWebData = isSearchAlreadyCompleted && restoredState.webData ? restoredState.webData : webData;
-  
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, ease: "easeOut" }}
-      className="w-full rounded-xl border border-neutral-800 overflow-hidden mb-2 mt-2 bg-neutral-900 h-full flex flex-col"
-      style={{ minHeight: "350px", height: "calc(100vh - 180px)", maxHeight: "550px" }}
-    >
-      {hasHistory && onClearHistory && (
-        <div className="sr-only">
-            <button
-            onClick={onClearHistory}
-            className="text-xs text-cyan-500 hover:text-cyan-400 flex items-center gap-1 opacity-70 hover:opacity-100 transition-opacity"
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 6h18"></path>
-              <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-              <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-              </svg>
-            Clear history ({conversationHistory.previousQueries.length})
-            </button>
-          </div>
-      )}
-      <div className="flex-1 flex flex-col h-full">
-        <AdvanceSearch
-          steps={displaySteps}
-          activeStepId={displayActiveStepId}
-          onManualStepClick={isFinalStepComplete ? setManualStepId : undefined}
-          manualNavigationEnabled={isFinalStepComplete}
-          error={error}
-          webData={displayWebData}
-          onFinalAnswer={safeOnFinalAnswer}
-        />
-      </div>
-      {error && (
-        <div className="text-red-500 text-sm text-center mt-2">{error}</div>
-      )}
-    </motion.div>
-  );
-}
 
 /**
  * Smart content extraction function that attempts to identify and extract
@@ -1736,50 +1364,7 @@ export default function TestChat() {
 
   const aiStreamAbortController = useRef<AbortController | null>(null);
 
-  // Separate UI state from processing state for Advance Search
-  const [showAdvanceSearchUI, setShowAdvanceSearchUI] = useState(false); // UI state for the button
-  const [isAdvanceSearchActive, setIsAdvanceSearchActive] = useState(false); // Processing state
-  const [currentQuery, setCurrentQuery] = useState('');
-  
-  // Add state for tracking Advance Search conversation history
-  const [advanceSearchHistory, setAdvanceSearchHistory] = useState<{
-    previousQueries: string[];
-    previousResponses: string[];
-  }>({
-    previousQueries: [],
-    previousResponses: []
-  });
-  
-  // Add state to track if the chat was restored from storage
-  const [isRestoredFromStorage, setIsRestoredFromStorage] = useState(false);
-  
-  // Add state to hold the restored deep research state
-  const [restoredDeepResearchState, setRestoredDeepResearchState] = useState<{
-    steps?: any[];
-    activeStepId?: string | null;
-    isComplete?: boolean;
-    isInProgress?: boolean;
-    webData?: any | null;
-  }>({});
-  
-  // Deep Research hook - now passing processing state instead of UI state
-  const {
-    steps,
-    activeStepId,
-    isComplete,
-    isInProgress,
-    error,
-    webData
-  } = useDeepResearch(
-    isAdvanceSearchActive, 
-    currentQuery, 
-    advanceSearchHistory,
-    isRestoredFromStorage, // Pass the flag to control process start
-    restoredDeepResearchState // Pass the restored state
-  );
 
-  const [manualStepId, setManualStepId] = useState<string | null>(null);
-  const isFinalStepComplete = steps[steps.length - 1]?.status === 'completed';
 
   const [emptyBoxes, setEmptyBoxes] = useState<string[]>([]); // Array of box IDs
 
@@ -1813,14 +1398,12 @@ export default function TestChat() {
       setMessages(processedMessages);
       setShowHeading(false);
       setHasInteracted(true);
-      setIsRestoredFromStorage(true); // Set the flag to indicate restoration from storage
     } else {
       // Show welcome page for new users
       setShowHeading(true);
       setHasInteracted(false);
       setActiveSessionId(null);
       setMessages([]);
-      setIsRestoredFromStorage(false); // Not restored from storage
     }
   }, []);
 
@@ -1869,14 +1452,7 @@ export default function TestChat() {
     }
   }, [messages]);
 
-  // Hide the Deep Research view when research completes and AI responds
-  useEffect(() => {
-    if (isComplete && !isAiResponding) {
-      // Only hide the research view when both research is complete and AI has responded
-      setIsAdvanceSearchActive(false); // Turn off the processing state
-      // But keep the UI state the same for the next query
-    }
-  }, [isComplete, isAiResponding]);
+
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
@@ -1908,23 +1484,7 @@ export default function TestChat() {
       return;
     }
 
-    // Then check if we're in advance search mode
-    if (activeButton === 'advance' || input.includes('@AdvanceSearch')) {
-      setIsAdvanceSearchActive(true);
-      setShowAdvanceSearchUI(true);
-      const researchId = uuidv4();
-      setMessages(prev => [
-        ...prev,
-        { role: "user", content: input, id: uuidv4(), timestamp: Date.now(), isProcessed: true },
-        { role: "deep-research", content: input, researchId, id: uuidv4(), timestamp: Date.now(), isProcessed: true }
-      ]);
-      setInput("");
-      setImagePreviewUrls([]);
-      setSelectedFilesForUpload([]);
-      setIsLoading(false);
-      setIsAiResponding(false);
-      return;
-    }
+
 
     // If we get here, we're in default chat mode
     let userMessageId = '';
@@ -1945,13 +1505,7 @@ export default function TestChat() {
 
     if (!hasInteracted) setHasInteracted(true);
       
-      // Reset any advance search state when in default chat mode
-    if (showAdvanceSearchUI) {
-        setShowAdvanceSearchUI(false);
-        setIsAdvanceSearchActive(false);
-        setIsRestoredFromStorage(false);
-        setRestoredDeepResearchState({});
-    }
+
 
     setIsAiResponding(true);
       setIsLoading(true);
@@ -2703,6 +2257,15 @@ export default function TestChat() {
       alert('Failed to prepare content for copying. Please try again.');
     }
   };
+
+  // Hide the Deep Research view when research completes and AI responds
+  useEffect(() => {
+    if (isComplete && !isAiResponding) {
+      // Only hide the research view when both research is complete and AI has responded
+      setIsAdvanceSearchActive(false); // Turn off the processing state
+      // But keep the UI state the same for the next query
+    }
+  }, [isComplete, isAiResponding]);
 
   return (
     <>
