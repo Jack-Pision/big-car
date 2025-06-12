@@ -1529,34 +1529,34 @@ export default function TestChat() {
       setActiveSessionId(null);
       setMessages([]);
       
-      // ADD TEST MESSAGE TO VERIFY THINK TAG RENDERING
-      setTimeout(() => {
-        setMessages([
-          {
-            role: "user" as const,
-            content: "Test think tags",
-            id: uuidv4(),
-            timestamp: Date.now(),
-            isProcessed: true
-          },
-          {
-            role: "assistant" as const,
-            content: `<think>
-Let me analyze this test request...
-I need to verify that think tags are rendering properly...
-This should appear in a gray box with cyan text...
-</think>
+      // Remove the test message that creates multiple thinking boxes
+      // setTimeout(() => {
+      //   setMessages([
+      //     {
+      //       role: "user" as const,
+      //       content: "Test think tags",
+      //       id: uuidv4(),
+      //       timestamp: Date.now(),
+      //       isProcessed: true
+      //     },
+      //     {
+      //       role: "assistant" as const,
+      //       content: `<think>
+      // Let me analyze this test request...
+      // I need to verify that think tags are rendering properly...
+      // This should appear in a gray box with cyan text...
+      // </think>
 
-This is a test message to verify that think tags are rendering correctly. If you can see a gray box above with my thinking process, then the rendering system is working!`,
-            id: uuidv4(),
-            timestamp: Date.now(),
-            isProcessed: true,
-            contentType: 'conversation'
-          }
-        ]);
-        setHasInteracted(true);
-        setShowHeading(false);
-      }, 1000);
+      // This is a test message to verify that think tags are rendering correctly. If you can see a gray box above with my thinking process, then the rendering system is working!`,
+      //       id: uuidv4(),
+      //       timestamp: Date.now(),
+      //       isProcessed: true,
+      //       contentType: 'conversation'
+      //     }
+      //   ]);
+      //   setHasInteracted(true);
+      //   setShowHeading(false);
+      // }, 1000);
     }
   }, []);
 
@@ -1854,6 +1854,14 @@ This is a test message to verify that think tags are rendering correctly. If you
           contentType: 'conversation',
           isProcessed: true
         };
+        
+        // Create a persistent thinking message ID for this entire response
+        const persistentThinkingId = uuidv4();
+        setCurrentThinkingMessageId(persistentThinkingId);
+        
+        // Initialize variables to track all thinking content
+        let allThinkingContent = [];
+        let hasThinkingContent = false;
 
         while (!done) {
           const { value, done: doneReading } = await reader.read();
@@ -1902,25 +1910,36 @@ This is a test message to verify that think tags are rendering correctly. If you
                     // Combine all thinking content
                     const combinedThinkContent = allThinkContent.join('\n\n');
                     
-                    // Create or update thinking message if we have thinking content
+                    // Update global thinking content if we have new content
                     if (combinedThinkContent && combinedThinkContent.length > 5) {
-                      if (!currentThinkingMessageId) {
-                        // Create new thinking message - only one per response
-                        const thinkingId = uuidv4();
-                        setCurrentThinkingMessageId(thinkingId);
+                      // Add to our persistent thinking content
+                      if (!hasThinkingContent) {
+                        // First thinking content
+                        allThinkingContent = allThinkContent;
+                        hasThinkingContent = true;
+                        
+                        // Create the thinking message once
                         setMessages((prev) => [...prev, {
                           role: "assistant" as const,
                           content: `<think>${combinedThinkContent}</think>`,
-                          id: thinkingId,
+                          id: persistentThinkingId,
                           timestamp: Date.now(),
                           isStreaming: true,
                           isProcessed: false
                         }]);
                       } else {
-                        // Update existing thinking message
+                        // Merge with existing thinking content
+                        for (const content of allThinkContent) {
+                          if (!allThinkingContent.includes(content)) {
+                            allThinkingContent.push(content);
+                          }
+                        }
+                        
+                        // Update the thinking message with all accumulated content
+                        const updatedThinkContent = allThinkingContent.join('\n\n');
                         setMessages((prev) => prev.map(msg => 
-                          msg.id === currentThinkingMessageId 
-                            ? { ...msg, content: `<think>${combinedThinkContent}</think>` }
+                          msg.id === persistentThinkingId
+                            ? { ...msg, content: `<think>${updatedThinkContent}</think>` }
                             : msg
                         ));
                       }
