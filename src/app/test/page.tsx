@@ -536,7 +536,7 @@ interface ImageContext {
 
 // Define a local (renamed) Message interface (not extending BaseMessage) to avoid type incompatibility
 interface LocalMessage {
-  role: 'user' | 'assistant' | 'deep-research' | 'search-ui';
+  role: 'user' | 'assistant' | 'search-ui';
   isProcessed?: boolean;
   isStreaming?: boolean;
   imageUrls?: string[];
@@ -911,7 +911,7 @@ const makeCitationsClickable = (content: string, sources: any[] = []) => {
 
 // Add a simple Stack component for vertical spacing
 const Stack = ({ spacing = 20, children }: { spacing?: number; children: React.ReactNode }) => (
-  <div style={{ display: 'flex', flexDirection: 'column', gap: spacing }}>
+  <div style={{ display: 'flex', flexDirection: 'column', gap: `${spacing}px` }}>
     {children}
   </div>
 );
@@ -1688,12 +1688,6 @@ IMPORTANT FOR SEARCH:
 - Structure the response with clear sections
 - Highlight key findings
 - Provide a summary of search results`;
-};
-
-const getAdvanceSearchPrompt = (basePrompt: string) => {
-  return `${basePrompt}
-
-${CITATION_INSTRUCTIONS}`;
 };
 
 const getStructuredQueryPrompt = (basePrompt: string, queryType: string, schema: any) => {
