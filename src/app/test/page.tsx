@@ -2221,27 +2221,12 @@ export default function TestChat() {
 
                 {/* Actions row */}
                 <div className="flex flex-row w-full items-center justify-between gap-2">
-                  {/* Left group: Write, Search, Deep Research */}
+                  {/* Left group: Search button only */}
                   <div className="flex flex-row gap-2 items-center">
-                                        {/* Chat button */}
-                    <button
-                      type="button"
-                      onClick={() => handleModeSwitch('chat')}
-                      className={`flex items-center gap-1.5 rounded-full transition px-3 py-1.5 flex-shrink-0 text-xs font-medium
-                        ${activeMode === 'chat' ? 'bg-gray-800 text-cyan-400' : 'bg-gray-800 text-gray-400 opacity-60'}
-                        hover:bg-gray-700`}
-                      style={{ height: "36px" }}
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: activeMode === 'chat' ? '#22d3ee' : '#a3a3a3' }}>
-                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                      </svg>
-                      <span className="whitespace-nowrap">Chat</span>
-                    </button>
-
                     {/* Search button */}
                     <button
                       type="button"
-                      onClick={() => handleModeSwitch('search')}
+                      onClick={() => handleModeSwitch(activeMode === 'search' ? 'chat' : 'search')}
                       className={`
                         flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 
                         ${activeMode === 'search' ? 'bg-gray-800 text-cyan-400' : 'bg-gray-800 text-gray-400 opacity-60'}
