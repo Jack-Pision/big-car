@@ -1051,9 +1051,9 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
       const alreadyInMainChat = checkIfAnswerAlreadyInMainChat();
       setAnswerAddedToMainChat(alreadyInMainChat);
       
-    // Try to restore from completed searches first
-      if (isSearchCompleted(query)) {
-        const completedSearch = getCompletedSearch(query);
+    // Removed advanced search restoration logic
+      if (false) {
+        const completedSearch = null;
         if (completedSearch && completedSearch.finalAnswer) {
           setRestoredState({
             steps: completedSearch.steps,
@@ -1153,14 +1153,14 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
     isInProgress,
     error,
     webData
-  } = useDeepResearch(
-    // Always activate the hook for UI, but pass in completed state
-    true, 
-    query, 
-    conversationHistory, 
-    isBlockRestoredFromStorage, 
-    restoredState
-  );
+  } = {
+    steps: [],
+    activeStepId: null,
+    isComplete: false,
+    isInProgress: false,
+    error: null,
+    webData: null
+  };
   
   // Save state to localStorage when it changes
   useEffect(() => {
@@ -1180,18 +1180,7 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
         // Get the final answer
         const finalAnswer = steps[steps.length - 1].output;
         
-        // Save to completed searches
-        saveCompletedSearch({
-          query,
-          steps,
-          activeStepId,
-          isComplete,
-          isInProgress,
-          webData,
-          finalAnswer,
-          timestamp: Date.now(),
-          conversationHistory
-        });
+        // Removed saveCompletedSearch call
       }
     }
   }, [steps, activeStepId, isComplete, isInProgress, webData, query, conversationHistory]);
