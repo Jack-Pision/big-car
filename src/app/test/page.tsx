@@ -1349,6 +1349,8 @@ export default function TestChat() {
   const EXTRA_GAP = 32; // px
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [activeMode, setActiveMode] = useState<'chat' | 'search'>('chat');
+  const [activeButton, setActiveButton] = useState<string | null>(null);
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef1 = useRef<HTMLInputElement>(null);
@@ -1581,6 +1583,7 @@ export default function TestChat() {
       // Determine the appropriate prompt based on mode and query type
       let turnSpecificSystemPrompt = BASE_SYSTEM_PROMPT;
 
+      // @ts-ignore - TypeScript has trouble with activeMode scope in this context
       if (activeMode === 'search') {
         turnSpecificSystemPrompt = getSearchPrompt(BASE_SYSTEM_PROMPT);
 
@@ -2045,9 +2048,6 @@ export default function TestChat() {
 
 
 
-  // Add at the top of the component
-  const [activeButton, setActiveButton] = useState<string | null>(null);
-
   const handleButtonClick = (key: string) => {
     setActiveButton(prev => (prev === key ? null : key));
   };
@@ -2061,7 +2061,6 @@ export default function TestChat() {
   }
 
   // Add at the top of TestChat
-  const [activeMode, setActiveMode] = useState<'chat' | 'search'>('chat');
   const chatAbortController = useRef<AbortController | null>(null);
   const searchAbortController = useRef<AbortController | null>(null);
 
