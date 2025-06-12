@@ -28,7 +28,6 @@ import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 // Icons
 import { Bot, User, Paperclip, Send, XCircle, Search, Trash2, PlusCircle, Settings, Zap, ExternalLink, AlertTriangle } from 'lucide-react';
-import { PiMagnifyingGlassBold, PiPaperPlaneRightFill, PiSmileyBold } from 'react-icons/pi';
 import { GrChat } from 'react-icons/gr';
 
 // Utils & Types
@@ -46,8 +45,7 @@ import {
   getSessionTitleFromMessage,
   getSessions as getSessionsFromService,
   saveActiveSessionId,
-  getActiveSessionId,
-  deleteSessionFromService
+  getActiveSessionId
 } from '@/lib/session-service';
 
 // Define a type that includes all possible query types (without 'deep-research')
@@ -979,6 +977,7 @@ const Stack = ({ spacing = 20, children }: { spacing?: number; children: React.R
   </div>
 );
 
+// Removed DeepResearchBlock function and replaced with a stub
 function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinalAnswer }: { 
   query: string, 
   conversationHistory: {
@@ -988,6 +987,8 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
   onClearHistory?: () => void,
   onFinalAnswer?: (answer: string, sources?: any[]) => void
 }) {
+  // Return null as the component has been removed
+  return null;
   // State to track if content is restored from storage
   const [isBlockRestoredFromStorage, setIsBlockRestoredFromStorage] = useState(false);
   
@@ -1919,23 +1920,7 @@ export default function TestChat() {
       return;
     }
 
-    // Then check if we're in advance search mode
-    if (activeButton === 'advance' || input.includes('@AdvanceSearch')) {
-      setIsAdvanceSearchActive(true);
-      setShowAdvanceSearchUI(true);
-      const researchId = uuidv4();
-      setMessages(prev => [
-        ...prev,
-        { role: "user", content: input, id: uuidv4(), timestamp: Date.now(), isProcessed: true },
-        { role: "deep-research", content: input, researchId, id: uuidv4(), timestamp: Date.now(), isProcessed: true }
-      ]);
-      setInput("");
-      setImagePreviewUrls([]);
-      setSelectedFilesForUpload([]);
-      setIsLoading(false);
-      setIsAiResponding(false);
-      return;
-    }
+    // Removed advance search mode check
 
     // If we get here, we're in default chat mode
     let userMessageId = '';
@@ -1956,13 +1941,7 @@ export default function TestChat() {
 
     if (!hasInteracted) setHasInteracted(true);
       
-      // Reset any advance search state when in default chat mode
-    if (showAdvanceSearchUI) {
-        setShowAdvanceSearchUI(false);
-        setIsAdvanceSearchActive(false);
-        setIsRestoredFromStorage(false);
-        setRestoredDeepResearchState({});
-    }
+      // Removed advance search state reset
 
     setIsAiResponding(true);
       setIsLoading(true);
@@ -2481,7 +2460,10 @@ export default function TestChat() {
   const [activeButton, setActiveButton] = useState<string | null>(null);
 
   const handleButtonClick = (key: string) => {
-    setActiveButton(prev => (prev === key ? null : key));
+    // Only allow 'write' or 'search' modes now
+    if (key === 'write' || key === 'search') {
+      setActiveButton(prev => (prev === key ? null : key));
+    }
   };
 
   // Add helper function to convert LocalMessage[] to ConversationMessage[] by type casting
@@ -2722,24 +2704,7 @@ export default function TestChat() {
 
                     {/* Deep Research button (Advance Search) */}
                     <button
-                      type="button"
-                      className={`flex items-center gap-1.5 rounded-full transition px-3 py-1.5 flex-shrink-0 text-xs font-medium
-                        ${activeButton === 'advance' ? 'bg-gray-800 text-cyan-400' : 'bg-gray-800 text-gray-400 opacity-60'}
-                        hover:bg-gray-700`}
-                      style={{ height: "36px" }}
-                      tabIndex={0}
-                      onClick={() => handleButtonClick('advance')}
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: activeButton === 'advance' ? '#22d3ee' : '#a3a3a3' }}>
-                        <circle cx="12" cy="12" r="3" />
-                        <circle cx="19" cy="5" r="2" />
-                        <circle cx="5" cy="19" r="2" />
-                        <line x1="14.15" y1="14.15" x2="17" y2="17" />
-                        <line x1="6.85" y1="17.15" x2="10.15" y2="13.85" />
-                        <line x1="13.85" y1="10.15" x2="17.15" y2="6.85" />
-                      </svg>
-                      <span className="whitespace-nowrap text-xs font-medium">Advance Search</span>
-                    </button>
+                      {/* Removed Advance Search button */}
               </div>
 
                   {/* Right group: Plus, Send */}
