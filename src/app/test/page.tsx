@@ -1583,8 +1583,7 @@ export default function TestChat() {
 
       if (activeButton === 'search') {
         turnSpecificSystemPrompt = getSearchPrompt(BASE_SYSTEM_PROMPT);
-      } else if (activeButton === 'advance' || input.includes('@AdvanceSearch')) {
-        turnSpecificSystemPrompt = getAdvanceSearchPrompt(BASE_SYSTEM_PROMPT);
+
       } else {
         // Always use default chat prompt for regular chat
         turnSpecificSystemPrompt = getDefaultChatPrompt(BASE_SYSTEM_PROMPT);
@@ -1922,12 +1921,7 @@ export default function TestChat() {
   };
 
   // Add a function to clear the Advance Search conversation history
-  function clearAdvanceSearchHistory() {
-    setAdvanceSearchHistory({
-      previousQueries: [],
-      previousResponses: []
-    });
-  }
+
 
   const handleSelectSession = (sessionId: string) => {
     if (!sessionId) { // Handling deletion or empty selection case
