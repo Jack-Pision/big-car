@@ -1860,7 +1860,7 @@ export default function TestChat() {
         setCurrentThinkingMessageId(persistentThinkingId);
         
         // Initialize variables to track all thinking content
-        let allThinkingContent = [];
+        let allThinkingContent: string[] = [];
         let hasThinkingContent = false;
 
         while (!done) {
@@ -2063,7 +2063,7 @@ export default function TestChat() {
   async function handleFirstFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files;
     if (files && files.length > 0) {
-      const newFiles = Array.from(files);
+      const newFiles: File[] = Array.from(files) as File[];
       setSelectedFilesForUpload((prevFiles) => [...prevFiles, ...newFiles]);
       
       const newPreviewUrls = newFiles.map(file => URL.createObjectURL(file));
