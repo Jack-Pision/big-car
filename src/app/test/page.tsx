@@ -894,36 +894,35 @@ const processThinkTags = (content: string, isLive: boolean = false) => {
     return { processedContent: content, thinkBlocks: [], isLiveThinking: false };
   }
 
-  const parts = [];
-  const thinkBlocks = [];
-  let lastIndex = 0;
-  
   // Find all think tag pairs
   const thinkRegex = /<think>([\s\S]*?)<\/think>/g;
   let match;
   
+  // Collect all thinking content
+  let allThinkContent = [];
+  let cleanedContent = content;
+  
   while ((match = thinkRegex.exec(content)) !== null) {
-    // Add content before the think tag
-    if (match.index > lastIndex) {
-      parts.push(content.slice(lastIndex, match.index));
+    // Store the think content
+    const thinkContent = match[1].trim();
+    if (thinkContent) {
+      allThinkContent.push(thinkContent);
     }
     
-    // Store the think content and add a placeholder
-    const thinkContent = match[1].trim();
-    const thinkId: string = `think-block-${thinkBlocks.length}`;
-    thinkBlocks.push({ id: thinkId, content: thinkContent });
-    parts.push(`<!-- ${thinkId} -->`);
-    
-    lastIndex = match.index + match[0].length;
+    // Remove the think tags from the main content
+    cleanedContent = cleanedContent.replace(match[0], '');
   }
   
-  // Add remaining content after the last think tag
-  if (lastIndex < content.length) {
-    parts.push(content.slice(lastIndex));
-  }
+  // Combine all thinking content into a single block
+  const combinedThinkContent = allThinkContent.join('\n\n');
+  
+  // Create a single think block if we have any thinking content
+  const thinkBlocks = combinedThinkContent ? 
+    [{ id: 'combined-think-block', content: combinedThinkContent }] : 
+    [];
   
   return { 
-    processedContent: parts.join(''), 
+    processedContent: cleanedContent, 
     thinkBlocks,
     isLiveThinking: false
   };
@@ -1876,33 +1875,42 @@ This is a test message to verify that think tags are rendering correctly. If you
                   if (delta) {
                     contentBuffer += delta;
                     
-                    // Simple extraction: separate think content from main content
-                    let currentThinkContent = '';
+                    // Extract all think content and combine into one
+                    let allThinkContent = [];
                     let currentMainContent = contentBuffer;
                     
-                    // Extract think content if present
-                    const thinkMatch = contentBuffer.match(/<think>([\s\S]*?)<\/think>/);
-                    if (thinkMatch) {
-                      currentThinkContent = thinkMatch[1].trim();
-                      currentMainContent = contentBuffer.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-                    } else {
-                      // Check for partial think content (still streaming)
-                      const partialThinkMatch = contentBuffer.match(/<think>([\s\S]*)$/);
-                      if (partialThinkMatch) {
-                        currentThinkContent = partialThinkMatch[1].trim();
-                        currentMainContent = contentBuffer.replace(/<think>[\s\S]*$/, '').trim();
+                    // Extract complete think tags
+                    const thinkRegex = /<think>([\s\S]*?)<\/think>/g;
+                    let match;
+                    
+                    while ((match = thinkRegex.exec(contentBuffer)) !== null) {
+                      const thinkContent = match[1].trim();
+                      if (thinkContent) {
+                        allThinkContent.push(thinkContent);
                       }
+                      // Remove the think tags from main content
+                      currentMainContent = currentMainContent.replace(match[0], '');
                     }
                     
+                    // Check for partial think content (still streaming)
+                    const partialThinkMatch = contentBuffer.match(/<think>([\s\S]*)$/);
+                    if (partialThinkMatch && partialThinkMatch[1].trim()) {
+                      allThinkContent.push(partialThinkMatch[1].trim());
+                      currentMainContent = currentMainContent.replace(/<think>[\s\S]*$/, '');
+                    }
+                    
+                    // Combine all thinking content
+                    const combinedThinkContent = allThinkContent.join('\n\n');
+                    
                     // Create or update thinking message if we have thinking content
-                    if (currentThinkContent && currentThinkContent.length > 5) {
+                    if (combinedThinkContent && combinedThinkContent.length > 5) {
                       if (!currentThinkingMessageId) {
-                        // Create new thinking message
+                        // Create new thinking message - only one per response
                         const thinkingId = uuidv4();
                         setCurrentThinkingMessageId(thinkingId);
                         setMessages((prev) => [...prev, {
                           role: "assistant" as const,
-                          content: `<think>${currentThinkContent}</think>`,
+                          content: `<think>${combinedThinkContent}</think>`,
                           id: thinkingId,
                           timestamp: Date.now(),
                           isStreaming: true,
@@ -1912,7 +1920,7 @@ This is a test message to verify that think tags are rendering correctly. If you
                         // Update existing thinking message
                         setMessages((prev) => prev.map(msg => 
                           msg.id === currentThinkingMessageId 
-                            ? { ...msg, content: `<think>${currentThinkContent}</think>` }
+                            ? { ...msg, content: `<think>${combinedThinkContent}</think>` }
                             : msg
                         ));
                       }
@@ -2641,13 +2649,27 @@ This is a test message to verify that think tags are rendering correctly. If you
                               isLive={msg.isStreaming || false} 
                             />
                           </div>
+                        ) : thinkBlocks.length > 0 ? (
+                          <div className="w-full max-w-full overflow-hidden">
+                            {/* Show only one thinking button for all think blocks */}
+                            <ThinkingButton 
+                              key={`${msg.id}-combined-thinking`} 
+                              content={thinkBlocks[0].content} 
+                              isLive={msg.isStreaming || false} 
+                            />
+                            
+                            {/* Render the main content with ReactMarkdown */}
+                            <ReactMarkdown 
+                              remarkPlugins={[remarkGfm]} 
+                              rehypePlugins={[rehypeRaw]} 
+                              className="prose dark:prose-invert max-w-none"
+                              components={{}}
+                            >
+                              {finalContent}
+                            </ReactMarkdown>
+                          </div>
                         ) : (
                           <div className="w-full max-w-full overflow-hidden">
-                            {/* Render think blocks first */}
-                            {thinkBlocks.map((block, index) => (
-                              <ThinkingButton key={`${msg.id}-think-${index}`} content={block.content} isLive={msg.isStreaming || false} />
-                            ))}
-                            
                             {/* Render the main content with ReactMarkdown */}
                             <ReactMarkdown 
                               remarkPlugins={[remarkGfm]} 
