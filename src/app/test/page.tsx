@@ -1160,45 +1160,10 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
     }
   }, [answerAddedToMainChat, onFinalAnswer, isStreamingToMainChat]);
   
-  // Handle onFinalAnswer callback for completed searches
-  useEffect(() => {
-    const synthStep = steps.find(s => s.id === 'synthesize');
-    
-    // If synthesis is active and has output, send as streaming content
-    if (synthStep && 
-        synthStep.status === 'active' && 
-        typeof synthStep.output === 'string' && 
-        synthStep.output) {
-      handleStreamingSynthesisOutput(synthStep.output, webData?.sources || []);
-    }
-    
-    // When synthesis completes, mark as done and save completed search
-    if (synthStep && 
-        synthStep.status === 'completed' && 
-        typeof synthStep.output === 'string' && 
-        synthStep.output !== null) {
-      
-      // Final update with complete content
-      handleStreamingSynthesisOutput(synthStep.output, webData?.sources || []);
-      
-      // Mark as complete
-      setIsStreamingToMainChat(false);
-      markAnswerAddedToMainChat();
-      
-      // Save the final answer to our completed searches
-      // Removed saveCompletedSearch call
-    }
-  }, [steps, isComplete, query, activeStepId, isInProgress, webData, conversationHistory, answerAddedToMainChat, handleStreamingSynthesisOutput, markAnswerAddedToMainChat]);
+  // Removed onFinalAnswer callback logic for advanced search
   
-  const [manualStepId, setManualStepId] = useState<string | null>(null);
-  const isFinalStepComplete = steps[steps.length - 1]?.status === 'completed';
-  
+  // Removed advanced search display logic
   const hasHistory = conversationHistory.previousQueries.length > 0;
-  
-  // Use completed search data or live data based on what's available
-  const displaySteps = isSearchAlreadyCompleted && restoredState.steps ? restoredState.steps : steps;
-  const displayActiveStepId = isSearchAlreadyCompleted ? null : (isFinalStepComplete ? manualStepId || activeStepId : activeStepId);
-  const displayWebData = isSearchAlreadyCompleted && restoredState.webData ? restoredState.webData : webData;
   
   return (
     <motion.div
@@ -1224,15 +1189,9 @@ function DeepResearchBlock({ query, conversationHistory, onClearHistory, onFinal
           </div>
       )}
       <div className="flex-1 flex flex-col h-full">
-        <AdvanceSearch
-          steps={displaySteps}
-          activeStepId={displayActiveStepId}
-          onManualStepClick={isFinalStepComplete ? setManualStepId : undefined}
-          manualNavigationEnabled={isFinalStepComplete}
-          error={error}
-          webData={displayWebData}
-          onFinalAnswer={safeOnFinalAnswer}
-        />
+        <div className="p-4 text-center text-gray-400">
+          Advanced search functionality has been removed
+        </div>
       </div>
       {error && (
         <div className="text-red-500 text-sm text-center mt-2">{error}</div>
