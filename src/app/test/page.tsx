@@ -39,7 +39,7 @@ import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import Image from 'next/image';
 import rehypeRaw from 'rehype-raw';
 import { Message as BaseMessage } from '@/utils/conversation-context';
-// Search component removed with advanced search
+import Search from '@/components/Search';
 import { Message as ConversationMessage } from "@/utils/conversation-context";
 
 // Define a type that includes all possible query types (including the ones in SCHEMAS and 'conversation')
@@ -1459,7 +1459,7 @@ export default function TestChat() {
     if (!input.trim()) return;
 
     // First check if we're in search mode
-    if (activeButton === 'search') {
+    if (activeMode === 'search') {
       // Add user message to chat
       setMessages(prev => [
         ...prev,
@@ -1581,7 +1581,7 @@ export default function TestChat() {
       // Determine the appropriate prompt based on mode and query type
       let turnSpecificSystemPrompt = BASE_SYSTEM_PROMPT;
 
-      if (activeButton === 'search') {
+      if (activeMode === 'search') {
         turnSpecificSystemPrompt = getSearchPrompt(BASE_SYSTEM_PROMPT);
 
       } else {
@@ -2224,32 +2224,32 @@ export default function TestChat() {
                 <div className="flex flex-row w-full items-center justify-between gap-2">
                   {/* Left group: Write, Search, Deep Research */}
                   <div className="flex flex-row gap-2 items-center">
-                    {/* Write button */}
+                                        {/* Chat button */}
                     <button
                       type="button"
+                      onClick={() => handleModeSwitch('chat')}
                       className={`flex items-center gap-1.5 rounded-full transition px-3 py-1.5 flex-shrink-0 text-xs font-medium
-                        ${activeButton === 'write' ? 'bg-gray-800 text-cyan-400' : 'bg-gray-800 text-gray-400 opacity-60'}
+                        ${activeMode === 'chat' ? 'bg-gray-800 text-cyan-400' : 'bg-gray-800 text-gray-400 opacity-60'}
                         hover:bg-gray-700`}
                       style={{ height: "36px" }}
-                      onClick={() => handleButtonClick('write')}
                     >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: activeButton === 'write' ? '#22d3ee' : '#a3a3a3' }}>
-                        <path d="M12 20h9" />
-                        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19.5 3 21l1.5-4L16.5 3.5z" />
-              </svg>
-                      <span className="whitespace-nowrap">Write</span>
-            </button>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: activeMode === 'chat' ? '#22d3ee' : '#a3a3a3' }}>
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                      </svg>
+                      <span className="whitespace-nowrap">Chat</span>
+                    </button>
 
                     {/* Search button */}
                     <button
                       type="button"
+                      onClick={() => handleModeSwitch('search')}
                       className={`
                         flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 
-                        ${activeButton === 'search' ? 'bg-gray-800 text-cyan-400' : 'bg-gray-800 text-gray-400 opacity-60'}
+                        ${activeMode === 'search' ? 'bg-gray-800 text-cyan-400' : 'bg-gray-800 text-gray-400 opacity-60'}
                         hover:opacity-100 hover:scale-105 active:scale-95
                       `}
                     >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: activeButton === 'search' ? '#22d3ee' : '#a3a3a3' }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: activeMode === 'search' ? '#22d3ee' : '#a3a3a3' }}>
                         <circle cx="11" cy="11" r="8"></circle>
                         <path d="m21 21-4.35-4.35"></path>
                       </svg>
@@ -2509,10 +2509,14 @@ export default function TestChat() {
                 );
               } else if (msg.role === 'search-ui') {
                 return (
-                  <div key={msg.id} className="p-4 bg-gray-100 rounded-md">
-                    <p>Search functionality temporarily disabled</p>
-                    <p className="text-sm text-gray-600">Query: {msg.query || msg.content}</p>
-                  </div>
+                  <Search
+                    key={msg.id}
+                    query={msg.query || msg.content}
+                    onComplete={(result: any) => {
+                      // Handle search completion if needed
+                      console.log('Search completed:', result);
+                    }}
+                  />
                 );
               } else {
                 return (
