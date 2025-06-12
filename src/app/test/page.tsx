@@ -1405,28 +1405,50 @@ ${JSON.stringify(schema, null, 2)}`;
 
 // Function to extract think content during streaming and update live thinking state
 const extractThinkContentDuringStream = (content: string) => {
-  const thinkRegex = /<think>([\s\S]*?)(<\/think>|$)/g;
   let thinkContent = '';
   let mainContent = content;
-  let match;
   
-  // Extract all think content
+  // Only look for actual <think> tags, be more precise
+  const thinkRegex = /<think>([\s\S]*?)(?:<\/think>|$)/g;
+  let match;
+  let hasOpenThinkTag = false;
+  
+  // Check if we have an opening think tag
+  if (content.includes('<think>')) {
+    hasOpenThinkTag = true;
+  }
+  
+  // Extract all complete think content
   while ((match = thinkRegex.exec(content)) !== null) {
-    thinkContent += match[1];
-    // Remove the think tags from main content
+    const extractedContent = match[1];
+    // Only add non-empty content
+    if (extractedContent && extractedContent.trim()) {
+      thinkContent += extractedContent;
+    }
+    // Remove the complete think tags from main content
     mainContent = mainContent.replace(match[0], '');
   }
   
-  // Also handle partial think tags (when streaming)
-  const partialThinkMatch = content.match(/<think>([^<]*?)$/);
-  if (partialThinkMatch) {
-    thinkContent += partialThinkMatch[1];
-    mainContent = mainContent.replace(partialThinkMatch[0], '');
+  // Handle partial think tags only if we have an open tag (when streaming)
+  if (hasOpenThinkTag && !content.includes('</think>')) {
+    const partialThinkMatch = content.match(/<think>([\s\S]*)$/);
+    if (partialThinkMatch && partialThinkMatch[1]) {
+      const partialContent = partialThinkMatch[1].trim();
+      // Only add substantial content (more than just whitespace or single words)
+      if (partialContent && partialContent.length > 10) {
+        thinkContent += partialContent;
+      }
+      mainContent = mainContent.replace(partialThinkMatch[0], '');
+    }
   }
+  
+  // Clean up main content - remove any stray think tag markers
+  mainContent = mainContent.replace(/<\/?think[^>]*>/g, '').trim();
   
   return {
     thinkContent: thinkContent.trim(),
-    mainContent: mainContent.trim()
+    mainContent: mainContent.trim(),
+    hasValidThinkContent: thinkContent.trim().length > 10 // Minimum threshold for valid content
   };
 };
 
@@ -1673,19 +1695,19 @@ This is a test message to verify that think tags are rendering correctly. If you
     setMessages((prev) => [...prev, userMessageForDisplay]);
     setInput("");
     
-    // Immediately add a live thinking button
-    const liveThinkingMessageId = uuidv4();
-    setCurrentThinkingMessageId(liveThinkingMessageId);
-    setLiveThinking('');
-    setMessages((prev) => [...prev, {
-      role: "assistant" as const,
-      content: "<think-live></think-live>", // Special marker for live thinking
-      id: liveThinkingMessageId,
-      timestamp: Date.now(),
-      isStreaming: true,
-      isProcessed: false
-    }]);
-    
+    // Don't immediately create a thinking message - wait until we have actual thinking content
+    // const liveThinkingMessageId = uuidv4();
+    // setCurrentThinkingMessageId(liveThinkingMessageId);
+    // setLiveThinking('');
+    // setMessages((prev) => [...prev, {
+    //   role: "assistant" as const,
+    //   content: "<think-live></think-live>", // Special marker for live thinking
+    //   id: liveThinkingMessageId,
+    //   timestamp: Date.now(),
+    //   isStreaming: true,
+    //   isProcessed: false
+    // }]);
+
       if (selectedFilesForUpload.length > 0) {
         const clientSideSupabase = createSupabaseClient();
         if (!clientSideSupabase) throw new Error('Supabase client not available');
@@ -1855,10 +1877,25 @@ This is a test message to verify that think tags are rendering correctly. If you
                     contentBuffer += delta;
                     
                     // Extract think content and main content separately
-                    const { thinkContent, mainContent } = extractThinkContentDuringStream(contentBuffer);
+                    const extracted = extractThinkContentDuringStream(contentBuffer);
+                    const { thinkContent, mainContent, hasValidThinkContent } = extracted;
                     
-                    // Update live thinking state
-                    if (thinkContent && currentThinkingMessageId) {
+                    // Create thinking message only when we have valid thinking content
+                    if (hasValidThinkContent && !currentThinkingMessageId) {
+                      const liveThinkingMessageId = uuidv4();
+                      setCurrentThinkingMessageId(liveThinkingMessageId);
+                      setLiveThinking(thinkContent);
+                      setMessages((prev) => [...prev, {
+                        role: "assistant" as const,
+                        content: `<think-live>${thinkContent}</think-live>`,
+                        id: liveThinkingMessageId,
+                        timestamp: Date.now(),
+                        isStreaming: true,
+                        isProcessed: false
+                      }]);
+                    }
+                    // Only update live thinking state if we have valid thinking content and existing thinking message
+                    else if (hasValidThinkContent && currentThinkingMessageId) {
                       setLiveThinking(thinkContent);
                       // Update the thinking message
                       setMessages((prev) => {
@@ -1971,7 +2008,8 @@ This is a test message to verify that think tags are rendering correctly. If you
         }
         
         // Apply post-processing after streaming is complete
-        const { thinkContent: finalThinkContent, mainContent: finalMainContent } = extractThinkContentDuringStream(contentBuffer);
+        const extractedFinal = extractThinkContentDuringStream(contentBuffer);
+        const { thinkContent: finalThinkContent, mainContent: finalMainContent, hasValidThinkContent: hasFinalValidThinking } = extractedFinal;
         const { hasAdvancedStructure, cleanedContent } = detectAndCleanAdvancedStructure(finalMainContent);
         
         // Update the main content message
@@ -1993,20 +2031,28 @@ This is a test message to verify that think tags are rendering correctly. If you
           return updatedMessages;
         });
         
-        // Convert the live thinking message to a final thinking message
-        if (finalThinkContent && currentThinkingMessageId) {
-          setMessages((prev) => {
-            return prev.map(msg => 
-              msg.id === currentThinkingMessageId 
-                ? { 
-                    ...msg, 
-                    content: `<think>${finalThinkContent}</think>`,
-                    isProcessed: true,
-                    isStreaming: false
-                  }
-                : msg
-            );
-          });
+        // Convert the live thinking message to a final thinking message or remove if empty
+        if (currentThinkingMessageId) {
+          if (hasFinalValidThinking && finalThinkContent) {
+            // Convert to final thinking message
+            setMessages((prev) => {
+              return prev.map(msg => 
+                msg.id === currentThinkingMessageId 
+                  ? { 
+                      ...msg, 
+                      content: `<think>${finalThinkContent}</think>`,
+                      isProcessed: true,
+                      isStreaming: false
+                    }
+                  : msg
+              );
+            });
+          } else {
+            // Remove empty thinking message
+            setMessages((prev) => {
+              return prev.filter(msg => msg.id !== currentThinkingMessageId);
+            });
+          }
           // Clear the live thinking state
           setCurrentThinkingMessageId(null);
           setLiveThinking('');
@@ -2679,15 +2725,26 @@ This is a test message to verify that think tags are rendering correctly. If you
                           <span className="text-sm text-white italic font-light mb-2">[Response stopped by user]</span>
                         ) : isLiveThinking ? (
                           <div className="w-full max-w-full overflow-hidden">
-                            {/* Show live thinking button */}
-                            <ThinkingButton 
-                              key={`${msg.id}-live-thinking`} 
-                              content={msg.content.includes('<think-live>') ? 
-                                msg.content.replace(/<think-live>(.*?)<\/think-live>/g, '$1') : 
-                                'Starting to think...'
-                              } 
-                              isLive={msg.isStreaming || false} 
-                            />
+                            {/* Show live thinking button only if we have content */}
+                            {msg.content.includes('<think-live>') && msg.content.replace(/<think-live>(.*?)<\/think-live>/g, '$1').trim() ? (
+                              <ThinkingButton 
+                                key={`${msg.id}-live-thinking`} 
+                                content={msg.content.replace(/<think-live>(.*?)<\/think-live>/g, '$1')} 
+                                isLive={msg.isStreaming || false} 
+                              />
+                            ) : (
+                              // Show minimal indicator for empty thinking
+                              <div className="my-2 flex items-center gap-2 px-3 py-2 rounded-md bg-gray-800 border border-gray-700 text-cyan-300 text-sm opacity-60">
+                                <div className="w-4 h-4 relative">
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="animate-pulse">
+                                    <circle cx="12" cy="12" r="3" fill="currentColor" opacity="0.8" />
+                                    <circle cx="6" cy="12" r="2" fill="currentColor" opacity="0.6" />
+                                    <circle cx="18" cy="12" r="2" fill="currentColor" opacity="0.6" />
+                                  </svg>
+                                </div>
+                                <span className="font-medium text-xs">Processing...</span>
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <div className="w-full max-w-full overflow-hidden">
