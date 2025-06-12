@@ -1806,23 +1806,7 @@ export default function TestChat() {
       return;
     }
 
-    // Then check if we're in advance search mode
-    if (activeButton === 'advance' || input.includes('@AdvanceSearch')) {
-      setIsAdvanceSearchActive(true);
-      setShowAdvanceSearchUI(true);
-      const researchId = uuidv4();
-      setMessages(prev => [
-        ...prev,
-        { role: "user", content: input, id: uuidv4(), timestamp: Date.now(), isProcessed: true },
-        { role: "deep-research", content: input, researchId, id: uuidv4(), timestamp: Date.now(), isProcessed: true }
-      ]);
-      setInput("");
-      setImagePreviewUrls([]);
-      setSelectedFilesForUpload([]);
-      setIsLoading(false);
-      setIsAiResponding(false);
-      return;
-    }
+    // Removed advance search mode check
 
     // If we get here, we're in default chat mode
     let userMessageId = '';
@@ -1843,13 +1827,7 @@ export default function TestChat() {
 
     if (!hasInteracted) setHasInteracted(true);
       
-      // Reset any advance search state when in default chat mode
-    if (showAdvanceSearchUI) {
-        setShowAdvanceSearchUI(false);
-        setIsAdvanceSearchActive(false);
-        setIsRestoredFromStorage(false);
-        setRestoredDeepResearchState({});
-    }
+      // Removed advance search state reset
 
     setIsAiResponding(true);
       setIsLoading(true);
@@ -2859,79 +2837,17 @@ export default function TestChat() {
                   </motion.div>
                 );
               } else if (msg.role === "deep-research") {
-                // Always render DeepResearchBlock for every deep-research message
+                // Show message that advanced search has been removed
                 return (
-                  <DeepResearchBlock 
-                    key={msg.id + '-dr-' + i}
-                    query={msg.content} 
-                    conversationHistory={advanceSearchHistory}
-                    onClearHistory={clearAdvanceSearchHistory}
-                    onFinalAnswer={(answer: string, sources?: any[]) => {
-                      // Check if we have an existing message with no content (streaming placeholder)
-                      const existingMessageIndex = messages.findIndex(existingMsg => 
-                        existingMsg.role === "assistant" && 
-                        existingMsg.contentType === 'deep-research' && 
-                        existingMsg.content === '' // Empty content means it's our streaming placeholder
-                      );
-                      
-                      if (existingMessageIndex >= 0 && answer.length > 0) {
-                        // Update the existing streaming message
-                        setMessages(prev => {
-                          const updatedMessages = [...prev];
-                          updatedMessages[existingMessageIndex] = {
-                            ...updatedMessages[existingMessageIndex],
-                            content: makeCitationsClickable(answer, sources),
-                            webSources: sources || [],
-                            isProcessed: true
-                          };
-                          return updatedMessages;
-                        });
-                      } else {
-                        // Only check for duplicates for non-empty messages
-                        const isDuplicate = answer.length > 0 && messages.some(existingMsg => 
-                        existingMsg.role === "assistant" && 
-                        existingMsg.contentType === 'deep-research' && 
-                        existingMsg.content.includes(answer.substring(0, 100))
-                      );
-                        
-                        // Add a new message if not a duplicate
-                      if (!isDuplicate) {
-                        setMessages(prev => [
-                          ...prev,
-                          {
-                            role: "assistant",
-                            content: makeCitationsClickable(answer, sources),
-                            id: uuidv4(),
-                            timestamp: Date.now(),
-                              isProcessed: answer.length > 0,
-                            contentType: 'deep-research',
-                            webSources: sources || []
-                          }
-                        ]);
-                        }
-                      }
-                    }}
-                  />
+                  <div key={msg.id + '-dr-' + i} className="p-4 text-center text-gray-400 border border-gray-700 rounded-lg">
+                    Advanced search functionality has been removed
+                  </div>
                 );
               } else if (msg.role === 'search-ui') {
                 return (
-                  <SearchPanel 
-                    key={msg.id + '-search-' + i}
-                    query={msg.content} 
-                    onComplete={(result) => {
-                      // When search is complete, add the result as an assistant message
-                      setMessages(prev => [
-                        ...prev,
-                        {
-                          id: uuidv4(),
-                          role: 'assistant',
-                          content: result,
-                          timestamp: Date.now(),
-                          isProcessed: true
-                        }
-                      ]);
-                    }}
-                  />
+                  <div key={msg.id + '-search-' + i} className="p-4 text-center text-gray-400 border border-gray-700 rounded-lg">
+                    Search functionality has been simplified
+                  </div>
                 );
               } else {
                 return (
