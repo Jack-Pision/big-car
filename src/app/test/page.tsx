@@ -39,7 +39,7 @@ import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import Image from 'next/image';
 import rehypeRaw from 'rehype-raw';
 import { Message as BaseMessage } from '@/utils/conversation-context';
-import Search from '@/components/Search';
+// Search component removed with advanced search
 import { Message as ConversationMessage } from "@/utils/conversation-context";
 
 // Define a type that includes all possible query types (including the ones in SCHEMAS and 'conversation')
@@ -1805,40 +1805,23 @@ export default function TestChat() {
           }
         }
         
-        // Apply post-processing after streaming is complete
-        if (showAdvanceSearchUI || input.includes('@AdvanceSearch')) {
-          const processedResearch = enforceAdvanceSearchStructure(contentBuffer);
-          setMessages((prev) => {
-            const updatedMessages = [...prev];
-            const msgIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
-            if (msgIndex !== -1) {
-              updatedMessages[msgIndex] = {
-                ...updatedMessages[msgIndex],
-                content: processedResearch,
-                contentType: 'deep-research',
-                isProcessed: true // Ensure message is marked as processed
-              };
-            }
-            return updatedMessages;
-          });
-        } else {
-          // For default chat, detect if it has advanced search structure and clean it if needed
-          const { hasAdvancedStructure, cleanedContent } = detectAndCleanAdvancedStructure(contentBuffer);
-          
-          setMessages((prev) => {
-            const updatedMessages = [...prev];
-            const msgIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
-            if (msgIndex !== -1) {
-              updatedMessages[msgIndex] = {
-                ...updatedMessages[msgIndex],
-                content: hasAdvancedStructure ? cleanedContent : contentBuffer,
-                contentType: 'conversation',
-                isProcessed: true // Ensure message is marked as processed
-              };
-            }
-            return updatedMessages;
-          });
-        }
+        // Apply post-processing after streaming is complete - advanced search removed
+        // For default chat, detect if it has advanced search structure and clean it if needed
+        const { hasAdvancedStructure, cleanedContent } = detectAndCleanAdvancedStructure(contentBuffer);
+        
+        setMessages((prev) => {
+          const updatedMessages = [...prev];
+          const msgIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
+          if (msgIndex !== -1) {
+            updatedMessages[msgIndex] = {
+              ...updatedMessages[msgIndex],
+              content: hasAdvancedStructure ? cleanedContent : contentBuffer,
+              contentType: 'conversation',
+              isProcessed: true // Ensure message is marked as processed
+            };
+          }
+          return updatedMessages;
+        });
         
         if (uploadedImageUrls.length > 0) {
             const { content: cleanedContent } = cleanAIResponse(aiMsg.content);
@@ -2524,71 +2507,12 @@ export default function TestChat() {
                     )}
                   </motion.div>
                 );
-              } else if (msg.role === "deep-research") {
-                // Always render DeepResearchBlock for every deep-research message
-                return (
-                  <DeepResearchBlock 
-                    key={msg.id + '-dr-' + i}
-                    query={msg.content} 
-                    conversationHistory={advanceSearchHistory}
-                    onClearHistory={clearAdvanceSearchHistory}
-                    onFinalAnswer={(answer: string, sources?: any[]) => {
-                      // Check if we have an existing message with no content (streaming placeholder)
-                      const existingMessageIndex = messages.findIndex(existingMsg => 
-                        existingMsg.role === "assistant" && 
-                        existingMsg.contentType === 'deep-research' && 
-                        existingMsg.content === '' // Empty content means it's our streaming placeholder
-                      );
-                      
-                      if (existingMessageIndex >= 0 && answer.length > 0) {
-                        // Update the existing streaming message
-                        setMessages(prev => {
-                          const updatedMessages = [...prev];
-                          updatedMessages[existingMessageIndex] = {
-                            ...updatedMessages[existingMessageIndex],
-                            content: makeCitationsClickable(answer, sources),
-                            webSources: sources || [],
-                            isProcessed: true
-                          };
-                          return updatedMessages;
-                        });
-                      } else {
-                        // Only check for duplicates for non-empty messages
-                        const isDuplicate = answer.length > 0 && messages.some(existingMsg => 
-                        existingMsg.role === "assistant" && 
-                        existingMsg.contentType === 'deep-research' && 
-                        existingMsg.content.includes(answer.substring(0, 100))
-                      );
-                        
-                        // Add a new message if not a duplicate
-                      if (!isDuplicate) {
-                        setMessages(prev => [
-                          ...prev,
-                          {
-                            role: "assistant",
-                            content: makeCitationsClickable(answer, sources),
-                            id: uuidv4(),
-                            timestamp: Date.now(),
-                              isProcessed: answer.length > 0,
-                            contentType: 'deep-research',
-                            webSources: sources || []
-                          }
-                        ]);
-                        }
-                      }
-                    }}
-                  />
-                );
               } else if (msg.role === 'search-ui') {
                 return (
-                  <Search
-                    key={msg.id}
-                    query={msg.query || msg.content}
-                    onComplete={(result: any) => {
-                      // Handle search completion if needed
-                      console.log('Search completed:', result);
-                    }}
-                  />
+                  <div key={msg.id} className="p-4 bg-gray-100 rounded-md">
+                    <p>Search functionality temporarily disabled</p>
+                    <p className="text-sm text-gray-600">Query: {msg.query || msg.content}</p>
+                  </div>
                 );
               } else {
                 return (
