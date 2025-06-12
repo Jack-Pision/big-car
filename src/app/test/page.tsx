@@ -1709,7 +1709,7 @@ export default function TestChat() {
                     contentBuffer += delta;
                     
                     // For default chat mode, don't process - just show raw content
-                    if (!showAdvanceSearchUI && !input.includes('@AdvanceSearch')) {
+                    if (true) {
                       if (!hasActualContent) {
                         hasActualContent = true;
                         aiMsg.content = contentBuffer;
@@ -2067,58 +2067,20 @@ export default function TestChat() {
   const advanceAbortController = useRef<AbortController | null>(null);
 
   function handleModeSwitch(newMode: 'chat' | 'search' | 'advance') {
-    if (activeMode !== newMode) {
-      if (chatAbortController.current) chatAbortController.current.abort();
-      if (searchAbortController.current) searchAbortController.current.abort();
-      if (advanceAbortController.current) advanceAbortController.current.abort();
-    }
     setActiveMode(newMode);
+    setActiveButton(newMode);
   }
 
-  // Add a new function to handle retry/regenerate
   const handleRetry = (originalQuery: string) => {
-    try {
-      // Create a slightly modified query to ensure a different response
-      const retryQuery = `${originalQuery} (please provide alternative information)`;
-      
-      // Find the last user message to get the original query
-      const lastUserMessage = [...messages].reverse().find(msg => msg.role === 'user');
-      
-      if (lastUserMessage) {
-        console.log('Retrying with query:', retryQuery);
-        
-        // Add the messages to the chat
-        setMessages(prev => [
-          ...prev,
-          {
-            role: 'user',
-            id: uuidv4(),
-            content: retryQuery,
-            timestamp: Date.now(),
-            isProcessed: true
-          }
-        ]);
-        
-        // Submit the modified query
-        // We're using the input state to leverage the existing handleSend function
-        setInput(retryQuery);
-        
-        // Give a small delay to ensure state is updated before submitting
-        setTimeout(() => {
-          const form = document.querySelector('form');
-          if (form) {
-            console.log('Submitting retry form');
-            form.dispatchEvent(new Event('submit', { cancelable: true }));
-          } else {
-            console.error('Form element not found for retry submission');
-          }
-        }, 200);
-      } else {
-        console.error('No user message found for retry');
+    setInput(originalQuery);
+    // Clear the last assistant message if it exists
+    setMessages(prev => {
+      const lastMessage = prev[prev.length - 1];
+      if (lastMessage && lastMessage.role === 'assistant') {
+        return prev.slice(0, -1);
       }
-    } catch (error) {
-      console.error('Error in handleRetry:', error);
-    }
+      return prev;
+    });
   };
 
   // Function to handle copying content to clipboard
