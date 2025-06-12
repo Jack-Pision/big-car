@@ -879,14 +879,60 @@ const makeCitationsClickable = (content: string, sources: any[] = []) => {
   });
 };
 
+// Function to process think tags and render them as React components
+const processThinkTags = (content: string) => {
+  if (!content || !content.includes('<think>')) {
+    return { processedContent: content, thinkBlocks: [] };
+  }
+
+  const parts = [];
+  const thinkBlocks = [];
+  let lastIndex = 0;
+  
+  // Find all think tag pairs
+  const thinkRegex = /<think>([\s\S]*?)<\/think>/g;
+  let match;
+  
+  while ((match = thinkRegex.exec(content)) !== null) {
+    // Add content before the think tag
+    if (match.index > lastIndex) {
+      parts.push(content.slice(lastIndex, match.index));
+    }
+    
+    // Store the think content and add a placeholder
+    const thinkContent = match[1].trim();
+    const thinkId: string = `think-block-${thinkBlocks.length}`;
+    thinkBlocks.push({ id: thinkId, content: thinkContent });
+    parts.push(`<!-- ${thinkId} -->`);
+    
+    lastIndex = match.index + match[0].length;
+  }
+  
+  // Add remaining content after the last think tag
+  if (lastIndex < content.length) {
+    parts.push(content.slice(lastIndex));
+  }
+  
+  return { 
+    processedContent: parts.join(''), 
+    thinkBlocks 
+  };
+};
+
+// Component to render think blocks
+const ThinkBlock = ({ content }: { content: string }) => (
+  <div className="bg-gray-800 border border-gray-700 p-3 my-2 rounded-md text-cyan-300">
+    <div className="font-semibold mb-1 text-sm text-cyan-400">AI Thinking Process:</div>
+    <div className="whitespace-pre-line text-sm">{content}</div>
+  </div>
+);
+
 // Add a simple Stack component for vertical spacing
 const Stack = ({ spacing = 20, children }: { spacing?: number; children: React.ReactNode }) => (
   <div style={{ display: 'flex', flexDirection: 'column', gap: `${spacing}px` }}>
     {children}
   </div>
 );
-
-
 
 /**
  * Smart content extraction function that attempts to identify and extract
@@ -2426,7 +2472,11 @@ This is a test message to verify that think tags are rendering correctly. If you
                 // Don't filter out <think> tags, only remove thinking indicators
                 const cleanContent = rawContent.replace(/<thinking-indicator.*?>\n<\/thinking-indicator>\n|<thinking-indicator.*?\/>/g, '');
                 const isStoppedMsg = cleanContent.trim() === '[Response stopped by user]';
-                const processedContent = makeCitationsClickable(cleanContent, msg.webSources || []);
+                
+                // Process think tags and extract them
+                const { processedContent, thinkBlocks } = processThinkTags(cleanContent);
+                const finalContent = makeCitationsClickable(processedContent, msg.webSources || []);
+                
                 if (showPulsingDot && i === messages.length -1 ) setShowPulsingDot(false);
                 
                 return (
@@ -2448,41 +2498,24 @@ This is a test message to verify that think tags are rendering correctly. If you
                           <span className="text-sm text-white italic font-light mb-2">[Response stopped by user]</span>
                         ) : (
                           <div className="w-full max-w-full overflow-hidden">
-                        {/* Customize ReactMarkdown to handle <think> tags properly */}
-                        <ReactMarkdown 
-                          remarkPlugins={[remarkGfm]} 
-                          rehypePlugins={[rehypeRaw]} 
-                          className="prose dark:prose-invert max-w-none"
-                          components={{
-                            // Custom renderer for <think> tags to display them properly
-                            p: ({node, ...props}) => {
-                              const content = String(props.children);
-                              if (content.includes('<think>') && content.includes('</think>')) {
-                                // Extract think content and wrap it in a styled div
-                                const beforeThink = content.split('<think>')[0];
-                                const thinkContent = content.split('<think>')[1]?.split('</think>')[0];
-                                const afterThink = content.split('</think>')[1];
-                                
-                                return (
-                                  <div>
-                                    {beforeThink && <p>{beforeThink}</p>}
-                                    {thinkContent && (
-                                      <div className="bg-gray-800 border border-gray-700 p-3 my-2 rounded-md text-cyan-300">
-                                        <div className="font-semibold mb-1 text-sm text-cyan-400">AI Thinking Process:</div>
-                                        <p className="whitespace-pre-line">{thinkContent}</p>
-                                      </div>
-                                    )}
-                                    {afterThink && <p>{afterThink}</p>}
-                                  </div>
-                                );
-                              }
-                              return <p {...props} />;
-                            }
-                          }}
-                          children={processedContent}
-                            />
-    </div>
-                    )}
+                            {/* Render think blocks first */}
+                            {thinkBlocks.map((block, index) => (
+                              <ThinkBlock key={`${msg.id}-think-${index}`} content={block.content} />
+                            ))}
+                            
+                            {/* Render the main content with ReactMarkdown */}
+                            <ReactMarkdown 
+                              remarkPlugins={[remarkGfm]} 
+                              rehypePlugins={[rehypeRaw]} 
+                              className="prose dark:prose-invert max-w-none"
+                              components={{
+                                // Remove the think tag component override since we handle it above
+                              }}
+                            >
+                              {finalContent.replace(/<!-- think-block-\d+ -->/g, '')}
+                            </ReactMarkdown>
+                          </div>
+                        )}
                     
                     {/* Action buttons for text content */}
                     {msg.isProcessed && !isStoppedMsg && (
@@ -2530,7 +2563,7 @@ This is a test message to verify that think tags are rendering correctly. If you
                           </svg>
                           <span className="text-xs">Retry</span>
                         </button>
-    </div>
+                      </div>
                     )}
                   </motion.div>
                 );
