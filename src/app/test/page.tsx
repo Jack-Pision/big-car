@@ -880,9 +880,18 @@ const makeCitationsClickable = (content: string, sources: any[] = []) => {
 };
 
 // Function to process think tags and render them as React components
-const processThinkTags = (content: string) => {
+const processThinkTags = (content: string, isLive: boolean = false) => {
+  // Handle live thinking marker
+  if (content.includes('<think-live></think-live>')) {
+    return { 
+      processedContent: '', 
+      thinkBlocks: [], 
+      isLiveThinking: true 
+    };
+  }
+  
   if (!content || !content.includes('<think>')) {
-    return { processedContent: content, thinkBlocks: [] };
+    return { processedContent: content, thinkBlocks: [], isLiveThinking: false };
   }
 
   const parts = [];
@@ -915,7 +924,8 @@ const processThinkTags = (content: string) => {
   
   return { 
     processedContent: parts.join(''), 
-    thinkBlocks 
+    thinkBlocks,
+    isLiveThinking: false
   };
 };
 
@@ -1436,6 +1446,10 @@ export default function TestChat() {
   const isChatEmpty = messages.length === 0;
   // Track if the user has sent the first message (for animation and session creation)
   const [hasInteracted, setHasInteracted] = useState(false);
+  
+  // Live thinking states
+  const [liveThinking, setLiveThinking] = useState<string>('');
+  const [currentThinkingMessageId, setCurrentThinkingMessageId] = useState<string | null>(null);
 
   // This will control the position of the input box and heading (centered vs bottom)
   const inputPosition = isChatEmpty && !hasInteracted && !activeSessionId ? "center" : "bottom";
@@ -1631,7 +1645,20 @@ This is a test message to verify that think tags are rendering correctly. If you
     }
     setMessages((prev) => [...prev, userMessageForDisplay]);
     setInput("");
-
+    
+    // Immediately add a live thinking button
+    const liveThinkingMessageId = uuidv4();
+    setCurrentThinkingMessageId(liveThinkingMessageId);
+    setLiveThinking('');
+    setMessages((prev) => [...prev, {
+      role: "assistant" as const,
+      content: "<think-live></think-live>", // Special marker for live thinking
+      id: liveThinkingMessageId,
+      timestamp: Date.now(),
+      isStreaming: true,
+      isProcessed: false
+    }]);
+    
       if (selectedFilesForUpload.length > 0) {
         const clientSideSupabase = createSupabaseClient();
         if (!clientSideSupabase) throw new Error('Supabase client not available');
@@ -2235,6 +2262,90 @@ This is a test message to verify that think tags are rendering correctly. If you
     // Removed advanced search logic
   }, [isAiResponding]);
 
+  // Component to render think blocks as expandable buttons
+  const ThinkingButton = ({ content, isLive = false }: { content: string, isLive?: boolean }) => {
+    const [isExpanded, setIsExpanded] = useState(false);
+    
+    return (
+      <div className="my-2">
+        {/* Compact thinking button */}
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="flex items-center gap-2 px-3 py-2 rounded-md bg-gray-800 border border-gray-700 text-cyan-300 hover:bg-gray-700 transition-all text-sm"
+        >
+          {/* Animated thinking icon */}
+          <div className="w-4 h-4 relative">
+            <svg 
+              width="16" 
+              height="16" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              className={`${isLive ? 'animate-pulse' : ''}`}
+            >
+              <circle cx="12" cy="12" r="3" fill="currentColor" opacity="0.8">
+                {isLive && (
+                  <animate 
+                    attributeName="r" 
+                    values="3;5;3" 
+                    dur="1.5s" 
+                    repeatCount="indefinite"
+                  />
+                )}
+              </circle>
+              <circle cx="6" cy="12" r="2" fill="currentColor" opacity="0.6">
+                {isLive && (
+                  <animate 
+                    attributeName="opacity" 
+                    values="0.6;1;0.6" 
+                    dur="1.5s" 
+                    begin="0.3s"
+                    repeatCount="indefinite"
+                  />
+                )}
+              </circle>
+              <circle cx="18" cy="12" r="2" fill="currentColor" opacity="0.6">
+                {isLive && (
+                  <animate 
+                    attributeName="opacity" 
+                    values="0.6;1;0.6" 
+                    dur="1.5s" 
+                    begin="0.6s"
+                    repeatCount="indefinite"
+                  />
+                )}
+              </circle>
+            </svg>
+          </div>
+          
+          <span className="font-medium">
+            {isLive ? 'AI Thinking...' : 'AI Thinking Process'}
+          </span>
+          
+          {/* Expand/collapse indicator */}
+          <svg 
+            width="12" 
+            height="12" 
+            viewBox="0 0 24 24" 
+            fill="none" 
+            stroke="currentColor" 
+            strokeWidth="2"
+            className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+          >
+            <polyline points="6,9 12,15 18,9"></polyline>
+          </svg>
+        </button>
+        
+        {/* Expanded thinking content (same as before) */}
+        {isExpanded && (
+          <div className="mt-2 bg-gray-800 border border-gray-700 p-3 rounded-md text-cyan-300">
+            <div className="font-semibold mb-1 text-sm text-cyan-400">AI Thinking Process:</div>
+            <div className="whitespace-pre-line text-sm">{content}</div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <>
       <div className="min-h-screen flex flex-col px-4 sm:px-4 md:px-8 lg:px-0" style={{ background: '#161618' }}>
@@ -2474,7 +2585,7 @@ This is a test message to verify that think tags are rendering correctly. If you
                 const isStoppedMsg = cleanContent.trim() === '[Response stopped by user]';
                 
                 // Process think tags and extract them
-                const { processedContent, thinkBlocks } = processThinkTags(cleanContent);
+                const { processedContent, thinkBlocks, isLiveThinking } = processThinkTags(cleanContent);
                 const finalContent = makeCitationsClickable(processedContent, msg.webSources || []);
                 
                 if (showPulsingDot && i === messages.length -1 ) setShowPulsingDot(false);
@@ -2496,11 +2607,20 @@ This is a test message to verify that think tags are rendering correctly. If you
                         )}
                         {isStoppedMsg ? (
                           <span className="text-sm text-white italic font-light mb-2">[Response stopped by user]</span>
+                        ) : isLiveThinking ? (
+                          <div className="w-full max-w-full overflow-hidden">
+                            {/* Show live thinking button */}
+                            <ThinkingButton 
+                              key={`${msg.id}-live-thinking`} 
+                              content={liveThinking || 'Starting to think...'} 
+                              isLive={true} 
+                            />
+                          </div>
                         ) : (
                           <div className="w-full max-w-full overflow-hidden">
                             {/* Render think blocks first */}
                             {thinkBlocks.map((block, index) => (
-                              <ThinkBlock key={`${msg.id}-think-${index}`} content={block.content} />
+                              <ThinkingButton key={`${msg.id}-think-${index}`} content={block.content} isLive={false} />
                             ))}
                             
                             {/* Render the main content with ReactMarkdown */}
