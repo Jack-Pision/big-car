@@ -379,165 +379,323 @@ function postProcessAIChatResponse(text: string, isDefaultChat: boolean): string
 // Add global style to force all AI text to be white
 const GlobalStyles = () => (
   <style jsx global>{`
-    @keyframes typing {
-      0%, 50% { opacity: 1; }
-      51%, 100% { opacity: 0; }
-    }
-    
-    @keyframes shine {
-      0% { 
-        filter: brightness(1) drop-shadow(0 0 2px rgba(34, 211, 238, 0.3));
+    @keyframes shimmer {
+      0% {
+        background-position: -200% 0;
       }
-      50% { 
-        filter: brightness(1.3) drop-shadow(0 0 8px rgba(34, 211, 238, 0.6)) drop-shadow(0 0 12px rgba(192, 192, 192, 0.4));
-      }
-      100% { 
-        filter: brightness(1) drop-shadow(0 0 2px rgba(34, 211, 238, 0.3));
+      100% {
+        background-position: 200% 0;
       }
     }
-    
-    .physics-icon {
-      animation: shine 2s ease-in-out infinite;
+
+    .shimmer-button {
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(
+        90deg,
+        rgba(31, 41, 55, 1) 0%,
+        rgba(31, 41, 55, 1) 40%,
+        rgba(6, 182, 212, 0.15) 50%,
+        rgba(31, 41, 55, 1) 60%,
+        rgba(31, 41, 55, 1) 100%
+      );
+      background-size: 200% 100%;
+      animation: shimmer 2.5s ease-in-out infinite;
+    }
+
+    .shimmer-button::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(6, 182, 212, 0.2),
+        transparent
+      );
+      animation: shimmer 2.5s ease-in-out infinite;
+    }
+
+    @keyframes shimmer {
+      0% {
+        background-position: -200% 0;
+      }
+      100% {
+        background-position: 200% 0;
+      }
+    }
+
+    .shimmer-button {
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(
+        90deg,
+        rgba(31, 41, 55, 1) 0%,
+        rgba(31, 41, 55, 1) 40%,
+        rgba(6, 182, 212, 0.1) 50%,
+        rgba(31, 41, 55, 1) 60%,
+        rgba(31, 41, 55, 1) 100%
+      );
+      background-size: 200% 100%;
+      animation: shimmer 2s ease-in-out infinite;
+    }
+
+    .shimmer-button::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(6, 182, 212, 0.2),
+        transparent
+      );
+      animation: shimmer 2s ease-in-out infinite;
     }
     
-    .physics-icon-live {
-      animation: shine 1.5s ease-in-out infinite;
+    .ai-response-text {
+      line-height: 1.6;
     }
     
-    .ai-response-text, 
-    .ai-response-text * {
-      color: #ffffff !important;
+    .ai-response-text h1, .ai-response-text h2, .ai-response-text h3 {
+      margin-top: 1.5em;
+      margin-bottom: 0.5em;
     }
     
-    .ai-response-text h1,
-    .ai-response-text h2,
-    .ai-response-text h3,
-    .ai-response-text h4,
-    .ai-response-text h5,
-    .ai-response-text h6,
-    .ai-response-text p,
-    .ai-response-text a,
-    .ai-response-text li,
-    .ai-response-text span,
-    .ai-response-text strong,
-    .ai-response-text em {
-      color: #ffffff !important;
-      max-width: 100% !important;
-      word-wrap: break-word !important;
-      white-space: pre-wrap !important;
-      overflow-wrap: break-word !important;
+    .ai-response-text p {
+      margin-bottom: 1em;
     }
     
-    .ai-response-text pre,
-    .ai-response-text code {
-      color: #fff !important;
-      background: #232323 !important;
-      border-radius: 6px;
-      padding: 0.2em 0.4em;
-      max-width: 100% !important;
-      white-space: pre-wrap !important;
-      overflow-x: hidden !important;
-      word-break: break-word !important;
-    }
-    
-    .ai-response-text blockquote {
-      color: #fff !important;
-      background: #232323 !important;
-      border-left: 4px solid #00bcd4;
-      padding: 0.5em 1em;
-      margin: 0.5em 0;
-      border-radius: 6px;
-      max-width: 100% !important;
-      word-wrap: break-word !important;
+    .ai-response-text ul, .ai-response-text ol {
+      margin-bottom: 1em;
+      padding-left: 1.5em;
     }
     
     .ai-response-text li {
-      color: #fff !important;
-      background: transparent !important;
-      margin-left: 1.5rem !important;
-      position: relative !important;
-      display: list-item !important;
+      margin-bottom: 0.5em;
     }
     
-    .ai-response-text ul {
-      list-style-type: disc !important;
-      margin: 0.5em 0 !important;
-      padding-left: 1.5em !important;
+    .ai-response-text blockquote {
+      border-left: 4px solid #06b6d4;
+      padding-left: 1em;
+      margin: 1em 0;
+      font-style: italic;
+      color: #9ca3af;
     }
     
-    .ai-response-text ol {
-      list-style-type: decimal !important;
-      margin: 0.5em 0 !important;
-      padding-left: 1.5em !important;
+    .ai-response-text code {
+      background-color: #374151;
+      padding: 0.2em 0.4em;
+      border-radius: 0.25em;
+      font-size: 0.9em;
     }
     
-    .ai-response-text ul li {
-      list-style-type: disc !important;
-      display: list-item !important;
+    .ai-response-text pre {
+      background-color: #1f2937;
+      padding: 1em;
+      border-radius: 0.5em;
+      overflow-x: auto;
+      margin: 1em 0;
     }
     
-    .ai-response-text ol li {
-      list-style-type: decimal !important;
-      display: list-item !important;
+    .ai-response-text pre code {
+      background-color: transparent;
+      padding: 0;
     }
     
-    .ai-response-text * {
-      max-width: 100% !important;
-      overflow-wrap: break-word !important;
+    .ai-response-text table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 1em 0;
     }
-    .default-chat-markdown {
-      h1, h2, h3, h4, h5, h6 {
-        margin-top: 1.5em;
-        margin-bottom: 0.75em;
-        line-height: 1.3;
-        color: #e5e5e5;
-      }
-      p {
-        margin-bottom: 1em;
-        line-height: 1.7;
-        color: #e5e5e5;
-      }
-      ul, ol {
-        margin: 0.5em 0 1em 2em;
-        padding-left: 1.5em;
-      }
-      li {
-        margin-bottom: 0.5em;
-        color: #e5e5e5;
-      }
-      code {
-        background: #232323;
-        color: #fff;
-        border-radius: 6px;
-        padding: 0.2em 0.4em;
-        font-size: 0.95em;
-      }
-      pre {
-        background: #232323;
-        color: #fff;
-        border-radius: 8px;
-        padding: 1em;
-        overflow-x: auto;
-        margin: 1em 0;
-      }
-      table {
-        border-collapse: collapse;
-        width: 100%;
-        margin: 1.5em 0;
-      }
-      th, td {
-        border: 1px solid #333;
-        padding: 0.5em 1em;
-        text-align: left;
-      }
-      blockquote {
-        border-left: 4px solid #00bcd4;
-        background: #232323;
-        color: #fff;
-        padding: 0.5em 1em;
-        margin: 1em 0;
-        border-radius: 6px;
-      }
+    
+    .ai-response-text th, .ai-response-text td {
+      border: 1px solid #374151;
+      padding: 0.5em;
+      text-align: left;
+    }
+    
+    .ai-response-text th {
+      background-color: #374151;
+      font-weight: bold;
+    }
+    
+    .ai-response-text a {
+      color: #06b6d4;
+      text-decoration: underline;
+    }
+    
+    .ai-response-text a:hover {
+      color: #0891b2;
+    }
+    
+    .ai-response-text img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 0.5em;
+      margin: 1em 0;
+    }
+    
+    .ai-response-text hr {
+      border: none;
+      border-top: 1px solid #374151;
+      margin: 2em 0;
+    }
+    
+    .ai-response-text .highlight {
+      background-color: #fbbf24;
+      color: #1f2937;
+      padding: 0.1em 0.3em;
+      border-radius: 0.25em;
+    }
+    
+    .ai-response-text .warning {
+      background-color: #f59e0b;
+      color: #1f2937;
+      padding: 0.5em;
+      border-radius: 0.5em;
+      margin: 1em 0;
+    }
+    
+    .ai-response-text .info {
+      background-color: #06b6d4;
+      color: #1f2937;
+      padding: 0.5em;
+      border-radius: 0.5em;
+      margin: 1em 0;
+    }
+    
+    .ai-response-text .success {
+      background-color: #10b981;
+      color: #1f2937;
+      padding: 0.5em;
+      border-radius: 0.5em;
+      margin: 1em 0;
+    }
+    
+    .ai-response-text .error {
+      background-color: #ef4444;
+      color: #ffffff;
+      padding: 0.5em;
+      border-radius: 0.5em;
+      margin: 1em 0;
+    }
+    
+    .markdown-body {
+      color: #ffffff;
+    }
+    
+    .markdown-body h1, .markdown-body h2, .markdown-body h3, .markdown-body h4, .markdown-body h5, .markdown-body h6 {
+      color: #ffffff;
+      border-bottom: none;
+    }
+    
+    .markdown-body p, .markdown-body li, .markdown-body td, .markdown-body th {
+      color: #ffffff;
+    }
+    
+    .markdown-body code {
+      color: #06b6d4;
+      background-color: #374151;
+    }
+    
+    .markdown-body pre {
+      background-color: #1f2937;
+    }
+    
+    .markdown-body pre code {
+      color: #ffffff;
+    }
+    
+    .markdown-body blockquote {
+      color: #9ca3af;
+      border-left-color: #06b6d4;
+    }
+    
+    .markdown-body table {
+      color: #ffffff;
+    }
+    
+    .markdown-body th {
+      background-color: #374151;
+      color: #ffffff;
+    }
+    
+    .markdown-body td {
+      border-color: #374151;
+    }
+    
+    .markdown-body a {
+      color: #06b6d4;
+    }
+    
+    .markdown-body a:hover {
+      color: #0891b2;
+    }
+    
+    .markdown-body strong {
+      color: #ffffff;
+    }
+    
+    .markdown-body em {
+      color: #d1d5db;
+    }
+    
+    .prose {
+      max-width: none;
+    }
+    
+    .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
+      color: #ffffff;
+    }
+    
+    .prose p, .prose li {
+      color: #ffffff;
+    }
+    
+    .prose strong {
+      color: #ffffff;
+    }
+    
+    .prose code {
+      color: #06b6d4;
+    }
+    
+    .prose pre {
+      background-color: #1f2937;
+    }
+    
+    .prose blockquote {
+      color: #9ca3af;
+      border-left-color: #06b6d4;
+    }
+    
+    .prose a {
+      color: #06b6d4;
+    }
+    
+    .prose a:hover {
+      color: #0891b2;
+    }
+    
+    .prose table {
+      color: #ffffff;
+    }
+    
+    .prose th {
+      color: #ffffff;
+      background-color: #374151;
+    }
+    
+    .prose td {
+      color: #ffffff;
+      border-color: #374151;
     }
   `}</style>
 );
@@ -2239,22 +2397,23 @@ export default function TestChat() {
         {/* Compact thinking button */}
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="flex items-center gap-2 px-3 py-2 rounded-md bg-gray-800 border border-gray-700 text-cyan-300 hover:bg-gray-700 transition-all text-sm"
+          className={`flex items-center gap-2 px-3 py-2 rounded-md border border-gray-700 text-cyan-300 hover:bg-gray-700 transition-all text-sm ${
+            isLive ? 'shimmer-button' : 'bg-gray-800'
+          }`}
         >
-          {/* Clean Atom icon with conditional shining effects */}
-          <div className="w-4 h-4 relative">
+          {/* Clean Atom icon - no animations */}
+          <div className="w-4 h-4 relative z-10">
             <svg 
               width="16" 
               height="16" 
               viewBox="0 0 32 32" 
               fill="#06b6d4"
-              className={`${isLive ? 'physics-icon-live' : ''}`}
             >
               <path d="M10.799 4.652c-1.485 0.324-2.271 2.045-2.104 4.593 0.051 0.738 0.043 0.666 0.196 1.609 0.064 0.38 0.107 0.7 0.098 0.709-0.008 0.013-0.269 0.077-0.572 0.149-2.019 0.465-3.505 1.165-4.397 2.070-0.602 0.606-0.854 1.17-0.845 1.882 0.004 0.401 0.137 0.841 0.38 1.264 0.209 0.363 0.956 1.101 1.447 1.434 1.029 0.692 1.345 0.79 1.626 0.508 0.12-0.119 0.145-0.179 0.145-0.32 0-0.273-0.094-0.405-0.414-0.581-1.409-0.781-2.147-1.592-2.147-2.369 0-0.282 0.098-0.538 0.333-0.845 0.619-0.824 2.113-1.562 4.115-2.036 0.529-0.124 0.632-0.132 0.632-0.043 0 0.115 0.427 1.481 0.7 2.228l0.273 0.751-0.337 0.645c-0.184 0.354-0.448 0.892-0.585 1.2-1.959 4.316-2.284 7.743-0.867 9.152 0.333 0.333 0.606 0.487 1.054 0.602 1.033 0.265 2.399-0.132 3.931-1.144 0.534-0.354 0.653-0.487 0.653-0.721 0-0.282-0.307-0.555-0.581-0.512-0.077 0.013-0.376 0.179-0.662 0.367-0.632 0.422-1.34 0.773-1.853 0.926-0.525 0.154-1.093 0.162-1.417 0.021-0.995-0.44-1.225-2.215-0.606-4.678 0.29-1.17 0.956-2.928 1.558-4.128l0.239-0.482 0.132 0.299c0.248 0.572 1.212 2.437 1.588 3.073 2.079 3.534 4.422 6.125 6.501 7.184 1.473 0.751 2.689 0.683 3.517-0.201 0.61-0.645 0.909-1.584 0.96-2.992 0.081-2.425-0.709-5.579-2.254-8.96-0.205-0.453-0.41-0.862-0.448-0.905-0.094-0.102-0.333-0.171-0.495-0.137s-0.359 0.231-0.388 0.397c-0.034 0.158 0.004 0.265 0.384 1.088 1.059 2.284 1.801 4.683 2.087 6.744 0.094 0.679 0.111 2.151 0.026 2.604-0.085 0.457-0.252 0.931-0.431 1.204-0.286 0.44-0.615 0.619-1.157 0.615-1.609-0.004-4.145-2.215-6.399-5.571-1.037-1.55-1.993-3.3-2.732-5.011l-0.265-0.61 0.371-0.627c0.478-0.811 0.982-1.579 1.545-2.369l0.448-0.627h0.692c4.747 0 9.459 1.076 11.867 2.702 0.551 0.371 1.080 0.914 1.264 1.289 0.128 0.265 0.145 0.337 0.145 0.64-0.004 0.286-0.021 0.376-0.119 0.563-0.294 0.572-1.042 1.14-2.079 1.592-0.487 0.209-0.64 0.354-0.64 0.602 0 0.23 0.094 0.397 0.273 0.482 0.196 0.094 0.265 0.085 0.581-0.043 1.49-0.602 2.565-1.49 2.903-2.395 0.623-1.665-0.683-3.347-3.564-4.602-2.518-1.101-6.219-1.789-10.070-1.87l-0.423-0.009 0.482-0.555c0.555-0.645 1.78-1.87 2.305-2.309 1.246-1.050 2.361-1.716 3.321-1.989 0.474-0.137 1.059-0.132 1.362 0.004 0.41 0.184 0.696 0.598 0.854 1.238 0.098 0.388 0.098 1.575 0 2.147-0.111 0.632-0.098 0.743 0.073 0.913 0.124 0.124 0.175 0.145 0.354 0.145 0.38 0 0.478-0.141 0.593-0.832 0.060-0.354 0.081-0.692 0.081-1.387 0-0.811-0.013-0.965-0.098-1.302-0.269-1.063-0.926-1.797-1.806-2.006-2.040-0.478-5.161 1.485-8.264 5.208-0.256 0.303-0.495 0.602-0.534 0.653-0.064 0.094-0.107 0.102-0.726 0.141-0.359 0.021-1.016 0.081-1.464 0.132-1.187 0.137-1.093 0.149-1.161-0.158-0.179-0.858-0.239-1.46-0.243-2.39-0.004-1.007 0.030-1.306 0.213-1.865 0.196-0.593 0.529-0.995 0.952-1.135 0.205-0.073 0.709-0.064 1.007 0.013 0.499 0.132 1.204 0.508 1.844 0.99 0.38 0.286 0.512 0.337 0.713 0.269 0.23-0.073 0.367-0.265 0.367-0.504 0-0.179-0.017-0.213-0.205-0.393-0.265-0.256-1.033-0.768-1.498-0.999-0.879-0.44-1.648-0.581-2.339-0.431zM12.4 12.216c-0.004 0.021-0.282 0.44-0.61 0.935s-0.653 0.995-0.721 1.11l-0.124 0.209-0.102-0.277c-0.128-0.337-0.525-1.643-0.525-1.725 0-0.077 0.188-0.107 1.579-0.252 0.29-0.030 0.521-0.030 0.504 0zM15.649 14.854c-0.303 0.098-0.598 0.316-0.773 0.576-0.525 0.773-0.269 1.78 0.555 2.185 0.256 0.128 0.32 0.141 0.67 0.141s0.414-0.013 0.67-0.141c1.114-0.546 1.089-2.168-0.043-2.689-0.299-0.137-0.781-0.166-1.080-0.073z"/>
             </svg>
           </div>
           
-          <span className="font-medium">
+          <span className="font-medium relative z-10">
             {isLive ? 'Thinking' : 'Thought'}
           </span>
           
@@ -2266,7 +2425,7 @@ export default function TestChat() {
             fill="none" 
             stroke="currentColor" 
             strokeWidth="2"
-            className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+            className={`transition-transform relative z-10 ${isExpanded ? 'rotate-180' : ''}`}
           >
             <polyline points="6,9 12,15 18,9"></polyline>
           </svg>
