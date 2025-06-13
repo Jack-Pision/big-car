@@ -1860,47 +1860,30 @@ export default function TestChat() {
           }
         }
         
-        // Apply smooth post-processing after streaming is complete
+        // Apply post-processing after streaming is complete
         if (aiMessageId) {
           const { thinkContent: finalThinkContent, mainContent: finalMainContent } = extractThinkContentDuringStream(contentBuffer);
           
-          // First, stop streaming but keep content as-is for smooth transition
           setMessages((prev) => {
             return prev.map(msg => 
               msg.id === aiMessageId 
                 ? { 
                     ...msg, 
-                    isStreaming: false, // Stop streaming animation
-                    // Keep existing content for now - no jarring replacement
+                    content: finalThinkContent.trim().length > 0 
+                      ? `<think>${finalThinkContent}</think>${finalMainContent}` // Embed think tags for ThinkingButton to process
+                      : finalMainContent, // No thinking content, just main content
+                    contentType: 'conversation',
+                    isProcessed: true,
+                    isStreaming: false
                   }
                 : msg
             );
           });
-          
-          // Then, after a brief delay, apply final processing with embedded think tags
-          setTimeout(() => {
-            setMessages((prev) => {
-              return prev.map(msg => 
-                msg.id === aiMessageId 
-                  ? { 
-                      ...msg, 
-                      content: finalThinkContent.trim().length > 0 
-                        ? `<think>${finalThinkContent}</think>${finalMainContent}` // Embed think tags for ThinkingButton to process
-                        : finalMainContent, // No thinking content, just main content
-                      contentType: 'conversation',
-                      isProcessed: true,
-                    }
-                  : msg
-              );
-            });
-          }, 300); // Small delay for smooth transition
         }
         
-        // Clear the live thinking state with a smooth transition
-        setTimeout(() => {
-          setCurrentThinkingMessageId(null);
-          setLiveThinking('');
-        }, 400); // Clear thinking state after content transition
+        // Clear the live thinking state
+        setCurrentThinkingMessageId(null);
+        setLiveThinking('');
         
         // Handle image context if needed
         if (uploadedImageUrls.length > 0 && aiMessageId) {
