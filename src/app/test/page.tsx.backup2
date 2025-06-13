@@ -1647,10 +1647,18 @@ export default function TestChat() {
     setMessages((prev) => [...prev, userMessageForDisplay]);
     setInput("");
     
-    // Clear any previous thinking state
-    setCurrentThinkingMessageId(null);
+    // Immediately add a live thinking button
+    const liveThinkingMessageId = uuidv4();
+    setCurrentThinkingMessageId(liveThinkingMessageId);
     setLiveThinking('');
-    // Thinking message will be created on-demand when thinking content is detected
+    setMessages((prev) => [...prev, {
+      role: "assistant" as const,
+      content: "<think-live></think-live>", // Special marker for live thinking
+      id: liveThinkingMessageId,
+      timestamp: Date.now(),
+      isStreaming: true,
+      isProcessed: false
+    }]);
     
       if (selectedFilesForUpload.length > 0) {
         const clientSideSupabase = createSupabaseClient();
@@ -1823,32 +1831,17 @@ export default function TestChat() {
                     // Extract think content and main content separately
                     const { thinkContent, mainContent } = extractThinkContentDuringStream(contentBuffer);
                     
-                    // Create or update thinking message only when thinking content is detected
-                    if (thinkContent && thinkContent.trim().length > 0) {
+                    // Update live thinking state - only if there's meaningful thinking content
+                    if (thinkContent && thinkContent.trim().length > 0 && currentThinkingMessageId) {
                       setLiveThinking(thinkContent);
-                      
-                      if (!currentThinkingMessageId) {
-                        // Create thinking message on-demand
-                        const newThinkingMessageId = uuidv4();
-                        setCurrentThinkingMessageId(newThinkingMessageId);
-                        setMessages((prev) => [...prev, {
-                          role: "assistant" as const,
-                          content: `<think-live>${thinkContent}</think-live>`,
-                          id: newThinkingMessageId,
-                          timestamp: Date.now(),
-                          isStreaming: true,
-                          isProcessed: false
-                        }]);
-                      } else {
-                        // Update existing thinking message
-                        setMessages((prev) => {
-                          return prev.map(msg => 
-                            msg.id === currentThinkingMessageId 
-                              ? { ...msg, content: `<think-live>${thinkContent}</think-live>` }
-                              : msg
-                          );
-                        });
-                      }
+                      // Update the thinking message
+                      setMessages((prev) => {
+                        return prev.map(msg => 
+                          msg.id === currentThinkingMessageId 
+                            ? { ...msg, content: `<think-live>${thinkContent}</think-live>` }
+                            : msg
+                        );
+                      });
                     }
                     
                     // For default chat mode, only show main content (no think tags)
