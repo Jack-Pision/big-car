@@ -41,6 +41,7 @@ import rehypeRaw from 'rehype-raw';
 import { Message as BaseMessage } from '@/utils/conversation-context';
 import Search from '@/components/Search';
 import { Message as ConversationMessage } from "@/utils/conversation-context";
+import { filterAIThinking } from '@/utils/content-filter';
 
 // Define a type that includes all possible query types (including the ones in SCHEMAS and 'conversation')
 type QueryType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversation';
@@ -879,6 +880,27 @@ const makeCitationsClickable = (content: string, sources: any[] = []) => {
   });
 };
 
+// Function to remove word repetition from thinking content
+const removeWordRepetition = (text: string): string => {
+  if (!text) return '';
+  
+  // Split into sentences
+  const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+  const uniqueSentences = [];
+  const seenSentences = new Set();
+  
+  for (const sentence of sentences) {
+    const cleanSentence = sentence.trim().toLowerCase();
+    // Skip very short sentences or duplicates
+    if (cleanSentence.length > 10 && !seenSentences.has(cleanSentence)) {
+      seenSentences.add(cleanSentence);
+      uniqueSentences.push(sentence.trim());
+    }
+  }
+  
+  return uniqueSentences.join('. ').replace(/\.\s*\./g, '.') + (uniqueSentences.length > 0 ? '.' : '');
+};
+
 // Function to process think tags and render them as React components
 const processThinkTags = (content: string, isLive: boolean = false) => {
   // Handle live thinking marker
@@ -913,12 +935,13 @@ const processThinkTags = (content: string, isLive: boolean = false) => {
     cleanedContent = cleanedContent.replace(match[0], '');
   }
   
-  // Combine all thinking content into a single block
-  const combinedThinkContent = allThinkContent.join('\n\n');
+  // Combine all thinking content into a single block and remove repetition
+  const combinedThinkContent = allThinkContent.join(' ');
+  const deduplicatedThinkContent = removeWordRepetition(combinedThinkContent);
   
   // Create a single think block if we have any thinking content
-  const thinkBlocks = combinedThinkContent ? 
-    [{ id: 'combined-think-block', content: combinedThinkContent }] : 
+  const thinkBlocks = deduplicatedThinkContent ? 
+    [{ id: 'combined-think-block', content: deduplicatedThinkContent }] : 
     [];
   
   return { 
@@ -2385,11 +2408,11 @@ export default function TestChat() {
           </svg>
         </button>
         
-        {/* Expanded thinking content (same as before) */}
+        {/* Expanded thinking content - display as plain text */}
         {isExpanded && (
           <div className="mt-2 bg-gray-800 border border-gray-700 p-3 rounded-md text-cyan-300">
             <div className="font-semibold mb-1 text-sm text-cyan-400">AI Thinking Process:</div>
-            <div className="whitespace-pre-line text-sm">{content}</div>
+            <div className="text-sm leading-relaxed">{content}</div>
           </div>
         )}
       </div>
@@ -2657,36 +2680,17 @@ export default function TestChat() {
                         )}
                         {isStoppedMsg ? (
                           <span className="text-sm text-white italic font-light mb-2">[Response stopped by user]</span>
-                        ) : msg.content.includes('<think>') ? (
-                          <div className="w-full max-w-full overflow-hidden">
-                            {/* Show thinking button for think content */}
-                            <ThinkingButton 
-                              key={`${msg.id}-thinking`} 
-                              content={msg.content.replace(/<think>([\s\S]*?)<\/think>/g, '$1')} 
-                              isLive={msg.isStreaming || false} 
-                            />
-                          </div>
-                        ) : thinkBlocks.length > 0 ? (
-                          <div className="w-full max-w-full overflow-hidden">
-                            {/* Show only one thinking button for all think blocks */}
-                            <ThinkingButton 
-                              key={`${msg.id}-combined-thinking`} 
-                              content={thinkBlocks[0].content} 
-                              isLive={msg.isStreaming || false} 
-                            />
-                            
-                            {/* Render the main content with ReactMarkdown */}
-                            <ReactMarkdown 
-                              remarkPlugins={[remarkGfm]} 
-                              rehypePlugins={[rehypeRaw]} 
-                              className="prose dark:prose-invert max-w-none"
-                              components={{}}
-                            >
-                              {finalContent}
-                            </ReactMarkdown>
-                          </div>
                         ) : (
                           <div className="w-full max-w-full overflow-hidden">
+                            {/* Show thinking button if we have thinking content */}
+                            {thinkBlocks.length > 0 && (
+                              <ThinkingButton 
+                                key={`${msg.id}-combined-thinking`} 
+                                content={thinkBlocks[0].content} 
+                                isLive={msg.isStreaming || false} 
+                              />
+                            )}
+                            
                             {/* Render the main content with ReactMarkdown */}
                             <ReactMarkdown 
                               remarkPlugins={[remarkGfm]} 
