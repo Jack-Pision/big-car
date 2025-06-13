@@ -2549,16 +2549,18 @@ export default function TestChat() {
                         )}
                         {isStoppedMsg ? (
                           <span className="text-sm text-white italic font-light mb-2">[Response stopped by user]</span>
-                        ) : (isLiveThinking && !currentThinkingMessageId) ? (
+                        ) : (isLiveThinking || (msg.id === currentThinkingMessageId && liveThinking)) ? (
                           <div className="w-full max-w-full overflow-hidden">
-                            {/* Show live thinking button - only when no standalone thinking box is active */}
+                            {/* Show live thinking button */}
                             <ThinkingButton 
                               key={`${msg.id}-live-thinking`} 
-                              content={msg.content.includes('<think-live>') ? 
-                                msg.content.replace(/<think-live>(.*?)<\/think-live>/g, '$1') : 
-                                'Starting to think...'
+                              content={msg.id === currentThinkingMessageId && liveThinking ? 
+                                liveThinking : 
+                                (msg.content.includes('<think-live>') ? 
+                                  msg.content.replace(/<think-live>(.*?)<\/think-live>/g, '$1') : 
+                                  'Starting to think...')
                               } 
-                              isLive={msg.isStreaming} 
+                              isLive={msg.isStreaming || (msg.id === currentThinkingMessageId)} 
                             />
                           </div>
                         ) : (
@@ -2664,14 +2666,14 @@ export default function TestChat() {
               }
             })}
             
-            {/* Show immediate thinking box when currentThinkingMessageId is set - prioritize this over message-based thinking */}
-            {currentThinkingMessageId && liveThinking && (
+            {/* Show immediate thinking box when currentThinkingMessageId is set but no message exists yet */}
+            {currentThinkingMessageId && !messages.find(msg => msg.id === currentThinkingMessageId) && liveThinking && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, ease: "easeOut" }}
                 className="w-full markdown-body text-left flex flex-col items-start ai-response-text mb-4 relative"
-                style={{ color: '#fff', maxWidth: '100%', overflowWrap: 'break-word', zIndex: 10 }}
+                style={{ color: '#fff', maxWidth: '100%', overflowWrap: 'break-word' }}
               >
                 <div className="w-full max-w-full overflow-hidden">
                   <ThinkingButton 
