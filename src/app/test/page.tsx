@@ -2533,104 +2533,128 @@ export default function TestChat() {
                 if (showPulsingDot && i === messages.length -1 ) setShowPulsingDot(false);
                 
                 return (
-                  <motion.div
-                    key={msg.id + '-text-' + i}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, ease: "easeOut" }}
-                    className="w-full markdown-body text-left flex flex-col items-start ai-response-text mb-4 relative"
-                    style={{ color: '#fff', maxWidth: '100%', overflowWrap: 'break-word' }}
-                  >
-                        {msg.webSources && msg.webSources.length > 0 && (
-                          <>
-                            <WebSourcesCarousel sources={msg.webSources} />
-                            <div style={{ height: '1.5rem' }} />
-                          </>
-                        )}
-                        {isStoppedMsg ? (
-                          <span className="text-sm text-white italic font-light mb-2">[Response stopped by user]</span>
-                        ) : (isLiveThinking && !currentThinkingMessageId) ? (
-                          <div className="w-full max-w-full overflow-hidden">
-                            {/* Show live thinking button - only when no standalone thinking box is active */}
-                            <ThinkingButton 
-                              key={`${msg.id}-live-thinking`} 
-                              content={msg.content.includes('<think-live>') ? 
-                                msg.content.replace(/<think-live>(.*?)<\/think-live>/g, '$1') : 
-                                'Starting to think...'
-                              } 
-                              isLive={msg.isStreaming} 
-                            />
-                          </div>
-                        ) : (
-                          <div className="w-full max-w-full overflow-hidden">
-                            {/* Render think blocks first - only if they contain meaningful content */}
-                            {thinkBlocks.length > 0 && thinkBlocks.map((block, index) => (
-                              <ThinkingButton key={`${msg.id}-think-${index}`} content={block.content} isLive={false} />
-                            ))}
-                            
-                            {/* Render the main content with ReactMarkdown */}
-                            <ReactMarkdown 
-                              remarkPlugins={[remarkGfm]} 
-                              rehypePlugins={[rehypeRaw]} 
-                              className="prose dark:prose-invert max-w-none"
-                              components={{
-                                // Remove the think tag component override since we handle it above
-                              }}
-                            >
-                              {finalContent.replace(/<!-- think-block-\d+ -->/g, '')}
-                            </ReactMarkdown>
-                          </div>
-                        )}
-                    
-                    {/* Action buttons for text content */}
-                    {msg.isProcessed && !isStoppedMsg && (
-                      <div className="w-full flex justify-start gap-2 mt-2">
-                        <button
-                          onClick={() => handleCopy(cleanContent)}
-                          className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
-                          aria-label="Copy response"
-                        >
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                          </svg>
-                          <span className="text-xs">Copy</span>
-                        </button>
-                        
-                        <button
-                          onClick={() => {
-                            try {
-                              // Find the corresponding user message
-                              const userMsgIndex = messages.findIndex(m => m.id === msg.parentId);
-                              let userMsg = userMsgIndex >= 0 ? messages[userMsgIndex] : 
-                                          messages.find(m => m.role === 'user' && m.timestamp && m.timestamp < (msg.timestamp || Infinity));
-                              
-                              // If we still don't have a user message, use the last one as fallback
-                              if (!userMsg) {
-                                userMsg = [...messages].reverse().find(m => m.role === 'user');
-                              }
-                              
-                              if (userMsg) {
-                                handleRetry(userMsg.content);
-                              } else {
-                                console.error('Could not find a user message to retry');
-                              }
-                            } catch (error) {
-                              console.error('Error handling retry button click:', error);
-                            }
-                          }}
-                          className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
-                          aria-label="Retry with different response"
-                        >
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
-                            <path d="M3 3v5h5"></path>
-                          </svg>
-                          <span className="text-xs">Retry</span>
-                        </button>
-                      </div>
+                  <React.Fragment key={msg.id + '-fragment-' + i}>
+                    {/* Show immediate thinking box for this specific message if it's the current thinking message */}
+                    {currentThinkingMessageId === msg.id && liveThinking && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, ease: "easeOut" }}
+                        className="w-full markdown-body text-left flex flex-col items-start ai-response-text mb-4 relative"
+                        style={{ color: '#fff', maxWidth: '100%', overflowWrap: 'break-word', zIndex: 10 }}
+                      >
+                        <div className="w-full max-w-full overflow-hidden">
+                          <ThinkingButton 
+                            key={`${currentThinkingMessageId}-immediate-thinking`} 
+                            content={liveThinking} 
+                            isLive={true} 
+                          />
+                        </div>
+                      </motion.div>
                     )}
-                  </motion.div>
+                    
+                    {/* Main AI response content */}
+                    <motion.div
+                      key={msg.id + '-text-' + i}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, ease: "easeOut" }}
+                      className="w-full markdown-body text-left flex flex-col items-start ai-response-text mb-4 relative"
+                      style={{ color: '#fff', maxWidth: '100%', overflowWrap: 'break-word' }}
+                    >
+                          {msg.webSources && msg.webSources.length > 0 && (
+                            <>
+                              <WebSourcesCarousel sources={msg.webSources} />
+                              <div style={{ height: '1.5rem' }} />
+                            </>
+                          )}
+                          {isStoppedMsg ? (
+                            <span className="text-sm text-white italic font-light mb-2">[Response stopped by user]</span>
+                          ) : (isLiveThinking && !currentThinkingMessageId) ? (
+                            <div className="w-full max-w-full overflow-hidden">
+                              {/* Show live thinking button - only when no standalone thinking box is active */}
+                              <ThinkingButton 
+                                key={`${msg.id}-live-thinking`} 
+                                content={msg.content.includes('<think-live>') ? 
+                                  msg.content.replace(/<think-live>(.*?)<\/think-live>/g, '$1') : 
+                                  'Starting to think...'
+                                } 
+                                isLive={msg.isStreaming} 
+                              />
+                            </div>
+                          ) : (
+                            <div className="w-full max-w-full overflow-hidden">
+                              {/* Render think blocks first - only if they contain meaningful content and no live thinking */}
+                              {!currentThinkingMessageId && thinkBlocks.length > 0 && thinkBlocks.map((block, index) => (
+                                <ThinkingButton key={`${msg.id}-think-${index}`} content={block.content} isLive={false} />
+                              ))}
+                              
+                              {/* Render the main content with ReactMarkdown - only show if there's actual content or if thinking is complete */}
+                              {(processedContent.trim().length > 0 || !currentThinkingMessageId || currentThinkingMessageId !== msg.id) && (
+                                <ReactMarkdown 
+                                  remarkPlugins={[remarkGfm]} 
+                                  rehypePlugins={[rehypeRaw]} 
+                                  className="prose dark:prose-invert max-w-none"
+                                  components={{
+                                    // Remove the think tag component override since we handle it above
+                                  }}
+                                >
+                                  {finalContent.replace(/<!-- think-block-\d+ -->/g, '')}
+                                </ReactMarkdown>
+                              )}
+                            </div>
+                          )}
+                      
+                      {/* Action buttons for text content */}
+                      {msg.isProcessed && !isStoppedMsg && (
+                        <div className="w-full flex justify-start gap-2 mt-2">
+                          <button
+                            onClick={() => handleCopy(cleanContent)}
+                            className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
+                            aria-label="Copy response"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                            <span className="text-xs">Copy</span>
+                          </button>
+                          
+                          <button
+                            onClick={() => {
+                              try {
+                                // Find the corresponding user message
+                                const userMsgIndex = messages.findIndex(m => m.id === msg.parentId);
+                                let userMsg = userMsgIndex >= 0 ? messages[userMsgIndex] : 
+                                            messages.find(m => m.role === 'user' && m.timestamp && m.timestamp < (msg.timestamp || Infinity));
+                                
+                                // If we still don't have a user message, use the last one as fallback
+                                if (!userMsg) {
+                                  userMsg = [...messages].reverse().find(m => m.role === 'user');
+                                }
+                                
+                                if (userMsg) {
+                                  handleRetry(userMsg.content);
+                                } else {
+                                  console.error('Could not find a user message to retry');
+                                }
+                              } catch (error) {
+                                console.error('Error handling retry button click:', error);
+                              }
+                            }}
+                            className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
+                            aria-label="Retry with different response"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                              <path d="M3 3v5h5"></path>
+                            </svg>
+                            <span className="text-xs">Retry</span>
+                          </button>
+                        </div>
+                      )}
+                    </motion.div>
+                  </React.Fragment>
                 );
               } else if (msg.role === 'search-ui') {
                 return (
@@ -2664,24 +2688,7 @@ export default function TestChat() {
               }
             })}
             
-            {/* Show immediate thinking box when currentThinkingMessageId is set - prioritize this over message-based thinking */}
-            {currentThinkingMessageId && liveThinking && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, ease: "easeOut" }}
-                className="w-full markdown-body text-left flex flex-col items-start ai-response-text mb-4 relative"
-                style={{ color: '#fff', maxWidth: '100%', overflowWrap: 'break-word', zIndex: 10 }}
-              >
-                <div className="w-full max-w-full overflow-hidden">
-                  <ThinkingButton 
-                    key={`${currentThinkingMessageId}-immediate-thinking`} 
-                    content={liveThinking} 
-                    isLive={true} 
-                  />
-                </div>
-              </motion.div>
-            )}
+            {/* Remove the standalone thinking box since it's now integrated within the messages flow */}
       </div>
         </div>
 
