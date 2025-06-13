@@ -1681,6 +1681,23 @@ export default function TestChat() {
     setCurrentThinkingMessageId(upcomingAiMessageId);
     setLiveThinking('Starting to think...');
     
+    // Create placeholder AI message immediately so think box can appear
+    const placeholderAiMessage: LocalMessage = {
+      role: "assistant" as const,
+      content: '', // Empty content initially
+      id: upcomingAiMessageId,
+      timestamp: Date.now(),
+      parentId: userMessageId,
+      imageUrls: uploadedImageUrls.length > 0 ? uploadedImageUrls : undefined,
+      webSources: [],
+      contentType: 'conversation',
+      isStreaming: true,
+      isProcessed: false
+    };
+    
+    // Add placeholder AI message immediately
+    setMessages((prev) => [...prev, placeholderAiMessage]);
+    
       if (selectedFilesForUpload.length > 0) {
         const clientSideSupabase = createSupabaseClient();
         if (!clientSideSupabase) throw new Error('Supabase client not available');
@@ -1840,25 +1857,8 @@ export default function TestChat() {
                     // Separate thinking and main content in real-time
                     const { thinkContent, mainContent } = extractThinkContentDuringStream(contentBuffer);
                     
-                    // Create the AI message on first meaningful content (either thinking or main)
-                    if (!hasCreatedMessage && (thinkContent.trim().length > 0 || mainContent.trim().length > 0)) {
-                      hasCreatedMessage = true;
-                      // aiMessageId is already set to upcomingAiMessageId
-                      
-                      setMessages((prev) => [...prev, {
-                        role: "assistant" as const,
-                        content: mainContent, // Store only main content in the message
-                        id: aiMessageId!,
-                        timestamp: Date.now(),
-                        parentId: userMessageId,
-                        imageUrls: uploadedImageUrls.length > 0 ? uploadedImageUrls : undefined,
-                        webSources: [],
-                        contentType: 'conversation',
-                        isStreaming: true,
-                        isProcessed: false
-                      }]);
-                    } else if (aiMessageId) {
-                      // Update the single AI message with only main content
+                    // Update the existing placeholder AI message with content
+                    if (aiMessageId) {
                       setMessages((prev) => {
                         return prev.map(msg => 
                           msg.id === aiMessageId 
@@ -1866,6 +1866,7 @@ export default function TestChat() {
                             : msg
                         );
                       });
+                      hasCreatedMessage = true; // Mark as created after first update
                     }
                     
                     // Update live thinking display - this goes directly to think box
