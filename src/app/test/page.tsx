@@ -2296,6 +2296,11 @@ export default function TestChat() {
   const ThinkingButton = ({ content, isLive = false }: { content: string, isLive?: boolean }) => {
     const [isExpanded, setIsExpanded] = useState(false);
     
+    // Reset expanded state when content changes to prevent state persistence across different messages
+    useEffect(() => {
+      setIsExpanded(false);
+    }, [content]);
+    
     return (
       <div className="my-2">
         {/* Compact thinking button */}

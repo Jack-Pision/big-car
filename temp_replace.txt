@@ -1,0 +1,6 @@
+const [isExpanded, setIsExpanded] = useState(false);
+
+    // Reset expanded state when content changes to prevent state persistence across different messages
+    useEffect(() => {
+      setIsExpanded(false);
+    }, [content]);
