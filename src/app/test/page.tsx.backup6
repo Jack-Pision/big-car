@@ -1651,11 +1651,6 @@ export default function TestChat() {
     setCurrentThinkingMessageId(null);
     setLiveThinking('');
     
-    // Create immediate thinking state for the upcoming AI response
-    const upcomingAiMessageId = uuidv4();
-    setCurrentThinkingMessageId(upcomingAiMessageId);
-    setLiveThinking('Starting to think...');
-    
       if (selectedFilesForUpload.length > 0) {
         const clientSideSupabase = createSupabaseClient();
         if (!clientSideSupabase) throw new Error('Supabase client not available');
@@ -1788,7 +1783,7 @@ export default function TestChat() {
         let done = false;
         let contentBuffer = ''; // Buffer to accumulate content
         let hasCreatedMessage = false; // Flag to track if we've created the AI message
-        let aiMessageId: string | null = upcomingAiMessageId; // Use the pre-created message ID
+        let aiMessageId: string | null = null; // Track the single AI message ID
         
         // We'll create the AI message when we first get content
 
@@ -1818,7 +1813,7 @@ export default function TestChat() {
                     // Create the AI message on first meaningful content (either thinking or main)
                     if (!hasCreatedMessage && (thinkContent.trim().length > 0 || mainContent.trim().length > 0)) {
                       hasCreatedMessage = true;
-                      // aiMessageId is already set to upcomingAiMessageId
+                      aiMessageId = uuidv4();
                       
                       setMessages((prev) => [...prev, {
                         role: "assistant" as const,
@@ -2530,18 +2525,16 @@ export default function TestChat() {
                         )}
                         {isStoppedMsg ? (
                           <span className="text-sm text-white italic font-light mb-2">[Response stopped by user]</span>
-                        ) : (isLiveThinking || (msg.id === currentThinkingMessageId && liveThinking)) ? (
+                        ) : isLiveThinking ? (
                           <div className="w-full max-w-full overflow-hidden">
                             {/* Show live thinking button */}
                             <ThinkingButton 
                               key={`${msg.id}-live-thinking`} 
-                              content={msg.id === currentThinkingMessageId && liveThinking ? 
-                                liveThinking : 
-                                (msg.content.includes('<think-live>') ? 
-                                  msg.content.replace(/<think-live>(.*?)<\/think-live>/g, '$1') : 
-                                  'Starting to think...')
+                              content={msg.content.includes('<think-live>') ? 
+                                msg.content.replace(/<think-live>(.*?)<\/think-live>/g, '$1') : 
+                                'Starting to think...'
                               } 
-                              isLive={msg.isStreaming || (msg.id === currentThinkingMessageId)} 
+                              isLive={msg.isStreaming || false} 
                             />
                           </div>
                         ) : (
@@ -2646,25 +2639,6 @@ export default function TestChat() {
                 );
               }
             })}
-            
-            {/* Show immediate thinking box when currentThinkingMessageId is set but no message exists yet */}
-            {currentThinkingMessageId && !messages.find(msg => msg.id === currentThinkingMessageId) && liveThinking && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, ease: "easeOut" }}
-                className="w-full markdown-body text-left flex flex-col items-start ai-response-text mb-4 relative"
-                style={{ color: '#fff', maxWidth: '100%', overflowWrap: 'break-word' }}
-              >
-                <div className="w-full max-w-full overflow-hidden">
-                  <ThinkingButton 
-                    key={`${currentThinkingMessageId}-immediate-thinking`} 
-                    content={liveThinking} 
-                    isLive={true} 
-                  />
-                </div>
-              </motion.div>
-            )}
       </div>
         </div>
 
