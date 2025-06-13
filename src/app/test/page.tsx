@@ -2248,62 +2248,22 @@ export default function TestChat() {
               viewBox="0 0 24 24" 
               fill="none" 
               stroke="#06b6d4"
-              strokeWidth="1.5"
+              strokeWidth="2"
               className={`${isLive ? 'physics-icon-live' : 'physics-icon'}`}
             >
               {/* Central nucleus */}
-              <circle cx="12" cy="12" r="2" fill="#06b6d4" stroke="#06b6d4" strokeWidth="1"/>
+              <circle cx="12" cy="12" r="2.5" fill="#06b6d4" stroke="#06b6d4" strokeWidth="1"/>
               
-              {/* Electron orbits */}
-              <ellipse cx="12" cy="12" rx="8" ry="3" fill="none" stroke="#06b6d4" strokeWidth="1.5" opacity="0.8"/>
-              <ellipse cx="12" cy="12" rx="8" ry="3" fill="none" stroke="#06b6d4" strokeWidth="1.5" opacity="0.8" transform="rotate(60 12 12)"/>
-              <ellipse cx="12" cy="12" rx="8" ry="3" fill="none" stroke="#06b6d4" strokeWidth="1.5" opacity="0.8" transform="rotate(120 12 12)"/>
+              {/* Electron orbits - simple and clean */}
+              <ellipse cx="12" cy="12" rx="7" ry="3" fill="none" stroke="#06b6d4" strokeWidth="2" opacity="0.8"/>
+              <ellipse cx="12" cy="12" rx="7" ry="3" fill="none" stroke="#06b6d4" strokeWidth="2" opacity="0.8" transform="rotate(60 12 12)"/>
+              <ellipse cx="12" cy="12" rx="7" ry="3" fill="none" stroke="#06b6d4" strokeWidth="2" opacity="0.8" transform="rotate(-60 12 12)"/>
               
-              {/* Electrons */}
-              <circle cx="20" cy="12" r="1.5" fill="#06b6d4" opacity="0.9">
-                {isLive && (
-                  <animateTransform
-                    attributeName="transform"
-                    type="rotate"
-                    values="0 12 12;360 12 12"
-                    dur="3s"
-                    repeatCount="indefinite"
-                  />
-                )}
-              </circle>
-              <circle cx="4" cy="12" r="1.5" fill="#06b6d4" opacity="0.9">
-                {isLive && (
-                  <animateTransform
-                    attributeName="transform"
-                    type="rotate"
-                    values="180 12 12;540 12 12"
-                    dur="3s"
-                    repeatCount="indefinite"
-                  />
-                )}
-              </circle>
-              <circle cx="18" cy="8" r="1.5" fill="#06b6d4" opacity="0.7">
-                {isLive && (
-                  <animateTransform
-                    attributeName="transform"
-                    type="rotate"
-                    values="60 12 12;420 12 12"
-                    dur="2.5s"
-                    repeatCount="indefinite"
-                  />
-                )}
-              </circle>
-              <circle cx="6" cy="16" r="1.5" fill="#06b6d4" opacity="0.7">
-                {isLive && (
-                  <animateTransform
-                    attributeName="transform"
-                    type="rotate"
-                    values="240 12 12;600 12 12"
-                    dur="2.5s"
-                    repeatCount="indefinite"
-                  />
-                )}
-              </circle>
+              {/* Static electrons - no animation */}
+              <circle cx="19" cy="12" r="1.8" fill="#06b6d4" opacity="1"/>
+              <circle cx="5" cy="12" r="1.8" fill="#06b6d4" opacity="1"/>
+              <circle cx="15" cy="7" r="1.8" fill="#06b6d4" opacity="0.9"/>
+              <circle cx="9" cy="17" r="1.8" fill="#06b6d4" opacity="0.9"/>
             </svg>
           </div>
           
