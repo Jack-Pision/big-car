@@ -379,6 +379,31 @@ function postProcessAIChatResponse(text: string, isDefaultChat: boolean): string
 // Add global style to force all AI text to be white
 const GlobalStyles = () => (
   <style jsx global>{`
+    @keyframes typing {
+      0%, 50% { opacity: 1; }
+      51%, 100% { opacity: 0; }
+    }
+    
+    @keyframes shine {
+      0% { 
+        filter: brightness(1) drop-shadow(0 0 2px rgba(34, 211, 238, 0.3));
+      }
+      50% { 
+        filter: brightness(1.3) drop-shadow(0 0 8px rgba(34, 211, 238, 0.6)) drop-shadow(0 0 12px rgba(192, 192, 192, 0.4));
+      }
+      100% { 
+        filter: brightness(1) drop-shadow(0 0 2px rgba(34, 211, 238, 0.3));
+      }
+    }
+    
+    .physics-icon {
+      animation: shine 2s ease-in-out infinite;
+    }
+    
+    .physics-icon-live {
+      animation: shine 1.5s ease-in-out infinite;
+    }
+    
     .ai-response-text, 
     .ai-response-text * {
       color: #ffffff !important;
@@ -2215,43 +2240,66 @@ export default function TestChat() {
           onClick={() => setIsExpanded(!isExpanded)}
           className="flex items-center gap-2 px-3 py-2 rounded-md bg-gray-800 border border-gray-700 text-cyan-300 hover:bg-gray-700 transition-all text-sm"
         >
-          {/* Animated thinking icon */}
+          {/* Physics/Atom icon with shining effects */}
           <div className="w-4 h-4 relative">
             <svg 
               width="16" 
               height="16" 
               viewBox="0 0 24 24" 
               fill="none" 
-              className={`${isLive ? 'animate-pulse' : ''}`}
+              stroke="#06b6d4"
+              strokeWidth="1.5"
+              className={`${isLive ? 'physics-icon-live' : 'physics-icon'}`}
             >
-              <circle cx="12" cy="12" r="3" fill="currentColor" opacity="0.8">
+              {/* Central nucleus */}
+              <circle cx="12" cy="12" r="2" fill="#06b6d4" stroke="#06b6d4" strokeWidth="1"/>
+              
+              {/* Electron orbits */}
+              <ellipse cx="12" cy="12" rx="8" ry="3" fill="none" stroke="#06b6d4" strokeWidth="1.5" opacity="0.8"/>
+              <ellipse cx="12" cy="12" rx="8" ry="3" fill="none" stroke="#06b6d4" strokeWidth="1.5" opacity="0.8" transform="rotate(60 12 12)"/>
+              <ellipse cx="12" cy="12" rx="8" ry="3" fill="none" stroke="#06b6d4" strokeWidth="1.5" opacity="0.8" transform="rotate(120 12 12)"/>
+              
+              {/* Electrons */}
+              <circle cx="20" cy="12" r="1.5" fill="#06b6d4" opacity="0.9">
                 {isLive && (
-                  <animate 
-                    attributeName="r" 
-                    values="3;5;3" 
-                    dur="1.5s" 
+                  <animateTransform
+                    attributeName="transform"
+                    type="rotate"
+                    values="0 12 12;360 12 12"
+                    dur="3s"
                     repeatCount="indefinite"
                   />
                 )}
               </circle>
-              <circle cx="6" cy="12" r="2" fill="currentColor" opacity="0.6">
+              <circle cx="4" cy="12" r="1.5" fill="#06b6d4" opacity="0.9">
                 {isLive && (
-                  <animate 
-                    attributeName="opacity" 
-                    values="0.6;1;0.6" 
-                    dur="1.5s" 
-                    begin="0.3s"
+                  <animateTransform
+                    attributeName="transform"
+                    type="rotate"
+                    values="180 12 12;540 12 12"
+                    dur="3s"
                     repeatCount="indefinite"
                   />
                 )}
               </circle>
-              <circle cx="18" cy="12" r="2" fill="currentColor" opacity="0.6">
+              <circle cx="18" cy="8" r="1.5" fill="#06b6d4" opacity="0.7">
                 {isLive && (
-                  <animate 
-                    attributeName="opacity" 
-                    values="0.6;1;0.6" 
-                    dur="1.5s" 
-                    begin="0.6s"
+                  <animateTransform
+                    attributeName="transform"
+                    type="rotate"
+                    values="60 12 12;420 12 12"
+                    dur="2.5s"
+                    repeatCount="indefinite"
+                  />
+                )}
+              </circle>
+              <circle cx="6" cy="16" r="1.5" fill="#06b6d4" opacity="0.7">
+                {isLive && (
+                  <animateTransform
+                    attributeName="transform"
+                    type="rotate"
+                    values="240 12 12;600 12 12"
+                    dur="2.5s"
                     repeatCount="indefinite"
                   />
                 )}
