@@ -476,11 +476,11 @@ export default function StreamingChat() {
               chunkBufferRef.current.push(delta);
               
               // Process chunks without filtering - just pass through raw content
-              if (chunkBufferRef.current.length >= 5 || done) {
+                if (chunkBufferRef.current.length >= 5 || done) {
                 // Pass through raw content without filtering
                 updateStreamedContentDebounced(fullText);
-                chunkBufferRef.current = [];
-              }
+                  chunkBufferRef.current = [];
+                }
             }
             } catch (err) {
               console.warn('Skipping malformed JSON chunk:', dataStr);

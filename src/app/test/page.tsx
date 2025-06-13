@@ -41,7 +41,6 @@ import rehypeRaw from 'rehype-raw';
 import { Message as BaseMessage } from '@/utils/conversation-context';
 import Search from '@/components/Search';
 import { Message as ConversationMessage } from "@/utils/conversation-context";
-import { filterAIThinking } from '@/utils/content-filter';
 
 // Define a type that includes all possible query types (including the ones in SCHEMAS and 'conversation')
 type QueryType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversation';
@@ -880,27 +879,6 @@ const makeCitationsClickable = (content: string, sources: any[] = []) => {
   });
 };
 
-// Function to remove word repetition from thinking content
-const removeWordRepetition = (text: string): string => {
-  if (!text) return '';
-  
-  // Split into sentences
-  const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
-  const uniqueSentences = [];
-  const seenSentences = new Set();
-  
-  for (const sentence of sentences) {
-    const cleanSentence = sentence.trim().toLowerCase();
-    // Skip very short sentences or duplicates
-    if (cleanSentence.length > 10 && !seenSentences.has(cleanSentence)) {
-      seenSentences.add(cleanSentence);
-      uniqueSentences.push(sentence.trim());
-    }
-  }
-  
-  return uniqueSentences.join('. ').replace(/\.\s*\./g, '.') + (uniqueSentences.length > 0 ? '.' : '');
-};
-
 // Function to process think tags and render them as React components
 const processThinkTags = (content: string, isLive: boolean = false) => {
   // Handle live thinking marker
@@ -916,36 +894,38 @@ const processThinkTags = (content: string, isLive: boolean = false) => {
     return { processedContent: content, thinkBlocks: [], isLiveThinking: false };
   }
 
+  const parts = [];
+  const thinkBlocks = [];
+  let lastIndex = 0;
+  
   // Find all think tag pairs
   const thinkRegex = /<think>([\s\S]*?)<\/think>/g;
   let match;
   
-  // Collect all thinking content
-  let allThinkContent = [];
-  let cleanedContent = content;
-  
   while ((match = thinkRegex.exec(content)) !== null) {
-    // Store the think content
-    const thinkContent = match[1].trim();
-    if (thinkContent) {
-      allThinkContent.push(thinkContent);
+    // Add content before the think tag
+    if (match.index > lastIndex) {
+      parts.push(content.slice(lastIndex, match.index));
     }
     
-    // Remove the think tags from the main content
-    cleanedContent = cleanedContent.replace(match[0], '');
+    // Store the think content only if it's meaningful (not empty or just whitespace)
+    const thinkContent = match[1].trim();
+    if (thinkContent && thinkContent.length > 0) {
+      const thinkId: string = `think-block-${thinkBlocks.length}`;
+      thinkBlocks.push({ id: thinkId, content: thinkContent });
+      parts.push(`<!-- ${thinkId} -->`);
+    }
+    
+    lastIndex = match.index + match[0].length;
   }
   
-  // Combine all thinking content into a single block and remove repetition
-  const combinedThinkContent = allThinkContent.join(' ');
-  const deduplicatedThinkContent = removeWordRepetition(combinedThinkContent);
-  
-  // Create a single think block if we have any thinking content
-  const thinkBlocks = deduplicatedThinkContent ? 
-    [{ id: 'combined-think-block', content: deduplicatedThinkContent }] : 
-    [];
+  // Add remaining content after the last think tag
+  if (lastIndex < content.length) {
+    parts.push(content.slice(lastIndex));
+  }
   
   return { 
-    processedContent: cleanedContent, 
+    processedContent: parts.join(''), 
     thinkBlocks,
     isLiveThinking: false
   };
@@ -1427,50 +1407,28 @@ ${JSON.stringify(schema, null, 2)}`;
 
 // Function to extract think content during streaming and update live thinking state
 const extractThinkContentDuringStream = (content: string) => {
+  const thinkRegex = /<think>([\s\S]*?)(<\/think>|$)/g;
   let thinkContent = '';
   let mainContent = content;
-  
-  // Only look for actual <think> tags, be more precise
-  const thinkRegex = /<think>([\s\S]*?)(?:<\/think>|$)/g;
   let match;
-  let hasOpenThinkTag = false;
   
-  // Check if we have an opening think tag
-  if (content.includes('<think>')) {
-    hasOpenThinkTag = true;
-  }
-  
-  // Extract all complete think content
+  // Extract all think content
   while ((match = thinkRegex.exec(content)) !== null) {
-    const extractedContent = match[1];
-    // Only add non-empty content
-    if (extractedContent && extractedContent.trim()) {
-      thinkContent += extractedContent;
-    }
-    // Remove the complete think tags from main content
+    thinkContent += match[1];
+    // Remove the think tags from main content
     mainContent = mainContent.replace(match[0], '');
   }
   
-  // Handle partial think tags only if we have an open tag (when streaming)
-  if (hasOpenThinkTag && !content.includes('</think>')) {
-    const partialThinkMatch = content.match(/<think>([\s\S]*)$/);
-    if (partialThinkMatch && partialThinkMatch[1]) {
-      const partialContent = partialThinkMatch[1].trim();
-      // Only add substantial content (more than just whitespace or single words)
-      if (partialContent && partialContent.length > 10) {
-        thinkContent += partialContent;
-      }
-      mainContent = mainContent.replace(partialThinkMatch[0], '');
-    }
+  // Also handle partial think tags (when streaming)
+  const partialThinkMatch = content.match(/<think>([^<]*?)$/);
+  if (partialThinkMatch) {
+    thinkContent += partialThinkMatch[1];
+    mainContent = mainContent.replace(partialThinkMatch[0], '');
   }
-  
-  // Clean up main content - remove any stray think tag markers
-  mainContent = mainContent.replace(/<\/?think[^>]*>/g, '').trim();
   
   return {
     thinkContent: thinkContent.trim(),
-    mainContent: mainContent.trim(),
-    hasValidThinkContent: thinkContent.trim().length > 10 // Minimum threshold for valid content
+    mainContent: mainContent.trim()
   };
 };
 
@@ -1551,35 +1509,6 @@ export default function TestChat() {
       setHasInteracted(false);
       setActiveSessionId(null);
       setMessages([]);
-      
-      // Remove the test message that creates multiple thinking boxes
-      // setTimeout(() => {
-      //   setMessages([
-      //     {
-      //       role: "user" as const,
-      //       content: "Test think tags",
-      //       id: uuidv4(),
-      //       timestamp: Date.now(),
-      //       isProcessed: true
-      //     },
-      //     {
-      //       role: "assistant" as const,
-      //       content: `<think>
-      // Let me analyze this test request...
-      // I need to verify that think tags are rendering properly...
-      // This should appear in a gray box with cyan text...
-      // </think>
-
-      // This is a test message to verify that think tags are rendering correctly. If you can see a gray box above with my thinking process, then the rendering system is working!`,
-      //       id: uuidv4(),
-      //       timestamp: Date.now(),
-      //       isProcessed: true,
-      //       contentType: 'conversation'
-      //     }
-      //   ]);
-      //   setHasInteracted(true);
-      //   setShowHeading(false);
-      // }, 1000);
     }
   }, []);
 
@@ -1717,19 +1646,19 @@ export default function TestChat() {
     setMessages((prev) => [...prev, userMessageForDisplay]);
     setInput("");
     
-    // Don't immediately create a thinking message - wait until we have actual thinking content
-    // const liveThinkingMessageId = uuidv4();
-    // setCurrentThinkingMessageId(liveThinkingMessageId);
-    // setLiveThinking('');
-    // setMessages((prev) => [...prev, {
-    //   role: "assistant" as const,
-    //   content: "<think-live></think-live>", // Special marker for live thinking
-    //   id: liveThinkingMessageId,
-    //   timestamp: Date.now(),
-    //   isStreaming: true,
-    //   isProcessed: false
-    // }]);
-
+    // Immediately add a live thinking button
+    const liveThinkingMessageId = uuidv4();
+    setCurrentThinkingMessageId(liveThinkingMessageId);
+    setLiveThinking('');
+    setMessages((prev) => [...prev, {
+      role: "assistant" as const,
+      content: "<think-live></think-live>", // Special marker for live thinking
+      id: liveThinkingMessageId,
+      timestamp: Date.now(),
+      isStreaming: true,
+      isProcessed: false
+    }]);
+    
       if (selectedFilesForUpload.length > 0) {
         const clientSideSupabase = createSupabaseClient();
         if (!clientSideSupabase) throw new Error('Supabase client not available');
@@ -1877,14 +1806,6 @@ export default function TestChat() {
           contentType: 'conversation',
           isProcessed: true
         };
-        
-        // Create a persistent thinking message ID for this entire response
-        const persistentThinkingId = uuidv4();
-        setCurrentThinkingMessageId(persistentThinkingId);
-        
-        // Initialize variables to track all thinking content
-        let allThinkingContent: string[] = [];
-        let hasThinkingContent = false;
 
         while (!done) {
           const { value, done: doneReading } = await reader.read();
@@ -1906,95 +1827,111 @@ export default function TestChat() {
                   if (delta) {
                     contentBuffer += delta;
                     
-                    // Extract all think content and combine into one
-                    let allThinkContent = [];
-                    let currentMainContent = contentBuffer;
+                    // Extract think content and main content separately
+                    const { thinkContent, mainContent } = extractThinkContentDuringStream(contentBuffer);
                     
-                    // Extract complete think tags
-                    const thinkRegex = /<think>([\s\S]*?)<\/think>/g;
-                    let match;
-                    
-                    while ((match = thinkRegex.exec(contentBuffer)) !== null) {
-                      const thinkContent = match[1].trim();
-                      if (thinkContent) {
-                        allThinkContent.push(thinkContent);
-                      }
-                      // Remove the think tags from main content
-                      currentMainContent = currentMainContent.replace(match[0], '');
-                    }
-                    
-                    // Check for partial think content (still streaming)
-                    const partialThinkMatch = contentBuffer.match(/<think>([\s\S]*)$/);
-                    if (partialThinkMatch && partialThinkMatch[1].trim()) {
-                      allThinkContent.push(partialThinkMatch[1].trim());
-                      currentMainContent = currentMainContent.replace(/<think>[\s\S]*$/, '');
-                    }
-                    
-                    // Combine all thinking content
-                    const combinedThinkContent = allThinkContent.join('\n\n');
-                    
-                    // Only update if we have a new complete sentence or substantial update
-                    const lastUpdate = allThinkingContent.length > 0 ? allThinkingContent[allThinkingContent.length - 1] : '';
-                    const newContent = allThinkContent.length > 0 ? allThinkContent[allThinkContent.length - 1] : '';
-                    // Check for sentence-ending punctuation or substantial length
-                    const isCompleteSentence = /[.!?]\s*$/.test(newContent);
-                    const isSubstantial = newContent.length > 30;
-                    if ((isCompleteSentence || isSubstantial) && newContent !== lastUpdate) {
-                      if (!hasThinkingContent) {
-                        allThinkingContent = allThinkContent;
-                        hasThinkingContent = true;
-                        setMessages((prev) => [...prev, {
-                          role: "assistant" as const,
-                          content: `<think>${combinedThinkContent}</think>`,
-                          id: persistentThinkingId,
-                          timestamp: Date.now(),
-                          isStreaming: true,
-                          isProcessed: false
-                        }]);
-                      } else {
-                        for (const content of allThinkContent) {
-                          if (!allThinkingContent.includes(content)) {
-                            allThinkingContent.push(content);
-                          }
-                        }
-                        const updatedThinkContent = allThinkingContent.join('\n\n');
-                        setMessages((prev) => prev.map(msg => 
-                          msg.id === persistentThinkingId
-                            ? { ...msg, content: `<think>${updatedThinkContent}</think>` }
+                    // Update live thinking state - only if there's meaningful thinking content
+                    if (thinkContent && thinkContent.trim().length > 0 && currentThinkingMessageId) {
+                      setLiveThinking(thinkContent);
+                      // Update the thinking message
+                      setMessages((prev) => {
+                        return prev.map(msg => 
+                          msg.id === currentThinkingMessageId 
+                            ? { ...msg, content: `<think-live>${thinkContent}</think-live>` }
                             : msg
-                        ));
-                      }
+                        );
+                      });
                     }
                     
-                    // Create or update main content message if we have main content
-                    if (currentMainContent && currentMainContent.length > 0) {
-                      if (!hasActualContent) {
-                        // Create new main content message
+                    // For default chat mode, only show main content (no think tags)
+                    if (true) {
+                      if (!hasActualContent && mainContent) {
                         hasActualContent = true;
-                        setMessages((prev) => [...prev, {
-                          role: "assistant" as const,
-                          content: currentMainContent,
-                          id: uuidv4(),
-                          timestamp: Date.now(),
-                          isStreaming: true,
-                          isProcessed: false
-                        }]);
-                      } else {
-                        // Update existing main content message
+                        
+                        // Create the assistant message immediately when we start getting main content
                         setMessages((prev) => {
-                          const updated = [...prev];
-                          // Find the last main content message (not thinking)
-                          for (let i = updated.length - 1; i >= 0; i--) {
-                            if (updated[i].role === "assistant" && 
-                                !updated[i].content.includes('<think>') && 
-                                updated[i].isStreaming) {
-                              updated[i] = { ...updated[i], content: currentMainContent };
+                          // Check if we already have an assistant message for this response (but not the thinking one)
+                          const lastMessage = prev[prev.length - 1];
+                          if (lastMessage && lastMessage.role === "assistant" && lastMessage.isStreaming && !lastMessage.content.includes('<think-live>')) {
+                            // Update existing streaming message
+                            return prev.map((msg, index) => 
+                              index === prev.length - 1 
+                                ? { ...msg, content: mainContent, isStreaming: true }
+                                : msg
+                            );
+                          } else {
+                            // Create new assistant message for main content
+                            return [...prev, {
+                              role: "assistant" as const,
+                              content: mainContent,
+                              id: uuidv4(),
+                              timestamp: Date.now(),
+                              isStreaming: true,
+                              isProcessed: false
+                            }];
+                          }
+                        });
+                      } else if (mainContent) {
+                        // Update existing message with main content only
+                        setMessages((prev) => {
+                          const updatedMessages = [...prev];
+                          // Find the last non-thinking assistant message
+                          for (let i = updatedMessages.length - 1; i >= 0; i--) {
+                            if (updatedMessages[i].role === "assistant" && !updatedMessages[i].content.includes('<think-live>')) {
+                              updatedMessages[i].content = mainContent;
+                              updatedMessages[i].isStreaming = true;
                               break;
                             }
                           }
-                          return updated;
+                          return updatedMessages;
                         });
                       }
+                    } else {
+                      // For advanced search mode, keep existing processing
+                    const { showContent, processedContent, hasCompletedReasoning } = processStreamBuffer(contentBuffer);
+                    
+                      if (showContent && !hasProcessedFinalContent) {
+                      if (!hasActualContent) {
+                        hasActualContent = true;
+                        aiMsg.content = processedContent;
+                        setIsProcessing(false);
+                        setMessages((prev) => [...prev, { ...aiMsg }]);
+                      } else {
+                        aiMsg.content = processedContent;
+                    setMessages((prev) => {
+                      const updatedMessages = [...prev];
+                          const aiIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
+                          if (aiIndex !== -1) {
+                            updatedMessages[aiIndex] = {
+                              ...updatedMessages[aiIndex],
+                              content: processedContent,
+                              webSources: aiMsg.webSources,
+                              isProcessed: true
+                        };
+                      }
+                      return updatedMessages;
+                    });
+                      }
+                      
+                      if (hasCompletedReasoning) {
+                        hasProcessedFinalContent = true;
+                      }
+                    } else if (hasActualContent && showContent) {
+                      aiMsg.content = processedContent;
+                      setMessages((prev) => {
+                        const updatedMessages = [...prev];
+                        const aiIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
+                        if (aiIndex !== -1) {
+                          updatedMessages[aiIndex] = {
+                            ...updatedMessages[aiIndex],
+                            content: processedContent,
+                            webSources: aiMsg.webSources,
+                            isProcessed: true
+                          };
+                        }
+                        return updatedMessages;
+                      });
+                    }
                     }
                   }
                 } catch (err) {
@@ -2006,23 +1943,64 @@ export default function TestChat() {
           }
         }
         
-        // Simple post-processing: just mark messages as completed
-        setMessages((prev) => prev.map(msg => ({
-          ...msg,
-          isStreaming: false,
-          isProcessed: true
-        })));
+        // Apply post-processing after streaming is complete
+        const { thinkContent: finalThinkContent, mainContent: finalMainContent } = extractThinkContentDuringStream(contentBuffer);
+        const { hasAdvancedStructure, cleanedContent } = detectAndCleanAdvancedStructure(finalMainContent);
         
-        // Clear thinking state
-        setCurrentThinkingMessageId(null);
-        setLiveThinking('');
+        // Update the main content message
+        setMessages((prev) => {
+          const updatedMessages = [...prev];
+          // Find the main content message (not the thinking one)
+          for (let i = updatedMessages.length - 1; i >= 0; i--) {
+            if (updatedMessages[i].role === "assistant" && !updatedMessages[i].content.includes('<think-live>')) {
+              updatedMessages[i] = {
+                ...updatedMessages[i],
+                content: hasAdvancedStructure ? cleanedContent : finalMainContent,
+                contentType: 'conversation',
+                isProcessed: true,
+                isStreaming: false
+              };
+              break;
+            }
+          }
+          return updatedMessages;
+        });
+        
+        // Convert the live thinking message to a final thinking message - only if there's meaningful content
+        if (finalThinkContent && finalThinkContent.trim().length > 0 && currentThinkingMessageId) {
+          setMessages((prev) => {
+            return prev.map(msg => 
+              msg.id === currentThinkingMessageId 
+                ? { 
+                    ...msg, 
+                    content: `<think>${finalThinkContent}</think>`,
+                    isProcessed: true,
+                    isStreaming: false
+                  }
+                : msg
+            );
+          });
+          // Clear the live thinking state
+          setCurrentThinkingMessageId(null);
+          setLiveThinking('');
+        } else if (currentThinkingMessageId) {
+          // If there's no meaningful thinking content, remove the thinking message entirely
+          setMessages((prev) => {
+            return prev.filter(msg => msg.id !== currentThinkingMessageId);
+          });
+          // Clear the live thinking state
+          setCurrentThinkingMessageId(null);
+          setLiveThinking('');
+        }
         
         if (uploadedImageUrls.length > 0) {
+            const { content: cleanedContent } = cleanAIResponse(aiMsg.content);
+            const descriptionSummary = cleanedContent.slice(0, 150) + (cleanedContent.length > 150 ? '...' : '');
             const newImageCount = imageCounter + uploadedImageUrls.length;
             setImageCounter(newImageCount);
             const newImageContexts = uploadedImageUrls.map((url, index) => ({
                 order: imageCounter + index + 1,
-                description: "Image uploaded",
+                description: descriptionSummary,
                 imageUrl: url,
                 timestamp: Date.now()
             }));
@@ -2084,7 +2062,7 @@ export default function TestChat() {
   async function handleFirstFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files;
     if (files && files.length > 0) {
-      const newFiles: File[] = Array.from(files) as File[];
+      const newFiles = Array.from(files);
       setSelectedFilesForUpload((prevFiles) => [...prevFiles, ...newFiles]);
       
       const newPreviewUrls = newFiles.map(file => URL.createObjectURL(file));
@@ -2408,11 +2386,11 @@ export default function TestChat() {
           </svg>
         </button>
         
-        {/* Expanded thinking content - display as plain text */}
+        {/* Expanded thinking content (same as before) */}
         {isExpanded && (
           <div className="mt-2 bg-gray-800 border border-gray-700 p-3 rounded-md text-cyan-300">
             <div className="font-semibold mb-1 text-sm text-cyan-400">AI Thinking Process:</div>
-            <div className="text-sm leading-relaxed">{content}</div>
+            <div className="whitespace-pre-line text-sm">{content}</div>
           </div>
         )}
       </div>
@@ -2680,23 +2658,33 @@ export default function TestChat() {
                         )}
                         {isStoppedMsg ? (
                           <span className="text-sm text-white italic font-light mb-2">[Response stopped by user]</span>
+                        ) : isLiveThinking ? (
+                          <div className="w-full max-w-full overflow-hidden">
+                            {/* Show live thinking button */}
+                            <ThinkingButton 
+                              key={`${msg.id}-live-thinking`} 
+                              content={msg.content.includes('<think-live>') ? 
+                                msg.content.replace(/<think-live>(.*?)<\/think-live>/g, '$1') : 
+                                'Starting to think...'
+                              } 
+                              isLive={msg.isStreaming || false} 
+                            />
+                          </div>
                         ) : (
                           <div className="w-full max-w-full overflow-hidden">
-                            {/* Show thinking button if we have thinking content */}
-                            {thinkBlocks.length > 0 && (
-                              <ThinkingButton 
-                                key={`${msg.id}-combined-thinking`} 
-                                content={thinkBlocks[0].content} 
-                                isLive={msg.isStreaming || false} 
-                              />
-                            )}
+                            {/* Render think blocks first - only if they contain meaningful content */}
+                            {thinkBlocks.length > 0 && thinkBlocks.map((block, index) => (
+                              <ThinkingButton key={`${msg.id}-think-${index}`} content={block.content} isLive={false} />
+                            ))}
                             
                             {/* Render the main content with ReactMarkdown */}
                             <ReactMarkdown 
                               remarkPlugins={[remarkGfm]} 
                               rehypePlugins={[rehypeRaw]} 
                               className="prose dark:prose-invert max-w-none"
-                              components={{}}
+                              components={{
+                                // Remove the think tag component override since we handle it above
+                              }}
                             >
                               {finalContent.replace(/<!-- think-block-\d+ -->/g, '')}
                             </ReactMarkdown>
