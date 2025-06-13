@@ -1786,7 +1786,6 @@ export default function TestChat() {
         let hasActualContent = false; // Flag to track if we have meaningful content
         let isReasoningPhase = false; // Flag to track if we're in the reasoning phase
         let hasProcessedFinalContent = false; // Flag to know if we've already shown final content
-        let mainContentMessageId: string | null = null; // Track the main content message ID separately
         
         // Initialize aiMsg for streaming
         const aiMsg: LocalMessage = {
@@ -1857,25 +1856,42 @@ export default function TestChat() {
                       if (!hasActualContent && mainContent) {
                         hasActualContent = true;
                         
-                        // Create the main content message
-                        const newMainContentMessageId = uuidv4();
-                        mainContentMessageId = newMainContentMessageId;
-                        setMessages((prev) => [...prev, {
-                          role: "assistant" as const,
-                          content: mainContent,
-                          id: newMainContentMessageId,
-                          timestamp: Date.now(),
-                          isStreaming: true,
-                          isProcessed: false
-                        }]);
-                      } else if (mainContent && mainContentMessageId) {
-                        // Update existing main content message
+                        // Create the assistant message immediately when we start getting main content
                         setMessages((prev) => {
-                          return prev.map(msg => 
-                            msg.id === mainContentMessageId 
-                              ? { ...msg, content: mainContent, isStreaming: true }
-                              : msg
-                          );
+                          // Check if we already have an assistant message for this response (but not the thinking one)
+                          const lastMessage = prev[prev.length - 1];
+                          if (lastMessage && lastMessage.role === "assistant" && lastMessage.isStreaming && !lastMessage.content.includes('<think-live>')) {
+                            // Update existing streaming message
+                            return prev.map((msg, index) => 
+                              index === prev.length - 1 
+                                ? { ...msg, content: mainContent, isStreaming: true }
+                                : msg
+                            );
+                          } else {
+                            // Create new assistant message for main content
+                            return [...prev, {
+                              role: "assistant" as const,
+                              content: mainContent,
+                              id: uuidv4(),
+                              timestamp: Date.now(),
+                              isStreaming: true,
+                              isProcessed: false
+                            }];
+                          }
+                        });
+                      } else if (mainContent) {
+                        // Update existing message with main content only
+                        setMessages((prev) => {
+                          const updatedMessages = [...prev];
+                          // Find the last non-thinking assistant message
+                          for (let i = updatedMessages.length - 1; i >= 0; i--) {
+                            if (updatedMessages[i].role === "assistant" && !updatedMessages[i].content.includes('<think-live>')) {
+                              updatedMessages[i].content = mainContent;
+                              updatedMessages[i].isStreaming = true;
+                              break;
+                            }
+                          }
+                          return updatedMessages;
                         });
                       }
                     } else {
@@ -1944,22 +1960,24 @@ export default function TestChat() {
         
         const { hasAdvancedStructure, cleanedContent } = detectAndCleanAdvancedStructure(filteredMainContent);
         
-        // Update the main content message using tracked ID
-        if (mainContentMessageId) {
-          setMessages((prev) => {
-            return prev.map(msg => 
-              msg.id === mainContentMessageId 
-                ? { 
-                    ...msg, 
-                    content: hasAdvancedStructure ? cleanedContent : filteredMainContent,
-                    contentType: 'conversation',
-                    isProcessed: true,
-                    isStreaming: false
-                  }
-                : msg
-            );
-          });
-        }
+        // Update the main content message
+        setMessages((prev) => {
+          const updatedMessages = [...prev];
+          // Find the main content message (not the thinking one)
+          for (let i = updatedMessages.length - 1; i >= 0; i--) {
+            if (updatedMessages[i].role === "assistant" && !updatedMessages[i].content.includes('<think-live>')) {
+              updatedMessages[i] = {
+                ...updatedMessages[i],
+                content: hasAdvancedStructure ? cleanedContent : filteredMainContent,
+                contentType: 'conversation',
+                isProcessed: true,
+                isStreaming: false
+              };
+              break;
+            }
+          }
+          return updatedMessages;
+        });
         
         // Convert the live thinking message to a final thinking message - only if there's meaningful content
         if (finalThinkContent && finalThinkContent.trim().length > 0 && currentThinkingMessageId) {
