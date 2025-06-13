@@ -41,6 +41,7 @@ import rehypeRaw from 'rehype-raw';
 import { Message as BaseMessage } from '@/utils/conversation-context';
 import Search from '@/components/Search';
 import { Message as ConversationMessage } from "@/utils/conversation-context";
+import { filterAIThinking } from '../../utils/content-filter';
 
 // Define a type that includes all possible query types (including the ones in SCHEMAS and 'conversation')
 type QueryType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversation';
@@ -1945,7 +1946,12 @@ export default function TestChat() {
         
         // Apply post-processing after streaming is complete
         const { thinkContent: finalThinkContent, mainContent: finalMainContent } = extractThinkContentDuringStream(contentBuffer);
-        const { hasAdvancedStructure, cleanedContent } = detectAndCleanAdvancedStructure(finalMainContent);
+        
+        // Apply content filtering to remove any remaining thinking patterns from main content
+        // This ensures only the final answer appears in the main chat
+        const filteredMainContent = filterAIThinking(finalMainContent);
+        
+        const { hasAdvancedStructure, cleanedContent } = detectAndCleanAdvancedStructure(filteredMainContent);
         
         // Update the main content message
         setMessages((prev) => {
@@ -1955,7 +1961,7 @@ export default function TestChat() {
             if (updatedMessages[i].role === "assistant" && !updatedMessages[i].content.includes('<think-live>')) {
               updatedMessages[i] = {
                 ...updatedMessages[i],
-                content: hasAdvancedStructure ? cleanedContent : finalMainContent,
+                content: hasAdvancedStructure ? cleanedContent : filteredMainContent,
                 contentType: 'conversation',
                 isProcessed: true,
                 isStreaming: false
@@ -2150,39 +2156,12 @@ export default function TestChat() {
     }     else if (msg.content) {
       const isDefaultChat = msg.contentType === 'conversation' || (msg.role === 'assistant' && !msg.contentType);
       if (isDefaultChat) {
-        // Display raw content without post-processing for default chat
-        // Custom components for MarkdownRenderer to handle <think> tags
+        // Display content using standard ReactMarkdown - think tags are handled separately by processThinkTags
         return (
           <ReactMarkdown 
             remarkPlugins={[remarkGfm]} 
             rehypePlugins={[rehypeRaw]} 
             className="prose dark:prose-invert max-w-none default-chat-markdown"
-            components={{
-              // Custom renderer for <think> tags to display them properly
-              p: ({node, ...props}) => {
-                const content = String(props.children);
-                if (content.includes('<think>') && content.includes('</think>')) {
-                  // Extract think content and wrap it in a styled div
-                  const beforeThink = content.split('<think>')[0];
-                  const thinkContent = content.split('<think>')[1]?.split('</think>')[0];
-                  const afterThink = content.split('</think>')[1];
-                  
-                  return (
-                    <div>
-                      {beforeThink && <p>{beforeThink}</p>}
-                      {thinkContent && (
-                        <div className="bg-gray-800 border border-gray-700 p-3 my-2 rounded-md text-cyan-300">
-                          <div className="font-semibold mb-1 text-sm text-cyan-400">AI Thinking Process:</div>
-                          <p className="whitespace-pre-line">{thinkContent}</p>
-                        </div>
-                      )}
-                      {afterThink && <p>{afterThink}</p>}
-                    </div>
-                  );
-                }
-                return <p {...props} />;
-              }
-            }}
           >
             {msg.content}
           </ReactMarkdown>
