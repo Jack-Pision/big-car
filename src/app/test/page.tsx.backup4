@@ -1647,9 +1647,10 @@ export default function TestChat() {
     setMessages((prev) => [...prev, userMessageForDisplay]);
     setInput("");
     
-    // Clear any previous thinking state - each query gets fresh state
+    // Clear any previous thinking state
     setCurrentThinkingMessageId(null);
     setLiveThinking('');
+    // Thinking message will be created on-demand when thinking content is detected
     
       if (selectedFilesForUpload.length > 0) {
         const clientSideSupabase = createSupabaseClient();
@@ -1782,10 +1783,23 @@ export default function TestChat() {
         let buffer = '';
         let done = false;
         let contentBuffer = ''; // Buffer to accumulate content
-        let hasCreatedMessage = false; // Flag to track if we've created the AI message
-        let aiMessageId: string | null = null; // Track the single AI message ID
+        let hasActualContent = false; // Flag to track if we have meaningful content
+        let isReasoningPhase = false; // Flag to track if we're in the reasoning phase
+        let hasProcessedFinalContent = false; // Flag to know if we've already shown final content
+        let mainContentMessageId: string | null = null; // Track the main content message ID separately
         
-        // We'll create the AI message when we first get content
+        // Initialize aiMsg for streaming
+        const aiMsg: LocalMessage = {
+          role: "assistant" as const,
+          content: "", 
+          id: uuidv4(),
+          timestamp: Date.now(),
+          parentId: userMessageId,
+          imageUrls: uploadedImageUrls.length > 0 ? uploadedImageUrls : undefined,
+          webSources: [],
+          contentType: 'conversation',
+          isProcessed: true
+        };
 
         while (!done) {
           const { value, done: doneReading } = await reader.read();
@@ -1807,42 +1821,110 @@ export default function TestChat() {
                   if (delta) {
                     contentBuffer += delta;
                     
-                    // Create the AI message on first content
-                    if (!hasCreatedMessage && contentBuffer.trim().length > 0) {
-                      hasCreatedMessage = true;
-                      aiMessageId = uuidv4();
-                      
-                      setMessages((prev) => [...prev, {
-                        role: "assistant" as const,
-                        content: contentBuffer,
-                        id: aiMessageId!,
-                        timestamp: Date.now(),
-                        parentId: userMessageId,
-                        imageUrls: uploadedImageUrls.length > 0 ? uploadedImageUrls : undefined,
-                        webSources: [],
-                        contentType: 'conversation',
-                        isStreaming: true,
-                        isProcessed: false
-                      }]);
-                    } else if (aiMessageId) {
-                      // Update the single AI message with accumulated content
-                      setMessages((prev) => {
-                        return prev.map(msg => 
-                          msg.id === aiMessageId 
-                            ? { ...msg, content: contentBuffer, isStreaming: true }
-                            : msg
-                        );
-                      });
-                    }
+                    // Extract think content and main content separately
+                    const { thinkContent, mainContent } = extractThinkContentDuringStream(contentBuffer);
                     
-                    // Update live thinking display if we detect thinking content
-                    const { thinkContent } = extractThinkContentDuringStream(contentBuffer);
+                    // Create or update thinking message only when thinking content is detected
                     if (thinkContent && thinkContent.trim().length > 0) {
                       setLiveThinking(thinkContent);
-                      setCurrentThinkingMessageId(aiMessageId); // Link thinking to the main message
+                      
+                      if (!currentThinkingMessageId) {
+                        // Create thinking message on-demand
+                        const newThinkingMessageId = uuidv4();
+                        setCurrentThinkingMessageId(newThinkingMessageId);
+                        setMessages((prev) => [...prev, {
+                          role: "assistant" as const,
+                          content: `<think-live>${thinkContent}</think-live>`,
+                          id: newThinkingMessageId,
+                          timestamp: Date.now(),
+                          isStreaming: true,
+                          isProcessed: false
+                        }]);
+                      } else {
+                        // Update existing thinking message
+                        setMessages((prev) => {
+                          return prev.map(msg => 
+                            msg.id === currentThinkingMessageId 
+                              ? { ...msg, content: `<think-live>${thinkContent}</think-live>` }
+                              : msg
+                          );
+                        });
+                      }
                     }
                     
-
+                    // For default chat mode, only show main content (no think tags)
+                    if (true) {
+                      if (!hasActualContent && mainContent) {
+                        hasActualContent = true;
+                        
+                        // Create the main content message
+                        const newMainContentMessageId = uuidv4();
+                        mainContentMessageId = newMainContentMessageId;
+                        setMessages((prev) => [...prev, {
+                          role: "assistant" as const,
+                          content: mainContent,
+                          id: newMainContentMessageId,
+                          timestamp: Date.now(),
+                          isStreaming: true,
+                          isProcessed: false
+                        }]);
+                      } else if (mainContent && mainContentMessageId) {
+                        // Update existing main content message
+                        setMessages((prev) => {
+                          return prev.map(msg => 
+                            msg.id === mainContentMessageId 
+                              ? { ...msg, content: mainContent, isStreaming: true }
+                              : msg
+                          );
+                        });
+                      }
+                    } else {
+                      // For advanced search mode, keep existing processing
+                    const { showContent, processedContent, hasCompletedReasoning } = processStreamBuffer(contentBuffer);
+                    
+                      if (showContent && !hasProcessedFinalContent) {
+                      if (!hasActualContent) {
+                        hasActualContent = true;
+                        aiMsg.content = processedContent;
+                        setIsProcessing(false);
+                        setMessages((prev) => [...prev, { ...aiMsg }]);
+                      } else {
+                        aiMsg.content = processedContent;
+                    setMessages((prev) => {
+                      const updatedMessages = [...prev];
+                          const aiIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
+                          if (aiIndex !== -1) {
+                            updatedMessages[aiIndex] = {
+                              ...updatedMessages[aiIndex],
+                              content: processedContent,
+                              webSources: aiMsg.webSources,
+                              isProcessed: true
+                        };
+                      }
+                      return updatedMessages;
+                    });
+                      }
+                      
+                      if (hasCompletedReasoning) {
+                        hasProcessedFinalContent = true;
+                      }
+                    } else if (hasActualContent && showContent) {
+                      aiMsg.content = processedContent;
+                      setMessages((prev) => {
+                        const updatedMessages = [...prev];
+                        const aiIndex = updatedMessages.findIndex(m => m.id === aiMsg.id);
+                        if (aiIndex !== -1) {
+                          updatedMessages[aiIndex] = {
+                            ...updatedMessages[aiIndex],
+                            content: processedContent,
+                            webSources: aiMsg.webSources,
+                            isProcessed: true
+                          };
+                        }
+                        return updatedMessages;
+                      });
+                    }
+                    }
                   }
                 } catch (err) {
                   console.error('Error parsing streaming response:', err);
@@ -1854,13 +1936,22 @@ export default function TestChat() {
         }
         
         // Apply post-processing after streaming is complete
-        if (aiMessageId) {
+        const { thinkContent: finalThinkContent, mainContent: finalMainContent } = extractThinkContentDuringStream(contentBuffer);
+        
+        // Apply content filtering to remove any remaining thinking patterns from main content
+        // This ensures only the final answer appears in the main chat
+        const filteredMainContent = filterAIThinking(finalMainContent);
+        
+        const { hasAdvancedStructure, cleanedContent } = detectAndCleanAdvancedStructure(filteredMainContent);
+        
+        // Update the main content message using tracked ID
+        if (mainContentMessageId) {
           setMessages((prev) => {
             return prev.map(msg => 
-              msg.id === aiMessageId 
+              msg.id === mainContentMessageId 
                 ? { 
                     ...msg, 
-                    content: contentBuffer, // Keep the full content including think tags
+                    content: hasAdvancedStructure ? cleanedContent : filteredMainContent,
                     contentType: 'conversation',
                     isProcessed: true,
                     isStreaming: false
@@ -1870,26 +1961,48 @@ export default function TestChat() {
           });
         }
         
-        // Clear the live thinking state
-        setCurrentThinkingMessageId(null);
-        setLiveThinking('');
-        
-        // Handle image context if needed
-        if (uploadedImageUrls.length > 0 && aiMessageId) {
-          const { content: cleanedContent } = cleanAIResponse(contentBuffer);
-          const descriptionSummary = cleanedContent.slice(0, 150) + (cleanedContent.length > 150 ? '...' : '');
-          const newImageCount = imageCounter + uploadedImageUrls.length;
-          setImageCounter(newImageCount);
-          const newImageContexts = uploadedImageUrls.map((url, index) => ({
-              order: imageCounter + index + 1,
-              description: descriptionSummary,
-              imageUrl: url,
-              timestamp: Date.now()
-          }));
-          setImageContexts(prev => {
-              const updated = [...prev, ...newImageContexts];
-              return updated.slice(-10);
+        // Convert the live thinking message to a final thinking message - only if there's meaningful content
+        if (finalThinkContent && finalThinkContent.trim().length > 0 && currentThinkingMessageId) {
+          setMessages((prev) => {
+            return prev.map(msg => 
+              msg.id === currentThinkingMessageId 
+                ? { 
+                    ...msg, 
+                    content: `<think>${finalThinkContent}</think>`,
+                    isProcessed: true,
+                    isStreaming: false
+                  }
+                : msg
+            );
           });
+          // Clear the live thinking state
+          setCurrentThinkingMessageId(null);
+          setLiveThinking('');
+        } else if (currentThinkingMessageId) {
+          // If there's no meaningful thinking content, remove the thinking message entirely
+          setMessages((prev) => {
+            return prev.filter(msg => msg.id !== currentThinkingMessageId);
+          });
+          // Clear the live thinking state
+          setCurrentThinkingMessageId(null);
+          setLiveThinking('');
+        }
+        
+        if (uploadedImageUrls.length > 0) {
+            const { content: cleanedContent } = cleanAIResponse(aiMsg.content);
+            const descriptionSummary = cleanedContent.slice(0, 150) + (cleanedContent.length > 150 ? '...' : '');
+            const newImageCount = imageCounter + uploadedImageUrls.length;
+            setImageCounter(newImageCount);
+            const newImageContexts = uploadedImageUrls.map((url, index) => ({
+                order: imageCounter + index + 1,
+                description: descriptionSummary,
+                imageUrl: url,
+                timestamp: Date.now()
+            }));
+            setImageContexts(prev => {
+                const updated = [...prev, ...newImageContexts];
+                return updated.slice(-10);
+            });
         }
       }
     } catch (err: any) {
