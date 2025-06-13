@@ -1807,17 +1807,14 @@ export default function TestChat() {
                   if (delta) {
                     contentBuffer += delta;
                     
-                    // Separate thinking and main content in real-time
-                    const { thinkContent, mainContent } = extractThinkContentDuringStream(contentBuffer);
-                    
-                    // Create the AI message on first meaningful content (either thinking or main)
-                    if (!hasCreatedMessage && (thinkContent.trim().length > 0 || mainContent.trim().length > 0)) {
+                    // Create the AI message on first content
+                    if (!hasCreatedMessage && contentBuffer.trim().length > 0) {
                       hasCreatedMessage = true;
                       aiMessageId = uuidv4();
                       
                       setMessages((prev) => [...prev, {
                         role: "assistant" as const,
-                        content: mainContent, // Store only main content in the message
+                        content: contentBuffer,
                         id: aiMessageId!,
                         timestamp: Date.now(),
                         parentId: userMessageId,
@@ -1828,17 +1825,18 @@ export default function TestChat() {
                         isProcessed: false
                       }]);
                     } else if (aiMessageId) {
-                      // Update the single AI message with only main content
+                      // Update the single AI message with accumulated content
                       setMessages((prev) => {
                         return prev.map(msg => 
                           msg.id === aiMessageId 
-                            ? { ...msg, content: mainContent, isStreaming: true }
+                            ? { ...msg, content: contentBuffer, isStreaming: true }
                             : msg
                         );
                       });
                     }
                     
-                    // Update live thinking display - this goes directly to think box
+                    // Update live thinking display if we detect thinking content
+                    const { thinkContent } = extractThinkContentDuringStream(contentBuffer);
                     if (thinkContent && thinkContent.trim().length > 0) {
                       setLiveThinking(thinkContent);
                       setCurrentThinkingMessageId(aiMessageId); // Link thinking to the main message
@@ -1857,16 +1855,12 @@ export default function TestChat() {
         
         // Apply post-processing after streaming is complete
         if (aiMessageId) {
-          const { thinkContent: finalThinkContent, mainContent: finalMainContent } = extractThinkContentDuringStream(contentBuffer);
-          
           setMessages((prev) => {
             return prev.map(msg => 
               msg.id === aiMessageId 
                 ? { 
                     ...msg, 
-                    content: finalThinkContent.trim().length > 0 
-                      ? `<think>${finalThinkContent}</think>${finalMainContent}` // Embed think tags for ThinkingButton to process
-                      : finalMainContent, // No thinking content, just main content
+                    content: contentBuffer, // Keep the full content including think tags
                     contentType: 'conversation',
                     isProcessed: true,
                     isStreaming: false
@@ -1882,8 +1876,7 @@ export default function TestChat() {
         
         // Handle image context if needed
         if (uploadedImageUrls.length > 0 && aiMessageId) {
-          const { mainContent: finalMainContent } = extractThinkContentDuringStream(contentBuffer);
-          const { content: cleanedContent } = cleanAIResponse(finalMainContent);
+          const { content: cleanedContent } = cleanAIResponse(contentBuffer);
           const descriptionSummary = cleanedContent.slice(0, 150) + (cleanedContent.length > 150 ? '...' : '');
           const newImageCount = imageCounter + uploadedImageUrls.length;
           setImageCounter(newImageCount);
