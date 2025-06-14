@@ -409,7 +409,7 @@ const GlobalStyles = () => (
         transparent 60%,
         transparent 100%
       );
-      animation: shimmerMove 0.5s ease-in-out infinite;
+      animation: shimmerMove 1s ease-in-out infinite;
       z-index: 1;
     }
 
