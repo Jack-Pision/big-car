@@ -578,7 +578,11 @@ Error details: ${errorMessage}
               <div className="text-neutral-300 ml-4">
                 {step.status !== 'error' && step.result && (
                   (step.id === 'understand' && firstStepThinking) ? (
-                    <ReactMarkdown className="prose prose-invert text-neutral-300 text-sm">{extractThinkContent(firstStepThinking)}</ReactMarkdown>
+                    <ul className="list-disc pl-5 space-y-1 text-neutral-300 text-sm">
+                      {extractBulletPoints(extractThinkContent(firstStepThinking)).map((point, i) => (
+                        <li key={i}>{point}</li>
+                      ))}
+                    </ul>
                   ) : (step.id !== 'research') ? (
                     <ul className="list-disc pl-5 space-y-1 text-neutral-300 text-sm">
                       {extractBulletPoints(extractThinkContent(step.result)).map((point, i) => (
