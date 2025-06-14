@@ -2709,8 +2709,8 @@ export default function TestChat() {
                             />
                           )}
                           
-                          {/* Think blocks from processed content - only show if not currently live thinking */}
-                          {!currentThinkingMessageId && thinkBlocks.length > 0 && thinkBlocks.map((block, index) => (
+                          {/* Think blocks from processed content - show for all messages except the one currently live thinking */}
+                          {currentThinkingMessageId !== msg.id && thinkBlocks.length > 0 && thinkBlocks.map((block, index) => (
                             <ThinkingButton key={`${msg.id}-think-${index}`} content={block.content} isLive={false} />
                           ))}
                           
