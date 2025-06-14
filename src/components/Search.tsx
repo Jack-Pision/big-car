@@ -578,11 +578,7 @@ Error details: ${errorMessage}
               <div className="text-neutral-300 ml-4">
                 {step.status !== 'error' && step.result && (
                   (step.id === 'understand' && firstStepThinking) ? (
-                    <ul className="list-disc pl-5 space-y-1 text-neutral-300 text-sm">
-                      {extractBulletPoints(extractThinkContent(firstStepThinking)).map((point, i) => (
-                        <li key={i}>{point}</li>
-                      ))}
-                    </ul>
+                    <p className="text-neutral-300 text-sm whitespace-pre-wrap">{extractThinkContent(firstStepThinking)}</p>
                   ) : (step.id !== 'research') ? (
                     <ul className="list-disc pl-5 space-y-1 text-neutral-300 text-sm">
                       {extractBulletPoints(extractThinkContent(step.result)).map((point, i) => (
