@@ -1078,8 +1078,8 @@ const processThinkTags = (content: string, isLive: boolean = false) => {
 
 // Component to render think blocks
 const ThinkBlock = ({ content }: { content: string }) => (
-  <div className="bg-gray-800 border border-gray-700 p-3 my-2 rounded-md text-cyan-300">
-    <div className="font-semibold mb-1 text-sm text-cyan-400">AI Thinking Process:</div>
+  <div className="bg-gray-800 border border-gray-700 p-3 rounded-md text-cyan-300 mb-2">
+    <div className="font-semibold mb-1 text-sm text-cyan-400">AI Thought Process:</div>
     <div className="whitespace-pre-line text-sm">{content}</div>
   </div>
 );
@@ -2672,25 +2672,6 @@ export default function TestChat() {
                 
                 return (
                   <React.Fragment key={msg.id + '-fragment-' + i}>
-                    {/* Show immediate thinking box for this specific message if it's the current thinking message */}
-                    {currentThinkingMessageId === msg.id && liveThinking && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3, ease: "easeOut" }}
-                        className="w-full markdown-body text-left flex flex-col items-start ai-response-text mb-4 relative"
-                        style={{ color: '#fff', maxWidth: '100%', overflowWrap: 'break-word', zIndex: 10 }}
-                      >
-                        <div className="w-full max-w-full overflow-hidden">
-                          <ThinkingButton 
-                            key={`${currentThinkingMessageId}-immediate-thinking`} 
-                            content={liveThinking} 
-                            isLive={true} 
-                          />
-                        </div>
-                      </motion.div>
-                    )}
-                    
                     {/* Main AI response content */}
                     <motion.div
                       key={msg.id + '-text-' + i}
@@ -2700,49 +2681,47 @@ export default function TestChat() {
                       className="w-full markdown-body text-left flex flex-col items-start ai-response-text mb-4 relative"
                       style={{ color: '#fff', maxWidth: '100%', overflowWrap: 'break-word' }}
                     >
-                          {msg.webSources && msg.webSources.length > 0 && (
-                            <>
-                              <WebSourcesCarousel sources={msg.webSources} />
-                              <div style={{ height: '1.5rem' }} />
-                            </>
-                          )}
-                          {isStoppedMsg ? (
-                            <span className="text-sm text-white italic font-light mb-2">[Response stopped by user]</span>
-                          ) : (isLiveThinking && !currentThinkingMessageId) ? (
-                            <div className="w-full max-w-full overflow-hidden">
-                              {/* Show live thinking button - only when no standalone thinking box is active */}
-                              <ThinkingButton 
-                                key={`${msg.id}-live-thinking`} 
-                                content={msg.content.includes('<think-live>') ? 
-                                  msg.content.replace(/<think-live>(.*?)<\/think-live>/g, '$1') : 
-                                  'Starting to think...'
-                                } 
-                                isLive={msg.isStreaming} 
-                              />
-                            </div>
-                          ) : (
-                            <div className="w-full max-w-full overflow-hidden">
-                              {/* Render think blocks first - only if they contain meaningful content and no live thinking */}
-                              {!currentThinkingMessageId && thinkBlocks.length > 0 && thinkBlocks.map((block, index) => (
-                                <ThinkingButton key={`${msg.id}-think-${index}`} content={block.content} isLive={false} />
-                              ))}
-                              
-                              {/* Render the main content with ReactMarkdown - only show if there's actual content or if thinking is complete */}
-                              {(processedContent.trim().length > 0 || !currentThinkingMessageId || currentThinkingMessageId !== msg.id) && (
-                                <ReactMarkdown 
-                                  remarkPlugins={[remarkGfm]} 
-                                  rehypePlugins={[rehypeRaw]} 
-                                  className="prose dark:prose-invert max-w-none"
-                                  components={{
-                                    // Remove the think tag component override since we handle it above
-                                  }}
-                                >
-                                  {finalContent.replace(/<!-- think-block-\d+ -->/g, '')}
-                                </ReactMarkdown>
-                              )}
-                            </div>
-                          )}
+                      {msg.webSources && msg.webSources.length > 0 && (
+                        <>
+                          <WebSourcesCarousel sources={msg.webSources} />
+                          <div style={{ height: '1.5rem' }} />
+                        </>
+                      )}
                       
+                      {isStoppedMsg ? (
+                        <span className="text-sm text-white italic font-light mb-2">[Response stopped by user]</span>
+                      ) : (
+                        <div className="w-full max-w-full overflow-hidden">
+                          {/* Single consolidated thinking button - handles all thinking scenarios */}
+                          {(currentThinkingMessageId === msg.id && liveThinking) && (
+                            <ThinkingButton 
+                              key={`${msg.id}-live-thinking`} 
+                              content={liveThinking} 
+                              isLive={true} 
+                            />
+                          )}
+                          
+                          {/* Think blocks from processed content - only show if not currently live thinking */}
+                          {!currentThinkingMessageId && thinkBlocks.length > 0 && thinkBlocks.map((block, index) => (
+                            <ThinkingButton key={`${msg.id}-think-${index}`} content={block.content} isLive={false} />
+                          ))}
+                          
+                          {/* Main content - show if there's content or thinking is complete */}
+                          {(processedContent.trim().length > 0 || !currentThinkingMessageId || currentThinkingMessageId !== msg.id) && (
+                            <ReactMarkdown 
+                              remarkPlugins={[remarkGfm]} 
+                              rehypePlugins={[rehypeRaw]} 
+                              className="prose dark:prose-invert max-w-none"
+                              components={{
+                                // Remove the think tag component override since we handle it above
+                              }}
+                            >
+                              {finalContent.replace(/<!-- think-block-\d+ -->/g, '')}
+                            </ReactMarkdown>
+                          )}
+                        </div>
+                      )}
+                  
                       {/* Action buttons for text content */}
                       {msg.isProcessed && !isStoppedMsg && (
                         <div className="w-full flex justify-start gap-2 mt-2">
