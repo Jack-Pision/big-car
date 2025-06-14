@@ -379,44 +379,37 @@ function postProcessAIChatResponse(text: string, isDefaultChat: boolean): string
 // Add global style to force all AI text to be white
 const GlobalStyles = () => (
   <style jsx global>{`
-    @keyframes shimmer {
+    @keyframes shimmerMove {
       0% {
-        background-position: -200% 0;
+        transform: translateX(-100%);
       }
       100% {
-        background-position: 200% 0;
+        transform: translateX(100%);
       }
     }
 
     .shimmer-button {
       position: relative;
       overflow: hidden;
-      background: linear-gradient(
-        90deg,
-        rgba(31, 41, 55, 1) 0%,
-        rgba(31, 41, 55, 1) 35%,
-        rgba(6, 182, 212, 0.4) 50%,
-        rgba(31, 41, 55, 1) 65%,
-        rgba(31, 41, 55, 1) 100%
-      ) !important;
-      background-size: 200% 100% !important;
-      animation: shimmer 0.5s ease-in-out infinite;
+      background: rgba(31, 41, 55, 1) !important;
     }
 
     .shimmer-button::before {
       content: '';
       position: absolute;
       top: 0;
-      left: -100%;
+      left: 0;
       width: 100%;
       height: 100%;
       background: linear-gradient(
         90deg,
-        transparent,
-        rgba(6, 182, 212, 0.5),
-        transparent
+        transparent 0%,
+        transparent 40%,
+        rgba(6, 182, 212, 0.6) 50%,
+        transparent 60%,
+        transparent 100%
       );
-      animation: shimmer 0.5s ease-in-out infinite;
+      animation: shimmerMove 0.5s ease-in-out infinite;
       z-index: 1;
     }
 
