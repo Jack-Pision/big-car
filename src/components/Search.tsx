@@ -509,7 +509,7 @@ Error details: ${errorMessage}
   // Render the Search UI
   return (
     <div
-      className="w-full mx-auto rounded-lg overflow-hidden bg-gray-800 border border-white/20 relative"
+      className="w-full mx-auto rounded-lg overflow-hidden bg-gray-800 relative"
       style={{ 
         borderRadius: '20px', 
         maxWidth: '969px'
@@ -577,7 +577,7 @@ Error details: ${errorMessage}
               <div className="text-neutral-300 ml-4">
                 {step.status !== 'error' && step.result && (
                   (step.id === 'understand' && firstStepThinking) ? (
-                    <p className="text-sm">{extractThinkContent(firstStepThinking)}</p>
+                    <p className="text-neutral-300 text-sm whitespace-pre-wrap">{extractThinkContent(firstStepThinking)}</p>
                   ) : (step.id !== 'research') ? (
                     <ul className="list-disc pl-5 space-y-1 text-neutral-300 text-sm">
                       {extractBulletPoints(extractThinkContent(step.result)).map((point, i) => (
