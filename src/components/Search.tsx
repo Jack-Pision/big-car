@@ -132,7 +132,7 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
             }
           ],
           stream: true,
-          max_tokens: 1000 // Increased for more complete stepwise outputs
+          max_tokens: 4096 // Increased for more complete stepwise outputs
         }),
         signal: controller.signal
       });
@@ -396,7 +396,7 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
               }
             ],
             stream: true,
-            max_tokens: 1000 // Limit tokens for faster response
+            max_tokens: 4096 // Limit tokens for faster response
           }),
           signal: controller.signal
         });
