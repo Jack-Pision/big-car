@@ -2380,15 +2380,17 @@ export default function TestChat() {
       <div className="my-2">
         {/* Morphing button/box container */}
         <div
-          className={`transition-all duration-300 ease-in-out rounded-md border border-gray-700 text-cyan-300 cursor-pointer ${
+          className={`transition-all duration-300 ease-in-out rounded-md border border-gray-700 text-cyan-300 ${
             isLive ? 'shimmer-button' : 'bg-gray-800 hover:bg-gray-700'
           } ${
-            isExpanded ? 'p-3' : 'px-3 py-2'
+            isExpanded ? 'p-3 w-full' : 'px-3 py-2 w-auto inline-block'
           }`}
-          onClick={() => setIsExpanded(!isExpanded)}
         >
           {/* Button header - always visible */}
-          <div className="flex items-center gap-2 text-sm">
+          <div 
+            className="flex items-center gap-2 text-sm cursor-pointer"
+            onClick={() => setIsExpanded(!isExpanded)}
+          >
             {/* Clean Atom icon - no animations */}
             <div className="w-4 h-4 relative flex-shrink-0">
               <svg 
@@ -2421,11 +2423,8 @@ export default function TestChat() {
           
           {/* Expanded content - appears below the button header when expanded */}
           {isExpanded && (
-            <div className="mt-3 pt-3 border-t border-gray-600">
-              <div className="font-semibold mb-2 text-sm text-cyan-400">
-                {isLive ? 'AI Thinking Process:' : 'AI Thought Process:'}
-              </div>
-              <div className="whitespace-pre-line text-sm leading-relaxed">
+            <div className="mt-3">
+              <div className="whitespace-pre-line text-sm leading-relaxed select-text">
                 {content}
               </div>
             </div>
