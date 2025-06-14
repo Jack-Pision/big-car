@@ -40,18 +40,18 @@
 .step-title-active {
   background: linear-gradient(
     90deg,
-    #ffffff 0%,
-    #ffffff 35%,
-    rgba(255, 255, 255, 0.8) 50%,
-    #ffffff 65%,
-    #ffffff 100%
+    rgba(255, 255, 255, 0.6) 0%,
+    rgba(255, 255, 255, 1) 50%,
+    rgba(255, 255, 255, 0.6) 100%
   );
-  background-size: 400% auto;
+  background-size: 200% 100%;
   color: transparent;
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  animation: shimmerText 2s ease-in-out infinite;
+  animation: shimmer 2s infinite linear;
+  background-repeat: no-repeat;
+  background-position: 0 0;
 }
 
 .step-title-active::before {
@@ -85,10 +85,10 @@
 
 @keyframes shimmerMove {
   0% {
-    transform: translateX(-100%);
+    background-position: -200% 0;
   }
   100% {
-    transform: translateX(100%);
+    background-position: 200% 0;
   }
 }
 
