@@ -395,12 +395,12 @@ const GlobalStyles = () => (
         90deg,
         rgba(31, 41, 55, 1) 0%,
         rgba(31, 41, 55, 1) 40%,
-        rgba(6, 182, 212, 0.15) 50%,
+        rgba(6, 182, 212, 0.2) 50%,
         rgba(31, 41, 55, 1) 60%,
         rgba(31, 41, 55, 1) 100%
-      );
-      background-size: 200% 100%;
-      animation: shimmer 2.5s ease-in-out infinite;
+      ) !important;
+      background-size: 200% 100% !important;
+      animation: shimmer 2s ease-in-out infinite;
     }
 
     .shimmer-button::before {
@@ -413,50 +413,16 @@ const GlobalStyles = () => (
       background: linear-gradient(
         90deg,
         transparent,
-        rgba(6, 182, 212, 0.2),
+        rgba(6, 182, 212, 0.3),
         transparent
       );
-      animation: shimmer 2.5s ease-in-out infinite;
+      animation: shimmer 2s ease-in-out infinite;
+      z-index: 1;
     }
 
-    @keyframes shimmer {
-      0% {
-        background-position: -200% 0;
-      }
-      100% {
-        background-position: 200% 0;
-      }
-    }
-
-    .shimmer-button {
+    .shimmer-button > * {
       position: relative;
-      overflow: hidden;
-      background: linear-gradient(
-        90deg,
-        rgba(31, 41, 55, 1) 0%,
-        rgba(31, 41, 55, 1) 40%,
-        rgba(6, 182, 212, 0.1) 50%,
-        rgba(31, 41, 55, 1) 60%,
-        rgba(31, 41, 55, 1) 100%
-      );
-      background-size: 200% 100%;
-      animation: shimmer 2s ease-in-out infinite;
-    }
-
-    .shimmer-button::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(
-        90deg,
-        transparent,
-        rgba(6, 182, 212, 0.2),
-        transparent
-      );
-      animation: shimmer 2s ease-in-out infinite;
+      z-index: 2;
     }
     
     .ai-response-text {
@@ -2397,12 +2363,12 @@ export default function TestChat() {
         {/* Compact thinking button */}
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className={`flex items-center gap-2 px-3 py-2 rounded-md border border-gray-700 text-cyan-300 hover:bg-gray-700 transition-all text-sm ${
-            isLive ? 'shimmer-button' : 'bg-gray-800'
+          className={`flex items-center gap-2 px-3 py-2 rounded-md border border-gray-700 text-cyan-300 transition-all text-sm ${
+            isLive ? 'shimmer-button' : 'bg-gray-800 hover:bg-gray-700'
           }`}
         >
           {/* Clean Atom icon - no animations */}
-          <div className="w-4 h-4 relative z-10">
+          <div className="w-4 h-4 relative">
             <svg 
               width="16" 
               height="16" 
@@ -2413,7 +2379,7 @@ export default function TestChat() {
             </svg>
           </div>
           
-          <span className="font-medium relative z-10">
+          <span className="font-medium relative">
             {isLive ? 'Thinking' : 'Thought'}
           </span>
           
@@ -2425,7 +2391,7 @@ export default function TestChat() {
             fill="none" 
             stroke="currentColor" 
             strokeWidth="2"
-            className={`transition-transform relative z-10 ${isExpanded ? 'rotate-180' : ''}`}
+            className={`transition-transform relative ${isExpanded ? 'rotate-180' : ''}`}
           >
             <polyline points="6,9 12,15 18,9"></polyline>
           </svg>
