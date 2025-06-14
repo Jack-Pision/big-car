@@ -509,7 +509,7 @@ Error details: ${errorMessage}
   // Render the Search UI
   return (
     <div
-      className="w-full mx-auto rounded-lg overflow-hidden bg-[#171717] border border-white/20 relative"
+      className="w-full mx-auto rounded-lg overflow-hidden bg-gray-800 border border-white/20 relative"
       style={{ 
         borderRadius: '20px', 
         maxWidth: '969px'
@@ -517,7 +517,7 @@ Error details: ${errorMessage}
     >
       {/* Header (fixed) */}
       <div
-        className="relative flex items-center px-6 py-4 bg-[#171717]"
+        className="relative flex items-center px-6 py-4 bg-gray-800"
         style={{ minHeight: '64px' }}
       >
         <div className="flex items-center gap-3">
