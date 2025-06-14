@@ -394,13 +394,13 @@ const GlobalStyles = () => (
       background: linear-gradient(
         90deg,
         rgba(31, 41, 55, 1) 0%,
-        rgba(31, 41, 55, 1) 40%,
-        rgba(6, 182, 212, 0.2) 50%,
-        rgba(31, 41, 55, 1) 60%,
+        rgba(31, 41, 55, 1) 35%,
+        rgba(6, 182, 212, 0.4) 50%,
+        rgba(31, 41, 55, 1) 65%,
         rgba(31, 41, 55, 1) 100%
       ) !important;
       background-size: 200% 100% !important;
-      animation: shimmer 2s ease-in-out infinite;
+      animation: shimmer 0.5s ease-in-out infinite;
     }
 
     .shimmer-button::before {
@@ -413,10 +413,10 @@ const GlobalStyles = () => (
       background: linear-gradient(
         90deg,
         transparent,
-        rgba(6, 182, 212, 0.3),
+        rgba(6, 182, 212, 0.5),
         transparent
       );
-      animation: shimmer 2s ease-in-out infinite;
+      animation: shimmer 0.5s ease-in-out infinite;
       z-index: 1;
     }
 
