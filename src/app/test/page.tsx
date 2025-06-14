@@ -19,6 +19,8 @@ import { formatMessagesForApi, enhanceSystemPrompt, buildConversationContext } f
 import { Session } from '@/lib/types';
 import {
   createNewSession,
+  createNewSessionWithAITitle,
+  updateSessionTitleWithAI,
   getSessionMessages,
   saveSessionMessages,
   updateSessionTimestamp,
@@ -1591,6 +1593,7 @@ export default function TestChat() {
   const EXTRA_GAP = 32; // px
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [sidebarRefreshTrigger, setSidebarRefreshTrigger] = useState(0);
   const [activeMode, setActiveMode] = useState<'chat' | 'search'>('chat');
   const [activeButton, setActiveButton] = useState<string | null>(null);
   const router = useRouter();
@@ -1660,6 +1663,28 @@ export default function TestChat() {
     if (activeSessionId && messages.length > 0) {
       saveSessionMessages(activeSessionId, messages);
       updateSessionTimestamp(activeSessionId); // Also update timestamp on new message
+      
+      // Update session title with AI-generated title after first AI response
+      const userMessages = messages.filter(msg => msg.role === 'user');
+      const aiMessages = messages.filter(msg => msg.role === 'assistant' && msg.isProcessed);
+      
+      // If this is the first AI response (1 user message, 1 completed AI message)
+      if (userMessages.length === 1 && aiMessages.length === 1) {
+        const firstUserMessage = userMessages[0];
+        const firstAiMessage = aiMessages[0];
+        
+        // Update title with AI-generated version
+        updateSessionTitleWithAI(
+          activeSessionId, 
+          firstUserMessage.content,
+          firstAiMessage.content
+        ).then(() => {
+          // Trigger sidebar refresh to show updated title
+          setSidebarRefreshTrigger(prev => prev + 1);
+        }).catch(error => {
+          console.error('Failed to update session title:', error);
+        });
+      }
     }
   }, [messages, activeSessionId]);
 
@@ -1744,7 +1769,7 @@ export default function TestChat() {
     let currentActiveSessionId = activeSessionId;
 
     if (!currentActiveSessionId) {
-      const newSession = createNewSession(input.trim() || (selectedFilesForUpload.length > 0 ? "Image Upload" : undefined));
+      const newSession = await createNewSessionWithAITitle(input.trim() || (selectedFilesForUpload.length > 0 ? "Image Upload" : undefined));
       setActiveSessionId(newSession.id);
       saveActiveSessionId(newSession.id);
       currentActiveSessionId = newSession.id;
@@ -2838,6 +2863,7 @@ export default function TestChat() {
           onClose={() => setSidebarOpen(false)}
           onNewChat={handleNewChatRequest}
           onSelectSession={handleSelectSession}
+          refreshTrigger={sidebarRefreshTrigger}
         />
       </div>
       {chatError && (

@@ -13,6 +13,7 @@ interface SidebarProps {
   onClose: () => void;
   onNewChat: () => void;
   onSelectSession: (id: string) => void;
+  refreshTrigger?: number;
 }
 
 export default function Sidebar({
@@ -21,6 +22,7 @@ export default function Sidebar({
   onClose,
   onNewChat,
   onSelectSession,
+  refreshTrigger,
 }: SidebarProps) {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -35,7 +37,7 @@ export default function Sidebar({
     if (open) {
       setSessions(getSessions());
     }
-  }, [open]);
+  }, [open, refreshTrigger]);
 
   const handleSessionSelect = (sessionId: string) => {
     onSelectSession(sessionId);
