@@ -2423,7 +2423,7 @@ export default function TestChat() {
           
           {/* Expanded content - appears below the button header when expanded */}
           {isExpanded && (
-            <div className="mt-6">
+            <div className="pt-6">
               <div className="whitespace-pre-line text-sm leading-relaxed select-text">
                 {content}
               </div>
