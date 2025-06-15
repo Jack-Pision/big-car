@@ -23,12 +23,12 @@
   position: relative;
 }
 
-@keyframes shimmer {
+@keyframes silverShimmer {
   0% {
-    background-position: -200% 0;
+    left: -100%;
   }
   100% {
-    background-position: 200% 0;
+    left: 100%;
   }
 }
 
@@ -38,20 +38,32 @@
 }
 
 .step-title-active {
+  color: #ffffff;
+  position: relative;
+  overflow: hidden;
+}
+
+.step-title-active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
   background: linear-gradient(
     90deg,
-    rgba(255, 255, 255, 0.6) 0%,
-    rgba(255, 255, 255, 1) 50%,
-    rgba(255, 255, 255, 0.6) 100%
+    transparent 0%,
+    rgba(255, 255, 255, 0.4) 50%,
+    transparent 100%
   );
-  background-size: 200% 100%;
-  color: transparent;
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  animation: shimmer 2s infinite linear;
-  background-repeat: no-repeat;
-  background-position: 0 0;
+  animation: silverShimmer 1s infinite linear;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.step-title-active > * {
+  position: relative;
+  z-index: 2;
 }
 
 .step-title-completed {
