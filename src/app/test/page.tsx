@@ -1733,6 +1733,20 @@ export default function TestChat() {
 
     // First check if we're in search mode
     if (activeMode === 'search') {
+      // Create session if needed for search mode
+      let currentActiveSessionId = activeSessionId;
+      
+      if (!currentActiveSessionId) {
+        const newSession = await createNewSessionWithAITitle(input.trim());
+        setActiveSessionId(newSession.id);
+        saveActiveSessionId(newSession.id);
+        currentActiveSessionId = newSession.id;
+        setMessages([]);
+      }
+
+      if (!hasInteracted) setHasInteracted(true);
+      if (showHeading) setShowHeading(false);
+
       // Add user message to chat
       setMessages(prev => [
         ...prev,
