@@ -249,7 +249,7 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
               query, 
-              limit: 10, // 10 results per query as requested
+              limit: 20, // Increased to get more results per query
               includeHtml: false
             }),
             signal: controller.signal
@@ -260,19 +260,9 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
           if (response.ok) {
             const serperData = await response.json();
             if (serperData?.sources?.length > 0) {
-              allSources.push(...serperData.sources.slice(0, 10));
+              allSources.push(...serperData.sources); // Take ALL sources, no slicing
               
-              // Show initial results immediately for smooth UX
-              const currentSources = [...allSources];
-              const uniqueCurrentSources = currentSources.filter((source, index, self) => 
-                index === self.findIndex(s => s.url === source.url)
-              );
-              
-              const initialResults = uniqueCurrentSources.map((source: any, index: number) => 
-                `Source ${index + 1}: ${source.title} URL: ${source.url}`
-              ).join('\n');
-              
-              updateStepStatus('research', 'active', initialResults);
+              // Don't update UI during search - wait for all results
             }
           }
         } catch (searchError) {
@@ -320,15 +310,8 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
             };
           }
           
-          // Update UI progressively as each source is scraped
+          // Store result but don't update UI until all are complete
           allSourcesWithContent[index] = processedSource;
-          const progressResults = allSourcesWithContent
-            .filter(s => s) // Filter out undefined entries
-            .map((source: any, idx: number) => 
-              `Source ${idx + 1}: ${source.title} URL: ${source.url}`
-            ).join('\n');
-          
-          updateStepStatus('research', 'active', progressResults);
           
           return processedSource;
         } catch (error) {
@@ -368,11 +351,12 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
         throw new Error('No search results found from any query');
       }
       
-      // Format final results for display
+      // Format ALL final results for display - show every single source found
       const formattedResults = finalSources.map((source: any, index: number) => 
         `Source ${index + 1}: ${source.title} URL: ${source.url}`
       ).join('\n');
       
+      // Update UI only once with ALL results for smooth simultaneous animation
       updateStepStatus('research', 'completed', formattedResults);
       
       return {
