@@ -36,15 +36,15 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
     },
     {
       id: 'research',
-      title: 'Multi-Source Web Discovery & Retrieval',
+      title: 'Multi-Source Web Discovery & Content Scraping',
       status: 'pending',
-      content: 'Retrieving relevant information from multiple web sources...'
+      content: 'Executing optimized searches and scraping website content...'
     },
     {
       id: 'analyze',
-      title: 'AI Information Synthesis Analyst',
+      title: 'AI Content Analysis & Synthesis',
       status: 'pending',
-      content: 'Synthesizing information and identifying key patterns and insights...'
+      content: 'Analyzing scraped content and synthesizing comprehensive insights...'
     }
   ]);
   const [error, setError] = useState<string | null>(null);
@@ -227,69 +227,132 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
   };
 
   // Execute Serper API call for the research step
-  const executeSerperStep = async (query: string): Promise<any> => {
+  const executeSerperStep = async (searchQueries: string[]): Promise<any> => {
     try {
       updateStepStatus('research', 'active');
       
-      // Add a timeout for the Serper API call
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      const allSources: any[] = [];
+      const allSourcesWithContent: any[] = [];
       
-      // Limit to just 5 results for faster processing
-      const response = await fetch('/api/serper/search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          query, 
-          limit: 5, // Reduced from 10 to 5 for faster results
-          includeHtml: false // Skip HTML content to reduce payload size
-        }),
-        signal: controller.signal
+      // Execute multiple searches based on optimized queries from Step 1
+      for (let i = 0; i < searchQueries.length; i++) {
+        const query = searchQueries[i];
+        console.log(`Executing search ${i + 1}/${searchQueries.length}: ${query}`);
+        
+        try {
+          // Add a timeout for each Serper API call
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout per search
+          
+          const response = await fetch('/api/serper/search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              query, 
+              limit: 3, // 3 results per query to get variety
+              includeHtml: false
+            }),
+            signal: controller.signal
+          });
+          
+          clearTimeout(timeoutId);
+          
+          if (response.ok) {
+            const serperData = await response.json();
+            if (serperData?.sources?.length > 0) {
+              allSources.push(...serperData.sources.slice(0, 3));
+            }
+          }
+        } catch (searchError) {
+          console.error(`Search ${i + 1} failed:`, searchError);
+          // Continue with other searches even if one fails
+        }
+        
+        // Small delay between searches to avoid rate limiting
+        if (i < searchQueries.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
+      
+      // Remove duplicates based on URL
+      const uniqueSources = allSources.filter((source, index, self) => 
+        index === self.findIndex(s => s.url === source.url)
+      ).slice(0, 8); // Limit to top 8 unique sources
+      
+      // Scrape content from top sources
+      console.log(`Scraping content from ${Math.min(uniqueSources.length, 4)} sources...`);
+      const scrapingPromises = uniqueSources.slice(0, 4).map(async (source: any) => {
+        try {
+          const content = await scrapeWebsiteContent(source.url);
+          return {
+            ...source,
+            content: content || source.snippet || '',
+            scraped: !!content
+          };
+        } catch (error) {
+          console.error(`Failed to scrape ${source.url}:`, error);
+          return {
+            ...source,
+            content: source.snippet || '',
+            scraped: false
+          };
+        }
       });
       
-      clearTimeout(timeoutId);
+      // Wait for all scraping to complete with timeout
+      const scrapedSources = await Promise.allSettled(scrapingPromises);
       
-      if (!response.ok) {
-        throw new Error(`Search API call failed with status: ${response.status}`);
+      scrapedSources.forEach((result, index) => {
+        if (result.status === 'fulfilled') {
+          allSourcesWithContent.push(result.value);
+        } else {
+          // Add source without content if scraping failed
+          allSourcesWithContent.push({
+            ...uniqueSources[index],
+            content: uniqueSources[index].snippet || '',
+            scraped: false
+          });
+        }
+      });
+      
+      // Add remaining sources without content
+      uniqueSources.slice(4).forEach(source => {
+        allSourcesWithContent.push({
+          ...source,
+          content: source.snippet || '',
+          scraped: false
+        });
+      });
+      
+      if (allSourcesWithContent.length === 0) {
+        throw new Error('No search results found from any query');
       }
       
-      const serperData = await response.json();
-      
-      if (!serperData || !serperData.sources || serperData.sources.length === 0) {
-        throw new Error('No search results found');
-      }
-      
-      // Limit the source text to reduce payload size in next steps
-      const formattedResults = serperData.sources.slice(0, 5).map((source: any, index: number) => 
-        `Source ${index + 1}: ${source.title}\nURL: ${source.url}\n`
+      // Format results for display
+      const formattedResults = allSourcesWithContent.map((source: any, index: number) => 
+        `Source ${index + 1}: ${source.title}\nURL: ${source.url}\nContent: ${source.scraped ? 'Scraped' : 'Snippet only'}\n`
       ).join('\n');
       
       updateStepStatus('research', 'completed', formattedResults);
       
-      // Simplify the result object to reduce memory usage
       return {
-        sources: serperData.sources.slice(0, 5).map((source: any) => ({
-          title: source.title,
-          url: source.url
-        }))
+        sources: allSourcesWithContent,
+        searchQueries: searchQueries,
+        totalSources: allSourcesWithContent.length,
+        scrapedSources: allSourcesWithContent.filter(s => s.scraped).length
       };
     } catch (err) {
       console.error('Error in research step:', err);
       
-      // If it's an abort error (timeout), provide a special message
-      const errorMessage = err instanceof Error 
-        ? (err.name === 'AbortError' 
-            ? 'Web search took too long to complete. Continuing with limited results.'
-            : err.message) 
-        : String(err);
-      
+      const errorMessage = err instanceof Error ? err.message : String(err);
       updateStepStatus('research', 'error', errorMessage);
       
       // Return a minimal result object instead of failing completely
       return {
-        sources: [
-          { title: "Search timed out", url: "" }
-        ]
+        sources: [{ title: "Search failed", url: "", content: "", scraped: false }],
+        searchQueries: searchQueries,
+        totalSources: 0,
+        scrapedSources: 0
       };
     }
   };
@@ -314,6 +377,36 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
     return bullets;
   }
 
+  // Helper to extract search queries from Step 1 results
+  function extractSearchQueries(text: string): string[] {
+    if (!text) return [];
+    
+    // Extract numbered list items (1. 2. 3.)
+    const numberedRegex = /^\s*\d+\.\s*(.+)$/gm;
+    let match;
+    const queries: string[] = [];
+    
+    while ((match = numberedRegex.exec(text)) !== null) {
+      if (match[1]) {
+        const query = match[1].trim().replace(/[\[\]]/g, ''); // Remove brackets if present
+        queries.push(query);
+      }
+    }
+    
+    // If no numbered queries found, try to extract from lines
+    if (queries.length === 0) {
+      const lines = text.split('\n').map(line => line.trim()).filter(Boolean);
+      for (const line of lines) {
+        if (line.length > 10 && !line.includes(':') && !line.includes('Query')) {
+          queries.push(line.replace(/^[-*•]\s*/, '').replace(/[\[\]]/g, ''));
+        }
+      }
+    }
+    
+    // Limit to maximum 3 queries
+    return queries.slice(0, 3);
+  }
+
   // Utility to extract content inside <think>...</think> tags, or return original if not present
   function extractThinkContent(text: string): string {
     if (!text) return '';
@@ -324,6 +417,27 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
     return text;
   }
 
+  // Function to scrape website content
+  const scrapeWebsiteContent = async (url: string): Promise<string> => {
+    try {
+      const response = await fetch('/api/scrape', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Scraping failed: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return data.content || '';
+    } catch (error) {
+      console.error(`Failed to scrape ${url}:`, error);
+      return '';
+    }
+  };
+
   // Main search execution flow
   const executeSearch = async (query: string) => {
     try {
@@ -333,23 +447,33 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
       // Shorten the query if it's very long
       const shortenedQuery = query.length > 500 ? query.substring(0, 500) + "..." : query;
       
-      // Step 1: AI Search Strategy Planner - Enhanced prompt system
+      // Step 1: AI Search Strategy Planner - Generate optimized search queries
       console.time('Step 1: AI Search Strategy Planner');
-      let step1SystemPrompt = `You are an AI Search Strategy Planner specializing in query analysis and search optimization. Your role is to deconstruct user queries and develop comprehensive search strategies.
+      let step1SystemPrompt = `You are an AI Search Strategy Planner specializing in query analysis and search optimization. Your role is to understand user queries and generate optimized search queries for comprehensive research.
 
-RESPONSE FORMAT: Respond ONLY with a markdown bullet list. Each bullet point must represent one distinct understanding or strategic insight. Do not include paragraphs, prose, or explanations outside the bullet format.
+CRITICAL REQUIREMENTS:
+1. Generate EXACTLY 2-3 optimized search queries (no more than 3)
+2. Each query should explore a different angle or aspect of the topic
+3. Use specific, targeted keywords that will yield high-quality results
+4. Format as a numbered list with just the search queries
 
-ANALYSIS DEPTH: Consider query intent, keyword variations, potential ambiguities, search scope, information types needed, and optimal search approaches.`;
-      let step1UserPrompt = `Analyze this query and develop your search strategy thinking process. Break down your understanding into bullet points (one insight per bullet).
+RESPONSE FORMAT:
+1. [First optimized search query]
+2. [Second optimized search query]  
+3. [Third optimized search query] (if needed)
 
-Query: ${shortenedQuery}
+Do not include explanations, bullet points, or additional text - only the numbered search queries.`;
+      let step1UserPrompt = `Analyze this user query and generate 2-3 optimized search queries that will comprehensively research the topic from different angles.
 
-Focus on:
-- Query intent and context
-- Key concepts and terms
-- Potential search angles
-- Information gaps to address
-- Search optimization strategies`;
+User Query: ${shortenedQuery}
+
+Generate search queries that cover:
+- Core concepts and definitions
+- Recent developments or current state
+- Expert analysis or research findings
+- Practical applications or implications
+
+Output only the numbered search queries, nothing else.`;
       // Aggressively truncate for step 1
       const step1SystemPromptTruncated = step1SystemPrompt.length > MAX_STEP1_PROMPT_LENGTH
         ? step1SystemPrompt.substring(0, MAX_STEP1_PROMPT_LENGTH) + '...'
@@ -365,38 +489,61 @@ Focus on:
       );
       console.timeEnd('Step 1: AI Search Strategy Planner');
       
-      // Step 2: Multi-Source Web Discovery & Retrieval - no change
-      console.time('Step 2: Web Discovery');
-      const serperResults = await executeSerperStep(shortenedQuery);
-      console.timeEnd('Step 2: Web Discovery');
+      // Extract search queries from Step 1 results
+      const searchQueries = extractSearchQueries(strategyResult);
+      console.log('Extracted search queries:', searchQueries);
       
-      // Step 3: AI Information Synthesis Analyst - Enhanced synthesis system (now Step 3)
-      console.time('Step 3: AI Information Synthesis Analyst');
+      // If no queries extracted, use original query as fallback
+      const finalSearchQueries = searchQueries.length > 0 ? searchQueries : [shortenedQuery];
+      
+      // Step 2: Multi-Source Web Discovery & Content Scraping
+      console.time('Step 2: Web Discovery & Content Scraping');
+      const serperResults = await executeSerperStep(finalSearchQueries);
+      console.timeEnd('Step 2: Web Discovery & Content Scraping');
+      
+      // Step 3: AI Content Analysis & Synthesis - Analyze scraped website content
+      console.time('Step 3: AI Content Analysis & Synthesis');
+      
+      // Prepare content data for analysis
+      const scrapedContent = serperResults.sources
+        .filter((s: any) => s.scraped && s.content)
+        .map((s: any, i: number) => `Source ${i+1}: ${s.title}\nURL: ${s.url}\nContent: ${s.content.substring(0, 800)}...\n`)
+        .join('\n---\n');
+      
+      const allSourcesInfo = serperResults.sources
+        .map((s: any, i: number) => `${i+1}. ${s.title} - ${s.url} (${s.scraped ? 'Content scraped' : 'Snippet only'})`)
+        .join('\n');
+      
       const analysisResult = await executeNvidiaStep(
         'analyze',
-        `You are an AI Information Synthesis Analyst. You excel at analyzing complex information from web sources, identifying patterns, and synthesizing comprehensive insights.
+        `You are an AI Content Analysis & Synthesis Specialist. You excel at analyzing scraped website content, extracting key information, and synthesizing comprehensive insights from multiple sources.
 
 RESPONSE FORMAT: Respond ONLY with a markdown bullet list. Each bullet represents one distinct analytical insight or synthesis point.
 
-SYNTHESIS APPROACH: Integrate search strategy with web discovery results, identify key themes, analyze source credibility, resolve contradictions, highlight information gaps, and extract actionable insights.`,
-        `Synthesize and analyze the information for: "${shortenedQuery}"
+ANALYSIS APPROACH: Analyze the actual website content, identify key themes and facts, assess source credibility, cross-reference information, resolve contradictions, and extract actionable insights.`,
+        `Analyze and synthesize the scraped website content for: "${shortenedQuery}"
 
-Present your analytical thinking as bullet points (one synthesis insight per bullet).
+Present your analytical findings as bullet points (one insight per bullet).
 
-Search Strategy Results: ${strategyResult}
-Web Discovery Results: ${JSON.stringify(serperResults).substring(0, 1500)}
-Available Sources: ${serperResults.sources.map((s: any, i: number) => `${i+1}. ${s.title} - ${s.url}`).join('\n')}
+SEARCH QUERIES USED: ${finalSearchQueries.join(', ')}
+
+SCRAPED WEBSITE CONTENT:
+${scrapedContent}
+
+ALL SOURCES (${serperResults.totalSources} total, ${serperResults.scrapedSources} scraped):
+${allSourcesInfo}
 
 Focus on:
-- Key findings and patterns from sources
-- Information quality and source credibility assessment
-- Cross-source corroboration and contradictions
-- Information gaps and limitations
+- Key facts and findings extracted from website content
+- Patterns and themes across multiple sources
+- Source credibility and reliability assessment
+- Cross-source validation and contradictions
+- Information gaps and what's missing
 - Confidence levels in different claims
-- Actionable insights and implications
-- Source reliability indicators`
+- Actionable insights and practical implications
+- Quality of information from scraped vs snippet sources`
       );
-      console.timeEnd('Step 3: AI Information Synthesis Analyst');
+      console.timeEnd('Step 3: AI Content Analysis & Synthesis');
       
       // Final Output: Generate comprehensive research paper directly to main chat
       await generateFinalOutput(shortenedQuery, strategyResult, analysisResult, serperResults);
@@ -469,23 +616,34 @@ CITATION FORMAT: Use inline citations [Source Name, Year] and include full refer
               role: 'user',
               content: `Generate a comprehensive research paper on: "${query}"
 
-Use the following inputs to create your paper:
+Use the following rich data inputs to create your paper:
 
-**Search Strategy:** ${strategyResult}
-**Synthesized Analysis:** ${analysisResult}
-**Primary Sources:** ${serperResults.sources.map((s: any, i: number) => `${i+1}. ${s.title} - ${s.url}`).join('\n')}
-**Web Discovery Data:** ${JSON.stringify(serperResults).substring(0, 800)}
+**Search Queries Used:** ${serperResults.searchQueries?.join(', ') || 'N/A'}
+**Content Analysis Results:** ${analysisResult}
+**Sources Summary:** ${serperResults.totalSources} total sources, ${serperResults.scrapedSources} with scraped content
+
+**Primary Sources with Content:**
+${serperResults.sources.map((s: any, i: number) => 
+  `${i+1}. ${s.title} - ${s.url} ${s.scraped ? '[Content Available]' : '[Snippet Only]'}`
+).join('\n')}
+
+**Scraped Website Content (Key Excerpts):**
+${serperResults.sources
+  .filter((s: any) => s.scraped && s.content)
+  .slice(0, 3)
+  .map((s: any, i: number) => `Source ${i+1}: ${s.title}\n${s.content.substring(0, 400)}...`)
+  .join('\n\n---\n\n')}
 
 **Paper Requirements:**
 - Minimum 700 words (target 1000-1500)
 - Academic structure with clear sections
 - Citations for all factual claims using provided sources
-- Balanced analysis of multiple perspectives
-- Clear conclusions based on evidence
+- Balanced analysis incorporating scraped website content
+- Clear conclusions based on evidence from actual source content
 - Professional markdown formatting
-- Include source credibility assessment within the analysis
+- Distinguish between information from scraped content vs snippets
 
-**Focus Areas:** Provide comprehensive coverage of the topic with evidence-based insights, actionable conclusions, and integrated source reliability evaluation like Perplexity AI.`
+**Focus Areas:** Provide comprehensive coverage using the actual website content, evidence-based insights, actionable conclusions, and integrated source reliability evaluation like Perplexity AI. Prioritize information from scraped sources over snippet-only sources.`
             }
           ],
           stream: true,
