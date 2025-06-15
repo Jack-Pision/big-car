@@ -579,6 +579,25 @@ const GlobalStyles = () => (
       border-left-color: #06b6d4;
     }
     
+    /* Search result specific styling */
+    .search-result-content {
+      border-left: 3px solid #10b981;
+      padding-left: 1rem;
+      background: rgba(16, 185, 129, 0.05);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      margin: 0.5rem 0;
+    }
+    
+    .search-result-content h1, 
+    .search-result-content h2, 
+    .search-result-content h3,
+    .search-result-content h4,
+    .search-result-content h5,
+    .search-result-content h6 {
+      color: #10b981 !important;
+    }
+    
     .markdown-body table {
       color: #ffffff;
     }
@@ -703,6 +722,7 @@ interface LocalMessage {
   structuredContent?: any;
   parentId?: string;
   query?: string; // Add this property for search-ui messages
+  isSearchResult?: boolean; // Add this property for search result messages
 }
 
 // Helper to enforce Advance Search output structure
@@ -2287,9 +2307,10 @@ export default function TestChat() {
 
   // Add helper function to convert LocalMessage[] to ConversationMessage[] by type casting
   function convertToConversationMessages(messages: LocalMessage[]): ConversationMessage[] {
-    // This filters out any messages with role 'search-ui' since ConversationMessage doesn't support that role
+    // This filters out search-ui messages and search results since ConversationMessage doesn't support those roles
+    // Search results are handled separately and shouldn't be part of conversation context
     return messages.filter(
-      msg => msg.role !== 'search-ui'
+      msg => msg.role !== 'search-ui' && !msg.isSearchResult
     ) as unknown as ConversationMessage[];
   }
 
@@ -2608,6 +2629,46 @@ export default function TestChat() {
           <div className="w-full max-w-3xl mx-auto flex flex-col gap-4 items-center justify-center z-10 pt-12 pb-4">
             {messages.map((msg, i) => {
               if (msg.role === "assistant") {
+                // Handle search results separately - bypass all Think box processing
+                if (msg.isSearchResult) {
+                  return (
+                    <motion.div
+                      key={msg.id + '-search-result-' + i}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, ease: "easeOut" }}
+                      className="w-full markdown-body text-left flex flex-col items-start ai-response-text mb-4 relative"
+                      style={{ color: '#fff', maxWidth: '100%', overflowWrap: 'break-word' }}
+                    >
+                      {/* Clean search result rendering - no Think boxes, no processing */}
+                      <ReactMarkdown 
+                        remarkPlugins={[remarkGfm]} 
+                        rehypePlugins={[rehypeRaw]} 
+                        className="prose dark:prose-invert max-w-none search-result-content"
+                      >
+                        {msg.content}
+                      </ReactMarkdown>
+                      
+                      {/* Action buttons for search results */}
+                      {msg.isProcessed && (
+                        <div className="w-full flex justify-start gap-2 mt-2">
+                          <button
+                            onClick={() => handleCopy(msg.content)}
+                            className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
+                            aria-label="Copy search result"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                            <span className="text-xs">Copy</span>
+                          </button>
+                        </div>
+                      )}
+                    </motion.div>
+                  );
+                }
+                
                 if (msg.contentType && msg.structuredContent) {
                   return (
                     <motion.div
@@ -2801,7 +2862,7 @@ export default function TestChat() {
                     key={msg.id}
                     query={msg.query || msg.content}
                     onComplete={(result: any) => {
-                      // Add the search result as a new assistant message
+                      // Add the search result as a new assistant message with search-specific flag
                       console.log('Search completed:', result);
                       setMessages(prev => [
                         ...prev,
@@ -2811,7 +2872,9 @@ export default function TestChat() {
                           content: result,
                           timestamp: Date.now(),
                           isProcessed: true,
-                          parentId: msg.id
+                          parentId: msg.id,
+                          contentType: 'search-result',
+                          isSearchResult: true
                         }
                       ]);
                     }}
