@@ -69,8 +69,23 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
   const updateStepStatus = (id: string, status: StepStatus, result?: string) => {
     setSteps(prevSteps => prevSteps.map(step => {
       if (step.id !== id) return step;
-      // Prevent overwriting completed step's result
-      if (step.status === 'completed' && step.result) {
+      
+      // Debug logging for research step
+      if (id === 'research') {
+        console.log(`[DEBUG] Updating research step: ${step.status} -> ${status}`, {
+          hasExistingResult: !!step.result,
+          newResult: !!result,
+          resultPreview: result?.substring(0, 100)
+        });
+      }
+      
+      // Allow updating if we're providing new results, even if already completed
+      if (result) {
+        return { ...step, status, result };
+      }
+      
+      // Prevent overwriting completed step's result only if no new result is provided
+      if (step.status === 'completed' && step.result && !result) {
         return step;
       }
       return { ...step, status, result: result || step.result };
