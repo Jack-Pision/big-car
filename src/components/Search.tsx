@@ -908,39 +908,21 @@ Error details: ${err instanceof Error ? err.message : String(err)}
                           const url = urlMatch[1];
                           const title = titleMatch[1].replace(/ URL:.*/, '').trim();
                           
-                          // Extract domain and get styling
-                          let domainInfo = { name: 'unknown', icon: '🌐', bgColor: 'bg-gray-600', textColor: 'text-white' };
+                          // Extract domain and get favicon URL
+                          let domainInfo = { name: 'unknown', faviconUrl: '', bgColor: 'bg-cyan-600', textColor: 'text-white' };
                           try {
                             const domain = new URL(url).hostname.replace('www.', '');
                             const domainName = domain.split('.')[0];
                             
-                            const domainStyles: { [key: string]: { icon: string; bgColor: string; textColor: string } } = {
-                              'google': { icon: '🔍', bgColor: 'bg-blue-600', textColor: 'text-white' },
-                              'wikipedia': { icon: '📚', bgColor: 'bg-gray-700', textColor: 'text-white' },
-                              'github': { icon: '⚡', bgColor: 'bg-gray-800', textColor: 'text-white' },
-                              'stackoverflow': { icon: '💡', bgColor: 'bg-orange-600', textColor: 'text-white' },
-                              'reddit': { icon: '🔥', bgColor: 'bg-orange-500', textColor: 'text-white' },
-                              'medium': { icon: '✍️', bgColor: 'bg-green-600', textColor: 'text-white' },
-                              'youtube': { icon: '📺', bgColor: 'bg-red-600', textColor: 'text-white' },
-                              'twitter': { icon: '🐦', bgColor: 'bg-blue-500', textColor: 'text-white' },
-                              'linkedin': { icon: '💼', bgColor: 'bg-blue-700', textColor: 'text-white' },
-                              'zebpay': { icon: '⚡', bgColor: 'bg-blue-600', textColor: 'text-white' },
-                              'explodingtopics': { icon: '💥', bgColor: 'bg-purple-600', textColor: 'text-white' },
-                              'a16z': { icon: '🚀', bgColor: 'bg-green-600', textColor: 'text-white' },
-                              'franklin': { icon: '➕', bgColor: 'bg-gray-700', textColor: 'text-white' },
-                              'bitpanda': { icon: '🐼', bgColor: 'bg-purple-700', textColor: 'text-white' },
-                            };
-
-                            for (const [key, style] of Object.entries(domainStyles)) {
-                              if (domainName.includes(key) || domain.includes(key)) {
-                                domainInfo = { name: domainName, ...style };
-                                break;
-                              }
-                            }
+                            // Get favicon URL for the domain
+                            const faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=16`;
                             
-                            if (domainInfo.name === 'unknown') {
-                              domainInfo = { name: domainName, icon: '🌐', bgColor: 'bg-cyan-600', textColor: 'text-white' };
-                            }
+                            domainInfo = { 
+                              name: domainName, 
+                              faviconUrl: faviconUrl,
+                              bgColor: 'bg-cyan-600', 
+                              textColor: 'text-white' 
+                            };
                           } catch {
                             // Keep default values
                           }
@@ -948,12 +930,20 @@ Error details: ${err instanceof Error ? err.message : String(err)}
                           return (
                             <div
                               key={i}
-                              className={`inline-flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium transition-all duration-200 hover:scale-105 cursor-pointer ${domainInfo.bgColor} ${domainInfo.textColor}`}
+                              className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 hover:scale-105 cursor-pointer ${domainInfo.bgColor} ${domainInfo.textColor}`}
                               onClick={() => window.open(url, '_blank')}
                               title={title}
                             >
-                              <span className="text-base">{domainInfo.icon}</span>
-                              <span className="max-w-32 truncate">{domainInfo.name}</span>
+                              <img 
+                                src={domainInfo.faviconUrl} 
+                                alt={domainInfo.name}
+                                className="w-4 h-4 rounded-sm"
+                                onError={(e) => {
+                                  // Fallback to a generic globe icon if favicon fails to load
+                                  e.currentTarget.style.display = 'none';
+                                }}
+                              />
+                              <span className="max-w-24 truncate">{domainInfo.name}</span>
                             </div>
                           );
                         }
