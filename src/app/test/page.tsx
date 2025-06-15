@@ -578,25 +578,7 @@ const GlobalStyles = () => (
       color: #9ca3af;
       border-left-color: #06b6d4;
     }
-    
-    /* Search result specific styling */
-    .search-result-content {
-      border-left: 3px solid #10b981;
-      padding-left: 1rem;
-      background: rgba(16, 185, 129, 0.05);
-      border-radius: 0.5rem;
-      padding: 1rem;
-      margin: 0.5rem 0;
-    }
-    
-    .search-result-content h1, 
-    .search-result-content h2, 
-    .search-result-content h3,
-    .search-result-content h4,
-    .search-result-content h5,
-    .search-result-content h6 {
-      color: #10b981 !important;
-    }
+
     
     .markdown-body table {
       color: #ffffff;
@@ -2644,7 +2626,7 @@ export default function TestChat() {
                       <ReactMarkdown 
                         remarkPlugins={[remarkGfm]} 
                         rehypePlugins={[rehypeRaw]} 
-                        className="prose dark:prose-invert max-w-none search-result-content"
+                        className="prose dark:prose-invert max-w-none"
                       >
                         {msg.content}
                       </ReactMarkdown>
