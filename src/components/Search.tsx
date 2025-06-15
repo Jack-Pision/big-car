@@ -343,10 +343,6 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
         `Source ${index + 1}: ${source.title} URL: ${source.url}`
       ).join('\n');
       
-      // Debug logging to verify data structure
-      console.log('Step 2 - Formatted Results for UI:', formattedResults);
-      console.log('Step 2 - Sample source data:', allSourcesWithContent[0]);
-      
       updateStepStatus('research', 'completed', formattedResults);
       
       return {
@@ -903,7 +899,6 @@ Error details: ${err instanceof Error ? err.message : String(err)}
                     <p className="text-neutral-300 text-sm whitespace-pre-wrap">{extractThinkContent(firstStepThinking)}</p>
                   ) : (step.id === 'research') ? (
                     // Custom rendering for research step with branded chips
-
                     <div className="flex flex-wrap gap-2 mt-2">
                       {step.result.split('\n').filter(line => line.startsWith('Source')).map((sourceLine, i) => {
                         const urlMatch = sourceLine.match(/URL: (.+)/);
@@ -911,7 +906,7 @@ Error details: ${err instanceof Error ? err.message : String(err)}
                         
                         if (urlMatch && titleMatch) {
                           const url = urlMatch[1];
-                          const title = titleMatch[1].replace(/\nURL:.*/, '').trim();
+                          const title = titleMatch[1].replace(/ URL:.*/, '').trim();
                           
                           // Extract domain and get styling
                           let domainInfo = { name: 'unknown', icon: '🌐', bgColor: 'bg-gray-600', textColor: 'text-white' };
