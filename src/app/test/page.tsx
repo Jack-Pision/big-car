@@ -2776,7 +2776,7 @@ export default function TestChat() {
                             <ReactMarkdown 
                               remarkPlugins={[remarkGfm]} 
                               rehypePlugins={[rehypeRaw]} 
-                              className="prose dark:prose-invert max-w-none research-output"
+                              className="research-output"
                               components={{
                                 // Enhanced components for professional research output
                                 h1: ({children}) => (

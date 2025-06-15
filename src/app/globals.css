@@ -497,7 +497,9 @@ textarea::-webkit-scrollbar-thumb,
 
 /* Professional Research Output Styling */
 .research-output {
-  @apply text-gray-200;
+  @apply text-gray-200 w-full;
+  background: transparent !important;
+  max-width: 100%;
 }
 
 .research-output h1 {
@@ -514,10 +516,12 @@ textarea::-webkit-scrollbar-thumb,
 
 .research-output p {
   @apply text-gray-200 leading-relaxed mb-4 text-base;
+  background: transparent !important;
 }
 
 .research-output ul {
   @apply space-y-2 mb-4 ml-4;
+  background: transparent !important;
 }
 
 .research-output li {
@@ -526,6 +530,7 @@ textarea::-webkit-scrollbar-thumb,
 
 .research-output ol {
   @apply space-y-2 mb-4 ml-4 list-decimal list-inside;
+  background: transparent !important;
 }
 
 .research-output strong {
