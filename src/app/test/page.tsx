@@ -2731,7 +2731,21 @@ export default function TestChat() {
                 
                 // Process think tags and extract them
                 const { processedContent, thinkBlocks, isLiveThinking } = processThinkTags(cleanContent);
-                const finalContent = makeCitationsClickable(processedContent, msg.webSources || []);
+                
+                // Remove emojis from search results
+                let contentForDisplay = processedContent;
+                if (msg.isSearchResult) {
+                  // Remove all emojis using comprehensive regex
+                  contentForDisplay = contentForDisplay.replace(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, '');
+                  // Remove emoji shortcodes like :emoji_name:
+                  contentForDisplay = contentForDisplay.replace(/:[a-zA-Z0-9_+-]+:/g, '');
+                  // Remove common emoji patterns
+                  contentForDisplay = contentForDisplay.replace(/🔍|📋|📊|💡|🚀|⚡|🎯|📈|📉|🔥|💪|🌟|✨|🎉|🎊|👍|👎|❤️|💯|🔔|📢|📣|🎪|🎭|🎨|🎬|🎵|🎶|🎸|🎹|🎺|🎻|🥁|🎤|🎧|🎮|🕹️|🎲|🎯|🎳|🎪|🎨|🎭|🎪|🎨|🎭/g, '');
+                  // Clean up any double spaces left by emoji removal
+                  contentForDisplay = contentForDisplay.replace(/\s+/g, ' ').trim();
+                }
+                
+                const finalContent = makeCitationsClickable(contentForDisplay, msg.webSources || []);
                 
                 if (showPulsingDot && i === messages.length -1 ) setShowPulsingDot(false);
                 
@@ -2757,8 +2771,8 @@ export default function TestChat() {
                         <span className="text-sm text-white italic font-light mb-2">[Response stopped by user]</span>
                       ) : (
                         <div className="w-full max-w-full overflow-hidden">
-                          {/* Single consolidated thinking button - handles all thinking scenarios */}
-                          {(currentThinkingMessageId === msg.id && liveThinking) && (
+                          {/* Single consolidated thinking button - handles all thinking scenarios - DISABLED for search results */}
+                          {!msg.isSearchResult && (currentThinkingMessageId === msg.id && liveThinking) && (
                             <ThinkingButton 
                               key={`${msg.id}-live-thinking`} 
                               content={liveThinking} 
@@ -2766,8 +2780,8 @@ export default function TestChat() {
                             />
                           )}
                           
-                          {/* Think blocks from processed content - show for all messages except the one currently live thinking */}
-                          {currentThinkingMessageId !== msg.id && thinkBlocks.length > 0 && thinkBlocks.map((block, index) => (
+                          {/* Think blocks from processed content - show for all messages except the one currently live thinking - DISABLED for search results */}
+                          {!msg.isSearchResult && currentThinkingMessageId !== msg.id && thinkBlocks.length > 0 && thinkBlocks.map((block, index) => (
                             <ThinkingButton key={`${msg.id}-think-${index}`} content={block.content} isLive={false} />
                           ))}
                           
