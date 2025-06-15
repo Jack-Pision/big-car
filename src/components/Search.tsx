@@ -279,22 +279,41 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
         index === self.findIndex(s => s.url === source.url)
       ); // No artificial limit - show all sources from all searches
       
-      // Scrape content from ALL sources
+      // Scrape content from ALL sources with enhanced processing
       console.log(`Scraping content from ALL ${uniqueSources.length} sources...`);
       const scrapingPromises = uniqueSources.map(async (source: any) => {
         try {
-          const content = await scrapeWebsiteContent(source.url);
-          return {
-            ...source,
-            content: content || source.snippet || '',
-            scraped: !!content
-          };
+          const scrapedData = await scrapeWebsiteContent(source.url);
+          
+          // Enhanced content processing
+          if (scrapedData && typeof scrapedData === 'object') {
+            return {
+              ...source,
+              content: scrapedData.content || source.snippet || '',
+              title: scrapedData.title || source.title,
+              wordCount: scrapedData.wordCount || 0,
+              isQualityContent: scrapedData.isQualityContent || false,
+              contentSource: scrapedData.contentSource || 'unknown',
+              headings: scrapedData.metadata?.headings || [],
+              topParagraphs: scrapedData.metadata?.topParagraphs || [],
+              scraped: !!(scrapedData.content && scrapedData.isQualityContent)
+            };
+          } else {
+            // Fallback for string response
+            return {
+              ...source,
+              content: scrapedData || source.snippet || '',
+              scraped: !!scrapedData
+            };
+          }
         } catch (error) {
           console.error(`Failed to scrape ${source.url}:`, error);
           return {
             ...source,
             content: source.snippet || '',
-            scraped: false
+            scraped: false,
+            isQualityContent: false,
+            wordCount: 0
           };
         }
       });
@@ -408,8 +427,8 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
     return text;
   }
 
-  // Function to scrape website content
-  const scrapeWebsiteContent = async (url: string): Promise<string> => {
+  // Function to scrape website content with enhanced return type
+  const scrapeWebsiteContent = async (url: string): Promise<any> => {
     try {
       const response = await fetch('/api/scrape', {
         method: 'POST',
@@ -422,10 +441,10 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
       }
       
       const data = await response.json();
-      return data.content || '';
+      return data; // Return full data object instead of just content
     } catch (error) {
       console.error(`Failed to scrape ${url}:`, error);
-      return '';
+      return null;
     }
   };
 
@@ -514,44 +533,86 @@ Output only the numbered search phrases, nothing else.`;
       // Step 3: AI Content Analysis & Synthesis - Analyze scraped website content
       console.time('Step 3: AI Content Analysis & Synthesis');
       
-      // Prepare content data for analysis
-      const scrapedContent = serperResults.sources
-        .filter((s: any) => s.scraped && s.content)
-        .map((s: any, i: number) => `Source ${i+1}: ${s.title}\nURL: ${s.url}\nContent: ${s.content.substring(0, 800)}...\n`)
-        .join('\n---\n');
+      // Enhanced content preparation for Step 3 analysis
+      const qualityScrapedSources = serperResults.sources.filter((s: any) => s.scraped && s.isQualityContent);
+      const snippetOnlySources = serperResults.sources.filter((s: any) => !s.scraped || !s.isQualityContent);
+      
+      // Structured content for analysis - prioritize quality scraped content
+      const structuredContent = qualityScrapedSources
+        .map((s: any, i: number) => {
+          const headingsText = s.headings?.length > 0 ? `\nKey Headings: ${s.headings.join(', ')}` : '';
+          const contentPreview = s.content.length > 1500 ? s.content.substring(0, 1500) + '...' : s.content;
+          
+          return `## Source ${i+1}: ${s.title}
+**URL:** ${s.url}
+**Content Quality:** High (${s.wordCount} words, extracted from ${s.contentSource})${headingsText}
+**Content:**
+${contentPreview}`;
+        })
+        .join('\n\n---\n\n');
+      
+      // Fallback content from snippets
+      const fallbackContent = snippetOnlySources
+        .map((s: any, i: number) => `**Snippet ${i+1}:** ${s.title} - ${s.content || s.snippet}`)
+        .join('\n');
+      
+      // Combined content for analysis
+      const scrapedContent = structuredContent + (fallbackContent ? '\n\n## Additional Snippet Sources:\n' + fallbackContent : '');
       
       const allSourcesInfo = serperResults.sources
-        .map((s: any, i: number) => `${i+1}. ${s.title} - ${s.url} (${s.scraped ? 'Content scraped' : 'Snippet only'})`)
+        .map((s: any, i: number) => {
+          const qualityIndicator = s.isQualityContent ? '✓ High Quality' : s.scraped ? '⚠ Low Quality' : '📄 Snippet Only';
+          const wordInfo = s.wordCount ? ` (${s.wordCount} words)` : '';
+          return `${i+1}. ${s.title} - ${s.url} [${qualityIndicator}${wordInfo}]`;
+        })
         .join('\n');
       
       const analysisResult = await executeNvidiaStep(
         'analyze',
-        `You are an AI Content Analysis & Synthesis Specialist. You excel at analyzing scraped website content, extracting key information, and synthesizing comprehensive insights from multiple sources.
+        `You are an AI Content Analysis & Synthesis Specialist specializing in comprehensive web content analysis. You excel at processing large volumes of scraped website content, extracting key insights, and synthesizing information from multiple high-quality sources.
 
-RESPONSE FORMAT: Respond ONLY with a markdown bullet list. Each bullet represents one distinct analytical insight or synthesis point.
+ENHANCED CAPABILITIES:
+- Deep analysis of full website content (not just snippets)
+- Quality assessment of scraped vs snippet-only sources
+- Cross-source validation and fact-checking
+- Thematic synthesis across multiple sources
+- Identification of content gaps and contradictions
 
-ANALYSIS APPROACH: Analyze the actual website content, identify key themes and facts, assess source credibility, cross-reference information, resolve contradictions, and extract actionable insights.`,
-        `Analyze and synthesize the scraped website content for: "${shortenedQuery}"
+RESPONSE FORMAT: Respond ONLY with a structured markdown bullet list. Each bullet represents one distinct analytical insight or synthesis point.
 
-Present your analytical findings as bullet points (one insight per bullet).
+ANALYSIS METHODOLOGY: Prioritize high-quality scraped content over snippets, identify key themes and patterns, assess source reliability, cross-reference claims, resolve contradictions, and extract actionable insights.`,
+        `Conduct comprehensive analysis and synthesis of the scraped website content for: "${shortenedQuery}"
 
-SEARCH QUERIES USED: ${finalSearchQueries.join(', ')}
+Present your analytical findings as structured bullet points (one insight per bullet).
 
-SCRAPED WEBSITE CONTENT:
+**SEARCH STRATEGY:** ${finalSearchQueries.join(', ')}
+
+**CONTENT QUALITY BREAKDOWN:**
+- High Quality Sources: ${qualityScrapedSources.length} (full content scraped)
+- Low Quality/Snippet Sources: ${snippetOnlySources.length}
+- Total Sources: ${serperResults.totalSources}
+
+**STRUCTURED WEBSITE CONTENT:**
 ${scrapedContent}
 
-ALL SOURCES (${serperResults.totalSources} total, ${serperResults.scrapedSources} scraped):
+**ALL SOURCES OVERVIEW:**
 ${allSourcesInfo}
 
-Focus on:
-- Key facts and findings extracted from website content
-- Patterns and themes across multiple sources
-- Source credibility and reliability assessment
-- Cross-source validation and contradictions
-- Information gaps and what's missing
-- Confidence levels in different claims
-- Actionable insights and practical implications
-- Quality of information from scraped vs snippet sources`
+**ANALYSIS FOCUS AREAS:**
+- **Primary Analysis:** Extract key facts and insights from high-quality scraped content
+- **Source Quality Assessment:** Evaluate reliability and depth of information from each source type
+- **Cross-Source Validation:** Identify agreements, contradictions, and information gaps
+- **Thematic Synthesis:** Identify patterns and themes across multiple sources
+- **Content Depth Analysis:** Compare insights from full content vs snippet-only sources
+- **Actionable Intelligence:** Extract practical implications and recommendations
+- **Confidence Scoring:** Assess reliability levels for different claims based on source quality
+- **Information Completeness:** Identify what information is missing or needs further research
+
+**SPECIAL INSTRUCTIONS:**
+- Prioritize insights from high-quality scraped sources over snippet-only sources
+- Clearly distinguish between verified information (from full content) and limited information (from snippets)
+- Highlight any contradictions between sources and attempt to resolve them
+- Focus on substantive insights that demonstrate deep understanding of the actual website content`
       );
       console.timeEnd('Step 3: AI Content Analysis & Synthesis');
       
