@@ -930,11 +930,11 @@ Error details: ${err instanceof Error ? err.message : String(err)}
                   ) : (step.id === 'research') ? (
                     // Custom rendering for research step with branded chips
                     <div className="relative">
-                      {step.status === 'active' && (
+                      {step.status === 'active' && step.result.split('\n').filter(line => line.startsWith('Source')).length === 0 && (
                         <motion.div
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
-                          className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 rounded-lg backdrop-blur-sm z-10 flex items-center justify-center"
+                          className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 rounded-lg backdrop-blur-sm z-0 flex items-center justify-center"
                         >
                           <div className="flex items-center gap-2 text-cyan-400 text-sm">
                             <motion.div
@@ -952,31 +952,25 @@ Error details: ${err instanceof Error ? err.message : String(err)}
                           const titleMatch = sourceLine.match(/Source \d+: (.+)/);
                           
                           if (urlMatch && titleMatch) {
-                            const url = urlMatch[1];
+                            const url = urlMatch[1].trim();
                             const title = titleMatch[1].replace(/ URL:.*/, '').trim();
                             
                             // Extract domain and get favicon URL
-                            let domainInfo = { name: 'unknown', faviconUrl: '', bgColor: 'bg-transparent', textColor: 'text-cyan-400' };
+                            let domainName = 'unknown';
+                            let faviconUrl = '';
+                            
                             try {
                               const domain = new URL(url).hostname.replace('www.', '');
-                              const domainName = domain.split('.')[0];
-                              
-                              // Get favicon URL for the domain
-                              const faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=16`;
-                              
-                              domainInfo = { 
-                                name: domainName, 
-                                faviconUrl: faviconUrl,
-                                bgColor: 'bg-transparent', 
-                                textColor: 'text-cyan-400' 
-                              };
-                            } catch {
+                              domainName = domain.split('.')[0];
+                              faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=16`;
+                            } catch (error) {
+                              console.error('URL parsing error:', error);
                               // Keep default values
                             }
                             
                             return (
                               <motion.div
-                                key={i}
+                                key={`${i}-${url}`}
                                 initial={{ opacity: 0, scale: 0.8, y: 20 }}
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
                                 transition={{ 
@@ -984,24 +978,36 @@ Error details: ${err instanceof Error ? err.message : String(err)}
                                   delay: i * 0.1,
                                   ease: "easeOut"
                                 }}
-                                className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 hover:scale-105 cursor-pointer ${domainInfo.bgColor} ${domainInfo.textColor} border border-cyan-400 hover:border-cyan-300 hover:shadow-lg hover:shadow-cyan-400/20`}
-                                onClick={() => window.open(url, '_blank')}
-                                title={title}
+                                className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 hover:scale-105 cursor-pointer bg-transparent text-cyan-400 border border-cyan-400 hover:border-cyan-300 hover:shadow-lg hover:shadow-cyan-400/20 relative z-20"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  console.log('Clicking URL:', url);
+                                  window.open(url, '_blank', 'noopener,noreferrer');
+                                }}
+                                title={`${title} - Click to open ${url}`}
                                 style={{
                                   boxShadow: '0 0 10px rgba(6, 182, 212, 0.3)',
                                   backdropFilter: 'blur(10px)',
+                                  backgroundColor: 'transparent !important',
                                 }}
                               >
                                 <img 
-                                  src={domainInfo.faviconUrl} 
-                                  alt={domainInfo.name}
-                                  className="w-4 h-4 rounded-sm"
+                                  src={faviconUrl} 
+                                  alt={domainName}
+                                  className="w-4 h-4 rounded-sm flex-shrink-0"
                                   onError={(e) => {
                                     // Fallback to a generic globe icon if favicon fails to load
-                                    e.currentTarget.style.display = 'none';
+                                    const target = e.currentTarget;
+                                    target.style.display = 'none';
+                                  }}
+                                  onLoad={(e) => {
+                                    // Ensure favicon loaded successfully
+                                    const target = e.currentTarget;
+                                    target.style.display = 'block';
                                   }}
                                 />
-                                <span className="max-w-24 truncate">{domainInfo.name}</span>
+                                <span className="max-w-24 truncate flex-shrink-0">{domainName}</span>
                               </motion.div>
                             );
                           }
