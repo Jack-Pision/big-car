@@ -2735,12 +2735,15 @@ export default function TestChat() {
                 // Remove emojis from search results
                 let contentForDisplay = processedContent;
                 if (msg.isSearchResult) {
-                  // Remove all emojis using comprehensive regex
-                  contentForDisplay = contentForDisplay.replace(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, '');
+                  // Remove all emojis using ES5-compatible regex patterns
+                  contentForDisplay = contentForDisplay.replace(/[\uD83C-\uDBFF\uDC00-\uDFFF]+/g, ''); // Surrogate pairs
+                  contentForDisplay = contentForDisplay.replace(/[\u2600-\u27BF]/g, ''); // Miscellaneous symbols
+                  contentForDisplay = contentForDisplay.replace(/[\u1F300-\u1F6FF]/g, ''); // Emoticons
+                  contentForDisplay = contentForDisplay.replace(/[\u1F1E0-\u1F1FF]/g, ''); // Flags
                   // Remove emoji shortcodes like :emoji_name:
                   contentForDisplay = contentForDisplay.replace(/:[a-zA-Z0-9_+-]+:/g, '');
-                  // Remove common emoji patterns
-                  contentForDisplay = contentForDisplay.replace(/🔍|📋|📊|💡|🚀|⚡|🎯|📈|📉|🔥|💪|🌟|✨|🎉|🎊|👍|👎|❤️|💯|🔔|📢|📣|🎪|🎭|🎨|🎬|🎵|🎶|🎸|🎹|🎺|🎻|🥁|🎤|🎧|🎮|🕹️|🎲|🎯|🎳|🎪|🎨|🎭|🎪|🎨|🎭/g, '');
+                  // Remove specific common emojis that might not be caught by ranges
+                  contentForDisplay = contentForDisplay.replace(/[🔍📋📊💡🚀⚡🎯📈📉🔥💪🌟✨🎉🎊👍👎❤️💯🔔📢📣🎪🎭🎨🎬🎵🎶🎸🎹🎺🎻🥁🎤🎧🎮🕹️🎲🎳]/g, '');
                   // Clean up any double spaces left by emoji removal
                   contentForDisplay = contentForDisplay.replace(/\s+/g, ' ').trim();
                 }
