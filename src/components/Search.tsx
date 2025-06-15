@@ -249,7 +249,7 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
               query, 
-              limit: 3, // 3 results per query to get variety
+              limit: 10, // 10 results per query as requested
               includeHtml: false
             }),
             signal: controller.signal
@@ -260,7 +260,7 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
           if (response.ok) {
             const serperData = await response.json();
             if (serperData?.sources?.length > 0) {
-              allSources.push(...serperData.sources.slice(0, 3));
+              allSources.push(...serperData.sources.slice(0, 10));
             }
           }
         } catch (searchError) {
@@ -274,14 +274,14 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
         }
       }
       
-      // Remove duplicates based on URL
+      // Remove duplicates based on URL - keep all unique sources
       const uniqueSources = allSources.filter((source, index, self) => 
         index === self.findIndex(s => s.url === source.url)
-      ).slice(0, 8); // Limit to top 8 unique sources
+      ); // No artificial limit - show all sources from all searches
       
-      // Scrape content from top sources
-      console.log(`Scraping content from ${Math.min(uniqueSources.length, 4)} sources...`);
-      const scrapingPromises = uniqueSources.slice(0, 4).map(async (source: any) => {
+      // Scrape content from ALL sources
+      console.log(`Scraping content from ALL ${uniqueSources.length} sources...`);
+      const scrapingPromises = uniqueSources.map(async (source: any) => {
         try {
           const content = await scrapeWebsiteContent(source.url);
           return {
@@ -315,20 +315,11 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
         }
       });
       
-      // Add remaining sources without content
-      uniqueSources.slice(4).forEach(source => {
-        allSourcesWithContent.push({
-          ...source,
-          content: source.snippet || '',
-          scraped: false
-        });
-      });
-      
       if (allSourcesWithContent.length === 0) {
         throw new Error('No search results found from any query');
       }
       
-      // Format results for display
+      // Format results for display - show all sources
       const formattedResults = allSourcesWithContent.map((source: any, index: number) => 
         `Source ${index + 1}: ${source.title}\nURL: ${source.url}\nContent: ${source.scraped ? 'Scraped' : 'Snippet only'}\n`
       ).join('\n');
@@ -336,7 +327,7 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
       updateStepStatus('research', 'completed', formattedResults);
       
       return {
-        sources: allSourcesWithContent,
+        sources: allSourcesWithContent, // Return all sources
         searchQueries: searchQueries,
         totalSources: allSourcesWithContent.length,
         scrapedSources: allSourcesWithContent.filter(s => s.scraped).length
