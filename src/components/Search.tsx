@@ -664,9 +664,9 @@ Error details: ${errorMessage}
   ) => {
     console.time('Final Output Generation');
     
-    // Add a timeout for the final output (increased for comprehensive papers)
+    // Add a timeout for the final output (increased for comprehensive reports)
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout for research papers
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout for comprehensive research reports
     
     try {
       const finalResponse = await fetchNvidiaWithDelay('/api/nvidia', {
@@ -676,103 +676,134 @@ Error details: ${errorMessage}
           messages: [
             {
               role: 'system',
-              content: `You are an AI Research Synthesis Expert that creates professional, comprehensive research reports similar to ChatGPT Deep Research and Perplexity AI, but with superior structure and formatting.
+              content: `You are an elite AI Research Synthesis Expert that creates comprehensive, professional research reports rivaling the depth and quality of ChatGPT Deep Research and Perplexity AI. Your reports must be extensive, detailed, and authoritative.
 
 CRITICAL OUTPUT REQUIREMENTS:
-- Generate a complete, professional research report with proper markdown formatting
-- Use clear visual hierarchy with headers, subheaders, bullet points, and tables
-- Include inline citations with clickable source numbers like [1], [2], [3]
-- Create engaging, readable content that flows naturally
-- Minimum 800-1200 words for comprehensive coverage
-- Professional tone that's accessible to general audiences
+- Generate comprehensive research reports with 1500-2500 words minimum
+- Use professional academic/journalistic tone with extensive detail
+- Include specific names, dates, statistics, locations, and technical details
+- Create multiple detailed sections with deep analysis
+- Include well-structured tables for comparative data
+- Use numbered citations [1], [2], [3] for every factual claim
+- Provide extensive background context and implications
 
-MANDATORY STRUCTURE (Follow this exact format):
+MANDATORY COMPREHENSIVE STRUCTURE:
 
-# [Compelling Title Related to Query]
+# [Detailed, Specific Title with Context and Date/Timeframe if Relevant]
 
-## 🔍 Executive Summary
-[2-3 sentences highlighting key findings and main conclusions]
+[Opening paragraph: 2-3 sentences providing comprehensive context and overview of the situation/topic, establishing the significance and current state]
 
-## 📋 Key Findings
-• **Finding 1**: [Brief description with citation [1]]
-• **Finding 2**: [Brief description with citation [2]]  
-• **Finding 3**: [Brief description with citation [3]]
-• **Finding 4**: [Brief description with citation [4]]
+## [Major Section 1: Core Topic/Event Analysis]
 
-## 📊 Detailed Analysis
+[Extensive paragraph with detailed background, specific details, names, dates, statistics. Include multiple citations.]
 
-### [Relevant Subheading 1]
-[Comprehensive paragraph with multiple citations and detailed analysis]
+### [Detailed Subsection 1.1]
 
-### [Relevant Subheading 2]  
-[Comprehensive paragraph with data, statistics, and expert insights]
+[Comprehensive analysis with specific data points, quotes, technical details. Include:]
+- **Specific metric/aspect**: Detailed explanation with numbers and citations
+- **Another key point**: In-depth analysis with supporting evidence
+- **Technical details**: Specific technical information, processes, or mechanisms
 
-### [Relevant Subheading 3]
-[Include tables, comparisons, or structured data when relevant]
+### [Detailed Subsection 1.2]
 
-## 💡 Implications & Insights
-[Analysis of what the findings mean, future trends, recommendations]
+[Continue with extensive detail, including tables when relevant for comparisons or data]
 
-## 🔗 Sources
-[1] [Source Title] - [Domain Name]
-[2] [Source Title] - [Domain Name]
-[3] [Source Title] - [Domain Name]
-[Continue numbering for all sources used]
+## [Major Section 2: Impact Analysis/Stakeholder Perspectives]
 
-FORMATTING RULES:
-- Use emojis for section headers to make it visually appealing
-- Bold important terms and key phrases
-- Use bullet points and numbered lists for clarity
-- Include tables when comparing data or options
-- Make citations clickable with [number] format
-- Ensure every factual claim has a citation
-- Write in an engaging, professional tone like Perplexity AI`
+[Detailed analysis of different perspectives, impacts, or stakeholder views]
+
+### [Subsection 2.1: Specific Stakeholder/Impact Area]
+[Extensive detail with specific examples, quotes, statistics]
+
+### [Subsection 2.2: Another Key Area]
+[More comprehensive analysis with supporting data]
+
+## [Major Section 3: Technical/Economic/Political Analysis]
+
+[Deep dive into technical aspects, economic implications, or political ramifications]
+
+### [Relevant Technical/Economic Subsection]
+[Include specific technical details, economic data, market analysis, etc.]
+
+## [Major Section 4: Regional/Global/Industry Impact]
+
+[Analysis of broader implications and consequences]
+
+## [Major Section 5: Current Status and Future Outlook]
+
+[Present situation analysis and future projections with expert opinions]
+
+## Sources and References
+[1] [Complete Source Title] - [Full Domain Name]
+[2] [Complete Source Title] - [Full Domain Name]
+[Continue with all sources used, numbered sequentially]
+
+CRITICAL FORMATTING AND CONTENT RULES:
+- Write 1500-2500 words minimum for comprehensive coverage
+- Include specific names, dates, locations, statistics, and technical details throughout
+- Use professional journalistic/academic tone
+- Create detailed tables for comparative data, statistics, or structured information
+- Bold important terms, names, and key statistics
+- Every major factual claim must have a numbered citation [1], [2], etc.
+- Include extensive background context and detailed explanations
+- Provide multiple perspectives and comprehensive analysis
+- Use clear section hierarchy with detailed subsections
+- Include specific quotes, data points, and technical specifications when available
+- Analyze implications, consequences, and future projections
+- Maintain authoritative, expert-level depth throughout`
             },
             {
               role: 'user',
-              content: `Create a professional research report on: "${query}"
+              content: `Create a comprehensive, professional research report on: "${query}"
 
-Follow the MANDATORY STRUCTURE exactly as specified in the system prompt. Use the research data below to create an engaging, well-cited report.
+You must generate an extensive, detailed research report following the MANDATORY COMPREHENSIVE STRUCTURE specified in the system prompt. This should be a thorough, authoritative analysis with extensive detail, specific data, and comprehensive coverage.
 
-**RESEARCH DATA TO USE:**
+**RESEARCH DATA TO SYNTHESIZE:**
 
-**Search Strategy:** ${serperResults.searchQueries?.join(', ') || 'N/A'}
+**Search Strategy Used:** ${serperResults.searchQueries?.join(', ') || 'N/A'}
 
-**Analysis Results:** ${analysisResult}
+**Comprehensive Analysis Results:** 
+${analysisResult}
 
-**Source Overview:** ${serperResults.totalSources} total sources found, ${serperResults.scrapedSources} with full content scraped
+**Source Intelligence:** ${serperResults.totalSources} total sources discovered, ${serperResults.scrapedSources} with complete content analysis
 
-**Available Sources for Citations:**
+**Complete Source Registry for Citations:**
 ${serperResults.sources.map((s: any, i: number) => 
-  `[${i+1}] ${s.title} - ${s.url.replace('https://', '').replace('http://', '').split('/')[0]} ${s.scraped ? '✓ Full Content' : '○ Snippet Only'}`
+  `[${i+1}] ${s.title} - ${s.url.replace('https://', '').replace('http://', '').split('/')[0]} ${s.scraped ? '✓ Complete Content Available' : '○ Summary Only'}`
 ).join('\n')}
 
-**Key Content Excerpts (Use for detailed analysis):**
+**Detailed Content Database (Extract specific data, quotes, statistics, names, dates):**
 ${serperResults.sources
   .filter((s: any) => s.scraped && s.content)
-  .slice(0, 5)
+  .slice(0, 8)
   .map((s: any, i: number) => `
 SOURCE [${i+1}]: ${s.title}
 DOMAIN: ${s.url.replace('https://', '').replace('http://', '').split('/')[0]}
-CONTENT: ${s.content.substring(0, 600)}...
+FULL CONTENT ANALYSIS: ${s.content.substring(0, 1200)}...
 ---`)
   .join('\n')}
 
-**CRITICAL INSTRUCTIONS:**
-1. Follow the exact structure format with emojis and headers
-2. Use numbered citations [1], [2], [3] that correspond to the source list above
-3. Create compelling subheadings relevant to the topic
-4. Include specific data, statistics, and quotes from the scraped content
-5. Make it visually appealing with proper formatting
-6. Write 800-1200 words minimum
-7. Ensure every major claim has a citation
-8. Create a professional report that rivals Perplexity AI and ChatGPT Deep Research
+**MANDATORY REQUIREMENTS FOR COMPREHENSIVE REPORT:**
+1. Write 1500-2500 words minimum for thorough coverage
+2. Follow the exact MANDATORY COMPREHENSIVE STRUCTURE from system prompt
+3. Include specific names, dates, statistics, locations, and technical details throughout
+4. Use numbered citations [1], [2], [3] corresponding to source registry above
+5. Create detailed subsections with extensive analysis
+6. Include well-structured tables for comparative data when relevant
+7. Extract and use specific quotes, data points, and technical specifications from content
+8. Provide multiple perspectives and comprehensive stakeholder analysis
+9. Analyze implications, consequences, and future projections
+10. Maintain authoritative, expert-level depth throughout all sections
+11. Bold important terms, names, statistics, and key findings
+12. Ensure every major factual claim has proper citation
+13. Create compelling, specific section headers relevant to the topic
+14. Include extensive background context and detailed explanations
 
-Generate the complete report now using the mandatory structure format.`
+Generate the complete comprehensive research report now, ensuring it matches the depth and quality of elite research publications.`
             }
           ],
           stream: true,
-          max_tokens: 8192 // Increased for comprehensive research papers
+          max_tokens: 12288 // Increased for comprehensive research reports (1500-2500 words)
         }),
         signal: controller.signal
       });
