@@ -539,30 +539,42 @@ textarea::-webkit-scrollbar-thumb,
 
 .research-output table {
   @apply w-full border-collapse border border-gray-600 rounded-lg mb-6;
+  max-width: 100% !important;
+  table-layout: fixed;
+  background: transparent !important;
 }
 
 .research-output thead {
-  @apply bg-gray-800;
+  background: transparent !important;
 }
 
 .research-output th {
   @apply border border-gray-600 px-4 py-3 text-left text-cyan-400 font-semibold;
+  background: transparent !important;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .research-output td {
   @apply border border-gray-600 px-4 py-3 text-gray-200;
+  background: transparent !important;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .research-output blockquote {
-  @apply border-l-4 border-cyan-500 pl-4 py-2 bg-gray-800/50 rounded-r-lg mb-4 italic text-gray-300;
+  @apply border-l-4 border-cyan-500 pl-4 py-2 rounded-r-lg mb-4 italic text-gray-300;
+  background: transparent !important;
 }
 
 .research-output code {
-  @apply bg-gray-800 text-cyan-400 px-2 py-1 rounded text-sm font-mono;
+  @apply text-cyan-400 px-2 py-1 rounded text-sm font-mono;
+  background: rgba(55, 65, 81, 0.5) !important;
 }
 
 .research-output pre {
-  @apply bg-gray-900 text-gray-200 p-4 rounded-lg overflow-x-auto text-sm font-mono mb-4;
+  @apply text-gray-200 p-4 rounded-lg overflow-x-auto text-sm font-mono mb-4;
+  background: rgba(17, 24, 39, 0.8) !important;
 }
 
 .research-output pre code {
@@ -580,4 +592,130 @@ textarea::-webkit-scrollbar-thumb,
 /* Enhanced emoji spacing in headers */
 .research-output h2 > span:first-child {
   @apply mr-2;
+}
+
+/* Search result output styles - clean and compact for search UI steps */
+.search-result-output {
+  background: transparent !important;
+  color: #f3f4f6 !important;
+  max-width: 100% !important;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.search-result-output h1,
+.search-result-output h2,
+.search-result-output h3,
+.search-result-output h4,
+.search-result-output h5,
+.search-result-output h6 {
+  color: #f3f4f6 !important;
+  background: transparent !important;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.search-result-output h1 {
+  font-size: 1.5rem;
+  border-bottom: 1px solid rgba(180, 180, 190, 0.2);
+  padding-bottom: 0.25rem;
+}
+
+.search-result-output h2 {
+  font-size: 1.25rem;
+}
+
+.search-result-output h3 {
+  font-size: 1.125rem;
+}
+
+.search-result-output p {
+  color: #d1d5db !important;
+  background: transparent !important;
+  margin-bottom: 0.75rem;
+  line-height: 1.5;
+}
+
+.search-result-output ul,
+.search-result-output ol {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+}
+
+.search-result-output li {
+  color: #d1d5db !important;
+  background: transparent !important;
+  margin-bottom: 0.25rem;
+}
+
+.search-result-output strong {
+  color: #f9fafb !important;
+  background: transparent !important;
+  font-weight: 600;
+}
+
+.search-result-output table {
+  width: 100% !important;
+  max-width: 100% !important;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  background: transparent !important;
+  table-layout: fixed;
+}
+
+.search-result-output thead {
+  background: transparent !important;
+}
+
+.search-result-output th {
+  background: transparent !important;
+  color: #f3f4f6 !important;
+  border: 1px solid #4b5563;
+  padding: 0.5rem;
+  text-align: left;
+  font-weight: 600;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.search-result-output td {
+  background: transparent !important;
+  color: #d1d5db !important;
+  border: 1px solid #4b5563;
+  padding: 0.5rem;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.search-result-output blockquote {
+  background: transparent !important;
+  border-left: 3px solid #6b7280;
+  padding-left: 1rem;
+  margin: 1rem 0;
+  color: #9ca3af !important;
+  font-style: italic;
+}
+
+.search-result-output code {
+  background: rgba(55, 65, 81, 0.5) !important;
+  color: #fbbf24 !important;
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+}
+
+.search-result-output pre {
+  background: rgba(17, 24, 39, 0.8) !important;
+  color: #f3f4f6 !important;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin: 1rem 0;
+}
+
+.search-result-output pre code {
+  background: transparent !important;
+  color: inherit !important;
+  padding: 0;
 } 

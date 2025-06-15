@@ -2619,14 +2619,14 @@ export default function TestChat() {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.3, ease: "easeOut" }}
-                      className="w-full markdown-body text-left flex flex-col items-start ai-response-text mb-4 relative"
+                      className="w-full text-left flex flex-col items-start ai-response-text mb-4 relative"
                       style={{ color: '#fff', maxWidth: '100%', overflowWrap: 'break-word' }}
                     >
                       {/* Clean search result rendering - no Think boxes, no processing */}
                       <ReactMarkdown 
                         remarkPlugins={[remarkGfm]} 
                         rehypePlugins={[rehypeRaw]} 
-                        className="prose dark:prose-invert max-w-none"
+                        className="search-result-output"
                       >
                         {msg.content}
                       </ReactMarkdown>
@@ -2743,7 +2743,7 @@ export default function TestChat() {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.3, ease: "easeOut" }}
-                      className="w-full markdown-body text-left flex flex-col items-start ai-response-text mb-4 relative"
+                      className="w-full text-left flex flex-col items-start ai-response-text mb-4 relative"
                       style={{ color: '#fff', maxWidth: '100%', overflowWrap: 'break-word' }}
                     >
                       {msg.webSources && msg.webSources.length > 0 && (
@@ -2821,8 +2821,8 @@ export default function TestChat() {
                                   </strong>
                                 ),
                                 table: ({children}) => (
-                                  <div className="overflow-x-auto mb-6">
-                                    <table className="w-full border-collapse border border-gray-600 rounded-lg">
+                                  <div className="overflow-x-auto mb-6 max-w-full">
+                                    <table className="w-full border-collapse border border-gray-600 rounded-lg" style={{tableLayout: 'fixed', maxWidth: '100%'}}>
                                       {children}
                                     </table>
                                   </div>
@@ -2833,17 +2833,17 @@ export default function TestChat() {
                                   </thead>
                                 ),
                                 th: ({children}) => (
-                                  <th className="border border-gray-600 px-4 py-3 text-left text-cyan-400 font-semibold">
+                                  <th className="border border-gray-600 px-4 py-3 text-left text-cyan-400 font-semibold" style={{wordWrap: 'break-word', overflowWrap: 'break-word'}}>
                                     {children}
                                   </th>
                                 ),
                                 td: ({children}) => (
-                                  <td className="border border-gray-600 px-4 py-3 text-gray-200">
+                                  <td className="border border-gray-600 px-4 py-3 text-gray-200" style={{wordWrap: 'break-word', overflowWrap: 'break-word'}}>
                                     {children}
                                   </td>
                                 ),
                                 blockquote: ({children}) => (
-                                  <blockquote className="border-l-4 border-cyan-500 pl-4 py-2 bg-gray-800/50 rounded-r-lg mb-4 italic text-gray-300">
+                                  <blockquote className="border-l-4 border-cyan-500 pl-4 py-2 rounded-r-lg mb-4 italic text-gray-300" style={{background: 'transparent'}}>
                                     {children}
                                   </blockquote>
                                 ),
@@ -2851,13 +2851,13 @@ export default function TestChat() {
                                   const isInline = !className;
                                   if (isInline) {
                                     return (
-                                      <code className="bg-gray-800 text-cyan-400 px-2 py-1 rounded text-sm font-mono">
+                                      <code className="text-cyan-400 px-2 py-1 rounded text-sm font-mono" style={{background: 'rgba(55, 65, 81, 0.5)'}}>
                                         {children}
                                       </code>
                                     );
                                   }
                                   return (
-                                    <code className="block bg-gray-900 text-gray-200 p-4 rounded-lg overflow-x-auto text-sm font-mono mb-4">
+                                    <code className="block text-gray-200 p-4 rounded-lg overflow-x-auto text-sm font-mono mb-4" style={{background: 'rgba(17, 24, 39, 0.8)'}}>
                                       {children}
                                     </code>
                                   );
