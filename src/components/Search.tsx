@@ -692,59 +692,99 @@ Error details: ${errorMessage}
           messages: [
             {
               role: 'system',
-              content: `You are an AI Research Paper Generator specializing in comprehensive academic and professional research synthesis. You create well-structured, thoroughly researched papers with proper citations and scholarly formatting.
+              content: `You are an AI Research Synthesis Expert that creates professional, comprehensive research reports similar to ChatGPT Deep Research and Perplexity AI, but with superior structure and formatting.
 
-REQUIREMENTS:
-- Minimum 700 words (aim for 1000-1500 for complex topics)
-- Structured markdown format with clear hierarchy
-- Proper citations for all claims and data points
-- Academic tone with accessible language
-- Evidence-based arguments and conclusions
+CRITICAL OUTPUT REQUIREMENTS:
+- Generate a complete, professional research report with proper markdown formatting
+- Use clear visual hierarchy with headers, subheaders, bullet points, and tables
+- Include inline citations with clickable source numbers like [1], [2], [3]
+- Create engaging, readable content that flows naturally
+- Minimum 800-1200 words for comprehensive coverage
+- Professional tone that's accessible to general audiences
 
-STRUCTURE TEMPLATE:
-- Executive Summary
-- Introduction with context and objectives
-- Methodology (search and analysis approach)
-- Findings (organized thematically)
-- Discussion and Analysis
-- Limitations and Future Research
-- Conclusion
-- References
+MANDATORY STRUCTURE (Follow this exact format):
 
-CITATION FORMAT: Use inline citations [Source Name, Year] and include full reference list. Ensure every factual claim is properly attributed.`
+# [Compelling Title Related to Query]
+
+## 🔍 Executive Summary
+[2-3 sentences highlighting key findings and main conclusions]
+
+## 📋 Key Findings
+• **Finding 1**: [Brief description with citation [1]]
+• **Finding 2**: [Brief description with citation [2]]  
+• **Finding 3**: [Brief description with citation [3]]
+• **Finding 4**: [Brief description with citation [4]]
+
+## 📊 Detailed Analysis
+
+### [Relevant Subheading 1]
+[Comprehensive paragraph with multiple citations and detailed analysis]
+
+### [Relevant Subheading 2]  
+[Comprehensive paragraph with data, statistics, and expert insights]
+
+### [Relevant Subheading 3]
+[Include tables, comparisons, or structured data when relevant]
+
+## 💡 Implications & Insights
+[Analysis of what the findings mean, future trends, recommendations]
+
+## 🔗 Sources
+[1] [Source Title] - [Domain Name]
+[2] [Source Title] - [Domain Name]
+[3] [Source Title] - [Domain Name]
+[Continue numbering for all sources used]
+
+FORMATTING RULES:
+- Use emojis for section headers to make it visually appealing
+- Bold important terms and key phrases
+- Use bullet points and numbered lists for clarity
+- Include tables when comparing data or options
+- Make citations clickable with [number] format
+- Ensure every factual claim has a citation
+- Write in an engaging, professional tone like Perplexity AI`
             },
             {
               role: 'user',
-              content: `Generate a comprehensive research paper on: "${query}"
+              content: `Create a professional research report on: "${query}"
 
-Use the following rich data inputs to create your paper:
+Follow the MANDATORY STRUCTURE exactly as specified in the system prompt. Use the research data below to create an engaging, well-cited report.
 
-**Search Queries Used:** ${serperResults.searchQueries?.join(', ') || 'N/A'}
-**Content Analysis Results:** ${analysisResult}
-**Sources Summary:** ${serperResults.totalSources} total sources, ${serperResults.scrapedSources} with scraped content
+**RESEARCH DATA TO USE:**
 
-**Primary Sources with Content:**
+**Search Strategy:** ${serperResults.searchQueries?.join(', ') || 'N/A'}
+
+**Analysis Results:** ${analysisResult}
+
+**Source Overview:** ${serperResults.totalSources} total sources found, ${serperResults.scrapedSources} with full content scraped
+
+**Available Sources for Citations:**
 ${serperResults.sources.map((s: any, i: number) => 
-  `${i+1}. ${s.title} - ${s.url} ${s.scraped ? '[Content Available]' : '[Snippet Only]'}`
+  `[${i+1}] ${s.title} - ${s.url.replace('https://', '').replace('http://', '').split('/')[0]} ${s.scraped ? '✓ Full Content' : '○ Snippet Only'}`
 ).join('\n')}
 
-**Scraped Website Content (Key Excerpts):**
+**Key Content Excerpts (Use for detailed analysis):**
 ${serperResults.sources
   .filter((s: any) => s.scraped && s.content)
-  .slice(0, 3)
-  .map((s: any, i: number) => `Source ${i+1}: ${s.title}\n${s.content.substring(0, 400)}...`)
-  .join('\n\n---\n\n')}
+  .slice(0, 5)
+  .map((s: any, i: number) => `
+SOURCE [${i+1}]: ${s.title}
+DOMAIN: ${s.url.replace('https://', '').replace('http://', '').split('/')[0]}
+CONTENT: ${s.content.substring(0, 600)}...
+---`)
+  .join('\n')}
 
-**Paper Requirements:**
-- Minimum 700 words (target 1000-1500)
-- Academic structure with clear sections
-- Citations for all factual claims using provided sources
-- Balanced analysis incorporating scraped website content
-- Clear conclusions based on evidence from actual source content
-- Professional markdown formatting
-- Distinguish between information from scraped content vs snippets
+**CRITICAL INSTRUCTIONS:**
+1. Follow the exact structure format with emojis and headers
+2. Use numbered citations [1], [2], [3] that correspond to the source list above
+3. Create compelling subheadings relevant to the topic
+4. Include specific data, statistics, and quotes from the scraped content
+5. Make it visually appealing with proper formatting
+6. Write 800-1200 words minimum
+7. Ensure every major claim has a citation
+8. Create a professional report that rivals Perplexity AI and ChatGPT Deep Research
 
-**Focus Areas:** Provide comprehensive coverage using the actual website content, evidence-based insights, actionable conclusions, and integrated source reliability evaluation like Perplexity AI. Prioritize information from scraped sources over snippet-only sources.`
+Generate the complete report now using the mandatory structure format.`
             }
           ],
           stream: true,
