@@ -1016,13 +1016,13 @@ function cleanAIOutput(text: string): string {
 // Helper to make citations clickable in AI output
 const makeCitationsClickable = (content: string, sources: any[] = []) => {
   if (!content) return content;
-  // Replace [1], [2], ... with anchor tags
+  // Replace [1], [2], ... with small, round citation badges
   return content.replace(/\[(\d+)\]/g, (match, num) => {
     const idx = parseInt(num, 10) - 1;
     if (sources[idx] && sources[idx].url) {
-      return `<a href="${sources[idx].url}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center px-1 py-0.5 rounded bg-blue-900/30 text-blue-400 text-xs hover:bg-blue-800/40 transition-colors">[${num}]</a>`;
+      return `<a href="${sources[idx].url}" target="_blank" rel="noopener noreferrer" class="citation-badge">${num}</a>`;
     }
-    return match;
+    return `<span class="citation-badge-inactive">${num}</span>`;
   });
 };
 
@@ -2926,8 +2926,8 @@ export default function TestChat() {
                   <Search
                     key={msg.id}
                     query={msg.query || msg.content}
-                    onComplete={(result: any) => {
-                      // Add the search result as a new assistant message with search-specific flag
+                    onComplete={(result: any, sources?: any[]) => {
+                      // Add the search result as a new assistant message with search-specific flag and sources
                       console.log('Search completed:', result);
                       setMessages(prev => [
                         ...prev,
@@ -2939,7 +2939,8 @@ export default function TestChat() {
                           isProcessed: true,
                           parentId: msg.id,
                           contentType: 'search-result',
-                          isSearchResult: true
+                          isSearchResult: true,
+                          webSources: sources || []
                         }
                       ]);
                     }}

@@ -20,7 +20,7 @@ export interface SearchStep {
 // Define search props interface
 export interface SearchProps {
   query: string;
-  onComplete?: (result: string) => void;
+  onComplete?: (result: string, sources?: any[]) => void;
 }
 
 const MAX_STEP1_PROMPT_LENGTH = 3000; // Increased for enhanced prompts
@@ -650,7 +650,7 @@ Error details: ${errorMessage}
       
       setFinalResult(fallbackOutput);
       if (onComplete) {
-        onComplete(fallbackOutput);
+        onComplete(fallbackOutput, []);
       }
     }
   };
@@ -676,22 +676,22 @@ Error details: ${errorMessage}
           messages: [
             {
               role: 'system',
-              content: `You are an elite AI Research Synthesis Expert that creates comprehensive, professional research reports rivaling the depth and quality of ChatGPT Deep Research and Perplexity AI. Your reports must be extensive, detailed, and authoritative.
+              content: `You are a professional research analyst. Generate comprehensive research reports with authoritative analysis and extensive detail.
 
-CRITICAL OUTPUT REQUIREMENTS:
-- Generate comprehensive research reports with 1500-2500 words minimum
-- Use professional academic/journalistic tone with extensive detail
-- Include specific names, dates, statistics, locations, and technical details
-- Create multiple detailed sections with deep analysis
-- Include well-structured tables for comparative data
-- Use numbered citations [1], [2], [3] for every factual claim
-- Provide extensive background context and implications
+OUTPUT REQUIREMENTS:
+- 1500-2500 words minimum
+- Professional academic/journalistic tone
+- Specific names, dates, statistics, locations, technical details
+- Multiple detailed sections with deep analysis
+- Well-structured tables for comparative data
+- Numbered citations [1], [2], [3] for every factual claim
+- Extensive background context and implications
 
-MANDATORY COMPREHENSIVE STRUCTURE:
+REPORT STRUCTURE:
 
 # [Detailed, Specific Title with Context and Date/Timeframe if Relevant]
 
-[Opening paragraph: 2-3 sentences providing comprehensive context and overview of the situation/topic, establishing the significance and current state]
+[Opening paragraph: 2-3 sentences providing comprehensive context and overview, establishing significance and current state]
 
 ## [Major Section 1: Core Topic/Event Analysis]
 
@@ -738,68 +738,66 @@ MANDATORY COMPREHENSIVE STRUCTURE:
 [2] [Complete Source Title] - [Full Domain Name]
 [Continue with all sources used, numbered sequentially]
 
-CRITICAL FORMATTING AND CONTENT RULES:
-- Write 1500-2500 words minimum for comprehensive coverage
-- Include specific names, dates, locations, statistics, and technical details throughout
+FORMATTING RULES:
+- Write 1500-2500 words minimum
+- Include specific names, dates, locations, statistics, technical details throughout
 - Use professional journalistic/academic tone
-- Create detailed tables for comparative data, statistics, or structured information
-- Bold important terms, names, and key statistics
-- Every major factual claim must have a numbered citation [1], [2], etc.
+- Create detailed tables for comparative data, statistics, structured information
+- Bold important terms, names, key statistics
+- Every major factual claim must have numbered citation [1], [2], etc.
 - Include extensive background context and detailed explanations
 - Provide multiple perspectives and comprehensive analysis
 - Use clear section hierarchy with detailed subsections
-- Include specific quotes, data points, and technical specifications when available
-- Analyze implications, consequences, and future projections
-- Maintain authoritative, expert-level depth throughout`
+- Include specific quotes, data points, technical specifications when available
+- Analyze implications, consequences, future projections
+- Maintain authoritative, expert-level depth throughout
+
+CRITICAL: Output ONLY the final research report. Do not include any planning thoughts, reasoning, or meta-commentary about the report creation process.`
             },
             {
               role: 'user',
-              content: `Create a comprehensive, professional research report on: "${query}"
+              content: `Research Topic: "${query}"
 
-You must generate an extensive, detailed research report following the MANDATORY COMPREHENSIVE STRUCTURE specified in the system prompt. This should be a thorough, authoritative analysis with extensive detail, specific data, and comprehensive coverage.
+Generate a comprehensive research report using the provided data and following the report structure specified in the system prompt.
 
-**RESEARCH DATA TO SYNTHESIZE:**
+**RESEARCH DATA:**
 
-**Search Strategy Used:** ${serperResults.searchQueries?.join(', ') || 'N/A'}
+**Search Strategy:** ${serperResults.searchQueries?.join(', ') || 'N/A'}
 
-**Comprehensive Analysis Results:** 
+**Analysis Results:** 
 ${analysisResult}
 
-**Source Intelligence:** ${serperResults.totalSources} total sources discovered, ${serperResults.scrapedSources} with complete content analysis
+**Sources:** ${serperResults.totalSources} total sources, ${serperResults.scrapedSources} with full content
 
-**Complete Source Registry for Citations:**
+**Source Registry:**
 ${serperResults.sources.map((s: any, i: number) => 
-  `[${i+1}] ${s.title} - ${s.url.replace('https://', '').replace('http://', '').split('/')[0]} ${s.scraped ? '✓ Complete Content Available' : '○ Summary Only'}`
+  `[${i+1}] ${s.title} - ${s.url.replace('https://', '').replace('http://', '').split('/')[0]} ${s.scraped ? '✓ Full Content' : '○ Summary'}`
 ).join('\n')}
 
-**Detailed Content Database (Extract specific data, quotes, statistics, names, dates):**
+**Content Database:**
 ${serperResults.sources
   .filter((s: any) => s.scraped && s.content)
   .slice(0, 8)
   .map((s: any, i: number) => `
 SOURCE [${i+1}]: ${s.title}
 DOMAIN: ${s.url.replace('https://', '').replace('http://', '').split('/')[0]}
-FULL CONTENT ANALYSIS: ${s.content.substring(0, 1200)}...
+CONTENT: ${s.content.substring(0, 1200)}...
 ---`)
   .join('\n')}
 
-**MANDATORY REQUIREMENTS FOR COMPREHENSIVE REPORT:**
-1. Write 1500-2500 words minimum for thorough coverage
-2. Follow the exact MANDATORY COMPREHENSIVE STRUCTURE from system prompt
-3. Include specific names, dates, statistics, locations, and technical details throughout
-4. Use numbered citations [1], [2], [3] corresponding to source registry above
-5. Create detailed subsections with extensive analysis
-6. Include well-structured tables for comparative data when relevant
-7. Extract and use specific quotes, data points, and technical specifications from content
-8. Provide multiple perspectives and comprehensive stakeholder analysis
-9. Analyze implications, consequences, and future projections
-10. Maintain authoritative, expert-level depth throughout all sections
-11. Bold important terms, names, statistics, and key findings
-12. Ensure every major factual claim has proper citation
-13. Create compelling, specific section headers relevant to the topic
-14. Include extensive background context and detailed explanations
-
-Generate the complete comprehensive research report now, ensuring it matches the depth and quality of elite research publications.`
+Requirements:
+- 1500-2500 words minimum
+- Follow report structure from system prompt
+- Include specific names, dates, statistics, locations, technical details
+- Use numbered citations [1], [2], [3] corresponding to source registry
+- Create detailed subsections with extensive analysis
+- Include tables for comparative data when relevant
+- Extract specific quotes, data points, technical specifications
+- Provide multiple perspectives and stakeholder analysis
+- Analyze implications, consequences, future projections
+- Bold important terms, names, statistics, findings
+- Ensure every major claim has proper citation
+- Include extensive background context and explanations`
             }
           ],
           stream: true,
@@ -857,9 +855,9 @@ Generate the complete comprehensive research report now, ensuring it matches the
         throw new Error('No content received for final output');
       }
       
-      // Notify parent component that search is complete with final result
+      // Notify parent component that search is complete with final result and sources
       if (onComplete) {
-        onComplete(finalOutput);
+        onComplete(finalOutput, serperResults.sources);
       }
       
       console.timeEnd('Final Output Generation');
@@ -884,7 +882,7 @@ Some steps took longer than expected, but I've compiled the most relevant insigh
         
         setFinalResult(fallbackOutput);
         if (onComplete) {
-          onComplete(fallbackOutput);
+          onComplete(fallbackOutput, serperResults.sources);
         }
       } else {
         setError(`Error in final output generation: ${err instanceof Error ? err.message : String(err)}`);
@@ -904,7 +902,7 @@ Error details: ${err instanceof Error ? err.message : String(err)}
         
         setFinalResult(fallbackOutput);
         if (onComplete) {
-          onComplete(fallbackOutput);
+          onComplete(fallbackOutput, serperResults.sources);
         }
       }
     }

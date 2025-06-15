@@ -594,6 +594,46 @@ textarea::-webkit-scrollbar-thumb,
   @apply mr-2;
 }
 
+/* Citation badge styles - small, round, clickable */
+.citation-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  background: #06b6d4;
+  color: white;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 600;
+  text-decoration: none;
+  margin: 0 2px;
+  vertical-align: baseline;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.citation-badge:hover {
+  background: #0891b2;
+  transform: scale(1.1);
+  box-shadow: 0 2px 4px rgba(6, 182, 212, 0.3);
+}
+
+.citation-badge-inactive {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  background: #6b7280;
+  color: white;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 600;
+  margin: 0 2px;
+  vertical-align: baseline;
+}
+
 /* Search result output styles - clean and compact for search UI steps */
 .search-result-output {
   background: transparent !important;
