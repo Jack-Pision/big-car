@@ -578,6 +578,69 @@ Error details: ${errorMessage}
                 {step.status !== 'error' && step.result && (
                   (step.id === 'understand' && firstStepThinking) ? (
                     <p className="text-neutral-300 text-sm whitespace-pre-wrap">{extractThinkContent(firstStepThinking)}</p>
+                  ) : (step.id === 'research') ? (
+                    // Custom rendering for research step with branded chips
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {step.result.split('\n').filter(line => line.startsWith('Source')).map((sourceLine, i) => {
+                        const urlMatch = sourceLine.match(/URL: (.+)/);
+                        const titleMatch = sourceLine.match(/Source \d+: (.+)/);
+                        
+                        if (urlMatch && titleMatch) {
+                          const url = urlMatch[1];
+                          const title = titleMatch[1].replace(/\nURL:.*/, '').trim();
+                          
+                          // Extract domain and get styling
+                          let domainInfo = { name: 'unknown', icon: '🌐', bgColor: 'bg-gray-600', textColor: 'text-white' };
+                          try {
+                            const domain = new URL(url).hostname.replace('www.', '');
+                            const domainName = domain.split('.')[0];
+                            
+                            const domainStyles: { [key: string]: { icon: string; bgColor: string; textColor: string } } = {
+                              'google': { icon: '🔍', bgColor: 'bg-blue-600', textColor: 'text-white' },
+                              'wikipedia': { icon: '📚', bgColor: 'bg-gray-700', textColor: 'text-white' },
+                              'github': { icon: '⚡', bgColor: 'bg-gray-800', textColor: 'text-white' },
+                              'stackoverflow': { icon: '💡', bgColor: 'bg-orange-600', textColor: 'text-white' },
+                              'reddit': { icon: '🔥', bgColor: 'bg-orange-500', textColor: 'text-white' },
+                              'medium': { icon: '✍️', bgColor: 'bg-green-600', textColor: 'text-white' },
+                              'youtube': { icon: '📺', bgColor: 'bg-red-600', textColor: 'text-white' },
+                              'twitter': { icon: '🐦', bgColor: 'bg-blue-500', textColor: 'text-white' },
+                              'linkedin': { icon: '💼', bgColor: 'bg-blue-700', textColor: 'text-white' },
+                              'zebpay': { icon: '⚡', bgColor: 'bg-blue-600', textColor: 'text-white' },
+                              'explodingtopics': { icon: '💥', bgColor: 'bg-purple-600', textColor: 'text-white' },
+                              'a16z': { icon: '🚀', bgColor: 'bg-green-600', textColor: 'text-white' },
+                              'franklin': { icon: '➕', bgColor: 'bg-gray-700', textColor: 'text-white' },
+                              'bitpanda': { icon: '🐼', bgColor: 'bg-purple-700', textColor: 'text-white' },
+                            };
+
+                            for (const [key, style] of Object.entries(domainStyles)) {
+                              if (domainName.includes(key) || domain.includes(key)) {
+                                domainInfo = { name: domainName, ...style };
+                                break;
+                              }
+                            }
+                            
+                            if (domainInfo.name === 'unknown') {
+                              domainInfo = { name: domainName, icon: '🌐', bgColor: 'bg-cyan-600', textColor: 'text-white' };
+                            }
+                          } catch {
+                            // Keep default values
+                          }
+                          
+                          return (
+                            <div
+                              key={i}
+                              className={`inline-flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium transition-all duration-200 hover:scale-105 cursor-pointer ${domainInfo.bgColor} ${domainInfo.textColor}`}
+                              onClick={() => window.open(url, '_blank')}
+                              title={title}
+                            >
+                              <span className="text-base">{domainInfo.icon}</span>
+                              <span className="max-w-32 truncate">{domainInfo.name}</span>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }).filter(Boolean)}
+                    </div>
                   ) : (step.id !== 'research') ? (
                     <ul className="list-disc pl-5 space-y-1 text-neutral-300 text-sm">
                       {extractBulletPoints(extractThinkContent(step.result)).map((point, i) => (
