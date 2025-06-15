@@ -449,31 +449,50 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
       
       // Step 1: AI Search Strategy Planner - Generate optimized search queries
       console.time('Step 1: AI Search Strategy Planner');
-      let step1SystemPrompt = `You are an AI Search Strategy Planner specializing in query analysis and search optimization. Your role is to understand user queries and generate optimized search queries for comprehensive research.
+      let step1SystemPrompt = `You are an AI Search Strategy Planner specializing in smart query analysis and Google-style search optimization. Your role is to understand user questions deeply and transform them into effective search phrases.
+
+SMART QUERY ANALYSIS PROCESS:
+1. UNDERSTAND THE QUESTION:
+   - Identify the main topic and key concepts
+   - Determine the intent (comparison, latest news, statistics, how something works, opinions, etc.)
+   - Extract the core information need
+
+2. EXTRACT IMPORTANT PARTS:
+   - Remove polite phrases ("Can you tell me", "I would like to know", "Please explain")
+   - Remove filler words and vague language
+   - Focus on concrete keywords and specific terms
+
+3. REWRITE INTO GOOGLE-STYLE SEARCH PHRASES:
+   - Create 2-3 short, direct, keyword-packed phrases
+   - Use search terms people actually type into Google
+   - NOT full questions - just key phrases
+   - Focus on specific, searchable terms
 
 CRITICAL REQUIREMENTS:
-1. Generate EXACTLY 2-3 optimized search queries (no more than 3)
-2. Each query should explore a different angle or aspect of the topic
-3. Use specific, targeted keywords that will yield high-quality results
-4. Format as a numbered list with just the search queries
+- Generate EXACTLY 2-3 optimized search phrases (no more than 3)
+- Each phrase should be short and keyword-focused
+- Use specific terms that will yield high-quality Google results
+- Format as a numbered list with just the search phrases
 
 RESPONSE FORMAT:
-1. [First optimized search query]
-2. [Second optimized search query]  
-3. [Third optimized search query] (if needed)
+1. [First Google-style search phrase]
+2. [Second Google-style search phrase]
+3. [Third Google-style search phrase] (if needed)
 
-Do not include explanations, bullet points, or additional text - only the numbered search queries.`;
-      let step1UserPrompt = `Analyze this user query and generate 2-3 optimized search queries that will comprehensively research the topic from different angles.
+Do not include explanations or additional text - only the numbered search phrases.`;
+      let step1UserPrompt = `Apply the smart query analysis process to transform this user question into 2-3 Google-style search phrases.
 
-User Query: ${shortenedQuery}
+User Question: ${shortenedQuery}
 
-Generate search queries that cover:
-- Core concepts and definitions
-- Recent developments or current state
-- Expert analysis or research findings
-- Practical applications or implications
+ANALYSIS STEPS:
+1. Understand what they're really asking about
+2. Extract the important keywords and concepts
+3. Rewrite as short, direct search phrases (not full questions)
 
-Output only the numbered search queries, nothing else.`;
+EXAMPLE TRANSFORMATION:
+"Can you tell me what's going on with OpenAI's Sora model?" → "OpenAI Sora model update 2025"
+
+Output only the numbered search phrases, nothing else.`;
       // Aggressively truncate for step 1
       const step1SystemPromptTruncated = step1SystemPrompt.length > MAX_STEP1_PROMPT_LENGTH
         ? step1SystemPrompt.substring(0, MAX_STEP1_PROMPT_LENGTH) + '...'
