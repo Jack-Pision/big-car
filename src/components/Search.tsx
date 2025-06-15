@@ -261,6 +261,18 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
             const serperData = await response.json();
             if (serperData?.sources?.length > 0) {
               allSources.push(...serperData.sources.slice(0, 10));
+              
+              // Show initial results immediately for smooth UX
+              const currentSources = [...allSources];
+              const uniqueCurrentSources = currentSources.filter((source, index, self) => 
+                index === self.findIndex(s => s.url === source.url)
+              );
+              
+              const initialResults = uniqueCurrentSources.map((source: any, index: number) => 
+                `Source ${index + 1}: ${source.title} URL: ${source.url}`
+              ).join('\n');
+              
+              updateStepStatus('research', 'active', initialResults);
             }
           }
         } catch (searchError) {
@@ -281,13 +293,14 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
       
       // Scrape content from ALL sources with enhanced processing
       console.log(`Scraping content from ALL ${uniqueSources.length} sources...`);
-      const scrapingPromises = uniqueSources.map(async (source: any) => {
+      const scrapingPromises = uniqueSources.map(async (source: any, index: number) => {
         try {
           const scrapedData = await scrapeWebsiteContent(source.url);
           
           // Enhanced content processing
+          let processedSource;
           if (scrapedData && typeof scrapedData === 'object') {
-            return {
+            processedSource = {
               ...source,
               content: scrapedData.content || source.snippet || '',
               title: scrapedData.title || source.title,
@@ -300,33 +313,50 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
             };
           } else {
             // Fallback for string response
-            return {
+            processedSource = {
               ...source,
               content: scrapedData || source.snippet || '',
               scraped: !!scrapedData
             };
           }
+          
+          // Update UI progressively as each source is scraped
+          allSourcesWithContent[index] = processedSource;
+          const progressResults = allSourcesWithContent
+            .filter(s => s) // Filter out undefined entries
+            .map((source: any, idx: number) => 
+              `Source ${idx + 1}: ${source.title} URL: ${source.url}`
+            ).join('\n');
+          
+          updateStepStatus('research', 'active', progressResults);
+          
+          return processedSource;
         } catch (error) {
           console.error(`Failed to scrape ${source.url}:`, error);
-          return {
+          const fallbackSource = {
             ...source,
             content: source.snippet || '',
             scraped: false,
             isQualityContent: false,
             wordCount: 0
           };
+          
+          allSourcesWithContent[index] = fallbackSource;
+          return fallbackSource;
         }
       });
       
       // Wait for all scraping to complete with timeout
       const scrapedSources = await Promise.allSettled(scrapingPromises);
       
+      // Final cleanup and ensure all sources are included
+      const finalSources: any[] = [];
       scrapedSources.forEach((result, index) => {
         if (result.status === 'fulfilled') {
-          allSourcesWithContent.push(result.value);
+          finalSources.push(result.value);
         } else {
           // Add source without content if scraping failed
-          allSourcesWithContent.push({
+          finalSources.push({
             ...uniqueSources[index],
             content: uniqueSources[index].snippet || '',
             scraped: false
@@ -334,22 +364,22 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
         }
       });
       
-      if (allSourcesWithContent.length === 0) {
+      if (finalSources.length === 0) {
         throw new Error('No search results found from any query');
       }
       
-      // Format results for display - show all sources with proper UI parsing format
-      const formattedResults = allSourcesWithContent.map((source: any, index: number) => 
+      // Format final results for display
+      const formattedResults = finalSources.map((source: any, index: number) => 
         `Source ${index + 1}: ${source.title} URL: ${source.url}`
       ).join('\n');
       
       updateStepStatus('research', 'completed', formattedResults);
       
       return {
-        sources: allSourcesWithContent, // Return all sources
+        sources: finalSources, // Return all sources
         searchQueries: searchQueries,
-        totalSources: allSourcesWithContent.length,
-        scrapedSources: allSourcesWithContent.filter(s => s.scraped).length
+        totalSources: finalSources.length,
+        scrapedSources: finalSources.filter(s => s.scraped).length
       };
     } catch (err) {
       console.error('Error in research step:', err);
@@ -899,56 +929,85 @@ Error details: ${err instanceof Error ? err.message : String(err)}
                     <p className="text-neutral-300 text-sm whitespace-pre-wrap">{extractThinkContent(firstStepThinking)}</p>
                   ) : (step.id === 'research') ? (
                     // Custom rendering for research step with branded chips
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {step.result.split('\n').filter(line => line.startsWith('Source')).map((sourceLine, i) => {
-                        const urlMatch = sourceLine.match(/URL: (.+)/);
-                        const titleMatch = sourceLine.match(/Source \d+: (.+)/);
-                        
-                        if (urlMatch && titleMatch) {
-                          const url = urlMatch[1];
-                          const title = titleMatch[1].replace(/ URL:.*/, '').trim();
+                    <div className="relative">
+                      {step.status === 'active' && (
+                        <motion.div
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 rounded-lg backdrop-blur-sm z-10 flex items-center justify-center"
+                        >
+                          <div className="flex items-center gap-2 text-cyan-400 text-sm">
+                            <motion.div
+                              animate={{ rotate: 360 }}
+                              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                              className="w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full"
+                            />
+                            <span>Discovering sources...</span>
+                          </div>
+                        </motion.div>
+                      )}
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {step.result.split('\n').filter(line => line.startsWith('Source')).map((sourceLine, i) => {
+                          const urlMatch = sourceLine.match(/URL: (.+)/);
+                          const titleMatch = sourceLine.match(/Source \d+: (.+)/);
                           
-                          // Extract domain and get favicon URL
-                          let domainInfo = { name: 'unknown', faviconUrl: '', bgColor: 'bg-cyan-600', textColor: 'text-white' };
-                          try {
-                            const domain = new URL(url).hostname.replace('www.', '');
-                            const domainName = domain.split('.')[0];
+                          if (urlMatch && titleMatch) {
+                            const url = urlMatch[1];
+                            const title = titleMatch[1].replace(/ URL:.*/, '').trim();
                             
-                            // Get favicon URL for the domain
-                            const faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=16`;
+                            // Extract domain and get favicon URL
+                            let domainInfo = { name: 'unknown', faviconUrl: '', bgColor: 'bg-transparent', textColor: 'text-cyan-400' };
+                            try {
+                              const domain = new URL(url).hostname.replace('www.', '');
+                              const domainName = domain.split('.')[0];
+                              
+                              // Get favicon URL for the domain
+                              const faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=16`;
+                              
+                              domainInfo = { 
+                                name: domainName, 
+                                faviconUrl: faviconUrl,
+                                bgColor: 'bg-transparent', 
+                                textColor: 'text-cyan-400' 
+                              };
+                            } catch {
+                              // Keep default values
+                            }
                             
-                            domainInfo = { 
-                              name: domainName, 
-                              faviconUrl: faviconUrl,
-                              bgColor: 'bg-cyan-600', 
-                              textColor: 'text-white' 
-                            };
-                          } catch {
-                            // Keep default values
-                          }
-                          
-                          return (
-                            <div
-                              key={i}
-                              className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 hover:scale-105 cursor-pointer ${domainInfo.bgColor} ${domainInfo.textColor}`}
-                              onClick={() => window.open(url, '_blank')}
-                              title={title}
-                            >
-                              <img 
-                                src={domainInfo.faviconUrl} 
-                                alt={domainInfo.name}
-                                className="w-4 h-4 rounded-sm"
-                                onError={(e) => {
-                                  // Fallback to a generic globe icon if favicon fails to load
-                                  e.currentTarget.style.display = 'none';
+                            return (
+                              <motion.div
+                                key={i}
+                                initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                transition={{ 
+                                  duration: 0.5, 
+                                  delay: i * 0.1,
+                                  ease: "easeOut"
                                 }}
-                              />
-                              <span className="max-w-24 truncate">{domainInfo.name}</span>
-                            </div>
-                          );
-                        }
-                        return null;
-                      }).filter(Boolean)}
+                                className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 hover:scale-105 cursor-pointer ${domainInfo.bgColor} ${domainInfo.textColor} border border-cyan-400 hover:border-cyan-300 hover:shadow-lg hover:shadow-cyan-400/20`}
+                                onClick={() => window.open(url, '_blank')}
+                                title={title}
+                                style={{
+                                  boxShadow: '0 0 10px rgba(6, 182, 212, 0.3)',
+                                  backdropFilter: 'blur(10px)',
+                                }}
+                              >
+                                <img 
+                                  src={domainInfo.faviconUrl} 
+                                  alt={domainInfo.name}
+                                  className="w-4 h-4 rounded-sm"
+                                  onError={(e) => {
+                                    // Fallback to a generic globe icon if favicon fails to load
+                                    e.currentTarget.style.display = 'none';
+                                  }}
+                                />
+                                <span className="max-w-24 truncate">{domainInfo.name}</span>
+                              </motion.div>
+                            );
+                          }
+                          return null;
+                        }).filter(Boolean)}
+                      </div>
                     </div>
                   ) : (step.id !== 'research') ? (
                     <ul className="list-disc pl-5 space-y-1 text-neutral-300 text-sm">
