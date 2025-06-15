@@ -338,10 +338,14 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
         throw new Error('No search results found from any query');
       }
       
-      // Format results for display - show all sources
+      // Format results for display - show all sources with proper UI parsing format
       const formattedResults = allSourcesWithContent.map((source: any, index: number) => 
-        `Source ${index + 1}: ${source.title}\nURL: ${source.url}\nContent: ${source.scraped ? 'Scraped' : 'Snippet only'}\n`
+        `Source ${index + 1}: ${source.title}\nURL: ${source.url}`
       ).join('\n');
+      
+      // Debug logging to verify data structure
+      console.log('Step 2 - Formatted Results for UI:', formattedResults);
+      console.log('Step 2 - Sample source data:', allSourcesWithContent[0]);
       
       updateStepStatus('research', 'completed', formattedResults);
       
@@ -902,12 +906,21 @@ Error details: ${err instanceof Error ? err.message : String(err)}
 
                     <div className="flex flex-wrap gap-2 mt-2">
                       {step.result.split('\n').filter(line => line.startsWith('Source')).map((sourceLine, i) => {
+                        // Debug logging for UI parsing
+                        console.log('UI Parsing - Source Line:', sourceLine);
+                        
                         const urlMatch = sourceLine.match(/URL: (.+)/);
                         const titleMatch = sourceLine.match(/Source \d+: (.+)/);
+                        
+                        console.log('UI Parsing - URL Match:', urlMatch);
+                        console.log('UI Parsing - Title Match:', titleMatch);
                         
                         if (urlMatch && titleMatch) {
                           const url = urlMatch[1];
                           const title = titleMatch[1].replace(/\nURL:.*/, '').trim();
+                          
+                          console.log('UI Parsing - Final URL:', url);
+                          console.log('UI Parsing - Final Title:', title);
                           
                           // Extract domain and get styling
                           let domainInfo = { name: 'unknown', icon: '🌐', bgColor: 'bg-gray-600', textColor: 'text-white' };
