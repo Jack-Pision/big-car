@@ -41,16 +41,10 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
       content: 'Retrieving relevant information from multiple web sources...'
     },
     {
-      id: 'validate',
-      title: 'AI Fact-Checker & Source Validator',
-      status: 'pending',
-      content: 'Evaluating source credibility, bias indicators, and information reliability...'
-    },
-    {
       id: 'analyze',
       title: 'AI Information Synthesis Analyst',
       status: 'pending',
-      content: 'Synthesizing validated information and identifying key patterns and insights...'
+      content: 'Synthesizing information and identifying key patterns and insights...'
     }
   ]);
   const [error, setError] = useState<string | null>(null);
@@ -376,64 +370,36 @@ Focus on:
       const serperResults = await executeSerperStep(shortenedQuery);
       console.timeEnd('Step 2: Web Discovery');
       
-      // Step 3: AI Fact-Checker & Source Validator - Enhanced validation system
-      console.time('Step 3: AI Fact-Checker & Source Validator');
-      const sourcesText = serperResults.sources.map((s: any, i: number) => 
-        `${i+1}. ${s.title}: ${s.url}`
-      ).join('\n');
-      
-      const validationResult = await executeNvidiaStep(
-        'validate',
-        `You are an AI Fact-Checker and Source Validation Specialist. Your expertise lies in evaluating source credibility, identifying bias, and assessing information reliability.
-
-RESPONSE FORMAT: Respond ONLY with a markdown bullet list. Each bullet represents one distinct credibility assessment or validation insight.
-
-EVALUATION CRITERIA: Assess source authority, publication date relevance, bias indicators, corroboration across sources, methodology quality, and potential conflicts of interest.`,
-        `Evaluate the credibility and reliability of these sources for the query: "${shortenedQuery}"
-
-Present your credibility assessment as bullet points (one evaluation insight per bullet).
-
-Sources:
-${sourcesText}
-
-Consider:
-- Source authority and expertise
-- Publication recency and relevance
-- Bias and objectivity indicators
-- Cross-source corroboration
-- Methodological rigor
-- Potential red flags or limitations`
-      );
-      console.timeEnd('Step 3: AI Fact-Checker & Source Validator');
-      
-      // Step 4: AI Information Synthesis Analyst - Enhanced synthesis system
-      console.time('Step 4: AI Information Synthesis Analyst');
+      // Step 3: AI Information Synthesis Analyst - Enhanced synthesis system (now Step 3)
+      console.time('Step 3: AI Information Synthesis Analyst');
       const analysisResult = await executeNvidiaStep(
         'analyze',
-        `You are an AI Information Synthesis Analyst. You excel at analyzing complex information, identifying patterns, and synthesizing insights from multiple validated sources.
+        `You are an AI Information Synthesis Analyst. You excel at analyzing complex information from web sources, identifying patterns, and synthesizing comprehensive insights.
 
 RESPONSE FORMAT: Respond ONLY with a markdown bullet list. Each bullet represents one distinct analytical insight or synthesis point.
 
-SYNTHESIS APPROACH: Integrate findings from strategy and validation phases, identify key themes, resolve contradictions, highlight gaps, and extract actionable insights.`,
+SYNTHESIS APPROACH: Integrate search strategy with web discovery results, identify key themes, analyze source credibility, resolve contradictions, highlight information gaps, and extract actionable insights.`,
         `Synthesize and analyze the information for: "${shortenedQuery}"
 
 Present your analytical thinking as bullet points (one synthesis insight per bullet).
 
 Search Strategy Results: ${strategyResult}
-Source Validation Results: ${validationResult}
-Raw Information: ${JSON.stringify(serperResults).substring(0, 1000)}
+Web Discovery Results: ${JSON.stringify(serperResults).substring(0, 1500)}
+Available Sources: ${serperResults.sources.map((s: any, i: number) => `${i+1}. ${s.title} - ${s.url}`).join('\n')}
 
 Focus on:
-- Key findings and patterns
-- Information quality and consistency
-- Contradictions or gaps
+- Key findings and patterns from sources
+- Information quality and source credibility assessment
+- Cross-source corroboration and contradictions
+- Information gaps and limitations
 - Confidence levels in different claims
-- Actionable insights and implications`
+- Actionable insights and implications
+- Source reliability indicators`
       );
-      console.timeEnd('Step 4: AI Information Synthesis Analyst');
+      console.timeEnd('Step 3: AI Information Synthesis Analyst');
       
-      // Step 5: Generate final output directly to main chat (not displayed as a step)
-      await generateFinalOutput(shortenedQuery, strategyResult, validationResult, analysisResult, serperResults);
+      // Final Output: Generate comprehensive research paper directly to main chat
+      await generateFinalOutput(shortenedQuery, strategyResult, analysisResult, serperResults);
       
     } catch (err) {
       console.error('Error in search execution:', err);
@@ -461,7 +427,6 @@ Error details: ${errorMessage}
   const generateFinalOutput = async (
     query: string,
     strategyResult: string,
-    validationResult: string,
     analysisResult: string,
     serperResults: any
   ) => {
@@ -507,19 +472,20 @@ CITATION FORMAT: Use inline citations [Source Name, Year] and include full refer
 Use the following inputs to create your paper:
 
 **Search Strategy:** ${strategyResult}
-**Source Validation:** ${validationResult}  
 **Synthesized Analysis:** ${analysisResult}
 **Primary Sources:** ${serperResults.sources.map((s: any, i: number) => `${i+1}. ${s.title} - ${s.url}`).join('\n')}
+**Web Discovery Data:** ${JSON.stringify(serperResults).substring(0, 800)}
 
 **Paper Requirements:**
 - Minimum 700 words (target 1000-1500)
 - Academic structure with clear sections
-- Citations for all factual claims
+- Citations for all factual claims using provided sources
 - Balanced analysis of multiple perspectives
 - Clear conclusions based on evidence
 - Professional markdown formatting
+- Include source credibility assessment within the analysis
 
-**Focus Areas:** Provide comprehensive coverage of the topic with evidence-based insights and actionable conclusions.`
+**Focus Areas:** Provide comprehensive coverage of the topic with evidence-based insights, actionable conclusions, and integrated source reliability evaluation like Perplexity AI.`
             }
           ],
           stream: true,
