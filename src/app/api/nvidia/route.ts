@@ -5,14 +5,6 @@ export const runtime = 'edge';
 const TEXT_API_KEY = process.env.NVIDIA_API_KEY || '';
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || '';
 
-// Add validation for required API keys
-if (!TEXT_API_KEY) {
-  throw new Error('NVIDIA_API_KEY is required');
-}
-if (!OPENROUTER_API_KEY) {
-  throw new Error('OPENROUTER_API_KEY is required');
-}
-
 // Update the fetchWithTimeout function to optimize timeout handling
 async function fetchWithTimeout(resource: string, options: any = {}, timeout = 25000) { // Increased to 25 seconds
   const controller = new AbortController();
@@ -271,6 +263,27 @@ async function fetchNvidiaText(messages: any[], options: any = {}) {
 }
 
 export async function POST(req: NextRequest) {
+  // Validate required API keys at runtime
+  if (!TEXT_API_KEY) {
+    return new Response(JSON.stringify({
+      error: 'Configuration Error',
+      details: 'NVIDIA_API_KEY is not configured'
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+  
+  if (!OPENROUTER_API_KEY) {
+    return new Response(JSON.stringify({
+      error: 'Configuration Error', 
+      details: 'OPENROUTER_API_KEY is not configured'
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+
   const contentType = req.headers.get('content-type') || '';
   if (!contentType.includes('application/json')) {
     return new Response(JSON.stringify({ 

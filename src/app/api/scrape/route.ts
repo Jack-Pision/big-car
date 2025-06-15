@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import * as cheerio from 'cheerio';
+import { JSDOM } from 'jsdom';
 
 export async function POST(request: NextRequest) {
   try {
@@ -38,10 +38,12 @@ export async function POST(request: NextRequest) {
     }
 
     const html = await response.text();
-    const $ = cheerio.load(html);
+    const dom = new JSDOM(html);
+    const document = dom.window.document;
 
     // Remove script and style elements
-    $('script, style, nav, header, footer, aside, .advertisement, .ads, .sidebar').remove();
+    const elementsToRemove = document.querySelectorAll('script, style, nav, header, footer, aside, .advertisement, .ads, .sidebar');
+    elementsToRemove.forEach(el => el.remove());
 
     // Extract main content - try common content selectors
     let content = '';
@@ -58,16 +60,17 @@ export async function POST(request: NextRequest) {
     ];
 
     for (const selector of contentSelectors) {
-      const element = $(selector);
-      if (element.length > 0) {
-        content = element.text().trim();
+      const element = document.querySelector(selector);
+      if (element) {
+        content = element.textContent?.trim() || '';
         break;
       }
     }
 
     // If no specific content area found, get body text
     if (!content) {
-      content = $('body').text().trim();
+      const bodyElement = document.querySelector('body');
+      content = bodyElement?.textContent?.trim() || '';
     }
 
     // Clean up the content
