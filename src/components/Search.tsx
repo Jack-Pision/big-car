@@ -23,16 +23,16 @@ export interface SearchProps {
   onComplete?: (result: string) => void;
 }
 
-const MAX_STEP1_PROMPT_LENGTH = 1500;
+const MAX_STEP1_PROMPT_LENGTH = 3000; // Increased for enhanced prompts
 
 const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
   // State for steps
   const [steps, setSteps] = useState<SearchStep[]>([
     {
       id: 'understand',
-      title: 'Query Intelligence & Strategy Planning',
+      title: 'AI Search Strategy Planner',
       status: 'pending',
-      content: 'Analyzing your query to develop a comprehensive search strategy...'
+      content: 'Conducting comprehensive query analysis and developing optimized search strategies...'
     },
     {
       id: 'research',
@@ -42,15 +42,15 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
     },
     {
       id: 'validate',
-      title: 'Fact-Checking & Source Validation',
+      title: 'AI Fact-Checker & Source Validator',
       status: 'pending',
-      content: 'Validating the accuracy and reliability of the retrieved information...'
+      content: 'Evaluating source credibility, bias indicators, and information reliability...'
     },
     {
       id: 'analyze',
-      title: 'Deep Reasoning & Analysis',
+      title: 'AI Information Synthesis Analyst',
       status: 'pending',
-      content: 'Analyzing the validated information to generate insights...'
+      content: 'Synthesizing validated information and identifying key patterns and insights...'
     }
   ]);
   const [error, setError] = useState<string | null>(null);
@@ -339,10 +339,23 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
       // Shorten the query if it's very long
       const shortenedQuery = query.length > 500 ? query.substring(0, 500) + "..." : query;
       
-      // Step 1: Query Intelligence & Strategy Planning - with bullet points and aggressive truncation
-      console.time('Step 1: Strategy Planning');
-      let step1SystemPrompt = `You are an AI Search Strategy Planner. Show your thinking process. Respond with ONLY a markdown bullet list (one bullet per understanding) and do not include paragraphs or prose.`;
-      let step1UserPrompt = `Just show your initial thinking proccess and nothing else.Break down your understanding and thinking about this query in bullet points (one bullet per understanding).\n\nQuery: ${shortenedQuery}`;
+      // Step 1: AI Search Strategy Planner - Enhanced prompt system
+      console.time('Step 1: AI Search Strategy Planner');
+      let step1SystemPrompt = `You are an AI Search Strategy Planner specializing in query analysis and search optimization. Your role is to deconstruct user queries and develop comprehensive search strategies.
+
+RESPONSE FORMAT: Respond ONLY with a markdown bullet list. Each bullet point must represent one distinct understanding or strategic insight. Do not include paragraphs, prose, or explanations outside the bullet format.
+
+ANALYSIS DEPTH: Consider query intent, keyword variations, potential ambiguities, search scope, information types needed, and optimal search approaches.`;
+      let step1UserPrompt = `Analyze this query and develop your search strategy thinking process. Break down your understanding into bullet points (one insight per bullet).
+
+Query: ${shortenedQuery}
+
+Focus on:
+- Query intent and context
+- Key concepts and terms
+- Potential search angles
+- Information gaps to address
+- Search optimization strategies`;
       // Aggressively truncate for step 1
       const step1SystemPromptTruncated = step1SystemPrompt.length > MAX_STEP1_PROMPT_LENGTH
         ? step1SystemPrompt.substring(0, MAX_STEP1_PROMPT_LENGTH) + '...'
@@ -356,44 +369,75 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
         step1SystemPromptTruncated,
         step1UserPromptTruncated
       );
-      console.timeEnd('Step 1: Strategy Planning');
+      console.timeEnd('Step 1: AI Search Strategy Planner');
       
       // Step 2: Multi-Source Web Discovery & Retrieval - no change
       console.time('Step 2: Web Discovery');
       const serperResults = await executeSerperStep(shortenedQuery);
       console.timeEnd('Step 2: Web Discovery');
       
-      // Step 3: Fact-Checking & Source Validation - with bullet points
-      console.time('Step 3: Fact-Checking');
-      const validationPrompt = `Show your thinking as you assess the credibility of these search results for: "${shortenedQuery}". Present your thinking as a markdown bullet list (one bullet per understanding) and do not include paragraphs or prose.`;
+      // Step 3: AI Fact-Checker & Source Validator - Enhanced validation system
+      console.time('Step 3: AI Fact-Checker & Source Validator');
       const sourcesText = serperResults.sources.map((s: any, i: number) => 
         `${i+1}. ${s.title}: ${s.url}`
       ).join('\n');
       
       const validationResult = await executeNvidiaStep(
         'validate',
-        `You are an AI Fact-Checker. Show your thinking process. Respond with ONLY a markdown bullet list (one bullet per understanding) and do not include paragraphs or prose.`,
-        `${validationPrompt}\n\nSources:\n${sourcesText}`
+        `You are an AI Fact-Checker and Source Validation Specialist. Your expertise lies in evaluating source credibility, identifying bias, and assessing information reliability.
+
+RESPONSE FORMAT: Respond ONLY with a markdown bullet list. Each bullet represents one distinct credibility assessment or validation insight.
+
+EVALUATION CRITERIA: Assess source authority, publication date relevance, bias indicators, corroboration across sources, methodology quality, and potential conflicts of interest.`,
+        `Evaluate the credibility and reliability of these sources for the query: "${shortenedQuery}"
+
+Present your credibility assessment as bullet points (one evaluation insight per bullet).
+
+Sources:
+${sourcesText}
+
+Consider:
+- Source authority and expertise
+- Publication recency and relevance
+- Bias and objectivity indicators
+- Cross-source corroboration
+- Methodological rigor
+- Potential red flags or limitations`
       );
-      console.timeEnd('Step 3: Fact-Checking');
+      console.timeEnd('Step 3: AI Fact-Checker & Source Validator');
       
-      // Step 4: Deep Reasoning & Analysis - with bullet points
-      console.time('Step 4: Deep Reasoning');
-      const analysisPrompt = `Show your thinking as you analyze the information for: "${shortenedQuery}". Present your thinking process as a markdown bullet list (one bullet per understanding) and do not include paragraphs or prose.`;
+      // Step 4: AI Information Synthesis Analyst - Enhanced synthesis system
+      console.time('Step 4: AI Information Synthesis Analyst');
       const analysisResult = await executeNvidiaStep(
         'analyze',
-        `You are an AI Analysis Agent. Show your thinking process. Respond with ONLY a markdown bullet list (one bullet per understanding) and do not include paragraphs or prose.`,
-        `${analysisPrompt}\n\nStrategy: ${strategyResult}\n\nValidation: ${validationResult}`
+        `You are an AI Information Synthesis Analyst. You excel at analyzing complex information, identifying patterns, and synthesizing insights from multiple validated sources.
+
+RESPONSE FORMAT: Respond ONLY with a markdown bullet list. Each bullet represents one distinct analytical insight or synthesis point.
+
+SYNTHESIS APPROACH: Integrate findings from strategy and validation phases, identify key themes, resolve contradictions, highlight gaps, and extract actionable insights.`,
+        `Synthesize and analyze the information for: "${shortenedQuery}"
+
+Present your analytical thinking as bullet points (one synthesis insight per bullet).
+
+Search Strategy Results: ${strategyResult}
+Source Validation Results: ${validationResult}
+Raw Information: ${JSON.stringify(serperResults).substring(0, 1000)}
+
+Focus on:
+- Key findings and patterns
+- Information quality and consistency
+- Contradictions or gaps
+- Confidence levels in different claims
+- Actionable insights and implications`
       );
-      console.timeEnd('Step 4: Deep Reasoning');
+      console.timeEnd('Step 4: AI Information Synthesis Analyst');
       
-      // Step 5: Final Output - with streamlined prompt
-      console.time('Step 5: Final Output');
-      const finalOutputPrompt = `Create a concise, well-structured answer for the query: "${shortenedQuery}"`;
+      // Step 5: AI Research Paper Generator - Enhanced comprehensive output
+      console.time('Step 5: AI Research Paper Generator');
       
-      // Add a timeout for the final output
+      // Add a timeout for the final output (increased for comprehensive papers)
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout for research papers
       
       try {
         const finalResponse = await fetchNvidiaWithDelay('/api/nvidia', {
@@ -403,15 +447,51 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
             messages: [
               {
                 role: 'system',
-                content: `You are an Answer Generator. Create concise, helpful answers.`
+                content: `You are an AI Research Paper Generator specializing in comprehensive academic and professional research synthesis. You create well-structured, thoroughly researched papers with proper citations and scholarly formatting.
+
+REQUIREMENTS:
+- Minimum 700 words (aim for 1000-1500 for complex topics)
+- Structured markdown format with clear hierarchy
+- Proper citations for all claims and data points
+- Academic tone with accessible language
+- Evidence-based arguments and conclusions
+
+STRUCTURE TEMPLATE:
+- Executive Summary
+- Introduction with context and objectives
+- Methodology (search and analysis approach)
+- Findings (organized thematically)
+- Discussion and Analysis
+- Limitations and Future Research
+- Conclusion
+- References
+
+CITATION FORMAT: Use inline citations [Source Name, Year] and include full reference list. Ensure every factual claim is properly attributed.`
               },
               {
                 role: 'user',
-                content: `${finalOutputPrompt}\n\nStrategy: ${strategyResult}\n\nFindings: ${validationResult}\n\nAnalysis: ${analysisResult}`
+                content: `Generate a comprehensive research paper on: "${shortenedQuery}"
+
+Use the following inputs to create your paper:
+
+**Search Strategy:** ${strategyResult}
+**Source Validation:** ${validationResult}  
+**Synthesized Analysis:** ${analysisResult}
+**Primary Sources:** ${serperResults.sources.map((s: any, i: number) => `${i+1}. ${s.title} - ${s.url}`).join('\n')}
+
+**Paper Requirements:**
+- Minimum 700 words (target 1000-1500)
+- Academic structure with clear sections
+- Citations for all factual claims
+- Balanced analysis of multiple perspectives
+- Clear conclusions based on evidence
+- Professional markdown formatting
+
+**Focus Areas:** Provide comprehensive coverage of the topic with evidence-based insights and actionable conclusions.`
               }
             ],
             stream: true,
-            max_tokens: 4096 // Limit tokens for faster response
+            max_tokens: 8192 // Increased for comprehensive research papers
           }),
           signal: controller.signal
         });
@@ -470,7 +550,7 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
           onComplete(finalOutput);
         }
         
-        console.timeEnd('Step 5: Final Output');
+        console.timeEnd('Step 5: AI Research Paper Generator');
       } catch (err) {
         clearTimeout(timeoutId);
         console.error('Error in final output step:', err);
