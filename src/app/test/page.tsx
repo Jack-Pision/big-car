@@ -2797,33 +2797,33 @@ export default function TestChat() {
                               components={{
                                 // Enhanced components for professional research output
                                 h1: ({children}) => (
-                                  <h1 className="text-3xl font-bold text-white mb-6 mt-8 border-b border-cyan-500/30 pb-3">
+                                  <h1 className="text-4xl font-bold text-white mb-8 mt-10 border-b-2 border-cyan-500/40 pb-4 leading-tight">
                                     {children}
                                   </h1>
                                 ),
                                 h2: ({children}) => (
-                                  <h2 className="text-2xl font-semibold text-cyan-400 mb-4 mt-8 flex items-center gap-2">
+                                  <h2 className="text-2xl font-semibold text-cyan-400 mb-5 mt-10 leading-tight">
                                     {children}
                                   </h2>
                                 ),
                                 h3: ({children}) => (
-                                  <h3 className="text-xl font-semibold text-white mb-3 mt-6">
+                                  <h3 className="text-xl font-semibold text-white mb-4 mt-8 leading-tight">
                                     {children}
                                   </h3>
                                 ),
                                 p: ({children}) => (
-                                  <p className="text-gray-200 leading-relaxed mb-4 text-base">
+                                  <p className="text-gray-200 leading-relaxed mb-5 text-base font-normal">
                                     {children}
                                   </p>
                                 ),
                                 ul: ({children}) => (
-                                  <ul className="space-y-2 mb-4 ml-4">
+                                  <ul className="space-y-3 mb-6 ml-6">
                                     {children}
                                   </ul>
                                 ),
                                 li: ({children}) => (
-                                  <li className="text-gray-200 flex items-start gap-2">
-                                    <span className="text-cyan-400 mt-1.5 text-xs">●</span>
+                                  <li className="text-gray-200 flex items-start gap-3 leading-relaxed">
+                                    <span className="text-cyan-400 mt-1.5 text-sm font-bold">•</span>
                                     <span className="flex-1">{children}</span>
                                   </li>
                                 ),
@@ -2833,29 +2833,29 @@ export default function TestChat() {
                                   </ol>
                                 ),
                                 strong: ({children}) => (
-                                  <strong className="text-white font-semibold">
+                                  <strong className="text-white font-bold">
                                     {children}
                                   </strong>
                                 ),
                                 table: ({children}) => (
-                                  <div className="overflow-x-auto mb-6 max-w-full">
-                                    <table className="w-full border-collapse border border-gray-600 rounded-lg" style={{tableLayout: 'fixed', maxWidth: '100%'}}>
+                                  <div className="overflow-x-auto mb-8 max-w-full rounded-lg border border-gray-600">
+                                    <table className="w-full border-collapse" style={{tableLayout: 'auto', maxWidth: '100%'}}>
                                       {children}
                                     </table>
                                   </div>
                                 ),
                                 thead: ({children}) => (
-                                  <thead className="bg-gray-800">
+                                  <thead className="bg-gray-800/80">
                                     {children}
                                   </thead>
                                 ),
                                 th: ({children}) => (
-                                  <th className="border border-gray-600 px-4 py-3 text-left text-cyan-400 font-semibold" style={{wordWrap: 'break-word', overflowWrap: 'break-word'}}>
+                                  <th className="border-r border-gray-600 px-6 py-4 text-left text-cyan-400 font-bold text-sm uppercase tracking-wide" style={{wordWrap: 'break-word', overflowWrap: 'break-word'}}>
                                     {children}
                                   </th>
                                 ),
                                 td: ({children}) => (
-                                  <td className="border border-gray-600 px-4 py-3 text-gray-200" style={{wordWrap: 'break-word', overflowWrap: 'break-word'}}>
+                                  <td className="border-r border-b border-gray-600 px-6 py-4 text-gray-200 leading-relaxed" style={{wordWrap: 'break-word', overflowWrap: 'break-word'}}>
                                     {children}
                                   </td>
                                 ),

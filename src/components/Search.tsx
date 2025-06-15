@@ -473,37 +473,81 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
       
       // Step 1: AI Search Strategy Planner - Generate optimized search queries
       console.time('Step 1: AI Search Strategy Planner');
-      let step1SystemPrompt = `You are an AI Search Strategy Planner specializing in smart query analysis and Google-style search optimization. Your role is to understand user questions deeply and transform them into effective search phrases.
+      let step1SystemPrompt = `You are an elite investigative journalist and research analyst specializing in comprehensive, authoritative reporting. Create professional research reports that rival the depth and quality of top-tier publications like The New York Times, The Wall Street Journal, and Nature.
 
-SMART QUERY ANALYSIS PROCESS:
-1. UNDERSTAND THE QUESTION:
-   - Identify the main topic and key concepts
-   - Determine the intent (comparison, latest news, statistics, how something works, opinions, etc.)
-   - Extract the core information need
+CRITICAL OUTPUT REQUIREMENTS:
+- Generate 2000-3500 words of substantive, detailed content
+- Extract and utilize EVERY relevant detail from provided sources
+- Create dynamic, content-driven section structure (not rigid templates)
+- Professional journalistic tone with authoritative depth
+- Extensive use of specific data: names, dates, statistics, locations, technical specifications
+- Comprehensive analysis with multiple perspectives and expert insights
 
-2. EXTRACT IMPORTANT PARTS:
-   - Remove polite phrases ("Can you tell me", "I would like to know", "Please explain")
-   - Remove filler words and vague language
-   - Focus on concrete keywords and specific terms
+CONTENT EXTRACTION MANDATE:
+- Mine sources for specific statistics, percentages, dollar amounts, timeframes
+- Extract exact quotes, study names, researcher names, institution names
+- Identify specific dates, locations, company names, product names
+- Pull technical specifications, medical terms, scientific data
+- Capture regulatory details, policy changes, market data
+- Include specific examples, case studies, real-world applications
 
-3. REWRITE INTO GOOGLE-STYLE SEARCH PHRASES:
-   - Create 2-3 short, direct, keyword-packed phrases
-   - Use search terms people actually type into Google
-   - NOT full questions - just key phrases
-   - Focus on specific, searchable terms
+DYNAMIC STRUCTURE APPROACH:
+Create sections based on the actual content and findings, such as:
+- Recent Scientific Findings/Latest Developments
+- Emerging Controversies/Safety Concerns  
+- Technical Analysis/Mechanism of Action
+- Market Impact/Economic Implications
+- Regulatory Landscape/Policy Changes
+- Industry Response/Stakeholder Perspectives
+- Regional Variations/Global Impact
+- Future Implications/Next-Generation Developments
+- Expert Analysis/Professional Opinions
 
-CRITICAL REQUIREMENTS:
-- Generate EXACTLY 2-3 optimized search phrases (no more than 3)
-- Each phrase should be short and keyword-focused
-- Use specific terms that will yield high-quality Google results
-- Format as a numbered list with just the search phrases
+PROFESSIONAL FORMATTING:
+# [Compelling, Specific Title with Context and Current Timeframe]
 
-RESPONSE FORMAT:
-1. [First Google-style search phrase]
-2. [Second Google-style search phrase]
-3. [Third Google-style search phrase] (if needed)
+## Executive Summary
+[2-3 sentences establishing significance, current state, and key findings with specific statistics]
 
-Do not include explanations or additional text - only the numbered search phrases.`;
+## [Dynamic Section 1: Based on Content - e.g., "Recent Scientific Findings"]
+
+### [Specific Subsection - e.g., "Clinical Trial Results and Real-World Effectiveness"]
+[Extensive detail with specific study names, percentages, researcher quotes, institution names, dates. Include multiple citations throughout.]
+
+Key findings include:
+- **Specific Study/Metric**: Detailed explanation with exact numbers, dates, and citations
+- **Another Key Finding**: In-depth analysis with supporting evidence and expert quotes
+- **Technical Details**: Specific mechanisms, processes, or technical specifications
+
+### [Another Specific Subsection]
+[Continue with comprehensive analysis, including comparative data tables when relevant]
+
+## [Dynamic Section 2: Based on Content - e.g., "Emerging Controversies and Safety Concerns"]
+
+### [Specific Controversy/Issue]
+[Detailed analysis with specific examples, regulatory responses, expert opinions]
+
+[Continue this pattern based on available content...]
+
+MANDATORY ELEMENTS:
+- Every major claim must have numbered citations [1], [2], [3]
+- Include specific percentages, dollar amounts, timeframes throughout
+- Extract and use exact quotes from sources when available
+- Create detailed tables for comparative data, statistics, or structured information
+- Bold all important terms, names, statistics, and key findings
+- Provide extensive background context and detailed explanations
+- Analyze implications, consequences, and future projections
+- Include multiple expert perspectives and stakeholder viewpoints
+
+QUALITY STANDARDS:
+- Investigative journalism depth with authoritative analysis
+- Comprehensive coverage of all relevant aspects
+- Professional transitions between topics and sections
+- Rich detail extraction from all provided sources
+- Expert-level technical accuracy and depth
+- Clear, engaging prose that maintains reader interest
+
+CRITICAL: Generate ONLY the final research report. No planning, reasoning, or meta-commentary.`;
       let step1UserPrompt = `Apply the smart query analysis process to transform this user question into 2-3 Google-style search phrases.
 
 User Question: ${shortenedQuery}
@@ -595,38 +639,58 @@ ENHANCED CAPABILITIES:
 RESPONSE FORMAT: Respond ONLY with a structured markdown bullet list. Each bullet represents one distinct analytical insight or synthesis point.
 
 ANALYSIS METHODOLOGY: Prioritize high-quality scraped content over snippets, identify key themes and patterns, assess source reliability, cross-reference claims, resolve contradictions, and extract actionable insights.`,
-        `Conduct comprehensive analysis and synthesis of the scraped website content for: "${shortenedQuery}"
+        `Research Topic: "${query}"
 
-Present your analytical findings as structured bullet points (one insight per bullet).
+Generate a comprehensive, professional research report that matches the depth and quality of elite publications. Extract and utilize ALL available data from the provided sources.
 
-**SEARCH STRATEGY:** ${finalSearchQueries.join(', ')}
+**COMPREHENSIVE RESEARCH DATABASE:**
 
-**CONTENT QUALITY BREAKDOWN:**
-- High Quality Sources: ${qualityScrapedSources.length} (full content scraped)
-- Low Quality/Snippet Sources: ${snippetOnlySources.length}
-- Total Sources: ${serperResults.totalSources}
+**Search Intelligence:** ${serperResults.searchQueries?.join(', ') || 'N/A'}
 
-**STRUCTURED WEBSITE CONTENT:**
-${scrapedContent}
+**Synthesis Analysis:** 
+${analysisResult}
 
-**ALL SOURCES OVERVIEW:**
-${allSourcesInfo}
+**Source Portfolio:** ${serperResults.totalSources} total sources discovered, ${serperResults.scrapedSources} with complete content extraction
 
-**ANALYSIS FOCUS AREAS:**
-- **Primary Analysis:** Extract key facts and insights from high-quality scraped content
-- **Source Quality Assessment:** Evaluate reliability and depth of information from each source type
-- **Cross-Source Validation:** Identify agreements, contradictions, and information gaps
-- **Thematic Synthesis:** Identify patterns and themes across multiple sources
-- **Content Depth Analysis:** Compare insights from full content vs snippet-only sources
-- **Actionable Intelligence:** Extract practical implications and recommendations
-- **Confidence Scoring:** Assess reliability levels for different claims based on source quality
-- **Information Completeness:** Identify what information is missing or needs further research
+**Citation Registry (Use these exact numbers for citations):**
+${serperResults.sources.map((s: any, i: number) => 
+  `[${i+1}] ${s.title} - ${s.url.replace('https://', '').replace('http://', '').split('/')[0]} ${s.scraped ? '✓ Complete Content Available' : '○ Summary Available'}`
+).join('\n')}
 
-**SPECIAL INSTRUCTIONS:**
-- Prioritize insights from high-quality scraped sources over snippet-only sources
-- Clearly distinguish between verified information (from full content) and limited information (from snippets)
-- Highlight any contradictions between sources and attempt to resolve them
-- Focus on substantive insights that demonstrate deep understanding of the actual website content`
+**Complete Content Database (Extract ALL relevant details):**
+${serperResults.sources
+  .filter((s: any) => s.scraped && s.content)
+  .slice(0, 10)
+  .map((s: any, i: number) => `
+═══ SOURCE [${i+1}]: ${s.title} ═══
+DOMAIN: ${s.url.replace('https://', '').replace('http://', '').split('/')[0]}
+FULL CONTENT: ${s.content.substring(0, 2000)}...
+═══════════════════════════════════════`)
+  .join('\n')}
+
+**MANDATORY REQUIREMENTS:**
+- Generate 2000-3500 words of substantive content
+- Extract EVERY relevant statistic, percentage, dollar amount, date, name from sources
+- Create dynamic sections based on actual content (not templates)
+- Include specific study names, researcher names, institution names, company names
+- Use exact quotes when available from source content
+- Create detailed comparative tables for data-rich topics
+- Bold ALL important terms, names, statistics, findings, and key data points
+- Provide numbered citations [1], [2], [3] for every major factual claim
+- Include extensive technical details, specifications, and expert analysis
+- Cover multiple perspectives, stakeholder viewpoints, and expert opinions
+- Analyze implications, consequences, future projections with supporting evidence
+- Maintain investigative journalism depth throughout
+
+**CONTENT EXTRACTION FOCUS:**
+- Mine for specific numbers: percentages, dollar amounts, timeframes, quantities
+- Extract proper nouns: names of people, companies, institutions, studies, products
+- Identify technical terms, medical terminology, scientific specifications
+- Capture regulatory details, policy changes, market movements
+- Include geographic locations, dates, specific events
+- Pull direct quotes, expert opinions, official statements
+
+Generate a comprehensive research report that demonstrates the depth and authority of elite investigative journalism.`
       );
       console.timeEnd('Step 3: AI Content Analysis & Synthesis');
       
@@ -666,7 +730,7 @@ Error details: ${errorMessage}
     
     // Add a timeout for the final output (increased for comprehensive reports)
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout for comprehensive research reports
+    const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 second timeout for comprehensive research reports
     
     try {
       const finalResponse = await fetchNvidiaWithDelay('/api/nvidia', {
@@ -676,83 +740,58 @@ Error details: ${errorMessage}
           messages: [
             {
               role: 'system',
-              content: `You are a professional research analyst. Generate comprehensive research reports with authoritative analysis and extensive detail.
+              content: `Research Topic: "${query}"
 
-OUTPUT REQUIREMENTS:
-- 1500-2500 words minimum
-- Professional academic/journalistic tone
-- Specific names, dates, statistics, locations, technical details
-- Multiple detailed sections with deep analysis
-- Well-structured tables for comparative data
-- Numbered citations [1], [2], [3] for every factual claim
-- Extensive background context and implications
+Generate a comprehensive, professional research report that matches the depth and quality of elite publications. Extract and utilize ALL available data from the provided sources.
 
-REPORT STRUCTURE:
+**COMPREHENSIVE RESEARCH DATABASE:**
 
-# [Detailed, Specific Title with Context and Date/Timeframe if Relevant]
+**Search Intelligence:** ${serperResults.searchQueries?.join(', ') || 'N/A'}
 
-[Opening paragraph: 2-3 sentences providing comprehensive context and overview, establishing significance and current state]
+**Synthesis Analysis:** 
+${analysisResult}
 
-## [Major Section 1: Core Topic/Event Analysis]
+**Source Portfolio:** ${serperResults.totalSources} total sources discovered, ${serperResults.scrapedSources} with complete content extraction
 
-[Extensive paragraph with detailed background, specific details, names, dates, statistics. Include multiple citations.]
+**Citation Registry (Use these exact numbers for citations):**
+${serperResults.sources.map((s: any, i: number) => 
+  `[${i+1}] ${s.title} - ${s.url.replace('https://', '').replace('http://', '').split('/')[0]} ${s.scraped ? '✓ Complete Content Available' : '○ Summary Available'}`
+).join('\n')}
 
-### [Detailed Subsection 1.1]
+**Complete Content Database (Extract ALL relevant details):**
+${serperResults.sources
+  .filter((s: any) => s.scraped && s.content)
+  .slice(0, 10)
+  .map((s: any, i: number) => `
+═══ SOURCE [${i+1}]: ${s.title} ═══
+DOMAIN: ${s.url.replace('https://', '').replace('http://', '').split('/')[0]}
+FULL CONTENT: ${s.content.substring(0, 2000)}...
+═══════════════════════════════════════`)
+  .join('\n')}
 
-[Comprehensive analysis with specific data points, quotes, technical details. Include:]
-- **Specific metric/aspect**: Detailed explanation with numbers and citations
-- **Another key point**: In-depth analysis with supporting evidence
-- **Technical details**: Specific technical information, processes, or mechanisms
+**MANDATORY REQUIREMENTS:**
+- Generate 2000-3500 words of substantive content
+- Extract EVERY relevant statistic, percentage, dollar amount, date, name from sources
+- Create dynamic sections based on actual content (not templates)
+- Include specific study names, researcher names, institution names, company names
+- Use exact quotes when available from source content
+- Create detailed comparative tables for data-rich topics
+- Bold ALL important terms, names, statistics, findings, and key data points
+- Provide numbered citations [1], [2], [3] for every major factual claim
+- Include extensive technical details, specifications, and expert analysis
+- Cover multiple perspectives, stakeholder viewpoints, and expert opinions
+- Analyze implications, consequences, future projections with supporting evidence
+- Maintain investigative journalism depth throughout
 
-### [Detailed Subsection 1.2]
+**CONTENT EXTRACTION FOCUS:**
+- Mine for specific numbers: percentages, dollar amounts, timeframes, quantities
+- Extract proper nouns: names of people, companies, institutions, studies, products
+- Identify technical terms, medical terminology, scientific specifications
+- Capture regulatory details, policy changes, market movements
+- Include geographic locations, dates, specific events
+- Pull direct quotes, expert opinions, official statements
 
-[Continue with extensive detail, including tables when relevant for comparisons or data]
-
-## [Major Section 2: Impact Analysis/Stakeholder Perspectives]
-
-[Detailed analysis of different perspectives, impacts, or stakeholder views]
-
-### [Subsection 2.1: Specific Stakeholder/Impact Area]
-[Extensive detail with specific examples, quotes, statistics]
-
-### [Subsection 2.2: Another Key Area]
-[More comprehensive analysis with supporting data]
-
-## [Major Section 3: Technical/Economic/Political Analysis]
-
-[Deep dive into technical aspects, economic implications, or political ramifications]
-
-### [Relevant Technical/Economic Subsection]
-[Include specific technical details, economic data, market analysis, etc.]
-
-## [Major Section 4: Regional/Global/Industry Impact]
-
-[Analysis of broader implications and consequences]
-
-## [Major Section 5: Current Status and Future Outlook]
-
-[Present situation analysis and future projections with expert opinions]
-
-## Sources and References
-[1] [Complete Source Title] - [Full Domain Name]
-[2] [Complete Source Title] - [Full Domain Name]
-[Continue with all sources used, numbered sequentially]
-
-FORMATTING RULES:
-- Write 1500-2500 words minimum
-- Include specific names, dates, locations, statistics, technical details throughout
-- Use professional journalistic/academic tone
-- Create detailed tables for comparative data, statistics, structured information
-- Bold important terms, names, key statistics
-- Every major factual claim must have numbered citation [1], [2], etc.
-- Include extensive background context and detailed explanations
-- Provide multiple perspectives and comprehensive analysis
-- Use clear section hierarchy with detailed subsections
-- Include specific quotes, data points, technical specifications when available
-- Analyze implications, consequences, future projections
-- Maintain authoritative, expert-level depth throughout
-
-CRITICAL: Output ONLY the final research report. Do not include any planning thoughts, reasoning, or meta-commentary about the report creation process.`
+Generate a comprehensive research report that demonstrates the depth and authority of elite investigative journalism.`
             },
             {
               role: 'user',
@@ -785,23 +824,33 @@ CONTENT: ${s.content.substring(0, 1200)}...
 ---`)
   .join('\n')}
 
-Requirements:
-- 1500-2500 words minimum
-- Follow report structure from system prompt
-- Include specific names, dates, statistics, locations, technical details
-- Use numbered citations [1], [2], [3] corresponding to source registry
-- Create detailed subsections with extensive analysis
-- Include tables for comparative data when relevant
-- Extract specific quotes, data points, technical specifications
-- Provide multiple perspectives and stakeholder analysis
-- Analyze implications, consequences, future projections
-- Bold important terms, names, statistics, findings
-- Ensure every major claim has proper citation
-- Include extensive background context and explanations`
+**MANDATORY REQUIREMENTS:**
+- Generate 2000-3500 words of substantive content
+- Extract EVERY relevant statistic, percentage, dollar amount, date, name from sources
+- Create dynamic sections based on actual content (not templates)
+- Include specific study names, researcher names, institution names, company names
+- Use exact quotes when available from source content
+- Create detailed comparative tables for data-rich topics
+- Bold ALL important terms, names, statistics, findings, and key data points
+- Provide numbered citations [1], [2], [3] for every major factual claim
+- Include extensive technical details, specifications, and expert analysis
+- Cover multiple perspectives, stakeholder viewpoints, and expert opinions
+- Analyze implications, consequences, future projections with supporting evidence
+- Maintain investigative journalism depth throughout
+
+**CONTENT EXTRACTION FOCUS:**
+- Mine for specific numbers: percentages, dollar amounts, timeframes, quantities
+- Extract proper nouns: names of people, companies, institutions, studies, products
+- Identify technical terms, medical terminology, scientific specifications
+- Capture regulatory details, policy changes, market movements
+- Include geographic locations, dates, specific events
+- Pull direct quotes, expert opinions, official statements
+
+Generate a comprehensive research report that demonstrates the depth and authority of elite investigative journalism.`
             }
           ],
           stream: true,
-          max_tokens: 12288 // Increased for comprehensive research reports (1500-2500 words)
+          max_tokens: 16384 // Increased for comprehensive research reports (2000-3500 words)
         }),
         signal: controller.signal
       });
