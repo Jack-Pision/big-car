@@ -590,11 +590,22 @@ Error details: ${errorMessage}
                 : styles['step-title']
               }`}>{step.title}</h3>
               <div className="text-neutral-300 ml-4">
-                {step.status !== 'error' && step.result && (
+                {(() => {
+                  if (step.id === 'research') {
+                    console.log('[DEBUG] Research step condition check:', {
+                      stepId: step.id,
+                      status: step.status,
+                      hasResult: !!step.result,
+                      resultPreview: step.result?.substring(0, 200)
+                    });
+                  }
+                  return step.status !== 'error' && step.result;
+                })() && (
                   (step.id === 'understand' && firstStepThinking) ? (
                     <p className="text-neutral-300 text-sm whitespace-pre-wrap">{extractThinkContent(firstStepThinking)}</p>
                   ) : (step.id === 'research') ? (
                     // Custom rendering for research step with branded chips
+
                     <div className="flex flex-wrap gap-2 mt-2">
                       {step.result.split('\n').filter(line => line.startsWith('Source')).map((sourceLine, i) => {
                         const urlMatch = sourceLine.match(/URL: (.+)/);
