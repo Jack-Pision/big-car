@@ -2787,8 +2787,19 @@ export default function TestChat() {
                     key={msg.id}
                     query={msg.query || msg.content}
                     onComplete={(result: any) => {
-                      // Handle search completion if needed
+                      // Add the search result as a new assistant message
                       console.log('Search completed:', result);
+                      setMessages(prev => [
+                        ...prev,
+                        {
+                          role: 'assistant',
+                          id: uuidv4(),
+                          content: result,
+                          timestamp: Date.now(),
+                          isProcessed: true,
+                          parentId: msg.id
+                        }
+                      ]);
                     }}
                   />
                 );
