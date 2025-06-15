@@ -639,58 +639,28 @@ ENHANCED CAPABILITIES:
 RESPONSE FORMAT: Respond ONLY with a structured markdown bullet list. Each bullet represents one distinct analytical insight or synthesis point.
 
 ANALYSIS METHODOLOGY: Prioritize high-quality scraped content over snippets, identify key themes and patterns, assess source reliability, cross-reference claims, resolve contradictions, and extract actionable insights.`,
-        `Research Topic: "${query}"
+        `Analyze the following research data and provide comprehensive synthesis:
 
-Generate a comprehensive, professional research report that matches the depth and quality of elite publications. Extract and utilize ALL available data from the provided sources.
-
-**COMPREHENSIVE RESEARCH DATABASE:**
-
-**Search Intelligence:** ${serperResults.searchQueries?.join(', ') || 'N/A'}
-
-**Synthesis Analysis:** 
-${analysisResult}
-
-**Source Portfolio:** ${serperResults.totalSources} total sources discovered, ${serperResults.scrapedSources} with complete content extraction
-
-**Citation Registry (Use these exact numbers for citations):**
-${serperResults.sources.map((s: any, i: number) => 
-  `[${i+1}] ${s.title} - ${s.url.replace('https://', '').replace('http://', '').split('/')[0]} ${s.scraped ? '✓ Complete Content Available' : '○ Summary Available'}`
-).join('\n')}
-
-**Complete Content Database (Extract ALL relevant details):**
 ${serperResults.sources
   .filter((s: any) => s.scraped && s.content)
-  .slice(0, 10)
+  .slice(0, 8)
   .map((s: any, i: number) => `
-═══ SOURCE [${i+1}]: ${s.title} ═══
+SOURCE [${i+1}]: ${s.title}
 DOMAIN: ${s.url.replace('https://', '').replace('http://', '').split('/')[0]}
-FULL CONTENT: ${s.content.substring(0, 2000)}...
-═══════════════════════════════════════`)
+CONTENT: ${s.content.substring(0, 1200)}...
+---`)
   .join('\n')}
 
-**MANDATORY REQUIREMENTS:**
-- Generate 2000-3500 words of substantive content
-- Extract EVERY relevant statistic, percentage, dollar amount, date, name from sources
-- Create dynamic sections based on actual content (not templates)
-- Include specific study names, researcher names, institution names, company names
-- Use exact quotes when available from source content
-- Create detailed comparative tables for data-rich topics
-- Bold ALL important terms, names, statistics, findings, and key data points
-- Provide numbered citations [1], [2], [3] for every major factual claim
-- Include extensive technical details, specifications, and expert analysis
-- Cover multiple perspectives, stakeholder viewpoints, and expert opinions
-- Analyze implications, consequences, future projections with supporting evidence
-- Maintain investigative journalism depth throughout
+SYNTHESIS REQUIREMENTS:
+- Comprehensive thematic analysis across all sources
+- Identification of key trends, patterns, and insights
+- Cross-source validation and fact-checking
+- Thematic synthesis across multiple sources
+- Identification of content gaps and contradictions
 
-**CONTENT EXTRACTION FOCUS:**
-- Mine for specific numbers: percentages, dollar amounts, timeframes, quantities
-- Extract proper nouns: names of people, companies, institutions, studies, products
-- Identify technical terms, medical terminology, scientific specifications
-- Capture regulatory details, policy changes, market movements
-- Include geographic locations, dates, specific events
-- Pull direct quotes, expert opinions, official statements
+RESPONSE FORMAT: Respond ONLY with a structured markdown bullet list. Each bullet represents one distinct analytical insight or synthesis point.
 
-Generate a comprehensive research report that demonstrates the depth and authority of elite investigative journalism.`
+ANALYSIS METHODOLOGY: Prioritize high-quality scraped content over snippets, identify key themes and patterns, assess source reliability, cross-reference claims, resolve contradictions, and extract actionable insights.`
       );
       console.timeEnd('Step 3: AI Content Analysis & Synthesis');
       
