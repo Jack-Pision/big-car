@@ -432,152 +432,8 @@ Focus on:
       );
       console.timeEnd('Step 4: AI Information Synthesis Analyst');
       
-      // Step 5: AI Research Paper Generator - Enhanced comprehensive output
-      console.time('Step 5: AI Research Paper Generator');
-      
-      // Add a timeout for the final output (increased for comprehensive papers)
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout for research papers
-      
-      try {
-        const finalResponse = await fetchNvidiaWithDelay('/api/nvidia', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            messages: [
-              {
-                role: 'system',
-                content: `You are an AI Research Paper Generator specializing in comprehensive academic and professional research synthesis. You create well-structured, thoroughly researched papers with proper citations and scholarly formatting.
-
-REQUIREMENTS:
-- Minimum 700 words (aim for 1000-1500 for complex topics)
-- Structured markdown format with clear hierarchy
-- Proper citations for all claims and data points
-- Academic tone with accessible language
-- Evidence-based arguments and conclusions
-
-STRUCTURE TEMPLATE:
-- Executive Summary
-- Introduction with context and objectives
-- Methodology (search and analysis approach)
-- Findings (organized thematically)
-- Discussion and Analysis
-- Limitations and Future Research
-- Conclusion
-- References
-
-CITATION FORMAT: Use inline citations [Source Name, Year] and include full reference list. Ensure every factual claim is properly attributed.`
-              },
-              {
-                role: 'user',
-                content: `Generate a comprehensive research paper on: "${shortenedQuery}"
-
-Use the following inputs to create your paper:
-
-**Search Strategy:** ${strategyResult}
-**Source Validation:** ${validationResult}  
-**Synthesized Analysis:** ${analysisResult}
-**Primary Sources:** ${serperResults.sources.map((s: any, i: number) => `${i+1}. ${s.title} - ${s.url}`).join('\n')}
-
-**Paper Requirements:**
-- Minimum 700 words (target 1000-1500)
-- Academic structure with clear sections
-- Citations for all factual claims
-- Balanced analysis of multiple perspectives
-- Clear conclusions based on evidence
-- Professional markdown formatting
-
-**Focus Areas:** Provide comprehensive coverage of the topic with evidence-based insights and actionable conclusions.`
-              }
-            ],
-            stream: true,
-            max_tokens: 8192 // Increased for comprehensive research papers
-          }),
-          signal: controller.signal
-        });
-        
-        clearTimeout(timeoutId);
-        
-        if (!finalResponse.ok) {
-          throw new Error(`Final output API call failed with status: ${finalResponse.status}`);
-        }
-        
-        // Handle streaming response for final output
-        const reader = finalResponse.body?.getReader();
-        if (!reader) {
-          throw new Error('No response body available for final output');
-        }
-        
-        let finalOutput = '';
-        const decoder = new TextDecoder();
-        
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            
-            const chunk = decoder.decode(value);
-            const lines = chunk.split('\n');
-            
-            for (const line of lines) {
-              if (line.startsWith('data: ')) {
-                const data = line.slice(6);
-                if (data === '[DONE]') continue;
-                
-                try {
-                  const parsed = JSON.parse(data);
-                  const content = parsed.choices?.[0]?.delta?.content || '';
-                  if (content) {
-                    finalOutput += content;
-                    setFinalResult(finalOutput); // Update in real-time
-                  }
-                } catch (e) {
-                  console.error('Error parsing final output streaming response:', e);
-                }
-              }
-            }
-          }
-        } finally {
-          reader.releaseLock();
-        }
-        
-        if (!finalOutput) {
-          throw new Error('No content received for final output');
-        }
-        
-        // Notify parent component that search is complete with final result
-        if (onComplete) {
-          onComplete(finalOutput);
-        }
-        
-        console.timeEnd('Step 5: AI Research Paper Generator');
-      } catch (err) {
-        clearTimeout(timeoutId);
-        console.error('Error in final output step:', err);
-        
-        // If it's a timeout, create a fallback response
-        if (err instanceof Error && err.name === 'AbortError') {
-          const fallbackOutput = `
-# Response for: ${shortenedQuery}
-
-## Key Findings
-${analysisResult.split('\n').slice(0, 5).join('\n')}
-
-## Summary
-Based on the available information, I can provide a partial answer to your query.
-Some steps took longer than expected, but I've compiled the most relevant insights.
-
-*Note: This is a partial response due to processing time constraints.*
-`;
-          
-          setFinalResult(fallbackOutput);
-          if (onComplete) {
-            onComplete(fallbackOutput);
-          }
-        } else {
-          setError(`Error in search: ${err instanceof Error ? err.message : String(err)}`);
-        }
-      }
+      // Step 5: Generate final output directly to main chat (not displayed as a step)
+      await generateFinalOutput(shortenedQuery, strategyResult, validationResult, analysisResult, serperResults);
       
     } catch (err) {
       console.error('Error in search execution:', err);
@@ -597,6 +453,179 @@ Error details: ${errorMessage}
       setFinalResult(fallbackOutput);
       if (onComplete) {
         onComplete(fallbackOutput);
+      }
+    }
+  };
+
+  // Separate function for generating final output directly to main chat (not displayed as a step)
+  const generateFinalOutput = async (
+    query: string,
+    strategyResult: string,
+    validationResult: string,
+    analysisResult: string,
+    serperResults: any
+  ) => {
+    console.time('Final Output Generation');
+    
+    // Add a timeout for the final output (increased for comprehensive papers)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout for research papers
+    
+    try {
+      const finalResponse = await fetchNvidiaWithDelay('/api/nvidia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [
+            {
+              role: 'system',
+              content: `You are an AI Research Paper Generator specializing in comprehensive academic and professional research synthesis. You create well-structured, thoroughly researched papers with proper citations and scholarly formatting.
+
+REQUIREMENTS:
+- Minimum 700 words (aim for 1000-1500 for complex topics)
+- Structured markdown format with clear hierarchy
+- Proper citations for all claims and data points
+- Academic tone with accessible language
+- Evidence-based arguments and conclusions
+
+STRUCTURE TEMPLATE:
+- Executive Summary
+- Introduction with context and objectives
+- Methodology (search and analysis approach)
+- Findings (organized thematically)
+- Discussion and Analysis
+- Limitations and Future Research
+- Conclusion
+- References
+
+CITATION FORMAT: Use inline citations [Source Name, Year] and include full reference list. Ensure every factual claim is properly attributed.`
+            },
+            {
+              role: 'user',
+              content: `Generate a comprehensive research paper on: "${query}"
+
+Use the following inputs to create your paper:
+
+**Search Strategy:** ${strategyResult}
+**Source Validation:** ${validationResult}  
+**Synthesized Analysis:** ${analysisResult}
+**Primary Sources:** ${serperResults.sources.map((s: any, i: number) => `${i+1}. ${s.title} - ${s.url}`).join('\n')}
+
+**Paper Requirements:**
+- Minimum 700 words (target 1000-1500)
+- Academic structure with clear sections
+- Citations for all factual claims
+- Balanced analysis of multiple perspectives
+- Clear conclusions based on evidence
+- Professional markdown formatting
+
+**Focus Areas:** Provide comprehensive coverage of the topic with evidence-based insights and actionable conclusions.`
+            }
+          ],
+          stream: true,
+          max_tokens: 8192 // Increased for comprehensive research papers
+        }),
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!finalResponse.ok) {
+        throw new Error(`Final output API call failed with status: ${finalResponse.status}`);
+      }
+      
+      // Handle streaming response for final output
+      const reader = finalResponse.body?.getReader();
+      if (!reader) {
+        throw new Error('No response body available for final output');
+      }
+      
+      let finalOutput = '';
+      const decoder = new TextDecoder();
+      
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          const chunk = decoder.decode(value);
+          const lines = chunk.split('\n');
+          
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+              if (data === '[DONE]') continue;
+              
+              try {
+                const parsed = JSON.parse(data);
+                const content = parsed.choices?.[0]?.delta?.content || '';
+                if (content) {
+                  finalOutput += content;
+                  setFinalResult(finalOutput); // Update in real-time
+                }
+              } catch (e) {
+                console.error('Error parsing final output streaming response:', e);
+              }
+            }
+          }
+        }
+      } finally {
+        reader.releaseLock();
+      }
+      
+      if (!finalOutput) {
+        throw new Error('No content received for final output');
+      }
+      
+      // Notify parent component that search is complete with final result
+      if (onComplete) {
+        onComplete(finalOutput);
+      }
+      
+      console.timeEnd('Final Output Generation');
+    } catch (err) {
+      clearTimeout(timeoutId);
+      console.error('Error in final output generation:', err);
+      
+      // If it's a timeout, create a fallback response
+      if (err instanceof Error && err.name === 'AbortError') {
+        const fallbackOutput = `
+# Response for: ${query}
+
+## Key Findings
+${analysisResult.split('\n').slice(0, 5).join('\n')}
+
+## Summary
+Based on the available information, I can provide a partial answer to your query.
+Some steps took longer than expected, but I've compiled the most relevant insights.
+
+*Note: This is a partial response due to processing time constraints.*
+`;
+        
+        setFinalResult(fallbackOutput);
+        if (onComplete) {
+          onComplete(fallbackOutput);
+        }
+      } else {
+        setError(`Error in final output generation: ${err instanceof Error ? err.message : String(err)}`);
+        
+        // Provide a fallback response even if generation fails
+        const fallbackOutput = `
+# Search Results for: ${query}
+
+## Analysis Summary
+${analysisResult.substring(0, 500)}...
+
+## Error Note
+I encountered an issue while generating the final comprehensive report. The above summary provides key insights from the analysis.
+
+Error details: ${err instanceof Error ? err.message : String(err)}
+`;
+        
+        setFinalResult(fallbackOutput);
+        if (onComplete) {
+          onComplete(fallbackOutput);
+        }
       }
     }
   };
