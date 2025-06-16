@@ -1075,7 +1075,7 @@ Error details: ${err instanceof Error ? err.message : String(err)}
       <div
         className="w-full rounded-lg overflow-hidden border border-cyan-400 bg-transparent relative"
         style={{ 
-          borderRadius: '20px'
+          borderRadius: '8px'
         }}
       >
         {/* Header (fixed) */}
@@ -1123,9 +1123,9 @@ Error details: ${err instanceof Error ? err.message : String(err)}
         {/* Content (scrollable, animated height) */}
         <motion.div
           className={`px-6 py-4 overflow-y-auto ${styles['hide-scrollbar']}`}
-          animate={{ height: isExpanded ? 300 : 180 }}
+          animate={{ height: isExpanded ? 300 : 0 }}
           transition={{ duration: 0.4, ease: 'easeInOut' }}
-          style={{ height: 300 - 64 }}
+          style={{ height: isExpanded ? 300 - 64 : 0 }}
         >
           {/* Start Search Button - only shown when search hasn't been executed */}
           {!hasExecuted && (
@@ -1287,7 +1287,7 @@ Error details: ${err instanceof Error ? err.message : String(err)}
         <div
           className="w-full rounded-lg border border-cyan-400 bg-transparent"
           style={{ 
-            borderRadius: '20px'
+            borderRadius: '8px'
           }}
         >
           <div className="p-6">
