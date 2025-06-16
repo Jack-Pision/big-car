@@ -1080,8 +1080,8 @@ Error details: ${err instanceof Error ? err.message : String(err)}
       >
         {/* Header (fixed) */}
         <div
-          className="relative flex items-center px-6 py-4 bg-transparent"
-          style={{ minHeight: '64px' }}
+          className="relative flex items-center px-4 py-3 bg-transparent"
+          style={{ minHeight: '48px' }}
         >
           <div className="flex items-center gap-3">
             <div className="w-6 h-6 relative flex-shrink-0">
@@ -1099,7 +1099,7 @@ Error details: ${err instanceof Error ? err.message : String(err)}
           
           {/* Expand/Collapse Arrow Button */}
           <motion.div
-            className="absolute right-6 top-1/2 -translate-y-1/2 cursor-pointer"
+            className="absolute right-4 top-1/2 -translate-y-1/2 cursor-pointer"
             onClick={() => setIsExpanded((v) => !v)}
             animate={{ rotate: isExpanded ? 0 : 180 }}
             transition={{ duration: 0.3 }}
@@ -1122,10 +1122,10 @@ Error details: ${err instanceof Error ? err.message : String(err)}
         
         {/* Content (scrollable, animated height) */}
         <motion.div
-          className={`px-6 py-4 overflow-y-auto ${styles['hide-scrollbar']}`}
+          className={`px-4 py-4 overflow-y-auto ${styles['hide-scrollbar']}`}
           animate={{ height: isExpanded ? 300 : 0 }}
           transition={{ duration: 0.4, ease: 'easeInOut' }}
-          style={{ height: isExpanded ? 300 - 64 : 0 }}
+          style={{ height: isExpanded ? 300 - 48 : 0 }}
         >
           {/* Start Search Button - only shown when search hasn't been executed */}
           {!hasExecuted && (
@@ -1290,7 +1290,7 @@ Error details: ${err instanceof Error ? err.message : String(err)}
             borderRadius: '8px'
           }}
         >
-          <div className="p-6">
+          <div className="p-0">
             <ThinkingButton 
               content={searchThinking} 
               isLive={isThinkingActive}

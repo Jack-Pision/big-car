@@ -23,9 +23,9 @@ const ThinkingButton: React.FC<ThinkingButtonProps> = ({ content, isLive = false
         className={`transition-all duration-300 ease-in-out bg-transparent text-cyan-300 ${
           isLive ? 'shimmer-button-content' : ''
         } ${
-          isExpanded ? 'p-3 w-full' : 'px-3 py-2 w-auto inline-block'
+          isExpanded ? 'p-3 w-full' : 'px-4 py-3 w-full'
         }`}
-        style={{ borderRadius: '8px' }}
+        style={{ borderRadius: '8px', minHeight: isExpanded ? 'auto' : '48px' }}
       >
         {/* Button header - always visible */}
         <div 
