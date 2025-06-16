@@ -503,19 +503,19 @@ textarea::-webkit-scrollbar-thumb,
 }
 
 .research-output h1 {
-  @apply text-4xl font-bold text-white mb-8 mt-10 border-b-2 border-cyan-500/40 pb-4 leading-tight;
+  @apply text-3xl font-bold text-white mb-6 mt-8 border-b border-cyan-500/30 pb-3;
 }
 
 .research-output h2 {
-  @apply text-2xl font-semibold text-cyan-400 mb-5 mt-10 leading-tight;
+  @apply text-2xl font-semibold text-cyan-400 mb-4 mt-8 flex items-center gap-2;
 }
 
 .research-output h3 {
-  @apply text-xl font-semibold text-white mb-4 mt-8 leading-tight;
+  @apply text-xl font-semibold text-white mb-3 mt-6;
 }
 
 .research-output p {
-  @apply text-gray-200 leading-relaxed mb-5 text-base font-normal;
+  @apply text-gray-200 leading-relaxed mb-4 text-base;
   background: transparent !important;
 }
 
@@ -534,7 +534,7 @@ textarea::-webkit-scrollbar-thumb,
 }
 
 .research-output strong {
-  @apply text-white font-bold;
+  @apply text-white font-semibold;
 }
 
 .research-output table {
@@ -758,4 +758,25 @@ textarea::-webkit-scrollbar-thumb,
   background: transparent !important;
   color: inherit !important;
   padding: 0;
+}
+
+/* Shimmer animation for thinking button */
+.shimmer-button {
+  background: linear-gradient(
+    90deg,
+    rgba(31, 41, 55, 1) 0%,
+    rgba(55, 65, 81, 1) 50%,
+    rgba(31, 41, 55, 1) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmerButton 2s infinite;
+}
+
+@keyframes shimmerButton {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 } 

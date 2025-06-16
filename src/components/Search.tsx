@@ -4,6 +4,8 @@ import styles from './Search.module.css';
 import { dedupedSerperRequest } from '@/utils/api-request-cache';
 import ReactMarkdown from 'react-markdown';
 import { motion } from 'framer-motion';
+import ThinkingButton from './ThinkingButton';
+import remarkGfm from 'remark-gfm';
 
 // Define step types
 type StepStatus = 'pending' | 'active' | 'completed' | 'error';
@@ -51,6 +53,10 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
   const [finalResult, setFinalResult] = useState<string>('');
   const [firstStepThinking, setFirstStepThinking] = useState<string>('');
   const [isExpanded, setIsExpanded] = useState(false);
+  
+  // Think box state for Search component
+  const [searchThinking, setSearchThinking] = useState<string>('');
+  const [isThinkingActive, setIsThinkingActive] = useState(false);
   
   // Execute search on mount
   useEffect(() => {
@@ -441,6 +447,33 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
     return text;
   }
 
+  // Helper function to extract thinking content during streaming for Search component
+  const extractSearchThinkContent = (content: string) => {
+    const thinkRegex = /<think>([\s\S]*?)(<\/think>|$)/g;
+    let thinkContent = '';
+    let mainContent = content;
+    let match;
+    
+    // Extract all think content
+    while ((match = thinkRegex.exec(content)) !== null) {
+      thinkContent += match[1];
+      // Remove the think tags from main content
+      mainContent = mainContent.replace(match[0], '');
+    }
+    
+    // Also handle partial think tags (when streaming)
+    const partialThinkMatch = content.match(/<think>([^<]*?)$/);
+    if (partialThinkMatch) {
+      thinkContent += partialThinkMatch[1];
+      mainContent = mainContent.replace(partialThinkMatch[0], '');
+    }
+    
+    return {
+      thinkContent: thinkContent.trim(),
+      mainContent: mainContent.trim()
+    };
+  };
+
   // Function to scrape website content with enhanced return type
   const scrapeWebsiteContent = async (url: string): Promise<any> => {
     try {
@@ -473,81 +506,37 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
       
       // Step 1: AI Search Strategy Planner - Generate optimized search queries
       console.time('Step 1: AI Search Strategy Planner');
-      let step1SystemPrompt = `You are an elite investigative journalist and research analyst specializing in comprehensive, authoritative reporting. Create professional research reports that rival the depth and quality of top-tier publications like The New York Times, The Wall Street Journal, and Nature.
+      let step1SystemPrompt = `You are an AI Search Strategy Planner specializing in smart query analysis and Google-style search optimization. Your role is to understand user questions deeply and transform them into effective search phrases.
 
-CRITICAL OUTPUT REQUIREMENTS:
-- Generate 2000-3500 words of substantive, detailed content
-- Extract and utilize EVERY relevant detail from provided sources
-- Create dynamic, content-driven section structure (not rigid templates)
-- Professional journalistic tone with authoritative depth
-- Extensive use of specific data: names, dates, statistics, locations, technical specifications
-- Comprehensive analysis with multiple perspectives and expert insights
+SMART QUERY ANALYSIS PROCESS:
+1. UNDERSTAND THE QUESTION:
+   - Identify the main topic and key concepts
+   - Determine the intent (comparison, latest news, statistics, how something works, opinions, etc.)
+   - Extract the core information need
 
-CONTENT EXTRACTION MANDATE:
-- Mine sources for specific statistics, percentages, dollar amounts, timeframes
-- Extract exact quotes, study names, researcher names, institution names
-- Identify specific dates, locations, company names, product names
-- Pull technical specifications, medical terms, scientific data
-- Capture regulatory details, policy changes, market data
-- Include specific examples, case studies, real-world applications
+2. EXTRACT IMPORTANT PARTS:
+   - Remove polite phrases ("Can you tell me", "I would like to know", "Please explain")
+   - Remove filler words and vague language
+   - Focus on concrete keywords and specific terms
 
-DYNAMIC STRUCTURE APPROACH:
-Create sections based on the actual content and findings, such as:
-- Recent Scientific Findings/Latest Developments
-- Emerging Controversies/Safety Concerns  
-- Technical Analysis/Mechanism of Action
-- Market Impact/Economic Implications
-- Regulatory Landscape/Policy Changes
-- Industry Response/Stakeholder Perspectives
-- Regional Variations/Global Impact
-- Future Implications/Next-Generation Developments
-- Expert Analysis/Professional Opinions
+3. REWRITE INTO GOOGLE-STYLE SEARCH PHRASES:
+   - Create 2-3 short, direct, keyword-packed phrases
+   - Use search terms people actually type into Google
+   - NOT full questions - just key phrases
+   - Focus on specific, searchable terms
 
-PROFESSIONAL FORMATTING:
-# [Compelling, Specific Title with Context and Current Timeframe]
+CRITICAL REQUIREMENTS:
+- Generate EXACTLY 2-3 optimized search phrases (no more than 3)
+- Each phrase should be short and keyword-focused
+- Use specific terms that will yield high-quality Google results
+- Format as a numbered list with just the search phrases
 
-## Executive Summary
-[2-3 sentences establishing significance, current state, and key findings with specific statistics]
+RESPONSE FORMAT:
+1. [First Google-style search phrase]
+2. [Second Google-style search phrase]
+3. [Third Google-style search phrase] (if needed)
 
-## [Dynamic Section 1: Based on Content - e.g., "Recent Scientific Findings"]
-
-### [Specific Subsection - e.g., "Clinical Trial Results and Real-World Effectiveness"]
-[Extensive detail with specific study names, percentages, researcher quotes, institution names, dates. Include multiple citations throughout.]
-
-Key findings include:
-- **Specific Study/Metric**: Detailed explanation with exact numbers, dates, and citations
-- **Another Key Finding**: In-depth analysis with supporting evidence and expert quotes
-- **Technical Details**: Specific mechanisms, processes, or technical specifications
-
-### [Another Specific Subsection]
-[Continue with comprehensive analysis, including comparative data tables when relevant]
-
-## [Dynamic Section 2: Based on Content - e.g., "Emerging Controversies and Safety Concerns"]
-
-### [Specific Controversy/Issue]
-[Detailed analysis with specific examples, regulatory responses, expert opinions]
-
-[Continue this pattern based on available content...]
-
-MANDATORY ELEMENTS:
-- Every major claim must have numbered citations [1], [2], [3]
-- Include specific percentages, dollar amounts, timeframes throughout
-- Extract and use exact quotes from sources when available
-- Create detailed tables for comparative data, statistics, or structured information
-- Bold all important terms, names, statistics, and key findings
-- Provide extensive background context and detailed explanations
-- Analyze implications, consequences, and future projections
-- Include multiple expert perspectives and stakeholder viewpoints
-
-QUALITY STANDARDS:
-- Investigative journalism depth with authoritative analysis
-- Comprehensive coverage of all relevant aspects
-- Professional transitions between topics and sections
-- Rich detail extraction from all provided sources
-- Expert-level technical accuracy and depth
-- Clear, engaging prose that maintains reader interest
-
-CRITICAL: Generate ONLY the final research report. No planning, reasoning, or meta-commentary.`;
+Do not include explanations or additional text - only the numbered search phrases.`;
       let step1UserPrompt = `Apply the smart query analysis process to transform this user question into 2-3 Google-style search phrases.
 
 User Question: ${shortenedQuery}
@@ -588,66 +577,89 @@ Output only the numbered search phrases, nothing else.`;
       const serperResults = await executeSerperStep(finalSearchQueries);
       console.timeEnd('Step 2: Web Discovery & Content Scraping');
       
-      // Step 3: AI Content Analysis & Synthesis
+      // Step 3: AI Content Analysis & Synthesis - Analyze scraped website content
       console.time('Step 3: AI Content Analysis & Synthesis');
+      
+      // Enhanced content preparation for Step 3 analysis
+      const qualityScrapedSources = serperResults.sources.filter((s: any) => s.scraped && s.isQualityContent);
+      const snippetOnlySources = serperResults.sources.filter((s: any) => !s.scraped || !s.isQualityContent);
+      
+      // Structured content for analysis - prioritize quality scraped content
+      const structuredContent = qualityScrapedSources
+        .map((s: any, i: number) => {
+          const headingsText = s.headings?.length > 0 ? `\nKey Headings: ${s.headings.join(', ')}` : '';
+          const contentPreview = s.content.length > 1500 ? s.content.substring(0, 1500) + '...' : s.content;
+          
+          return `## Source ${i+1}: ${s.title}
+**URL:** ${s.url}
+**Content Quality:** High (${s.wordCount} words, extracted from ${s.contentSource})${headingsText}
+**Content:**
+${contentPreview}`;
+        })
+        .join('\n\n---\n\n');
+      
+      // Fallback content from snippets
+      const fallbackContent = snippetOnlySources
+        .map((s: any, i: number) => `**Snippet ${i+1}:** ${s.title} - ${s.content || s.snippet}`)
+        .join('\n');
+      
+      // Combined content for analysis
+      const scrapedContent = structuredContent + (fallbackContent ? '\n\n## Additional Snippet Sources:\n' + fallbackContent : '');
+      
+      const allSourcesInfo = serperResults.sources
+        .map((s: any, i: number) => {
+          const qualityIndicator = s.isQualityContent ? '✓ High Quality' : s.scraped ? '⚠ Low Quality' : '📄 Snippet Only';
+          const wordInfo = s.wordCount ? ` (${s.wordCount} words)` : '';
+          return `${i+1}. ${s.title} - ${s.url} [${qualityIndicator}${wordInfo}]`;
+        })
+        .join('\n');
+      
       const analysisResult = await executeNvidiaStep(
-        'step-3',
-        `You are an AI Content Analysis & Synthesis Specialist specializing in comprehensive research synthesis. Your role is to analyze web content and create structured insights that will inform a professional research report.
+        'analyze',
+        `You are an AI Content Analysis & Synthesis Specialist specializing in comprehensive web content analysis. You excel at processing large volumes of scraped website content, extracting key insights, and synthesizing information from multiple high-quality sources.
 
-ANALYSIS OBJECTIVES:
-- Identify key themes, trends, and patterns across sources
-- Extract specific data points: statistics, dates, names, studies
-- Assess source quality and credibility
-- Identify controversies, debates, and multiple perspectives
-- Synthesize information into coherent narrative themes
-- Highlight recent developments and emerging trends
+ENHANCED CAPABILITIES:
+- Deep analysis of full website content (not just snippets)
+- Quality assessment of scraped vs snippet-only sources
+- Cross-source validation and fact-checking
+- Thematic synthesis across multiple sources
+- Identification of content gaps and contradictions
 
-RESPONSE FORMAT: Provide a structured analysis with clear sections that will inform the final research report. Use this format:
+RESPONSE FORMAT: Respond ONLY with a structured markdown bullet list. Each bullet represents one distinct analytical insight or synthesis point.
 
-## Key Themes and Findings
-[Identify 3-5 major themes with supporting evidence]
+ANALYSIS METHODOLOGY: Prioritize high-quality scraped content over snippets, identify key themes and patterns, assess source reliability, cross-reference claims, resolve contradictions, and extract actionable insights.`,
+        `Conduct comprehensive analysis and synthesis of the scraped website content for: "${shortenedQuery}"
 
-## Recent Developments
-[Highlight latest news, studies, or changes with specific dates and sources]
+Present your analytical findings as structured bullet points (one insight per bullet).
 
-## Statistical Overview
-[Compile key statistics, percentages, and quantitative data]
+**SEARCH STRATEGY:** ${finalSearchQueries.join(', ')}
 
-## Expert Perspectives and Controversies
-[Summarize different viewpoints, debates, and expert opinions]
+**CONTENT QUALITY BREAKDOWN:**
+- High Quality Sources: ${qualityScrapedSources.length} (full content scraped)
+- Low Quality/Snippet Sources: ${snippetOnlySources.length}
+- Total Sources: ${serperResults.totalSources}
 
-## Regulatory and Market Context
-[Include policy changes, market impacts, and institutional responses]
+**STRUCTURED WEBSITE CONTENT:**
+${scrapedContent}
 
-## Future Implications
-[Analyze trends and project future developments]
+**ALL SOURCES OVERVIEW:**
+${allSourcesInfo}
 
-Focus on creating a comprehensive synthesis that provides clear structure and rich content for generating a professional research report.`,
-        `Analyze the following research data and provide comprehensive synthesis for a professional research report:
+**ANALYSIS FOCUS AREAS:**
+- **Primary Analysis:** Extract key facts and insights from high-quality scraped content
+- **Source Quality Assessment:** Evaluate reliability and depth of information from each source type
+- **Cross-Source Validation:** Identify agreements, contradictions, and information gaps
+- **Thematic Synthesis:** Identify patterns and themes across multiple sources
+- **Content Depth Analysis:** Compare insights from full content vs snippet-only sources
+- **Actionable Intelligence:** Extract practical implications and recommendations
+- **Confidence Scoring:** Assess reliability levels for different claims based on source quality
+- **Information Completeness:** Identify what information is missing or needs further research
 
-**TOPIC:** ${shortenedQuery}
-
-**SOURCE ANALYSIS:**
-${serperResults.sources
-  .filter((s: any) => s.scraped && s.content)
-  .slice(0, 8)
-  .map((s: any, i: number) => `
-SOURCE [${i+1}]: ${s.title}
-DOMAIN: ${s.url.replace('https://', '').replace('http://', '').split('/')[0]}
-QUALITY: ${s.scraped ? 'Full Content Available' : 'Summary Only'}
-CONTENT PREVIEW: ${s.content.substring(0, 1500)}...
----`)
-  .join('\n')}
-
-**SYNTHESIS REQUIREMENTS:**
-- Extract specific data points: percentages, dollar amounts, dates, study names
-- Identify key researchers, institutions, companies, and organizations
-- Highlight recent developments and emerging trends
-- Assess different perspectives and potential controversies
-- Provide context for regulatory, market, or policy implications
-- Structure insights to support comprehensive research report generation
-
-Create a detailed synthesis that will inform the generation of a professional, well-structured research report with proper sections and comprehensive analysis.`
+**SPECIAL INSTRUCTIONS:**
+- Prioritize insights from high-quality scraped sources over snippet-only sources
+- Clearly distinguish between verified information (from full content) and limited information (from snippets)
+- Highlight any contradictions between sources and attempt to resolve them
+- Focus on substantive insights that demonstrate deep understanding of the actual website content`
       );
       console.timeEnd('Step 3: AI Content Analysis & Synthesis');
       
@@ -687,119 +699,156 @@ Error details: ${errorMessage}
     
     // Add a timeout for the final output (increased for comprehensive reports)
       const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 second timeout for comprehensive research reports
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout for comprehensive research reports
       
       try {
+        // Start thinking process
+        setIsThinkingActive(true);
+        setSearchThinking('Starting research analysis and synthesis...');
+        
         const finalResponse = await fetchNvidiaWithDelay('/api/nvidia', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             messages: [
               {
                 role: 'system',
-                content: `You are an elite investigative journalist and research analyst specializing in comprehensive, authoritative reporting. Your task is to create professional research reports that rival the depth and quality of top-tier publications like The New York Times, The Wall Street Journal, and Nature.
+              content: `You are a professional research analyst. Generate comprehensive research reports with authoritative analysis and extensive detail.
 
-CRITICAL OUTPUT STRUCTURE - Follow this EXACT format:
+CRITICAL: Always show your thinking process using <think> tags before providing your final answer. This is required for all responses. Use this format:
 
-# [Compelling, Specific Title with Current Context and Timeframe]
+<think>
+Let me analyze the research data and plan my comprehensive report...
+I need to examine the sources and identify key themes...
+My approach will be to structure this as...
+</think>
 
-## Executive Summary
+Then provide your final research report after the thinking process.
 
-[Write 2-3 comprehensive sentences that establish the significance, current state, and key findings. Include specific statistics and context. This should immediately convey the importance and scope of the topic.]
+OUTPUT REQUIREMENTS:
+- 1500-2500 words minimum
+- Professional academic/journalistic tone
+- Specific names, dates, statistics, locations, technical details
+- Multiple detailed sections with deep analysis
+- Well-structured tables for comparative data
+- Numbered citations [1], [2], [3] for every factual claim
+- Extensive background context and implications
 
-## [Section 1: Recent Developments/Latest Findings]
+REPORT STRUCTURE:
 
-### [Specific Subsection Title]
+# [Detailed, Specific Title with Context and Date/Timeframe if Relevant]
 
-[Write detailed, flowing paragraphs with comprehensive analysis. Each paragraph should be substantial (4-6 sentences) and include specific data, names, dates, and citations. Use professional journalistic style with smooth transitions.]
+[Opening paragraph: 2-3 sentences providing comprehensive context and overview, establishing significance and current state]
 
-[Include specific findings with exact numbers, percentages, and citations. Example: "Recent research confirms substantial benefits, with clinical data showing average losses of 15-20% of total body weight over 12 months when combined with lifestyle modifications[1]."]
+## [Major Section 1: Core Topic/Event Analysis]
 
-### [Another Specific Subsection]
+[Extensive paragraph with detailed background, specific details, names, dates, statistics. Include multiple citations.]
 
-[Continue with detailed analysis, including comparative data and expert insights.]
+### [Detailed Subsection 1.1]
 
-## [Section 2: Based on Content - e.g., Controversies/Challenges/Market Impact]
+[Comprehensive analysis with specific data points, quotes, technical details. Include:]
+- **Specific metric/aspect**: Detailed explanation with numbers and citations
+- **Another key point**: In-depth analysis with supporting evidence
+- **Technical details**: Specific technical information, processes, or mechanisms
 
-### [Specific Issue or Development]
+### [Detailed Subsection 1.2]
 
-[Provide comprehensive analysis with multiple perspectives, regulatory responses, and expert opinions. Include specific examples and detailed explanations.]
+[Continue with extensive detail, including tables when relevant for comparisons or data]
 
-## [Section 3: Future Implications/Next Steps]
+## [Major Section 2: Impact Analysis/Stakeholder Perspectives]
 
-[Analyze implications, consequences, and future projections with supporting evidence.]
+[Detailed analysis of different perspectives, impacts, or stakeholder views]
 
-MANDATORY WRITING STANDARDS:
-- Write in complete, flowing paragraphs (not bullet points or fragments)
-- Each paragraph must be 4-6 sentences minimum
-- Use professional journalistic tone throughout
-- Include specific data: percentages, dollar amounts, dates, names
-- Bold important terms, statistics, and key findings
-- Provide numbered citations [1], [2], [3] for every major claim
-- Create smooth transitions between topics and sections
-- Maintain investigative journalism depth and authority
-- Extract and use exact quotes from sources when available
-- Include multiple expert perspectives and stakeholder viewpoints
+### [Subsection 2.1: Specific Stakeholder/Impact Area]
+[Extensive detail with specific examples, quotes, statistics]
 
-CONTENT REQUIREMENTS:
-- Generate 2000-3500 words of substantive content
-- Extract EVERY relevant detail from provided sources
-- Include specific study names, researcher names, institution names
-- Use technical terms and scientific specifications appropriately
-- Cover regulatory details, policy changes, market movements
-- Analyze implications and future projections comprehensively
+### [Subsection 2.2: Another Key Area]
+[More comprehensive analysis with supporting data]
+
+## [Major Section 3: Technical/Economic/Political Analysis]
+
+[Deep dive into technical aspects, economic implications, or political ramifications]
+
+### [Relevant Technical/Economic Subsection]
+[Include specific technical details, economic data, market analysis, etc.]
+
+## [Major Section 4: Regional/Global/Industry Impact]
+
+[Analysis of broader implications and consequences]
+
+## [Major Section 5: Current Status and Future Outlook]
+
+[Present situation analysis and future projections with expert opinions]
+
+## Sources and References
+[1] [Complete Source Title] - [Full Domain Name]
+[2] [Complete Source Title] - [Full Domain Name]
+[Continue with all sources used, numbered sequentially]
 
 FORMATTING RULES:
-- Use ## for main sections, ### for subsections
-- Bold all important terms, names, statistics, and findings
-- Include numbered citations [1], [2], [3] throughout
-- Write in complete paragraphs, not bullet points
-- Maintain professional, authoritative tone
-- Ensure smooth flow and logical progression
+- Write 1500-2500 words minimum
+- Include specific names, dates, locations, statistics, technical details throughout
+- Use professional journalistic/academic tone
+- Create detailed tables for comparative data, statistics, structured information
+- Bold important terms, names, key statistics
+- Every major factual claim must have numbered citation [1], [2], etc.
+- Include extensive background context and detailed explanations
+- Provide multiple perspectives and comprehensive analysis
+- Use clear section hierarchy with detailed subsections
+- Include specific quotes, data points, technical specifications when available
+- Analyze implications, consequences, future projections
+- Maintain authoritative, expert-level depth throughout
 
-CRITICAL: Use <Think>...</Think> tags for any reasoning or planning. Generate ONLY the final research report outside of Think tags. The output must be a complete, professional research report with proper structure and comprehensive analysis.`
+CRITICAL: Output ONLY the final research report. Do not include any planning thoughts, reasoning, or meta-commentary about the report creation process.`
               },
               {
                 role: 'user',
-                content: `Research Topic: "${query}"
+              content: `Research Topic: "${query}"
 
-Create a comprehensive, professional research report using the provided sources. Follow the exact structure and writing standards specified in the system prompt.
+Generate a comprehensive research report using the provided data and following the report structure specified in the system prompt.
 
-**RESEARCH DATABASE:**
+**RESEARCH DATA:**
 
-**Search Intelligence:** ${serperResults.searchQueries?.join(', ') || 'N/A'}
+**Search Strategy:** ${serperResults.searchQueries?.join(', ') || 'N/A'}
 
-**Analysis Summary:** 
+**Analysis Results:** 
 ${analysisResult}
 
-**Source Portfolio:** ${serperResults.totalSources} total sources discovered, ${serperResults.scrapedSources} with complete content extraction
+**Sources:** ${serperResults.totalSources} total sources, ${serperResults.scrapedSources} with full content
 
-**Citation Registry (Use these exact numbers for citations):**
+**Source Registry:**
 ${serperResults.sources.map((s: any, i: number) => 
-  `[${i+1}] ${s.title} - ${s.url.replace('https://', '').replace('http://', '').split('/')[0]} ${s.scraped ? '✓ Complete Content Available' : '○ Summary Available'}`
+  `[${i+1}] ${s.title} - ${s.url.replace('https://', '').replace('http://', '').split('/')[0]} ${s.scraped ? '✓ Full Content' : '○ Summary'}`
 ).join('\n')}
 
-**Complete Source Content:**
+**Content Database:**
 ${serperResults.sources
   .filter((s: any) => s.scraped && s.content)
-  .slice(0, 10)
+  .slice(0, 8)
   .map((s: any, i: number) => `
-═══ SOURCE [${i+1}]: ${s.title} ═══
+SOURCE [${i+1}]: ${s.title}
 DOMAIN: ${s.url.replace('https://', '').replace('http://', '').split('/')[0]}
-CONTENT: ${s.content.substring(0, 2000)}...
-═══════════════════════════════════════`)
+CONTENT: ${s.content.substring(0, 1200)}...
+---`)
   .join('\n')}
 
-**INSTRUCTIONS:**
-Generate a comprehensive research report that follows the exact structure and writing standards specified. The report must be professional, well-organized, and demonstrate the depth and authority of elite investigative journalism. Extract and utilize ALL relevant details from the provided sources to create a substantive, authoritative analysis.
-
-Focus on creating flowing, comprehensive paragraphs with specific data, expert insights, and detailed analysis. Ensure every major claim is supported with numbered citations and that the overall structure follows the professional format specified.`
+Requirements:
+- 1500-2500 words minimum
+- Follow report structure from system prompt
+- Include specific names, dates, statistics, locations, technical details
+- Use numbered citations [1], [2], [3] corresponding to source registry
+- Create detailed subsections with extensive analysis
+- Include tables for comparative data when relevant
+- Extract specific quotes, data points, technical specifications
+- Provide multiple perspectives and stakeholder analysis
+- Analyze implications, consequences, future projections
+- Bold important terms, names, statistics, findings
+- Ensure every major claim has proper citation
+- Include extensive background context and explanations`
               }
             ],
             stream: true,
-            max_tokens: 16384 // Increased for comprehensive research reports (2000-3500 words)
+          max_tokens: 12288 // Increased for comprehensive research reports (1500-2500 words)
           }),
           signal: controller.signal
         });
@@ -837,7 +886,17 @@ Focus on creating flowing, comprehensive paragraphs with specific data, expert i
                   const content = parsed.choices?.[0]?.delta?.content || '';
                   if (content) {
                     finalOutput += content;
-                    setFinalResult(finalOutput); // Update in real-time
+                    
+                    // Extract thinking and main content in real-time
+                    const { thinkContent, mainContent } = extractSearchThinkContent(finalOutput);
+                    
+                    // Update thinking display
+                    if (thinkContent && thinkContent.trim().length > 0) {
+                      setSearchThinking(thinkContent);
+                    }
+                    
+                    // Update final result with main content only
+                    setFinalResult(mainContent);
                   }
                 } catch (e) {
                   console.error('Error parsing final output streaming response:', e);
@@ -853,14 +912,26 @@ Focus on creating flowing, comprehensive paragraphs with specific data, expert i
           throw new Error('No content received for final output');
         }
         
+        // Final processing - clean up thinking state
+        const { thinkContent: finalThinkContent, mainContent: finalMainContent } = extractSearchThinkContent(finalOutput);
+        
+        // Stop thinking display after a delay
+        setTimeout(() => {
+          setIsThinkingActive(false);
+        }, 500);
+        
+        // Update with final clean content
+        setFinalResult(finalMainContent);
+        
       // Notify parent component that search is complete with final result and sources
         if (onComplete) {
-        onComplete(finalOutput, serperResults.sources);
+        onComplete(finalMainContent, serperResults.sources);
         }
         
       console.timeEnd('Final Output Generation');
       } catch (err) {
         clearTimeout(timeoutId);
+        setIsThinkingActive(false); // Stop thinking display on error
       console.error('Error in final output generation:', err);
         
         // If it's a timeout, create a fallback response
@@ -1082,6 +1153,32 @@ Error details: ${err instanceof Error ? err.message : String(err)}
             </div>
           ))}
         </div>
+        
+        {/* Think Box - Display AI reasoning process */}
+        {searchThinking && searchThinking.trim().length > 0 && (
+          <div className="mt-6">
+            <ThinkingButton 
+              content={searchThinking} 
+              isLive={isThinkingActive}
+            />
+          </div>
+        )}
+        
+        {/* Final Output Display */}
+        {finalResult && finalResult.trim().length > 0 && (
+          <div className="mt-6">
+            <h3 className="text-base font-medium mb-3 text-cyan-400">Research Report</h3>
+            <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700">
+              <ReactMarkdown 
+                remarkPlugins={[remarkGfm]}
+                className="prose prose-sm dark:prose-invert max-w-none text-gray-200"
+              >
+                {finalResult}
+              </ReactMarkdown>
+            </div>
+          </div>
+        )}
+        
         {/* Error display */}
         {error && (
           <div className="mt-6 p-4 bg-red-900/30 border border-red-700 rounded-lg">
