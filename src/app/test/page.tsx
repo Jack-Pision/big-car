@@ -2628,7 +2628,8 @@ export default function TestChat() {
                   contentForDisplay = contentForDisplay.replace(/[\u1F1E0-\u1F1FF]/g, ''); // Flags
                   contentForDisplay = contentForDisplay.replace(/:[a-zA-Z0-9_+-]+:/g, ''); // Remove emoji shortcodes
                   contentForDisplay = contentForDisplay.replace(/[🔍📋📊💡🚀⚡🎯📈📉🔥💪🌟✨🎉🎊👍👎❤️💯🔔📢📣🎪🎭🎨🎬🎵🎶🎸🎹🎺🎻🥁🎤🎧🎮🕹️🎲🎳]/g, '');
-                  contentForDisplay = contentForDisplay.replace(/\s+/g, ' ').trim();
+                  // Clean up excessive spaces but preserve line breaks and document structure
+                  contentForDisplay = contentForDisplay.replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
                   
                   const finalContent = makeCitationsClickable(contentForDisplay, msg.webSources || []);
 
