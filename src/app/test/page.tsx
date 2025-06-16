@@ -2288,10 +2288,10 @@ export default function TestChat() {
 
   // Add helper function to convert LocalMessage[] to ConversationMessage[] by type casting
   function convertToConversationMessages(messages: LocalMessage[]): ConversationMessage[] {
-    // This filters out search-ui messages and search results since ConversationMessage doesn't support those roles
-    // Search results are handled separately and shouldn't be part of conversation context
+    // This filters out search-ui messages since ConversationMessage doesn't support that role
+    // Search results no longer appear in main chat, so no need to filter them
     return messages.filter(
-      msg => msg.role !== 'search-ui' && !msg.isSearchResult
+      msg => msg.role !== 'search-ui'
     ) as unknown as ConversationMessage[];
   }
 
@@ -2610,11 +2610,7 @@ export default function TestChat() {
           <div className="w-full max-w-3xl mx-auto flex flex-col gap-4 items-center justify-center z-10 pt-12 pb-4">
             {messages.map((msg, i) => {
               if (msg.role === "assistant") {
-                // Handle search results separately - bypass all Think box processing
-                if (msg.isSearchResult) {
-                  // Search results no longer appear in main chat - this block is removed
-                  return null;
-                }
+                // Search results no longer appear in main chat, so no special handling needed
                 
                 if (msg.contentType && msg.structuredContent) {
                   return (
@@ -2697,21 +2693,8 @@ export default function TestChat() {
                 // Process think tags and extract them
                 const { processedContent, thinkBlocks, isLiveThinking } = processThinkTags(cleanContent);
                 
-                // Remove emojis from search results
+                // Standard content processing for all assistant messages
                 let contentForDisplay = processedContent;
-                if (msg.isSearchResult) {
-                  // Remove all emojis using ES5-compatible regex patterns
-                  contentForDisplay = contentForDisplay.replace(/[\uD83C-\uDBFF\uDC00-\uDFFF]+/g, ''); // Surrogate pairs
-                  contentForDisplay = contentForDisplay.replace(/[\u2600-\u27BF]/g, ''); // Miscellaneous symbols
-                  contentForDisplay = contentForDisplay.replace(/[\u1F300-\u1F6FF]/g, ''); // Emoticons
-                  contentForDisplay = contentForDisplay.replace(/[\u1F1E0-\u1F1FF]/g, ''); // Flags
-                  // Remove emoji shortcodes like :emoji_name:
-                  contentForDisplay = contentForDisplay.replace(/:[a-zA-Z0-9_+-]+:/g, '');
-                  // Remove specific common emojis that might not be caught by ranges
-                  contentForDisplay = contentForDisplay.replace(/[🔍📋📊💡🚀⚡🎯📈📉🔥💪🌟✨🎉🎊👍👎❤️💯🔔📢📣🎪🎭🎨🎬🎵🎶🎸🎹🎺🎻🥁🎤🎧🎮🕹️🎲🎳]/g, '');
-                  // Clean up any double spaces left by emoji removal
-                  contentForDisplay = contentForDisplay.replace(/\s+/g, ' ').trim();
-                }
                 
                 const finalContent = makeCitationsClickable(contentForDisplay, msg.webSources || []);
                 
@@ -2739,8 +2722,8 @@ export default function TestChat() {
                         <span className="text-sm text-white italic font-light mb-2">[Response stopped by user]</span>
                       ) : (
                         <div className="w-full max-w-full overflow-hidden">
-                          {/* Single consolidated thinking button - handles all thinking scenarios - DISABLED for search results */}
-                          {!msg.isSearchResult && (currentThinkingMessageId === msg.id && liveThinking) && (
+                          {/* Single consolidated thinking button - handles all thinking scenarios */}
+                          {(currentThinkingMessageId === msg.id && liveThinking) && (
                             <ThinkingButton 
                               key={`${msg.id}-live-thinking`} 
                               content={liveThinking} 
@@ -2748,8 +2731,8 @@ export default function TestChat() {
                             />
                           )}
                           
-                          {/* Think blocks from processed content - show for all messages except the one currently live thinking - DISABLED for search results */}
-                          {!msg.isSearchResult && currentThinkingMessageId !== msg.id && thinkBlocks.length > 0 && thinkBlocks.map((block, index) => (
+                          {/* Think blocks from processed content - show for all messages except the one currently live thinking */}
+                          {currentThinkingMessageId !== msg.id && thinkBlocks.length > 0 && thinkBlocks.map((block, index) => (
                             <ThinkingButton key={`${msg.id}-think-${index}`} content={block.content} isLive={false} />
                           ))}
                           
