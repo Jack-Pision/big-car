@@ -588,79 +588,66 @@ Output only the numbered search phrases, nothing else.`;
       const serperResults = await executeSerperStep(finalSearchQueries);
       console.timeEnd('Step 2: Web Discovery & Content Scraping');
       
-      // Step 3: AI Content Analysis & Synthesis - Analyze scraped website content
+      // Step 3: AI Content Analysis & Synthesis
       console.time('Step 3: AI Content Analysis & Synthesis');
-      
-      // Enhanced content preparation for Step 3 analysis
-      const qualityScrapedSources = serperResults.sources.filter((s: any) => s.scraped && s.isQualityContent);
-      const snippetOnlySources = serperResults.sources.filter((s: any) => !s.scraped || !s.isQualityContent);
-      
-      // Structured content for analysis - prioritize quality scraped content
-      const structuredContent = qualityScrapedSources
-        .map((s: any, i: number) => {
-          const headingsText = s.headings?.length > 0 ? `\nKey Headings: ${s.headings.join(', ')}` : '';
-          const contentPreview = s.content.length > 1500 ? s.content.substring(0, 1500) + '...' : s.content;
-          
-          return `## Source ${i+1}: ${s.title}
-**URL:** ${s.url}
-**Content Quality:** High (${s.wordCount} words, extracted from ${s.contentSource})${headingsText}
-**Content:**
-${contentPreview}`;
-        })
-        .join('\n\n---\n\n');
-      
-      // Fallback content from snippets
-      const fallbackContent = snippetOnlySources
-        .map((s: any, i: number) => `**Snippet ${i+1}:** ${s.title} - ${s.content || s.snippet}`)
-        .join('\n');
-      
-      // Combined content for analysis
-      const scrapedContent = structuredContent + (fallbackContent ? '\n\n## Additional Snippet Sources:\n' + fallbackContent : '');
-      
-      const allSourcesInfo = serperResults.sources
-        .map((s: any, i: number) => {
-          const qualityIndicator = s.isQualityContent ? '✓ High Quality' : s.scraped ? '⚠ Low Quality' : '📄 Snippet Only';
-          const wordInfo = s.wordCount ? ` (${s.wordCount} words)` : '';
-          return `${i+1}. ${s.title} - ${s.url} [${qualityIndicator}${wordInfo}]`;
-        })
-        .join('\n');
-      
       const analysisResult = await executeNvidiaStep(
-        'analyze',
-        `You are an AI Content Analysis & Synthesis Specialist specializing in comprehensive web content analysis. You excel at processing large volumes of scraped website content, extracting key insights, and synthesizing information from multiple high-quality sources.
+        'step-3',
+        `You are an AI Content Analysis & Synthesis Specialist specializing in comprehensive research synthesis. Your role is to analyze web content and create structured insights that will inform a professional research report.
 
-ENHANCED CAPABILITIES:
-- Deep analysis of full website content (not just snippets)
-- Quality assessment of scraped vs snippet-only sources
-- Cross-source validation and fact-checking
-- Thematic synthesis across multiple sources
-- Identification of content gaps and contradictions
+ANALYSIS OBJECTIVES:
+- Identify key themes, trends, and patterns across sources
+- Extract specific data points: statistics, dates, names, studies
+- Assess source quality and credibility
+- Identify controversies, debates, and multiple perspectives
+- Synthesize information into coherent narrative themes
+- Highlight recent developments and emerging trends
 
-RESPONSE FORMAT: Respond ONLY with a structured markdown bullet list. Each bullet represents one distinct analytical insight or synthesis point.
+RESPONSE FORMAT: Provide a structured analysis with clear sections that will inform the final research report. Use this format:
 
-ANALYSIS METHODOLOGY: Prioritize high-quality scraped content over snippets, identify key themes and patterns, assess source reliability, cross-reference claims, resolve contradictions, and extract actionable insights.`,
-        `Analyze the following research data and provide comprehensive synthesis:
+## Key Themes and Findings
+[Identify 3-5 major themes with supporting evidence]
 
+## Recent Developments
+[Highlight latest news, studies, or changes with specific dates and sources]
+
+## Statistical Overview
+[Compile key statistics, percentages, and quantitative data]
+
+## Expert Perspectives and Controversies
+[Summarize different viewpoints, debates, and expert opinions]
+
+## Regulatory and Market Context
+[Include policy changes, market impacts, and institutional responses]
+
+## Future Implications
+[Analyze trends and project future developments]
+
+Focus on creating a comprehensive synthesis that provides clear structure and rich content for generating a professional research report.`,
+        `Analyze the following research data and provide comprehensive synthesis for a professional research report:
+
+**TOPIC:** ${shortenedQuery}
+
+**SOURCE ANALYSIS:**
 ${serperResults.sources
   .filter((s: any) => s.scraped && s.content)
   .slice(0, 8)
   .map((s: any, i: number) => `
 SOURCE [${i+1}]: ${s.title}
 DOMAIN: ${s.url.replace('https://', '').replace('http://', '').split('/')[0]}
-CONTENT: ${s.content.substring(0, 1200)}...
+QUALITY: ${s.scraped ? 'Full Content Available' : 'Summary Only'}
+CONTENT PREVIEW: ${s.content.substring(0, 1500)}...
 ---`)
   .join('\n')}
 
-SYNTHESIS REQUIREMENTS:
-- Comprehensive thematic analysis across all sources
-- Identification of key trends, patterns, and insights
-- Cross-source validation and fact-checking
-- Thematic synthesis across multiple sources
-- Identification of content gaps and contradictions
+**SYNTHESIS REQUIREMENTS:**
+- Extract specific data points: percentages, dollar amounts, dates, study names
+- Identify key researchers, institutions, companies, and organizations
+- Highlight recent developments and emerging trends
+- Assess different perspectives and potential controversies
+- Provide context for regulatory, market, or policy implications
+- Structure insights to support comprehensive research report generation
 
-RESPONSE FORMAT: Respond ONLY with a structured markdown bullet list. Each bullet represents one distinct analytical insight or synthesis point.
-
-ANALYSIS METHODOLOGY: Prioritize high-quality scraped content over snippets, identify key themes and patterns, assess source reliability, cross-reference claims, resolve contradictions, and extract actionable insights.`
+Create a detailed synthesis that will inform the generation of a professional, well-structured research report with proper sections and comprehensive analysis.`
       );
       console.timeEnd('Step 3: AI Content Analysis & Synthesis');
       
@@ -703,105 +690,88 @@ Error details: ${errorMessage}
     const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 second timeout for comprehensive research reports
       
       try {
-        const finalResponse = await fetchNvidiaWithDelay('/api/nvidia', {
+        const finalResponse = await fetchNvidiaWithDelay('/api/nvidia-chat', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+          },
           body: JSON.stringify({
             messages: [
               {
                 role: 'system',
-              content: `You are an elite investigative journalist and research analyst specializing in comprehensive, authoritative reporting. Create professional research reports that rival the depth and quality of top-tier publications like The New York Times, The Wall Street Journal, and Nature.
+                content: `You are an elite investigative journalist and research analyst specializing in comprehensive, authoritative reporting. Your task is to create professional research reports that rival the depth and quality of top-tier publications like The New York Times, The Wall Street Journal, and Nature.
 
-CRITICAL THINKING INSTRUCTION:
-- Use <Think>...</Think> tags for ANY internal reasoning, planning, or meta-commentary
-- Only the final research report should appear outside Think tags
-- ALL analysis, planning, and reasoning MUST be wrapped in <Think> tags
+CRITICAL OUTPUT STRUCTURE - Follow this EXACT format:
 
-CRITICAL OUTPUT REQUIREMENTS:
-- Generate 2000-3500 words of substantive, detailed content
-- Extract and utilize EVERY relevant detail from provided sources
-- Create dynamic, content-driven section structure (not rigid templates)
-- Professional journalistic tone with authoritative depth
-- Extensive use of specific data: names, dates, statistics, locations, technical specifications
-- Comprehensive analysis with multiple perspectives and expert insights
-
-CONTENT EXTRACTION MANDATE:
-- Mine sources for specific statistics, percentages, dollar amounts, timeframes
-- Extract exact quotes, study names, researcher names, institution names
-- Identify specific dates, locations, company names, product names
-- Pull technical specifications, medical terms, scientific data
-- Capture regulatory details, policy changes, market data
-- Include specific examples, case studies, real-world applications
-
-DYNAMIC STRUCTURE APPROACH:
-Create sections based on the actual content and findings, such as:
-- Recent Scientific Findings/Latest Developments
-- Emerging Controversies/Safety Concerns  
-- Technical Analysis/Mechanism of Action
-- Market Impact/Economic Implications
-- Regulatory Landscape/Policy Changes
-- Industry Response/Stakeholder Perspectives
-- Regional Variations/Global Impact
-- Future Implications/Next-Generation Developments
-- Expert Analysis/Professional Opinions
-
-PROFESSIONAL FORMATTING:
-# [Compelling, Specific Title with Context and Current Timeframe]
+# [Compelling, Specific Title with Current Context and Timeframe]
 
 ## Executive Summary
-[2-3 sentences establishing significance, current state, and key findings with specific statistics]
 
-## [Dynamic Section 1: Based on Content - e.g., "Recent Scientific Findings"]
+[Write 2-3 comprehensive sentences that establish the significance, current state, and key findings. Include specific statistics and context. This should immediately convey the importance and scope of the topic.]
 
-### [Specific Subsection - e.g., "Clinical Trial Results and Real-World Effectiveness"]
-[Extensive detail with specific study names, percentages, researcher quotes, institution names, dates. Include multiple citations throughout.]
+## [Section 1: Recent Developments/Latest Findings]
 
-Key findings include:
-- **Specific Study/Metric**: Detailed explanation with exact numbers, dates, and citations
-- **Another Key Finding**: In-depth analysis with supporting evidence and expert quotes
-- **Technical Details**: Specific mechanisms, processes, or technical specifications
+### [Specific Subsection Title]
+
+[Write detailed, flowing paragraphs with comprehensive analysis. Each paragraph should be substantial (4-6 sentences) and include specific data, names, dates, and citations. Use professional journalistic style with smooth transitions.]
+
+[Include specific findings with exact numbers, percentages, and citations. Example: "Recent research confirms substantial benefits, with clinical data showing average losses of 15-20% of total body weight over 12 months when combined with lifestyle modifications[1]."]
 
 ### [Another Specific Subsection]
-[Continue with comprehensive analysis, including comparative data tables when relevant]
 
-## [Dynamic Section 2: Based on Content - e.g., "Emerging Controversies and Safety Concerns"]
+[Continue with detailed analysis, including comparative data and expert insights.]
 
-### [Specific Controversy/Issue]
-[Detailed analysis with specific examples, regulatory responses, expert opinions]
+## [Section 2: Based on Content - e.g., Controversies/Challenges/Market Impact]
 
-[Continue this pattern based on available content...]
+### [Specific Issue or Development]
 
-MANDATORY ELEMENTS:
-- Every major claim must have numbered citations [1], [2], [3]
-- Include specific percentages, dollar amounts, timeframes throughout
+[Provide comprehensive analysis with multiple perspectives, regulatory responses, and expert opinions. Include specific examples and detailed explanations.]
+
+## [Section 3: Future Implications/Next Steps]
+
+[Analyze implications, consequences, and future projections with supporting evidence.]
+
+MANDATORY WRITING STANDARDS:
+- Write in complete, flowing paragraphs (not bullet points or fragments)
+- Each paragraph must be 4-6 sentences minimum
+- Use professional journalistic tone throughout
+- Include specific data: percentages, dollar amounts, dates, names
+- Bold important terms, statistics, and key findings
+- Provide numbered citations [1], [2], [3] for every major claim
+- Create smooth transitions between topics and sections
+- Maintain investigative journalism depth and authority
 - Extract and use exact quotes from sources when available
-- Create detailed tables for comparative data, statistics, or structured information
-- Bold all important terms, names, statistics, and key findings
-- Provide extensive background context and detailed explanations
-- Analyze implications, consequences, and future projections
 - Include multiple expert perspectives and stakeholder viewpoints
 
-QUALITY STANDARDS:
-- Investigative journalism depth with authoritative analysis
-- Comprehensive coverage of all relevant aspects
-- Professional transitions between topics and sections
-- Rich detail extraction from all provided sources
-- Expert-level technical accuracy and depth
-- Clear, engaging prose that maintains reader interest
+CONTENT REQUIREMENTS:
+- Generate 2000-3500 words of substantive content
+- Extract EVERY relevant detail from provided sources
+- Include specific study names, researcher names, institution names
+- Use technical terms and scientific specifications appropriately
+- Cover regulatory details, policy changes, market movements
+- Analyze implications and future projections comprehensively
 
-CRITICAL: Use <Think>...</Think> tags for any reasoning or planning. Generate ONLY the final research report outside of Think tags.`
+FORMATTING RULES:
+- Use ## for main sections, ### for subsections
+- Bold all important terms, names, statistics, and findings
+- Include numbered citations [1], [2], [3] throughout
+- Write in complete paragraphs, not bullet points
+- Maintain professional, authoritative tone
+- Ensure smooth flow and logical progression
+
+CRITICAL: Use <Think>...</Think> tags for any reasoning or planning. Generate ONLY the final research report outside of Think tags. The output must be a complete, professional research report with proper structure and comprehensive analysis.`
               },
               {
                 role: 'user',
-              content: `Research Topic: "${query}"
+                content: `Research Topic: "${query}"
 
-Generate a comprehensive, professional research report that matches the depth and quality of elite publications. Extract and utilize ALL available data from the provided sources.
+Create a comprehensive, professional research report using the provided sources. Follow the exact structure and writing standards specified in the system prompt.
 
-**COMPREHENSIVE RESEARCH DATABASE:**
+**RESEARCH DATABASE:**
 
 **Search Intelligence:** ${serperResults.searchQueries?.join(', ') || 'N/A'}
 
-**Synthesis Analysis:** 
+**Analysis Summary:** 
 ${analysisResult}
 
 **Source Portfolio:** ${serperResults.totalSources} total sources discovered, ${serperResults.scrapedSources} with complete content extraction
@@ -811,44 +781,25 @@ ${serperResults.sources.map((s: any, i: number) =>
   `[${i+1}] ${s.title} - ${s.url.replace('https://', '').replace('http://', '').split('/')[0]} ${s.scraped ? '✓ Complete Content Available' : '○ Summary Available'}`
 ).join('\n')}
 
-**Complete Content Database (Extract ALL relevant details):**
+**Complete Source Content:**
 ${serperResults.sources
   .filter((s: any) => s.scraped && s.content)
   .slice(0, 10)
   .map((s: any, i: number) => `
 ═══ SOURCE [${i+1}]: ${s.title} ═══
 DOMAIN: ${s.url.replace('https://', '').replace('http://', '').split('/')[0]}
-FULL CONTENT: ${s.content.substring(0, 2000)}...
+CONTENT: ${s.content.substring(0, 2000)}...
 ═══════════════════════════════════════`)
   .join('\n')}
 
-**MANDATORY REQUIREMENTS:**
-- Generate 2000-3500 words of substantive content
-- Extract EVERY relevant statistic, percentage, dollar amount, date, name from sources
-- Create dynamic sections based on actual content (not templates)
-- Include specific study names, researcher names, institution names, company names
-- Use exact quotes when available from source content
-- Create detailed comparative tables for data-rich topics
-- Bold ALL important terms, names, statistics, findings, and key data points
-- Provide numbered citations [1], [2], [3] for every major factual claim
-- Include extensive technical details, specifications, and expert analysis
-- Cover multiple perspectives, stakeholder viewpoints, and expert opinions
-- Analyze implications, consequences, future projections with supporting evidence
-- Maintain investigative journalism depth throughout
+**INSTRUCTIONS:**
+Generate a comprehensive research report that follows the exact structure and writing standards specified. The report must be professional, well-organized, and demonstrate the depth and authority of elite investigative journalism. Extract and utilize ALL relevant details from the provided sources to create a substantive, authoritative analysis.
 
-**CONTENT EXTRACTION FOCUS:**
-- Mine for specific numbers: percentages, dollar amounts, timeframes, quantities
-- Extract proper nouns: names of people, companies, institutions, studies, products
-- Identify technical terms, medical terminology, scientific specifications
-- Capture regulatory details, policy changes, market movements
-- Include geographic locations, dates, specific events
-- Pull direct quotes, expert opinions, official statements
-
-Generate a comprehensive research report that demonstrates the depth and authority of elite investigative journalism.`
+Focus on creating flowing, comprehensive paragraphs with specific data, expert insights, and detailed analysis. Ensure every major claim is supported with numbered citations and that the overall structure follows the professional format specified.`
               }
             ],
             stream: true,
-          max_tokens: 16384 // Increased for comprehensive research reports (2000-3500 words)
+            max_tokens: 16384 // Increased for comprehensive research reports (2000-3500 words)
           }),
           signal: controller.signal
         });
