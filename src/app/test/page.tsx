@@ -578,7 +578,7 @@ const GlobalStyles = () => (
       color: #9ca3af;
       border-left-color: #06b6d4;
     }
-
+    
     
     .markdown-body table {
       color: #ffffff;
@@ -704,6 +704,7 @@ interface LocalMessage {
   structuredContent?: any;
   parentId?: string;
   query?: string; // Add this property for search-ui messages
+  isSearchResult?: boolean; // Add this property for search result messages
 }
 
 // Helper to enforce Advance Search output structure
@@ -2288,10 +2289,10 @@ export default function TestChat() {
 
   // Add helper function to convert LocalMessage[] to ConversationMessage[] by type casting
   function convertToConversationMessages(messages: LocalMessage[]): ConversationMessage[] {
-    // This filters out search-ui messages since ConversationMessage doesn't support that role
-    // Search results no longer appear in main chat, so no need to filter them
+    // This filters out search-ui messages and search results since ConversationMessage doesn't support those roles
+    // Search results are handled separately and shouldn't be part of conversation context
     return messages.filter(
-      msg => msg.role !== 'search-ui'
+      msg => msg.role !== 'search-ui' && !msg.isSearchResult
     ) as unknown as ConversationMessage[];
   }
 
@@ -2610,7 +2611,151 @@ export default function TestChat() {
           <div className="w-full max-w-3xl mx-auto flex flex-col gap-4 items-center justify-center z-10 pt-12 pb-4">
             {messages.map((msg, i) => {
               if (msg.role === "assistant") {
-                // Search results no longer appear in main chat, so no special handling needed
+                // Handle search results separately - process content to remove reasoning but hide Think boxes
+                if (msg.isSearchResult) {
+                  // Apply content processing to extract and remove any reasoning/thinking content
+                  const { content: rawContent } = cleanAIResponse(msg.content);
+                  const cleanContent = rawContent.replace(/<thinking-indicator.*?>\n<\/thinking-indicator>\n|<thinking-indicator.*?\/>/g, '');
+                  
+                  // Process think tags to extract reasoning (but we won't render the Think blocks)
+                  const { processedContent } = processThinkTags(cleanContent);
+                  
+                  // Remove emojis from search results
+                  let contentForDisplay = processedContent;
+                  contentForDisplay = contentForDisplay.replace(/[\uD83C-\uDBFF\uDC00-\uDFFF]+/g, ''); // Surrogate pairs
+                  contentForDisplay = contentForDisplay.replace(/[\u2600-\u27BF]/g, ''); // Miscellaneous symbols
+                  contentForDisplay = contentForDisplay.replace(/[\u1F300-\u1F6FF]/g, ''); // Emoticons
+                  contentForDisplay = contentForDisplay.replace(/[\u1F1E0-\u1F1FF]/g, ''); // Flags
+                  contentForDisplay = contentForDisplay.replace(/:[a-zA-Z0-9_+-]+:/g, ''); // Remove emoji shortcodes
+                  contentForDisplay = contentForDisplay.replace(/[🔍📋📊💡🚀⚡🎯📈📉🔥💪🌟✨🎉🎊👍👎❤️💯🔔📢📣🎪🎭🎨🎬🎵🎶🎸🎹🎺🎻🥁🎤🎧🎮🕹️🎲🎳]/g, '');
+                  // Clean up excessive spaces but preserve line breaks and document structure
+                  contentForDisplay = contentForDisplay.replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+                  
+                  const finalContent = makeCitationsClickable(contentForDisplay, msg.webSources || []);
+
+                  return (
+                    <motion.div
+                      key={msg.id + '-search-result-' + i}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, ease: "easeOut" }}
+                      className="w-full text-left flex flex-col items-start ai-response-text mb-4 relative"
+                      style={{ color: '#fff', maxWidth: '100%', overflowWrap: 'break-word' }}
+                    >
+                      {/* Clean search result rendering - reasoning extracted and hidden, only clean content shown */}
+                      <ReactMarkdown 
+                        remarkPlugins={[remarkGfm]} 
+                        rehypePlugins={[rehypeRaw]} 
+                        className="research-output"
+                        components={{
+                          // Enhanced components for professional research output (same as normal messages)
+                          h1: ({children}) => (
+                            <h1 className="text-4xl font-bold text-white mb-8 mt-10 border-b-2 border-cyan-500/40 pb-4 leading-tight">
+                              {children}
+                            </h1>
+                          ),
+                          h2: ({children}) => (
+                            <h2 className="text-2xl font-semibold text-cyan-400 mb-5 mt-10 leading-tight">
+                              {children}
+                            </h2>
+                          ),
+                          h3: ({children}) => (
+                            <h3 className="text-xl font-semibold text-white mb-4 mt-8 leading-tight">
+                              {children}
+                            </h3>
+                          ),
+                          p: ({children}) => (
+                            <p className="text-gray-200 leading-relaxed mb-5 text-base font-normal">
+                              {children}
+                            </p>
+                          ),
+                          ul: ({children}) => (
+                            <ul className="space-y-3 mb-6 ml-6">
+                              {children}
+                            </ul>
+                          ),
+                          li: ({children}) => (
+                            <li className="text-gray-200 leading-relaxed relative">
+                              <span className="absolute -left-6 text-cyan-400 font-bold">•</span>
+                              {children}
+                            </li>
+                          ),
+                          ol: ({children}) => (
+                            <ol className="space-y-3 mb-6 ml-6 list-decimal">
+                              {children}
+                            </ol>
+                          ),
+                          strong: ({children}) => (
+                            <strong className="text-white font-bold">
+                              {children}
+                            </strong>
+                          ),
+                          table: ({children}) => (
+                            <div className="overflow-x-auto mb-8 max-w-full rounded-lg border border-gray-600">
+                              <table className="w-full border-collapse" style={{tableLayout: 'auto', maxWidth: '100%'}}>
+                                {children}
+                              </table>
+                            </div>
+                          ),
+                          thead: ({children}) => (
+                            <thead className="bg-gray-800/80">
+                              {children}
+                            </thead>
+                          ),
+                          th: ({children}) => (
+                            <th className="border-r border-gray-600 px-6 py-4 text-left text-cyan-400 font-bold text-sm uppercase tracking-wide" style={{wordWrap: 'break-word', overflowWrap: 'break-word'}}>
+                              {children}
+                            </th>
+                          ),
+                          td: ({children}) => (
+                            <td className="border-r border-b border-gray-600 px-6 py-4 text-gray-200 leading-relaxed" style={{wordWrap: 'break-word', overflowWrap: 'break-word'}}>
+                              {children}
+                            </td>
+                          ),
+                          blockquote: ({children}) => (
+                            <blockquote className="border-l-4 border-cyan-500 pl-4 py-2 rounded-r-lg mb-4 italic text-gray-300" style={{background: 'transparent'}}>
+                              {children}
+                            </blockquote>
+                          ),
+                          code: ({children, className}) => {
+                            const isInline = !className;
+                            if (isInline) {
+                              return (
+                                <code className="text-cyan-400 px-2 py-1 rounded text-sm font-mono" style={{background: 'rgba(55, 65, 81, 0.5)'}}>
+                                  {children}
+                                </code>
+                              );
+                            }
+                            return (
+                              <code className="block text-gray-200 p-4 rounded-lg overflow-x-auto text-sm font-mono mb-4" style={{background: 'rgba(17, 24, 39, 0.8)'}}>
+                                {children}
+                              </code>
+                            );
+                          }
+                        }}
+                      >
+                        {finalContent.replace(/<!-- think-block-\d+ -->/g, '')}
+                      </ReactMarkdown>
+                      
+                      {/* Action buttons for search results */}
+                      {msg.isProcessed && (
+                        <div className="w-full flex justify-start gap-2 mt-2">
+                          <button
+                            onClick={() => handleCopy(finalContent)}
+                            className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
+                            aria-label="Copy search result"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                            <span className="text-xs">Copy</span>
+                          </button>
+                        </div>
+                      )}
+                    </motion.div>
+                  );
+                }
                 
                 if (msg.contentType && msg.structuredContent) {
                   return (
@@ -2693,8 +2838,21 @@ export default function TestChat() {
                 // Process think tags and extract them
                 const { processedContent, thinkBlocks, isLiveThinking } = processThinkTags(cleanContent);
                 
-                // Standard content processing for all assistant messages
+                // Remove emojis from search results
                 let contentForDisplay = processedContent;
+                if (msg.isSearchResult) {
+                  // Remove all emojis using ES5-compatible regex patterns
+                  contentForDisplay = contentForDisplay.replace(/[\uD83C-\uDBFF\uDC00-\uDFFF]+/g, ''); // Surrogate pairs
+                  contentForDisplay = contentForDisplay.replace(/[\u2600-\u27BF]/g, ''); // Miscellaneous symbols
+                  contentForDisplay = contentForDisplay.replace(/[\u1F300-\u1F6FF]/g, ''); // Emoticons
+                  contentForDisplay = contentForDisplay.replace(/[\u1F1E0-\u1F1FF]/g, ''); // Flags
+                  // Remove emoji shortcodes like :emoji_name:
+                  contentForDisplay = contentForDisplay.replace(/:[a-zA-Z0-9_+-]+:/g, '');
+                  // Remove specific common emojis that might not be caught by ranges
+                  contentForDisplay = contentForDisplay.replace(/[🔍📋📊💡🚀⚡🎯📈📉🔥💪🌟✨🎉🎊👍👎❤️💯🔔📢📣🎪🎭🎨🎬🎵🎶🎸🎹🎺🎻🥁🎤🎧🎮🕹️🎲🎳]/g, '');
+                  // Clean up any double spaces left by emoji removal
+                  contentForDisplay = contentForDisplay.replace(/\s+/g, ' ').trim();
+                }
                 
                 const finalContent = makeCitationsClickable(contentForDisplay, msg.webSources || []);
                 
@@ -2722,8 +2880,8 @@ export default function TestChat() {
                         <span className="text-sm text-white italic font-light mb-2">[Response stopped by user]</span>
                       ) : (
                         <div className="w-full max-w-full overflow-hidden">
-                          {/* Single consolidated thinking button - handles all thinking scenarios */}
-                          {(currentThinkingMessageId === msg.id && liveThinking) && (
+                          {/* Single consolidated thinking button - handles all thinking scenarios - DISABLED for search results */}
+                          {!msg.isSearchResult && (currentThinkingMessageId === msg.id && liveThinking) && (
                             <ThinkingButton 
                               key={`${msg.id}-live-thinking`} 
                               content={liveThinking} 
@@ -2731,8 +2889,8 @@ export default function TestChat() {
                             />
                           )}
                           
-                          {/* Think blocks from processed content - show for all messages except the one currently live thinking */}
-                          {currentThinkingMessageId !== msg.id && thinkBlocks.length > 0 && thinkBlocks.map((block, index) => (
+                          {/* Think blocks from processed content - show for all messages except the one currently live thinking - DISABLED for search results */}
+                          {!msg.isSearchResult && currentThinkingMessageId !== msg.id && thinkBlocks.length > 0 && thinkBlocks.map((block, index) => (
                             <ThinkingButton key={`${msg.id}-think-${index}`} content={block.content} isLive={false} />
                           ))}
                           
@@ -2891,6 +3049,24 @@ export default function TestChat() {
                   <Search
                     key={msg.id}
                     query={msg.query || msg.content}
+                    onComplete={(result: any, sources?: any[]) => {
+                      // Add the search result as a new assistant message with search-specific flag and sources
+                      console.log('Search completed:', result);
+                      setMessages(prev => [
+                        ...prev,
+                        {
+                          role: 'assistant',
+                          id: uuidv4(),
+                          content: result,
+                          timestamp: Date.now(),
+                          isProcessed: true,
+                          parentId: msg.id,
+                          contentType: 'search-result',
+                          isSearchResult: true,
+                          webSources: sources || []
+                        }
+                      ]);
+                    }}
                   />
                 );
               } else {

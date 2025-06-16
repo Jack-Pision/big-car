@@ -20,11 +20,12 @@ export interface SearchStep {
 // Define search props interface
 export interface SearchProps {
   query: string;
+  onComplete?: (result: string, sources?: any[]) => void;
 }
 
 const MAX_STEP1_PROMPT_LENGTH = 3000; // Increased for enhanced prompts
 
-const Search: React.FC<SearchProps> = ({ query }) => {
+const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
   // State for steps
   const [steps, setSteps] = useState<SearchStep[]>([
     {
@@ -38,6 +39,12 @@ const Search: React.FC<SearchProps> = ({ query }) => {
       title: 'Multi-Source Web Discovery & Content Scraping',
       status: 'pending',
       content: 'Executing optimized searches and scraping website content...'
+    },
+    {
+      id: 'analyze',
+      title: 'AI Content Analysis & Synthesis',
+      status: 'pending',
+      content: 'Analyzing scraped content and synthesizing comprehensive insights...'
     }
   ]);
   const [error, setError] = useState<string | null>(null);
@@ -234,22 +241,22 @@ const Search: React.FC<SearchProps> = ({ query }) => {
         
         try {
           // Add a timeout for each Serper API call
-          const controller = new AbortController();
+      const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout per search
-          
-          const response = await fetch('/api/serper/search', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              query, 
+      
+      const response = await fetch('/api/serper/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          query, 
               limit: 20, // Increased to get more results per query
               includeHtml: false
-            }),
-            signal: controller.signal
-          });
-          
-          clearTimeout(timeoutId);
-          
+        }),
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
           if (response.ok) {
             const serperData = await response.json();
             if (serperData?.sources?.length > 0) {
@@ -581,13 +588,370 @@ Output only the numbered search phrases, nothing else.`;
       const serperResults = await executeSerperStep(finalSearchQueries);
       console.timeEnd('Step 2: Web Discovery & Content Scraping');
       
-      // Search complete - no further processing needed
-      console.log('Search completed successfully with', serperResults.totalSources, 'sources found');
+      // Step 3: AI Content Analysis & Synthesis - Analyze scraped website content
+      console.time('Step 3: AI Content Analysis & Synthesis');
+      
+      // Enhanced content preparation for Step 3 analysis
+      const qualityScrapedSources = serperResults.sources.filter((s: any) => s.scraped && s.isQualityContent);
+      const snippetOnlySources = serperResults.sources.filter((s: any) => !s.scraped || !s.isQualityContent);
+      
+      // Structured content for analysis - prioritize quality scraped content
+      const structuredContent = qualityScrapedSources
+        .map((s: any, i: number) => {
+          const headingsText = s.headings?.length > 0 ? `\nKey Headings: ${s.headings.join(', ')}` : '';
+          const contentPreview = s.content.length > 1500 ? s.content.substring(0, 1500) + '...' : s.content;
+          
+          return `## Source ${i+1}: ${s.title}
+**URL:** ${s.url}
+**Content Quality:** High (${s.wordCount} words, extracted from ${s.contentSource})${headingsText}
+**Content:**
+${contentPreview}`;
+        })
+        .join('\n\n---\n\n');
+      
+      // Fallback content from snippets
+      const fallbackContent = snippetOnlySources
+        .map((s: any, i: number) => `**Snippet ${i+1}:** ${s.title} - ${s.content || s.snippet}`)
+        .join('\n');
+      
+      // Combined content for analysis
+      const scrapedContent = structuredContent + (fallbackContent ? '\n\n## Additional Snippet Sources:\n' + fallbackContent : '');
+      
+      const allSourcesInfo = serperResults.sources
+        .map((s: any, i: number) => {
+          const qualityIndicator = s.isQualityContent ? '✓ High Quality' : s.scraped ? '⚠ Low Quality' : '📄 Snippet Only';
+          const wordInfo = s.wordCount ? ` (${s.wordCount} words)` : '';
+          return `${i+1}. ${s.title} - ${s.url} [${qualityIndicator}${wordInfo}]`;
+        })
+        .join('\n');
+      
+      const analysisResult = await executeNvidiaStep(
+        'analyze',
+        `You are an AI Content Analysis & Synthesis Specialist specializing in comprehensive web content analysis. You excel at processing large volumes of scraped website content, extracting key insights, and synthesizing information from multiple high-quality sources.
+
+ENHANCED CAPABILITIES:
+- Deep analysis of full website content (not just snippets)
+- Quality assessment of scraped vs snippet-only sources
+- Cross-source validation and fact-checking
+- Thematic synthesis across multiple sources
+- Identification of content gaps and contradictions
+
+RESPONSE FORMAT: Respond ONLY with a structured markdown bullet list. Each bullet represents one distinct analytical insight or synthesis point.
+
+ANALYSIS METHODOLOGY: Prioritize high-quality scraped content over snippets, identify key themes and patterns, assess source reliability, cross-reference claims, resolve contradictions, and extract actionable insights.`,
+        `Analyze the following research data and provide comprehensive synthesis:
+
+${serperResults.sources
+  .filter((s: any) => s.scraped && s.content)
+  .slice(0, 8)
+  .map((s: any, i: number) => `
+SOURCE [${i+1}]: ${s.title}
+DOMAIN: ${s.url.replace('https://', '').replace('http://', '').split('/')[0]}
+CONTENT: ${s.content.substring(0, 1200)}...
+---`)
+  .join('\n')}
+
+SYNTHESIS REQUIREMENTS:
+- Comprehensive thematic analysis across all sources
+- Identification of key trends, patterns, and insights
+- Cross-source validation and fact-checking
+- Thematic synthesis across multiple sources
+- Identification of content gaps and contradictions
+
+RESPONSE FORMAT: Respond ONLY with a structured markdown bullet list. Each bullet represents one distinct analytical insight or synthesis point.
+
+ANALYSIS METHODOLOGY: Prioritize high-quality scraped content over snippets, identify key themes and patterns, assess source reliability, cross-reference claims, resolve contradictions, and extract actionable insights.`
+      );
+      console.timeEnd('Step 3: AI Content Analysis & Synthesis');
+      
+      // Final Output: Generate comprehensive research paper directly to main chat
+      await generateFinalOutput(shortenedQuery, strategyResult, analysisResult, serperResults);
       
     } catch (err) {
       console.error('Error in search execution:', err);
       const errorMessage = err instanceof Error ? err.message : String(err);
       setError(`Error in search: ${errorMessage}`);
+      
+      // Provide a fallback response even if the overall process fails
+      const fallbackOutput = `
+# Search Results Limited
+
+I encountered an issue while processing your search query.
+Please try again with a more specific question, or check back later.
+
+Error details: ${errorMessage}
+`;
+      
+      setFinalResult(fallbackOutput);
+      if (onComplete) {
+        onComplete(fallbackOutput, []);
+      }
+    }
+  };
+
+  // Separate function for generating final output directly to main chat (not displayed as a step)
+  const generateFinalOutput = async (
+    query: string,
+    strategyResult: string,
+    analysisResult: string,
+    serperResults: any
+  ) => {
+    console.time('Final Output Generation');
+    
+    // Add a timeout for the final output (increased for comprehensive reports)
+      const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 second timeout for comprehensive research reports
+      
+      try {
+        const finalResponse = await fetchNvidiaWithDelay('/api/nvidia', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: [
+              {
+                role: 'system',
+              content: `You are an elite investigative journalist and research analyst specializing in comprehensive, authoritative reporting. Create professional research reports that rival the depth and quality of top-tier publications like The New York Times, The Wall Street Journal, and Nature.
+
+CRITICAL THINKING INSTRUCTION:
+- Use <Think>...</Think> tags for ANY internal reasoning, planning, or meta-commentary
+- Only the final research report should appear outside Think tags
+- ALL analysis, planning, and reasoning MUST be wrapped in <Think> tags
+
+CRITICAL OUTPUT REQUIREMENTS:
+- Generate 2000-3500 words of substantive, detailed content
+- Extract and utilize EVERY relevant detail from provided sources
+- Create dynamic, content-driven section structure (not rigid templates)
+- Professional journalistic tone with authoritative depth
+- Extensive use of specific data: names, dates, statistics, locations, technical specifications
+- Comprehensive analysis with multiple perspectives and expert insights
+
+CONTENT EXTRACTION MANDATE:
+- Mine sources for specific statistics, percentages, dollar amounts, timeframes
+- Extract exact quotes, study names, researcher names, institution names
+- Identify specific dates, locations, company names, product names
+- Pull technical specifications, medical terms, scientific data
+- Capture regulatory details, policy changes, market data
+- Include specific examples, case studies, real-world applications
+
+DYNAMIC STRUCTURE APPROACH:
+Create sections based on the actual content and findings, such as:
+- Recent Scientific Findings/Latest Developments
+- Emerging Controversies/Safety Concerns  
+- Technical Analysis/Mechanism of Action
+- Market Impact/Economic Implications
+- Regulatory Landscape/Policy Changes
+- Industry Response/Stakeholder Perspectives
+- Regional Variations/Global Impact
+- Future Implications/Next-Generation Developments
+- Expert Analysis/Professional Opinions
+
+PROFESSIONAL FORMATTING:
+# [Compelling, Specific Title with Context and Current Timeframe]
+
+## Executive Summary
+[2-3 sentences establishing significance, current state, and key findings with specific statistics]
+
+## [Dynamic Section 1: Based on Content - e.g., "Recent Scientific Findings"]
+
+### [Specific Subsection - e.g., "Clinical Trial Results and Real-World Effectiveness"]
+[Extensive detail with specific study names, percentages, researcher quotes, institution names, dates. Include multiple citations throughout.]
+
+Key findings include:
+- **Specific Study/Metric**: Detailed explanation with exact numbers, dates, and citations
+- **Another Key Finding**: In-depth analysis with supporting evidence and expert quotes
+- **Technical Details**: Specific mechanisms, processes, or technical specifications
+
+### [Another Specific Subsection]
+[Continue with comprehensive analysis, including comparative data tables when relevant]
+
+## [Dynamic Section 2: Based on Content - e.g., "Emerging Controversies and Safety Concerns"]
+
+### [Specific Controversy/Issue]
+[Detailed analysis with specific examples, regulatory responses, expert opinions]
+
+[Continue this pattern based on available content...]
+
+MANDATORY ELEMENTS:
+- Every major claim must have numbered citations [1], [2], [3]
+- Include specific percentages, dollar amounts, timeframes throughout
+- Extract and use exact quotes from sources when available
+- Create detailed tables for comparative data, statistics, or structured information
+- Bold all important terms, names, statistics, and key findings
+- Provide extensive background context and detailed explanations
+- Analyze implications, consequences, and future projections
+- Include multiple expert perspectives and stakeholder viewpoints
+
+QUALITY STANDARDS:
+- Investigative journalism depth with authoritative analysis
+- Comprehensive coverage of all relevant aspects
+- Professional transitions between topics and sections
+- Rich detail extraction from all provided sources
+- Expert-level technical accuracy and depth
+- Clear, engaging prose that maintains reader interest
+
+CRITICAL: Use <Think>...</Think> tags for any reasoning or planning. Generate ONLY the final research report outside of Think tags.`
+              },
+              {
+                role: 'user',
+              content: `Research Topic: "${query}"
+
+Generate a comprehensive, professional research report that matches the depth and quality of elite publications. Extract and utilize ALL available data from the provided sources.
+
+**COMPREHENSIVE RESEARCH DATABASE:**
+
+**Search Intelligence:** ${serperResults.searchQueries?.join(', ') || 'N/A'}
+
+**Synthesis Analysis:** 
+${analysisResult}
+
+**Source Portfolio:** ${serperResults.totalSources} total sources discovered, ${serperResults.scrapedSources} with complete content extraction
+
+**Citation Registry (Use these exact numbers for citations):**
+${serperResults.sources.map((s: any, i: number) => 
+  `[${i+1}] ${s.title} - ${s.url.replace('https://', '').replace('http://', '').split('/')[0]} ${s.scraped ? '✓ Complete Content Available' : '○ Summary Available'}`
+).join('\n')}
+
+**Complete Content Database (Extract ALL relevant details):**
+${serperResults.sources
+  .filter((s: any) => s.scraped && s.content)
+  .slice(0, 10)
+  .map((s: any, i: number) => `
+═══ SOURCE [${i+1}]: ${s.title} ═══
+DOMAIN: ${s.url.replace('https://', '').replace('http://', '').split('/')[0]}
+FULL CONTENT: ${s.content.substring(0, 2000)}...
+═══════════════════════════════════════`)
+  .join('\n')}
+
+**MANDATORY REQUIREMENTS:**
+- Generate 2000-3500 words of substantive content
+- Extract EVERY relevant statistic, percentage, dollar amount, date, name from sources
+- Create dynamic sections based on actual content (not templates)
+- Include specific study names, researcher names, institution names, company names
+- Use exact quotes when available from source content
+- Create detailed comparative tables for data-rich topics
+- Bold ALL important terms, names, statistics, findings, and key data points
+- Provide numbered citations [1], [2], [3] for every major factual claim
+- Include extensive technical details, specifications, and expert analysis
+- Cover multiple perspectives, stakeholder viewpoints, and expert opinions
+- Analyze implications, consequences, future projections with supporting evidence
+- Maintain investigative journalism depth throughout
+
+**CONTENT EXTRACTION FOCUS:**
+- Mine for specific numbers: percentages, dollar amounts, timeframes, quantities
+- Extract proper nouns: names of people, companies, institutions, studies, products
+- Identify technical terms, medical terminology, scientific specifications
+- Capture regulatory details, policy changes, market movements
+- Include geographic locations, dates, specific events
+- Pull direct quotes, expert opinions, official statements
+
+Generate a comprehensive research report that demonstrates the depth and authority of elite investigative journalism.`
+              }
+            ],
+            stream: true,
+          max_tokens: 16384 // Increased for comprehensive research reports (2000-3500 words)
+          }),
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!finalResponse.ok) {
+          throw new Error(`Final output API call failed with status: ${finalResponse.status}`);
+        }
+        
+        // Handle streaming response for final output
+        const reader = finalResponse.body?.getReader();
+        if (!reader) {
+          throw new Error('No response body available for final output');
+        }
+        
+        let finalOutput = '';
+        const decoder = new TextDecoder();
+        
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n');
+            
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                const data = line.slice(6);
+                if (data === '[DONE]') continue;
+                
+                try {
+                  const parsed = JSON.parse(data);
+                  const content = parsed.choices?.[0]?.delta?.content || '';
+                  if (content) {
+                    finalOutput += content;
+                    setFinalResult(finalOutput); // Update in real-time
+                  }
+                } catch (e) {
+                  console.error('Error parsing final output streaming response:', e);
+                }
+              }
+            }
+          }
+        } finally {
+          reader.releaseLock();
+        }
+        
+        if (!finalOutput) {
+          throw new Error('No content received for final output');
+        }
+        
+      // Notify parent component that search is complete with final result and sources
+        if (onComplete) {
+        onComplete(finalOutput, serperResults.sources);
+        }
+        
+      console.timeEnd('Final Output Generation');
+      } catch (err) {
+        clearTimeout(timeoutId);
+      console.error('Error in final output generation:', err);
+        
+        // If it's a timeout, create a fallback response
+        if (err instanceof Error && err.name === 'AbortError') {
+          const fallbackOutput = `
+# Response for: ${query}
+
+## Key Findings
+${analysisResult.split('\n').slice(0, 5).join('\n')}
+
+## Summary
+Based on the available information, I can provide a partial answer to your query.
+Some steps took longer than expected, but I've compiled the most relevant insights.
+
+*Note: This is a partial response due to processing time constraints.*
+`;
+          
+          setFinalResult(fallbackOutput);
+          if (onComplete) {
+          onComplete(fallbackOutput, serperResults.sources);
+          }
+        } else {
+        setError(`Error in final output generation: ${err instanceof Error ? err.message : String(err)}`);
+        
+        // Provide a fallback response even if generation fails
+      const fallbackOutput = `
+# Search Results for: ${query}
+
+## Analysis Summary
+${analysisResult.substring(0, 500)}...
+
+## Error Note
+I encountered an issue while generating the final comprehensive report. The above summary provides key insights from the analysis.
+
+Error details: ${err instanceof Error ? err.message : String(err)}
+`;
+      
+      setFinalResult(fallbackOutput);
+      if (onComplete) {
+          onComplete(fallbackOutput, serperResults.sources);
+        }
+      }
     }
   };
 
@@ -682,12 +1046,12 @@ Output only the numbered search phrases, nothing else.`;
                           </div>
                         </motion.div>
                       )}
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {step.result.split('\n').filter(line => line.startsWith('Source')).map((sourceLine, i) => {
-                          const urlMatch = sourceLine.match(/URL: (.+)/);
-                          const titleMatch = sourceLine.match(/Source \d+: (.+)/);
-                          
-                          if (urlMatch && titleMatch) {
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {step.result.split('\n').filter(line => line.startsWith('Source')).map((sourceLine, i) => {
+                        const urlMatch = sourceLine.match(/URL: (.+)/);
+                        const titleMatch = sourceLine.match(/Source \d+: (.+)/);
+                        
+                        if (urlMatch && titleMatch) {
                             const url = urlMatch[1].trim();
                             const title = titleMatch[1].replace(/ URL:.*/, '').trim();
                             
@@ -695,16 +1059,16 @@ Output only the numbered search phrases, nothing else.`;
                             let domainName = 'unknown';
                             let faviconUrl = '';
                             
-                            try {
-                              const domain = new URL(url).hostname.replace('www.', '');
+                          try {
+                            const domain = new URL(url).hostname.replace('www.', '');
                               domainName = domain.split('.')[0];
                               faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=16`;
                             } catch (error) {
                               console.error('URL parsing error:', error);
-                              // Keep default values
-                            }
-                            
-                            return (
+                            // Keep default values
+                          }
+                          
+                          return (
                               <motion.div
                                 key={`${i}-${url}`}
                                 initial={{ opacity: 0, scale: 0.8, y: 20 }}
@@ -745,10 +1109,10 @@ Output only the numbered search phrases, nothing else.`;
                                 />
                                 <span className="max-w-24 truncate flex-shrink-0">{domainName}</span>
                               </motion.div>
-                            );
-                          }
-                          return null;
-                        }).filter(Boolean)}
+                          );
+                        }
+                        return null;
+                      }).filter(Boolean)}
                       </div>
                     </div>
                   ) : (step.id !== 'research') ? (
