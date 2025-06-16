@@ -63,13 +63,13 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
       id: 'understand',
       title: 'AI Search Strategy Planner',
       status: 'pending',
-      content: 'Conducting comprehensive query analysis and developing optimized search strategies...'
+      content: 'Ready to analyze your query and develop optimized search strategies...'
     },
     {
       id: 'research',
       title: 'Multi-Source Web Discovery & Content Scraping',
       status: 'pending',
-      content: 'Executing optimized searches and scraping website content...'
+      content: 'Ready to execute optimized searches and scrape website content...'
     }
   ]);
   const [error, setError] = useState<string | null>(savedState?.error || null);
@@ -137,7 +137,7 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
     }
   }, [steps, error, finalResult, firstStepThinking, searchThinking, hasExecuted]);
   
-  // Handle new query detection and cache clearing
+  // Handle new query detection and cache clearing - NO AUTO EXECUTION
   useEffect(() => {
     if (!query) return;
     
@@ -148,7 +148,7 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
     console.log('[Search] Is new query:', isNewQuery);
     
     if (isNewQuery) {
-      console.log('[Search] 🆕 NEW QUERY DETECTED - clearing cache and resetting state');
+      console.log('[Search] 🆕 NEW QUERY DETECTED - clearing cache and resetting state (NO AUTO-EXECUTION)');
       
       // Clear the cache for new queries
       try {
@@ -165,13 +165,13 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
           id: 'understand',
           title: 'AI Search Strategy Planner',
           status: 'pending',
-          content: 'Conducting comprehensive query analysis and developing optimized search strategies...'
+          content: 'Ready to analyze your query and develop optimized search strategies...'
         },
         {
           id: 'research',
           title: 'Multi-Source Web Discovery & Content Scraping',
           status: 'pending',
-          content: 'Executing optimized searches and scraping website content...'
+          content: 'Ready to execute optimized searches and scrape website content...'
         }
       ]);
       setError(null);
@@ -181,10 +181,9 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
       setIsThinkingActive(false);
       setHasExecuted(false);
       
-      console.log('[Search] 🚀 Executing search for new query');
-      executeSearch(query);
+      console.log('[Search] ✅ NEW QUERY SETUP COMPLETE - waiting for explicit user action');
     } else {
-      console.log('[Search] 📋 CACHED QUERY - state restoration will handle execution decision');
+      console.log('[Search] 📋 CACHED QUERY - state restoration will display cached results');
     }
   }, [query, savedState?.query]);
   
@@ -214,37 +213,9 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
         setSearchThinking(savedState.searchThinking);
       }
       
-      console.log('[Search] ✅ State restoration completed');
+      console.log('[Search] ✅ State restoration completed - NO AUTO-EXECUTION');
     }
-     }, [savedState]); // Only depend on savedState, not individual state variables
-  
-  // Separate effect for execution logic that runs after state restoration
-  useEffect(() => {
-    if (!query) return;
-    
-    // Add a small delay to ensure state restoration has completed
-    const timer = setTimeout(() => {
-      const isNewQuery = !savedState || savedState.query !== query;
-      
-      if (isNewQuery) {
-        console.log('[Search] 🆕 NEW QUERY - will execute');
-        // Execution logic for new queries is already handled in the main useEffect
-      } else {
-        // For cached queries, check if execution is needed after state restoration
-        const needsExecution = !hasExecuted;
-        console.log('[Search] 📋 CACHED QUERY - needs execution:', needsExecution);
-        
-        if (needsExecution) {
-          console.log('[Search] 🚀 Executing incomplete cached search');
-          executeSearch(query);
-        } else {
-          console.log('[Search] ✅ CACHED SEARCH COMPLETE - no execution needed');
-        }
-      }
-    }, 100); // Small delay to ensure state restoration completes first
-    
-    return () => clearTimeout(timer);
-  }, [query, hasExecuted, savedState?.hasExecuted]);
+  }, [savedState]); // Only depend on savedState, not individual state variables
   
   // Update a step's status
   const updateStepStatus = (id: string, status: StepStatus, result?: string) => {
@@ -1156,6 +1127,33 @@ Error details: ${err instanceof Error ? err.message : String(err)}
           transition={{ duration: 0.4, ease: 'easeInOut' }}
           style={{ height: 300 - 64 }}
         >
+          {/* Start Search Button - only shown when search hasn't been executed */}
+          {!hasExecuted && (
+            <div className="mb-6 flex justify-center">
+              <motion.button
+                onClick={() => executeSearch(query)}
+                className="px-6 py-3 bg-transparent border-2 border-cyan-400 text-cyan-400 rounded-lg font-medium hover:bg-cyan-400/10 hover:border-cyan-300 transition-all duration-200 flex items-center gap-2"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="m21 21-4.35-4.35" />
+                </svg>
+                Start Search
+              </motion.button>
+            </div>
+          )}
+          
           <div className="space-y-6">
             {steps.map((step, idx) => (
               <div key={step.id} className="mb-4">
