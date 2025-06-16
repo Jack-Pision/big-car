@@ -2620,16 +2620,10 @@ export default function TestChat() {
                   // Process think tags to extract reasoning (but we won't render the Think blocks)
                   const { processedContent } = processThinkTags(cleanContent);
                   
-                  // Remove emojis from search results
-                  let contentForDisplay = processedContent;
-                  contentForDisplay = contentForDisplay.replace(/[\uD83C-\uDBFF\uDC00-\uDFFF]+/g, ''); // Surrogate pairs
-                  contentForDisplay = contentForDisplay.replace(/[\u2600-\u27BF]/g, ''); // Miscellaneous symbols
-                  contentForDisplay = contentForDisplay.replace(/[\u1F300-\u1F6FF]/g, ''); // Emoticons
-                  contentForDisplay = contentForDisplay.replace(/[\u1F1E0-\u1F1FF]/g, ''); // Flags
-                  contentForDisplay = contentForDisplay.replace(/:[a-zA-Z0-9_+-]+:/g, ''); // Remove emoji shortcodes
-                  contentForDisplay = contentForDisplay.replace(/[🔍📋📊💡🚀⚡🎯📈📉🔥💪🌟✨🎉🎊👍👎❤️💯🔔📢📣🎪🎭🎨🎬🎵🎶🎸🎹🎺🎻🥁🎤🎧🎮🕹️🎲🎳]/g, '');
                   // Clean up excessive spaces but preserve line breaks and document structure
-                  contentForDisplay = contentForDisplay.replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+                  // IMPORTANT: Removed aggressive emoji filtering patterns that were corrupting legitimate text
+                  // including mathematical symbols, technical notation, and international characters
+                  const contentForDisplay = processedContent.replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
                   
                   const finalContent = makeCitationsClickable(contentForDisplay, msg.webSources || []);
 
@@ -2838,21 +2832,9 @@ export default function TestChat() {
                 // Process think tags and extract them
                 const { processedContent, thinkBlocks, isLiveThinking } = processThinkTags(cleanContent);
                 
-                // Remove emojis from search results
-                let contentForDisplay = processedContent;
-                if (msg.isSearchResult) {
-                  // Remove all emojis using ES5-compatible regex patterns
-                  contentForDisplay = contentForDisplay.replace(/[\uD83C-\uDBFF\uDC00-\uDFFF]+/g, ''); // Surrogate pairs
-                  contentForDisplay = contentForDisplay.replace(/[\u2600-\u27BF]/g, ''); // Miscellaneous symbols
-                  contentForDisplay = contentForDisplay.replace(/[\u1F300-\u1F6FF]/g, ''); // Emoticons
-                  contentForDisplay = contentForDisplay.replace(/[\u1F1E0-\u1F1FF]/g, ''); // Flags
-                  // Remove emoji shortcodes like :emoji_name:
-                  contentForDisplay = contentForDisplay.replace(/:[a-zA-Z0-9_+-]+:/g, '');
-                  // Remove specific common emojis that might not be caught by ranges
-                  contentForDisplay = contentForDisplay.replace(/[🔍📋📊💡🚀⚡🎯📈📉🔥💪🌟✨🎉🎊👍👎❤️💯🔔📢📣🎪🎭🎨🎬🎵🎶🎸🎹🎺🎻🥁🎤🎧🎮🕹️🎲🎳]/g, '');
-                  // Clean up any double spaces left by emoji removal
-                  contentForDisplay = contentForDisplay.replace(/\s+/g, ' ').trim();
-                }
+                // IMPORTANT: Removed duplicate aggressive emoji filtering that was corrupting legitimate text
+                // Search results are handled separately above, and this filtering was causing text corruption
+                const contentForDisplay = processedContent;
                 
                 const finalContent = makeCitationsClickable(contentForDisplay, msg.webSources || []);
                 
