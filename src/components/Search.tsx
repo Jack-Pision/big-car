@@ -690,7 +690,7 @@ Error details: ${errorMessage}
     const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 second timeout for comprehensive research reports
       
       try {
-        const finalResponse = await fetchNvidiaWithDelay('/api/nvidia-chat', {
+        const finalResponse = await fetchNvidiaWithDelay('/api/nvidia', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
