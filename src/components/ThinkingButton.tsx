@@ -20,8 +20,8 @@ const ThinkingButton: React.FC<ThinkingButtonProps> = ({ content, isLive = false
     <div className="my-2">
       {/* Morphing button/box container */}
       <div
-        className={`transition-all duration-300 ease-in-out rounded-md border border-gray-700 text-cyan-300 ${
-          isLive ? 'shimmer-button' : `bg-gray-800 ${!isExpanded ? 'hover:bg-gray-700' : ''}`
+        className={`transition-all duration-300 ease-in-out rounded-md bg-transparent text-cyan-300 ${
+          isLive ? 'shimmer-button-content' : ''
         } ${
           isExpanded ? 'p-3 w-full' : 'px-3 py-2 w-auto inline-block'
         }`}

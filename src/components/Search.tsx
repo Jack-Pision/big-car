@@ -1,4 +1,4 @@
- 'use client';
+'use client';
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import styles from './Search.module.css';
 import { dedupedSerperRequest } from '@/utils/api-request-cache';
@@ -1099,200 +1099,207 @@ Error details: ${err instanceof Error ? err.message : String(err)}
 
   // Render the Search UI
   return (
-    <div
-      className="w-full mx-auto rounded-lg overflow-hidden bg-gray-800 relative"
-      style={{ 
-        borderRadius: '20px', 
-        maxWidth: '969px'
-      }}
-    >
-      {/* Header (fixed) */}
+    <div className="w-full mx-auto space-y-4" style={{ maxWidth: '969px' }}>
+      {/* Search UI Container */}
       <div
-        className="relative flex items-center px-6 py-4 bg-gray-800"
-        style={{ minHeight: '64px' }}
+        className="w-full rounded-lg overflow-hidden border border-cyan-400 bg-transparent relative"
+        style={{ 
+          borderRadius: '20px'
+        }}
       >
-        <div className="flex items-center gap-3">
-          <div className="w-6 h-6 relative flex-shrink-0">
-            <svg 
-              width="24" 
-              height="24" 
-              viewBox="0 0 32 32" 
-              fill="#06b6d4"
-            >
-              <path d="M10.799 4.652c-1.485 0.324-2.271 2.045-2.104 4.593 0.051 0.738 0.043 0.666 0.196 1.609 0.064 0.38 0.107 0.7 0.098 0.709-0.008 0.013-0.269 0.077-0.572 0.149-2.019 0.465-3.505 1.165-4.397 2.070-0.602 0.606-0.854 1.17-0.845 1.882 0.004 0.401 0.137 0.841 0.38 1.264 0.209 0.363 0.956 1.101 1.447 1.434 1.029 0.692 1.345 0.79 1.626 0.508 0.12-0.119 0.145-0.179 0.145-0.32 0-0.273-0.094-0.405-0.414-0.581-1.409-0.781-2.147-1.592-2.147-2.369 0-0.282 0.098-0.538 0.333-0.845 0.619-0.824 2.113-1.562 4.115-2.036 0.529-0.124 0.632-0.132 0.632-0.043 0 0.115 0.427 1.481 0.7 2.228l0.273 0.751-0.337 0.645c-0.184 0.354-0.448 0.892-0.585 1.2-1.959 4.316-2.284 7.743-0.867 9.152 0.333 0.333 0.606 0.487 1.054 0.602 1.033 0.265 2.399-0.132 3.931-1.144 0.534-0.354 0.653-0.487 0.653-0.721 0-0.282-0.307-0.555-0.581-0.512-0.077 0.013-0.376 0.179-0.662 0.367-0.632 0.422-1.34 0.773-1.853 0.926-0.525 0.154-1.093 0.162-1.417 0.021-0.995-0.44-1.225-2.215-0.606-4.678 0.29-1.17 0.956-2.928 1.558-4.128l0.239-0.482 0.132 0.299c0.248 0.572 1.212 2.437 1.588 3.073 2.079 3.534 4.422 6.125 6.501 7.184 1.473 0.751 2.689 0.683 3.517-0.201 0.61-0.645 0.909-1.584 0.96-2.992 0.081-2.425-0.709-5.579-2.254-8.96-0.205-0.453-0.41-0.862-0.448-0.905-0.094-0.102-0.333-0.171-0.495-0.137s-0.359 0.231-0.388 0.397c-0.034 0.158 0.004 0.265 0.384 1.088 1.059 2.284 1.801 4.683 2.087 6.744 0.094 0.679 0.111 2.151 0.026 2.604-0.085 0.457-0.252 0.931-0.431 1.204-0.286 0.44-0.615 0.619-1.157 0.615-1.609-0.004-4.145-2.215-6.399-5.571-1.037-1.55-1.993-3.3-2.732-5.011l-0.265-0.61 0.371-0.627c0.478-0.811 0.982-1.579 1.545-2.369l0.448-0.627h0.692c4.747 0 9.459 1.076 11.867 2.702 0.551 0.371 1.080 0.914 1.264 1.289 0.128 0.265 0.145 0.337 0.145 0.64-0.004 0.286-0.021 0.376-0.119 0.563-0.294 0.572-1.042 1.14-2.079 1.592-0.487 0.209-0.64 0.354-0.64 0.602 0 0.23 0.094 0.397 0.273 0.482 0.196 0.094 0.265 0.085 0.581-0.043 1.49-0.602 2.565-1.49 2.903-2.395 0.623-1.665-0.683-3.347-3.564-4.602-2.518-1.101-6.219-1.789-10.070-1.87l-0.423-0.009 0.482-0.555c0.555-0.645 1.78-1.87 2.305-2.309 1.246-1.050 2.361-1.716 3.321-1.989 0.474-0.137 1.059-0.132 1.362 0.004 0.41 0.184 0.696 0.598 0.854 1.238 0.098 0.388 0.098 1.575 0 2.147-0.111 0.632-0.098 0.743 0.073 0.913 0.124 0.124 0.175 0.145 0.354 0.145 0.38 0 0.478-0.141 0.593-0.832 0.060-0.354 0.081-0.692 0.081-1.387 0-0.811-0.013-0.965-0.098-1.302-0.269-1.063-0.926-1.797-1.806-2.006-2.040-0.478-5.161 1.485-8.264 5.208-0.256 0.303-0.495 0.602-0.534 0.653-0.064 0.094-0.107 0.102-0.726 0.141-0.359 0.021-1.016 0.081-1.464 0.132-1.187 0.137-1.093 0.149-1.161-0.158-0.179-0.858-0.239-1.46-0.243-2.39-0.004-1.007 0.030-1.306 0.213-1.865 0.196-0.593 0.529-0.995 0.952-1.135 0.205-0.073 0.709-0.064 1.007 0.013 0.499 0.132 1.204 0.508 1.844 0.99 0.38 0.286 0.512 0.337 0.713 0.269 0.23-0.073 0.367-0.265 0.367-0.504 0-0.179-0.017-0.213-0.205-0.393-0.265-0.256-1.033-0.768-1.498-0.999-0.879-0.44-1.648-0.581-2.339-0.431zM12.4 12.216c-0.004 0.021-0.282 0.44-0.61 0.935s-0.653 0.995-0.721 1.11l-0.124 0.209-0.102-0.277c-0.128-0.337-0.525-1.643-0.525-1.725 0-0.077 0.188-0.107 1.579-0.252 0.29-0.030 0.521-0.030 0.504 0zM15.649 14.854c-0.303 0.098-0.598 0.316-0.773 0.576-0.525 0.773-0.269 1.78 0.555 2.185 0.256 0.128 0.32 0.141 0.67 0.141s0.414-0.013 0.67-0.141c1.114-0.546 1.089-2.168-0.043-2.689-0.299-0.137-0.781-0.166-1.080-0.073z"/>
-            </svg>
+        {/* Header (fixed) */}
+        <div
+          className="relative flex items-center px-6 py-4 bg-transparent"
+          style={{ minHeight: '64px' }}
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-6 h-6 relative flex-shrink-0">
+              <svg 
+                width="24" 
+                height="24" 
+                viewBox="0 0 32 32" 
+                fill="#06b6d4"
+              >
+                <path d="M10.799 4.652c-1.485 0.324-2.271 2.045-2.104 4.593 0.051 0.738 0.043 0.666 0.196 1.609 0.064 0.38 0.107 0.7 0.098 0.709-0.008 0.013-0.269 0.077-0.572 0.149-2.019 0.465-3.505 1.165-4.397 2.070-0.602 0.606-0.854 1.17-0.845 1.882 0.004 0.401 0.137 0.841 0.38 1.264 0.209 0.363 0.956 1.101 1.447 1.434 1.029 0.692 1.345 0.79 1.626 0.508 0.12-0.119 0.145-0.179 0.145-0.32 0-0.273-0.094-0.405-0.414-0.581-1.409-0.781-2.147-1.592-2.147-2.369 0-0.282 0.098-0.538 0.333-0.845 0.619-0.824 2.113-1.562 4.115-2.036 0.529-0.124 0.632-0.132 0.632-0.043 0 0.115 0.427 1.481 0.7 2.228l0.273 0.751-0.337 0.645c-0.184 0.354-0.448 0.892-0.585 1.2-1.959 4.316-2.284 7.743-0.867 9.152 0.333 0.333 0.606 0.487 1.054 0.602 1.033 0.265 2.399-0.132 3.931-1.144 0.534-0.354 0.653-0.487 0.653-0.721 0-0.282-0.307-0.555-0.581-0.512-0.077 0.013-0.376 0.179-0.662 0.367-0.632 0.422-1.34 0.773-1.853 0.926-0.525 0.154-1.093 0.162-1.417 0.021-0.995-0.44-1.225-2.215-0.606-4.678 0.29-1.17 0.956-2.928 1.558-4.128l0.239-0.482 0.132 0.299c0.248 0.572 1.212 2.437 1.588 3.073 2.079 3.534 4.422 6.125 6.501 7.184 1.473 0.751 2.689 0.683 3.517-0.201 0.61-0.645 0.909-1.584 0.96-2.992 0.081-2.425-0.709-5.579-2.254-8.96-0.205-0.453-0.41-0.862-0.448-0.905-0.094-0.102-0.333-0.171-0.495-0.137s-0.359 0.231-0.388 0.397c-0.034 0.158 0.004 0.265 0.384 1.088 1.059 2.284 1.801 4.683 2.087 6.744 0.094 0.679 0.111 2.151 0.026 2.604-0.085 0.457-0.252 0.931-0.431 1.204-0.286 0.44-0.615 0.619-1.157 0.615-1.609-0.004-4.145-2.215-6.399-5.571-1.037-1.55-1.993-3.3-2.732-5.011l-0.265-0.61 0.371-0.627c0.478-0.811 0.982-1.579 1.545-2.369l0.448-0.627h0.692c4.747 0 9.459 1.076 11.867 2.702 0.551 0.371 1.080 0.914 1.264 1.289 0.128 0.265 0.145 0.337 0.145 0.64-0.004 0.286-0.021 0.376-0.119 0.563-0.294 0.572-1.042 1.14-2.079 1.592-0.487 0.209-0.64 0.354-0.64 0.602 0 0.23 0.094 0.397 0.273 0.482 0.196 0.094 0.265 0.085 0.581-0.043 1.49-0.602 2.565-1.49 2.903-2.395 0.623-1.665-0.683-3.347-3.564-4.602-2.518-1.101-6.219-1.789-10.070-1.87l-0.423-0.009 0.482-0.555c0.555-0.645 1.78-1.87 2.305-2.309 1.246-1.050 2.361-1.716 3.321-1.989 0.474-0.137 1.059-0.132 1.362 0.004 0.41 0.184 0.696 0.598 0.854 1.238 0.098 0.388 0.098 1.575 0 2.147-0.111 0.632-0.098 0.743 0.073 0.913 0.124 0.124 0.175 0.145 0.354 0.145 0.38 0 0.478-0.141 0.593-0.832 0.060-0.354 0.081-0.692 0.081-1.387 0-0.811-0.013-0.965-0.098-1.302-0.269-1.063-0.926-1.797-1.806-2.006-2.040-0.478-5.161 1.485-8.264 5.208-0.256 0.303-0.495 0.602-0.534 0.653-0.064 0.094-0.107 0.102-0.726 0.141-0.359 0.021-1.016 0.081-1.464 0.132-1.187 0.137-1.093 0.149-1.161-0.158-0.179-0.858-0.239-1.46-0.243-2.39-0.004-1.007 0.030-1.306 0.213-1.865 0.196-0.593 0.529-0.995 0.952-1.135 0.205-0.073 0.709-0.064 1.007 0.013 0.499 0.132 1.204 0.508 1.844 0.99 0.38 0.286 0.512 0.337 0.713 0.269 0.23-0.073 0.367-0.265 0.367-0.504 0-0.179-0.017-0.213-0.205-0.393-0.265-0.256-1.033-0.768-1.498-0.999-0.879-0.44-1.648-0.581-2.339-0.431zM12.4 12.216c-0.004 0.021-0.282 0.44-0.61 0.935s-0.653 0.995-0.721 1.11l-0.124 0.209-0.102-0.277c-0.128-0.337-0.525-1.643-0.525-1.725 0-0.077 0.188-0.107 1.579-0.252 0.29-0.030 0.521-0.030 0.504 0zM15.649 14.854c-0.303 0.098-0.598 0.316-0.773 0.576-0.525 0.773-0.269 1.78 0.555 2.185 0.256 0.128 0.32 0.141 0.67 0.141s0.414-0.013 0.67-0.141c1.114-0.546 1.089-2.168-0.043-2.689-0.299-0.137-0.781-0.166-1.080-0.073z"/>
+              </svg>
+            </div>
+            <span className="text-base font-normal text-cyan-400">{query}</span>
           </div>
-          <span className="text-base font-normal text-cyan-400">{query}</span>
+          
+          {/* Expand/Collapse Arrow Button */}
+          <motion.div
+            className="absolute right-6 top-1/2 -translate-y-1/2 cursor-pointer"
+            onClick={() => setIsExpanded((v) => !v)}
+            animate={{ rotate: isExpanded ? 0 : 180 }}
+            transition={{ duration: 0.3 }}
+            style={{ display: 'flex', alignItems: 'center' }}
+          >
+            <svg
+              viewBox="0 0 24 24"
+              width="20"
+              height="20"
+              stroke="#E5E5E5"
+              strokeWidth="2"
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </motion.div>
         </div>
         
-        {/* Expand/Collapse Arrow Button */}
+        {/* Content (scrollable, animated height) */}
         <motion.div
-          className="absolute right-6 top-1/2 -translate-y-1/2 cursor-pointer"
-          onClick={() => setIsExpanded((v) => !v)}
-          animate={{ rotate: isExpanded ? 0 : 180 }}
-          transition={{ duration: 0.3 }}
-          style={{ display: 'flex', alignItems: 'center' }}
+          className={`px-6 py-4 overflow-y-auto ${styles['hide-scrollbar']}`}
+          animate={{ height: isExpanded ? 300 : 180 }}
+          transition={{ duration: 0.4, ease: 'easeInOut' }}
+          style={{ height: 300 - 64 }}
         >
-          <svg
-            viewBox="0 0 24 24"
-            width="20"
-            height="20"
-            stroke="#E5E5E5"
-            strokeWidth="2"
-            fill="none"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
+          <div className="space-y-6">
+            {steps.map((step, idx) => (
+              <div key={step.id} className="mb-4">
+                <h3 className={`text-base font-medium mb-2 ${
+                  step.status === 'active' 
+                  ? styles['step-title-active']
+                  : step.status === 'completed'
+                  ? styles['step-title-completed']
+                  : styles['step-title']
+                }`}>{step.title}</h3>
+                <div className="text-neutral-300 ml-4">
+                  {step.status !== 'error' && step.result && (
+                    (step.id === 'understand' && firstStepThinking) ? (
+                      <p className="text-neutral-300 text-sm whitespace-pre-wrap">{extractThinkContent(firstStepThinking)}</p>
+                    ) : (step.id === 'research') ? (
+                      // Custom rendering for research step with branded chips
+                      <div className="relative">
+                        {step.status === 'active' && step.result.split('\n').filter(line => line.startsWith('Source')).length === 0 && (
+                          <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 rounded-lg backdrop-blur-sm z-0 flex items-center justify-center"
+                          >
+                            <div className="flex items-center gap-2 text-cyan-400 text-sm">
+                              <motion.div
+                                animate={{ rotate: 360 }}
+                                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                                className="w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full"
+                              />
+                              <span>Discovering sources...</span>
+                            </div>
+                          </motion.div>
+                        )}
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {step.result.split('\n').filter(line => line.startsWith('Source')).map((sourceLine, i) => {
+                          const urlMatch = sourceLine.match(/URL: (.+)/);
+                          const titleMatch = sourceLine.match(/Source \d+: (.+)/);
+                          
+                          if (urlMatch && titleMatch) {
+                              const url = urlMatch[1].trim();
+                              const title = titleMatch[1].replace(/ URL:.*/, '').trim();
+                              
+                              // Extract domain and get favicon URL
+                              let domainName = 'unknown';
+                              let faviconUrl = '';
+                              
+                            try {
+                              const domain = new URL(url).hostname.replace('www.', '');
+                                domainName = domain.split('.')[0];
+                                faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=16`;
+                              } catch (error) {
+                                console.error('URL parsing error:', error);
+                              // Keep default values
+                            }
+                            
+                            return (
+                                <motion.div
+                                  key={`${i}-${url}`}
+                                  initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                                  transition={{ 
+                                    duration: 0.5, 
+                                    delay: i * 0.1,
+                                    ease: "easeOut"
+                                  }}
+                                  className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 hover:scale-105 cursor-pointer bg-transparent text-cyan-400 border border-cyan-400 hover:border-cyan-300 hover:shadow-lg hover:shadow-cyan-400/20 relative z-20"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    console.log('Clicking URL:', url);
+                                    window.open(url, '_blank', 'noopener,noreferrer');
+                                  }}
+                                  title={`${title} - Click to open ${url}`}
+                                  style={{
+                                    boxShadow: '0 0 10px rgba(6, 182, 212, 0.3)',
+                                    backdropFilter: 'blur(10px)',
+                                    backgroundColor: 'transparent !important',
+                                  }}
+                                >
+                                  <img 
+                                    src={faviconUrl} 
+                                    alt={domainName}
+                                    className="w-4 h-4 rounded-sm flex-shrink-0"
+                                    onError={(e) => {
+                                      // Fallback to a generic globe icon if favicon fails to load
+                                      const target = e.currentTarget;
+                                      target.style.display = 'none';
+                                    }}
+                                    onLoad={(e) => {
+                                      // Ensure favicon loaded successfully
+                                      const target = e.currentTarget;
+                                      target.style.display = 'block';
+                                    }}
+                                  />
+                                  <span className="max-w-24 truncate flex-shrink-0">{domainName}</span>
+                                </motion.div>
+                            );
+                          }
+                          return null;
+                        }).filter(Boolean)}
+                        </div>
+                      </div>
+                    ) : (step.id !== 'research') ? (
+                      <ul className="list-disc pl-5 space-y-1 text-neutral-300 text-sm">
+                        {extractBulletPoints(extractThinkContent(step.result)).map((point, i) => (
+                          <li key={i}>{point}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-sm">{step.result}</p>
+                    )
+                  )}
+                  {step.status !== 'error' && !step.result && step.content && <p className="text-sm">{step.content}</p>}
+                  {step.status === 'error' && <p className="text-red-400 text-sm">An error occurred while processing this step.</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          {/* Error display */}
+          {error && (
+            <div className="mt-6 p-4 bg-red-900/30 border border-red-700 rounded-lg">
+              <p className="text-red-400 text-sm">{error}</p>
+            </div>
+          )}
         </motion.div>
       </div>
-      
-      {/* Content (scrollable, animated height) */}
-      <motion.div
-        className={`px-6 py-4 overflow-y-auto ${styles['hide-scrollbar']}`}
-        animate={{ height: isExpanded ? 300 : 180 }}
-        transition={{ duration: 0.4, ease: 'easeInOut' }}
-        style={{ height: 300 - 64 }}
-      >
-        <div className="space-y-6">
-          {steps.map((step, idx) => (
-            <div key={step.id} className="mb-4">
-              <h3 className={`text-base font-medium mb-2 ${
-                step.status === 'active' 
-                ? styles['step-title-active']
-                : step.status === 'completed'
-                ? styles['step-title-completed']
-                : styles['step-title']
-              }`}>{step.title}</h3>
-              <div className="text-neutral-300 ml-4">
-                {step.status !== 'error' && step.result && (
-                  (step.id === 'understand' && firstStepThinking) ? (
-                    <p className="text-neutral-300 text-sm whitespace-pre-wrap">{extractThinkContent(firstStepThinking)}</p>
-                  ) : (step.id === 'research') ? (
-                    // Custom rendering for research step with branded chips
-                    <div className="relative">
-                      {step.status === 'active' && step.result.split('\n').filter(line => line.startsWith('Source')).length === 0 && (
-                        <motion.div
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 rounded-lg backdrop-blur-sm z-0 flex items-center justify-center"
-                        >
-                          <div className="flex items-center gap-2 text-cyan-400 text-sm">
-                            <motion.div
-                              animate={{ rotate: 360 }}
-                              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                              className="w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full"
-                            />
-                            <span>Discovering sources...</span>
-                          </div>
-                        </motion.div>
-                      )}
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {step.result.split('\n').filter(line => line.startsWith('Source')).map((sourceLine, i) => {
-                        const urlMatch = sourceLine.match(/URL: (.+)/);
-                        const titleMatch = sourceLine.match(/Source \d+: (.+)/);
-                        
-                        if (urlMatch && titleMatch) {
-                            const url = urlMatch[1].trim();
-                            const title = titleMatch[1].replace(/ URL:.*/, '').trim();
-                            
-                            // Extract domain and get favicon URL
-                            let domainName = 'unknown';
-                            let faviconUrl = '';
-                            
-                          try {
-                            const domain = new URL(url).hostname.replace('www.', '');
-                              domainName = domain.split('.')[0];
-                              faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=16`;
-                            } catch (error) {
-                              console.error('URL parsing error:', error);
-                            // Keep default values
-                          }
-                          
-                          return (
-                              <motion.div
-                                key={`${i}-${url}`}
-                                initial={{ opacity: 0, scale: 0.8, y: 20 }}
-                                animate={{ opacity: 1, scale: 1, y: 0 }}
-                                transition={{ 
-                                  duration: 0.5, 
-                                  delay: i * 0.1,
-                                  ease: "easeOut"
-                                }}
-                                className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 hover:scale-105 cursor-pointer bg-transparent text-cyan-400 border border-cyan-400 hover:border-cyan-300 hover:shadow-lg hover:shadow-cyan-400/20 relative z-20"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  console.log('Clicking URL:', url);
-                                  window.open(url, '_blank', 'noopener,noreferrer');
-                                }}
-                                title={`${title} - Click to open ${url}`}
-                                style={{
-                                  boxShadow: '0 0 10px rgba(6, 182, 212, 0.3)',
-                                  backdropFilter: 'blur(10px)',
-                                  backgroundColor: 'transparent !important',
-                                }}
-                              >
-                                <img 
-                                  src={faviconUrl} 
-                                  alt={domainName}
-                                  className="w-4 h-4 rounded-sm flex-shrink-0"
-                                  onError={(e) => {
-                                    // Fallback to a generic globe icon if favicon fails to load
-                                    const target = e.currentTarget;
-                                    target.style.display = 'none';
-                                  }}
-                                  onLoad={(e) => {
-                                    // Ensure favicon loaded successfully
-                                    const target = e.currentTarget;
-                                    target.style.display = 'block';
-                                  }}
-                                />
-                                <span className="max-w-24 truncate flex-shrink-0">{domainName}</span>
-                              </motion.div>
-                          );
-                        }
-                        return null;
-                      }).filter(Boolean)}
-                      </div>
-                    </div>
-                  ) : (step.id !== 'research') ? (
-                    <ul className="list-disc pl-5 space-y-1 text-neutral-300 text-sm">
-                      {extractBulletPoints(extractThinkContent(step.result)).map((point, i) => (
-                        <li key={i}>{point}</li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-sm">{step.result}</p>
-                  )
-                )}
-                {step.status !== 'error' && !step.result && step.content && <p className="text-sm">{step.content}</p>}
-                {step.status === 'error' && <p className="text-red-400 text-sm">An error occurred while processing this step.</p>}
-              </div>
-            </div>
-          ))}
-        </div>
-        
-        {/* Think Box - Display AI reasoning process */}
-        {searchThinking && searchThinking.trim().length > 0 && (
-          <div className="mt-6">
+
+      {/* Think Box Container - Separate from Search UI */}
+      {searchThinking && searchThinking.trim().length > 0 && (
+        <div
+          className="w-full rounded-lg border border-cyan-400 bg-transparent"
+          style={{ 
+            borderRadius: '20px'
+          }}
+        >
+          <div className="p-6">
             <ThinkingButton 
               content={searchThinking} 
               isLive={isThinkingActive}
             />
           </div>
-        )}
-        
-        {/* Error display */}
-        {error && (
-          <div className="mt-6 p-4 bg-red-900/30 border border-red-700 rounded-lg">
-            <p className="text-red-400 text-sm">{error}</p>
-          </div>
-        )}
-      </motion.div>
-      
-
+        </div>
+      )}
     </div>
   );
 };

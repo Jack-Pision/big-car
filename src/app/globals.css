@@ -775,6 +775,18 @@ textarea::-webkit-scrollbar-thumb,
   animation: shimmerButton 2s infinite;
 }
 
+/* Shimmer animation for thinking button content only */
+.shimmer-button-content {
+  background: linear-gradient(
+    90deg,
+    rgba(6, 182, 212, 0.1) 0%,
+    rgba(6, 182, 212, 0.2) 50%,
+    rgba(6, 182, 212, 0.1) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmerButton 2s infinite;
+}
+
 @keyframes shimmerButton {
   0% {
     background-position: 200% 0;
