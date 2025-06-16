@@ -137,20 +137,18 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
     }
   }, [steps, error, finalResult, firstStepThinking, searchThinking, hasExecuted]);
   
-  // Handle query changes and execution logic
+  // Handle new query detection and cache clearing
   useEffect(() => {
     if (!query) return;
     
-    console.log('[Search] useEffect triggered for query:', query);
-    console.log('[Search] Current hasExecuted:', hasExecuted);
-    console.log('[Search] SavedState hasExecuted:', savedState?.hasExecuted);
+    console.log('[Search] Checking query:', query);
     
     // Check if this is a different query than what's cached
     const isNewQuery = !savedState || savedState.query !== query;
     console.log('[Search] Is new query:', isNewQuery);
     
     if (isNewQuery) {
-      console.log('[Search] Processing new query - clearing cache and resetting state');
+      console.log('[Search] 🆕 NEW QUERY DETECTED - clearing cache and resetting state');
       
       // Clear the cache for new queries
       try {
@@ -181,33 +179,72 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
       setFirstStepThinking('');
       setSearchThinking('');
       setIsThinkingActive(false);
-      
-      // Reset hasExecuted for new queries and execute
       setHasExecuted(false);
-      console.log('[Search] Executing search for new query');
+      
+      console.log('[Search] 🚀 Executing search for new query');
       executeSearch(query);
     } else {
-      // This is a cached query, check if we need to execute
-      const shouldExecute = !hasExecuted && !savedState?.hasExecuted;
-      console.log('[Search] Cached query - should execute:', shouldExecute);
-      
-      if (shouldExecute) {
-        console.log('[Search] Executing search for cached query');
-        executeSearch(query);
-      } else {
-        console.log('[Search] Skipping execution - already executed');
-      }
+      console.log('[Search] 📋 CACHED QUERY - state restoration will handle execution decision');
     }
-  }, [query, savedState]);
+  }, [query, savedState?.query]);
   
-  // Separate effect to handle hasExecuted state synchronization
+  // Effect to restore state immediately on mount before any execution decisions
   useEffect(() => {
-    // If we have saved state and hasExecuted doesn't match, sync it
-    if (savedState?.hasExecuted !== undefined && hasExecuted !== savedState.hasExecuted) {
-      console.log('[Search] Syncing hasExecuted state:', savedState.hasExecuted);
-      setHasExecuted(savedState.hasExecuted);
+    if (savedState && savedState.query === query) {
+      console.log('[Search] 🔄 RESTORING saved state for query:', query);
+      console.log('[Search] Restoring hasExecuted:', savedState.hasExecuted);
+      
+      // Restore all state synchronously
+      if (savedState.hasExecuted !== hasExecuted) {
+        setHasExecuted(savedState.hasExecuted);
+      }
+      if (savedState.steps && JSON.stringify(savedState.steps) !== JSON.stringify(steps)) {
+        setSteps(savedState.steps);
+      }
+      if (savedState.error !== error) {
+        setError(savedState.error);
+      }
+      if (savedState.finalResult !== finalResult) {
+        setFinalResult(savedState.finalResult);
+      }
+      if (savedState.firstStepThinking !== firstStepThinking) {
+        setFirstStepThinking(savedState.firstStepThinking);
+      }
+      if (savedState.searchThinking !== searchThinking) {
+        setSearchThinking(savedState.searchThinking);
+      }
+      
+      console.log('[Search] ✅ State restoration completed');
     }
-  }, [savedState?.hasExecuted]);
+     }, [savedState]); // Only depend on savedState, not individual state variables
+  
+  // Separate effect for execution logic that runs after state restoration
+  useEffect(() => {
+    if (!query) return;
+    
+    // Add a small delay to ensure state restoration has completed
+    const timer = setTimeout(() => {
+      const isNewQuery = !savedState || savedState.query !== query;
+      
+      if (isNewQuery) {
+        console.log('[Search] 🆕 NEW QUERY - will execute');
+        // Execution logic for new queries is already handled in the main useEffect
+      } else {
+        // For cached queries, check if execution is needed after state restoration
+        const needsExecution = !hasExecuted;
+        console.log('[Search] 📋 CACHED QUERY - needs execution:', needsExecution);
+        
+        if (needsExecution) {
+          console.log('[Search] 🚀 Executing incomplete cached search');
+          executeSearch(query);
+        } else {
+          console.log('[Search] ✅ CACHED SEARCH COMPLETE - no execution needed');
+        }
+      }
+    }, 100); // Small delay to ensure state restoration completes first
+    
+    return () => clearTimeout(timer);
+  }, [query, hasExecuted, savedState?.hasExecuted]);
   
   // Update a step's status
   const updateStepStatus = (id: string, status: StepStatus, result?: string) => {
