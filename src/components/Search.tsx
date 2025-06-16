@@ -26,8 +26,27 @@ export interface SearchProps {
 const MAX_STEP1_PROMPT_LENGTH = 3000; // Increased for enhanced prompts
 
 const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
+  // Generate storage key based on query to maintain separate states for different searches
+  const getStorageKey = (searchQuery: string) => `search_state_${btoa(searchQuery).slice(0, 20)}`;
+  
+  // Initialize state with potential restoration from sessionStorage
+  const initializeState = () => {
+    if (typeof window === 'undefined') return null; // SSR safety
+    
+    try {
+      const storageKey = getStorageKey(query);
+      const savedState = sessionStorage.getItem(storageKey);
+      return savedState ? JSON.parse(savedState) : null;
+    } catch (error) {
+      console.error('Error reading from sessionStorage:', error);
+      return null;
+    }
+  };
+  
+  const savedState = initializeState();
+  
   // State for steps
-  const [steps, setSteps] = useState<SearchStep[]>([
+  const [steps, setSteps] = useState<SearchStep[]>(savedState?.steps || [
     {
       id: 'understand',
       title: 'AI Search Strategy Planner',
@@ -41,19 +60,114 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
       content: 'Executing optimized searches and scraping website content...'
     }
   ]);
-  const [error, setError] = useState<string | null>(null);
-  const [finalResult, setFinalResult] = useState<string>('');
-  const [firstStepThinking, setFirstStepThinking] = useState<string>('');
+  const [error, setError] = useState<string | null>(savedState?.error || null);
+  const [finalResult, setFinalResult] = useState<string>(savedState?.finalResult || '');
+  const [firstStepThinking, setFirstStepThinking] = useState<string>(savedState?.firstStepThinking || '');
   const [isExpanded, setIsExpanded] = useState(false);
+  const [hasExecuted, setHasExecuted] = useState<boolean>(savedState?.hasExecuted || false);
   
   // Think box state for Search component
-  const [searchThinking, setSearchThinking] = useState<string>('');
+  const [searchThinking, setSearchThinking] = useState<string>(savedState?.searchThinking || '');
   const [isThinkingActive, setIsThinkingActive] = useState(false);
   
-  // Execute search on mount
+  // Save state to sessionStorage whenever relevant state changes
+  const saveStateToStorage = () => {
+    if (typeof window === 'undefined') return; // SSR safety
+    
+    try {
+      const storageKey = getStorageKey(query);
+      const stateToSave = {
+        query, // Save the query to detect changes
+        steps,
+        error,
+        finalResult,
+        firstStepThinking,
+        searchThinking,
+        hasExecuted,
+        timestamp: Date.now()
+      };
+      sessionStorage.setItem(storageKey, JSON.stringify(stateToSave));
+    } catch (error) {
+      console.error('Error saving to sessionStorage:', error);
+    }
+  };
+  
+  // Function to clear old cache entries (keep only last 10 searches)
+  const cleanupOldCacheEntries = () => {
+    if (typeof window === 'undefined') return;
+    
+    try {
+      const searchCacheKeys = Object.keys(sessionStorage)
+        .filter(key => key.startsWith('search_state_'))
+        .map(key => ({
+          key,
+          timestamp: JSON.parse(sessionStorage.getItem(key) || '{}').timestamp || 0
+        }))
+        .sort((a, b) => b.timestamp - a.timestamp);
+      
+      // Keep only the 10 most recent searches
+      const keysToRemove = searchCacheKeys.slice(10);
+      keysToRemove.forEach(({ key }) => {
+        sessionStorage.removeItem(key);
+      });
+    } catch (error) {
+      console.error('Error cleaning up cache:', error);
+    }
+  };
+  
+  // Save state whenever relevant state changes (but only if hasExecuted is true)
+  useEffect(() => {
+    if (hasExecuted) {
+      saveStateToStorage();
+      cleanupOldCacheEntries();
+    }
+  }, [steps, error, finalResult, firstStepThinking, searchThinking, hasExecuted]);
+  
+  // Clear cache if query changes and execute search only if not already executed
   useEffect(() => {
     if (query) {
-      executeSearch(query);
+      // Check if this is a different query than what's cached
+      const savedState = initializeState();
+      const isNewQuery = !savedState || savedState.query !== query;
+      
+      if (isNewQuery) {
+        // Clear the cache for new queries
+        try {
+          const storageKey = getStorageKey(query);
+          sessionStorage.removeItem(storageKey);
+        } catch (error) {
+          console.error('Error clearing sessionStorage:', error);
+        }
+        
+        // Reset hasExecuted for new queries
+        setHasExecuted(false);
+        
+        // Reset all state for new queries
+        setSteps([
+          {
+            id: 'understand',
+            title: 'AI Search Strategy Planner',
+            status: 'pending',
+            content: 'Conducting comprehensive query analysis and developing optimized search strategies...'
+          },
+          {
+            id: 'research',
+            title: 'Multi-Source Web Discovery & Content Scraping',
+            status: 'pending',
+            content: 'Executing optimized searches and scraping website content...'
+          }
+        ]);
+        setError(null);
+        setFinalResult('');
+        setFirstStepThinking('');
+        setSearchThinking('');
+        setIsThinkingActive(false);
+      }
+      
+      // Execute search only if not already executed for this query
+      if (!hasExecuted) {
+        executeSearch(query);
+      }
     }
   }, [query]);
   
@@ -492,6 +606,7 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
     try {
       setError(null);
       setFirstStepThinking(''); // Reset the first step thinking for new searches
+      setHasExecuted(true); // Mark that search has been executed to prevent re-execution on refresh
       
       // Shorten the query if it's very long
       const shortenedQuery = query.length > 500 ? query.substring(0, 500) + "..." : query;
