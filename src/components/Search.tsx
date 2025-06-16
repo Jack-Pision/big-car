@@ -1120,166 +1120,169 @@ Error details: ${err instanceof Error ? err.message : String(err)}
           </motion.div>
         </div>
         
-        {/* Content (scrollable, animated height) */}
-        <motion.div
-          className={`px-4 py-4 overflow-y-auto ${styles['hide-scrollbar']}`}
-          animate={{ height: isExpanded ? 300 : 0 }}
-          transition={{ duration: 0.4, ease: 'easeInOut' }}
-          style={{ height: isExpanded ? 300 - 48 : 0 }}
-        >
-          {/* Start Search Button - only shown when search hasn't been executed */}
-          {!hasExecuted && (
-            <div className="mb-6 flex justify-center">
-              <motion.button
-                onClick={() => executeSearch(query)}
-                className="px-6 py-3 bg-transparent border-2 border-cyan-400 text-cyan-400 rounded-lg font-medium hover:bg-cyan-400/10 hover:border-cyan-300 transition-all duration-200 flex items-center gap-2"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
+        {/* Content (scrollable, animated height) - Only render when expanded */}
+        {isExpanded && (
+          <motion.div
+            className={`px-4 py-4 overflow-y-auto ${styles['hide-scrollbar']}`}
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 300 - 48, opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.4, ease: 'easeInOut' }}
+          >
+            {/* Start Search Button - only shown when search hasn't been executed */}
+            {!hasExecuted && (
+              <div className="mb-6 flex justify-center">
+                <motion.button
+                  onClick={() => executeSearch(query)}
+                  className="px-6 py-3 bg-transparent border-2 border-cyan-400 text-cyan-400 rounded-lg font-medium hover:bg-cyan-400/10 hover:border-cyan-300 transition-all duration-200 flex items-center gap-2"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                 >
-                  <circle cx="11" cy="11" r="8" />
-                  <path d="m21 21-4.35-4.35" />
-                </svg>
-                Start Search
-              </motion.button>
-            </div>
-          )}
-          
-          <div className="space-y-6">
-            {steps.map((step, idx) => (
-              <div key={step.id} className="mb-4">
-                <h3 className={`text-base font-medium mb-2 ${
-                  step.status === 'active' 
-                  ? styles['step-title-active']
-                  : step.status === 'completed'
-                  ? styles['step-title-completed']
-                  : styles['step-title']
-                }`}>{step.title}</h3>
-                <div className="text-neutral-300 ml-4">
-                  {step.status !== 'error' && step.result && (
-                    (step.id === 'understand' && firstStepThinking) ? (
-                      <p className="text-neutral-300 text-sm whitespace-pre-wrap">{extractThinkContent(firstStepThinking)}</p>
-                    ) : (step.id === 'research') ? (
-                      // Custom rendering for research step with branded chips
-                      <div className="relative">
-                        {step.status === 'active' && step.result.split('\n').filter(line => line.startsWith('Source')).length === 0 && (
-                          <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 rounded-lg backdrop-blur-sm z-0 flex items-center justify-center"
-                          >
-                            <div className="flex items-center gap-2 text-cyan-400 text-sm">
-                              <motion.div
-                                animate={{ rotate: 360 }}
-                                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                                className="w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full"
-                              />
-                              <span>Discovering sources...</span>
-                            </div>
-                          </motion.div>
-                        )}
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {step.result.split('\n').filter(line => line.startsWith('Source')).map((sourceLine, i) => {
-                          const urlMatch = sourceLine.match(/URL: (.+)/);
-                          const titleMatch = sourceLine.match(/Source \d+: (.+)/);
-                          
-                          if (urlMatch && titleMatch) {
-                              const url = urlMatch[1].trim();
-                              const title = titleMatch[1].replace(/ URL:.*/, '').trim();
-                              
-                              // Extract domain and get favicon URL
-                              let domainName = 'unknown';
-                              let faviconUrl = '';
-                              
-                            try {
-                              const domain = new URL(url).hostname.replace('www.', '');
-                                domainName = domain.split('.')[0];
-                                faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=16`;
-                              } catch (error) {
-                                console.error('URL parsing error:', error);
-                              // Keep default values
-                            }
-                            
-                            return (
-                                <motion.div
-                                  key={`${i}-${url}`}
-                                  initial={{ opacity: 0, scale: 0.8, y: 20 }}
-                                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                                  transition={{ 
-                                    duration: 0.5, 
-                                    delay: i * 0.1,
-                                    ease: "easeOut"
-                                  }}
-                                  className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 hover:scale-105 cursor-pointer bg-transparent text-cyan-400 border border-cyan-400 hover:border-cyan-300 hover:shadow-lg hover:shadow-cyan-400/20 relative z-20"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    console.log('Clicking URL:', url);
-                                    window.open(url, '_blank', 'noopener,noreferrer');
-                                  }}
-                                  title={`${title} - Click to open ${url}`}
-                                  style={{
-                                    boxShadow: '0 0 10px rgba(6, 182, 212, 0.3)',
-                                    backdropFilter: 'blur(10px)',
-                                    backgroundColor: 'transparent !important',
-                                  }}
-                                >
-                                  <img 
-                                    src={faviconUrl} 
-                                    alt={domainName}
-                                    className="w-4 h-4 rounded-sm flex-shrink-0"
-                                    onError={(e) => {
-                                      // Fallback to a generic globe icon if favicon fails to load
-                                      const target = e.currentTarget;
-                                      target.style.display = 'none';
-                                    }}
-                                    onLoad={(e) => {
-                                      // Ensure favicon loaded successfully
-                                      const target = e.currentTarget;
-                                      target.style.display = 'block';
-                                    }}
-                                  />
-                                  <span className="max-w-24 truncate flex-shrink-0">{domainName}</span>
-                                </motion.div>
-                            );
-                          }
-                          return null;
-                        }).filter(Boolean)}
-                        </div>
-                      </div>
-                    ) : (step.id !== 'research') ? (
-                      <ul className="list-disc pl-5 space-y-1 text-neutral-300 text-sm">
-                        {extractBulletPoints(extractThinkContent(step.result)).map((point, i) => (
-                          <li key={i}>{point}</li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="text-sm">{step.result}</p>
-                    )
-                  )}
-                  {step.status !== 'error' && !step.result && step.content && <p className="text-sm">{step.content}</p>}
-                  {step.status === 'error' && <p className="text-red-400 text-sm">An error occurred while processing this step.</p>}
-                </div>
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <circle cx="11" cy="11" r="8" />
+                    <path d="m21 21-4.35-4.35" />
+                  </svg>
+                  Start Search
+                </motion.button>
               </div>
-            ))}
-          </div>
-          
-          {/* Error display */}
-          {error && (
-            <div className="mt-6 p-4 bg-red-900/30 border border-red-700 rounded-lg">
-              <p className="text-red-400 text-sm">{error}</p>
+            )}
+            
+            <div className="space-y-6">
+              {steps.map((step, idx) => (
+                <div key={step.id} className="mb-4">
+                  <h3 className={`text-base font-medium mb-2 ${
+                    step.status === 'active' 
+                    ? styles['step-title-active']
+                    : step.status === 'completed'
+                    ? styles['step-title-completed']
+                    : styles['step-title']
+                  }`}>{step.title}</h3>
+                  <div className="text-neutral-300 ml-4">
+                    {step.status !== 'error' && step.result && (
+                      (step.id === 'understand' && firstStepThinking) ? (
+                        <p className="text-neutral-300 text-sm whitespace-pre-wrap">{extractThinkContent(firstStepThinking)}</p>
+                      ) : (step.id === 'research') ? (
+                        // Custom rendering for research step with branded chips
+                        <div className="relative">
+                          {step.status === 'active' && step.result.split('\n').filter(line => line.startsWith('Source')).length === 0 && (
+                            <motion.div
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 rounded-lg backdrop-blur-sm z-0 flex items-center justify-center"
+                            >
+                              <div className="flex items-center gap-2 text-cyan-400 text-sm">
+                                <motion.div
+                                  animate={{ rotate: 360 }}
+                                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                                  className="w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full"
+                                />
+                                <span>Discovering sources...</span>
+                              </div>
+                            </motion.div>
+                          )}
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {step.result.split('\n').filter(line => line.startsWith('Source')).map((sourceLine, i) => {
+                            const urlMatch = sourceLine.match(/URL: (.+)/);
+                            const titleMatch = sourceLine.match(/Source \d+: (.+)/);
+                            
+                            if (urlMatch && titleMatch) {
+                                const url = urlMatch[1].trim();
+                                const title = titleMatch[1].replace(/ URL:.*/, '').trim();
+                                
+                                // Extract domain and get favicon URL
+                                let domainName = 'unknown';
+                                let faviconUrl = '';
+                                
+                              try {
+                                const domain = new URL(url).hostname.replace('www.', '');
+                                  domainName = domain.split('.')[0];
+                                  faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=16`;
+                                } catch (error) {
+                                  console.error('URL parsing error:', error);
+                                // Keep default values
+                              }
+                              
+                              return (
+                                  <motion.div
+                                    key={`${i}-${url}`}
+                                    initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    transition={{ 
+                                      duration: 0.5, 
+                                      delay: i * 0.1,
+                                      ease: "easeOut"
+                                    }}
+                                    className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 hover:scale-105 cursor-pointer bg-transparent text-cyan-400 border border-cyan-400 hover:border-cyan-300 hover:shadow-lg hover:shadow-cyan-400/20 relative z-20"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      console.log('Clicking URL:', url);
+                                      window.open(url, '_blank', 'noopener,noreferrer');
+                                    }}
+                                    title={`${title} - Click to open ${url}`}
+                                    style={{
+                                      boxShadow: '0 0 10px rgba(6, 182, 212, 0.3)',
+                                      backdropFilter: 'blur(10px)',
+                                      backgroundColor: 'transparent !important',
+                                    }}
+                                  >
+                                    <img 
+                                      src={faviconUrl} 
+                                      alt={domainName}
+                                      className="w-4 h-4 rounded-sm flex-shrink-0"
+                                      onError={(e) => {
+                                        // Fallback to a generic globe icon if favicon fails to load
+                                        const target = e.currentTarget;
+                                        target.style.display = 'none';
+                                      }}
+                                      onLoad={(e) => {
+                                        // Ensure favicon loaded successfully
+                                        const target = e.currentTarget;
+                                        target.style.display = 'block';
+                                      }}
+                                    />
+                                    <span className="max-w-24 truncate flex-shrink-0">{domainName}</span>
+                                  </motion.div>
+                              );
+                            }
+                            return null;
+                          }).filter(Boolean)}
+                          </div>
+                        </div>
+                      ) : (step.id !== 'research') ? (
+                        <ul className="list-disc pl-5 space-y-1 text-neutral-300 text-sm">
+                          {extractBulletPoints(extractThinkContent(step.result)).map((point, i) => (
+                            <li key={i}>{point}</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-sm">{step.result}</p>
+                      )
+                    )}
+                    {step.status !== 'error' && !step.result && step.content && <p className="text-sm">{step.content}</p>}
+                    {step.status === 'error' && <p className="text-red-400 text-sm">An error occurred while processing this step.</p>}
+                  </div>
+                </div>
+              ))}
             </div>
-          )}
-        </motion.div>
+            
+            {/* Error display */}
+            {error && (
+              <div className="mt-6 p-4 bg-red-900/30 border border-red-700 rounded-lg">
+                <p className="text-red-400 text-sm">{error}</p>
+              </div>
+            )}
+          </motion.div>
+        )}
       </div>
 
       {/* Think Box Container - Separate from Search UI */}
