@@ -382,7 +382,8 @@ html, body {
 textarea,
 .chat-input-container textarea,
 .markdown-body,
-.chat-input-container {
+.chat-input-container,
+.custom-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: #444 #232323;
 }
@@ -390,7 +391,8 @@ textarea,
 textarea::-webkit-scrollbar,
 .chat-input-container textarea::-webkit-scrollbar,
 .markdown-body::-webkit-scrollbar,
-.chat-input-container::-webkit-scrollbar {
+.chat-input-container::-webkit-scrollbar,
+.custom-scrollbar::-webkit-scrollbar {
   width: 8px;
   background: #232323;
   border-radius: 8px;
@@ -399,7 +401,8 @@ textarea::-webkit-scrollbar,
 textarea::-webkit-scrollbar-thumb,
 .chat-input-container textarea::-webkit-scrollbar-thumb,
 .markdown-body::-webkit-scrollbar-thumb,
-.chat-input-container::-webkit-scrollbar-thumb {
+.chat-input-container::-webkit-scrollbar-thumb,
+.custom-scrollbar::-webkit-scrollbar-thumb {
   background: #444;
   border-radius: 8px;
 }

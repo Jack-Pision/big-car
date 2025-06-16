@@ -142,7 +142,7 @@ export default function Sidebar({
                   />
                 </div>
               </div>
-              <div className="flex-1 overflow-y-auto px-4 pb-4">
+              <div className="flex-1 overflow-y-auto px-4 pb-4 custom-scrollbar">
                 {filteredSessions.length === 0 && searchTerm === '' && (
                   <div className="text-gray-400 text-sm text-center mt-8">No sessions yet</div>
                 )}
