@@ -1,5 +1,5 @@
  'use client';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import styles from './Search.module.css';
 import { dedupedSerperRequest } from '@/utils/api-request-cache';
 import { motion } from 'framer-motion';
@@ -27,23 +27,35 @@ const MAX_STEP1_PROMPT_LENGTH = 3000; // Increased for enhanced prompts
 
 const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
   // Generate storage key based on query to maintain separate states for different searches
-  const getStorageKey = (searchQuery: string) => `search_state_${btoa(searchQuery).slice(0, 20)}`;
+  const getStorageKey = (searchQuery: string) => {
+    // Use a more reliable hash to avoid collisions
+    const hash = btoa(unescape(encodeURIComponent(searchQuery))).replace(/[+/=]/g, '');
+    return `search_state_${hash.slice(0, 32)}`;
+  };
   
-  // Initialize state with potential restoration from sessionStorage
-  const initializeState = () => {
+  // Initialize state with potential restoration from sessionStorage - called only once
+  const initializeState = useMemo(() => {
     if (typeof window === 'undefined') return null; // SSR safety
     
     try {
       const storageKey = getStorageKey(query);
       const savedState = sessionStorage.getItem(storageKey);
-      return savedState ? JSON.parse(savedState) : null;
+      const parsed = savedState ? JSON.parse(savedState) : null;
+      
+      // Add debug logging
+      console.log('[Search] Initializing state for query:', query);
+      console.log('[Search] Storage key:', storageKey);
+      console.log('[Search] Found saved state:', !!parsed);
+      console.log('[Search] hasExecuted from storage:', parsed?.hasExecuted);
+      
+      return parsed;
     } catch (error) {
       console.error('Error reading from sessionStorage:', error);
       return null;
     }
-  };
+  }, [query]);
   
-  const savedState = initializeState();
+  const savedState = initializeState;
   
   // State for steps
   const [steps, setSteps] = useState<SearchStep[]>(savedState?.steps || [
@@ -71,7 +83,7 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
   const [isThinkingActive, setIsThinkingActive] = useState(false);
   
   // Save state to sessionStorage whenever relevant state changes
-  const saveStateToStorage = () => {
+  const saveStateToStorage = useCallback(() => {
     if (typeof window === 'undefined') return; // SSR safety
     
     try {
@@ -86,11 +98,13 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
         hasExecuted,
         timestamp: Date.now()
       };
+      
+      console.log('[Search] Saving state to storage:', storageKey, { hasExecuted });
       sessionStorage.setItem(storageKey, JSON.stringify(stateToSave));
     } catch (error) {
       console.error('Error saving to sessionStorage:', error);
     }
-  };
+  }, [query, steps, error, finalResult, firstStepThinking, searchThinking, hasExecuted]);
   
   // Function to clear old cache entries (keep only last 10 searches)
   const cleanupOldCacheEntries = () => {
@@ -123,53 +137,77 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
     }
   }, [steps, error, finalResult, firstStepThinking, searchThinking, hasExecuted]);
   
-  // Clear cache if query changes and execute search only if not already executed
+  // Handle query changes and execution logic
   useEffect(() => {
-    if (query) {
-      // Check if this is a different query than what's cached
-      const savedState = initializeState();
-      const isNewQuery = !savedState || savedState.query !== query;
+    if (!query) return;
+    
+    console.log('[Search] useEffect triggered for query:', query);
+    console.log('[Search] Current hasExecuted:', hasExecuted);
+    console.log('[Search] SavedState hasExecuted:', savedState?.hasExecuted);
+    
+    // Check if this is a different query than what's cached
+    const isNewQuery = !savedState || savedState.query !== query;
+    console.log('[Search] Is new query:', isNewQuery);
+    
+    if (isNewQuery) {
+      console.log('[Search] Processing new query - clearing cache and resetting state');
       
-      if (isNewQuery) {
-        // Clear the cache for new queries
-        try {
-          const storageKey = getStorageKey(query);
-          sessionStorage.removeItem(storageKey);
-        } catch (error) {
-          console.error('Error clearing sessionStorage:', error);
-        }
-        
-        // Reset hasExecuted for new queries
-        setHasExecuted(false);
-        
-        // Reset all state for new queries
-        setSteps([
-          {
-            id: 'understand',
-            title: 'AI Search Strategy Planner',
-            status: 'pending',
-            content: 'Conducting comprehensive query analysis and developing optimized search strategies...'
-          },
-          {
-            id: 'research',
-            title: 'Multi-Source Web Discovery & Content Scraping',
-            status: 'pending',
-            content: 'Executing optimized searches and scraping website content...'
-          }
-        ]);
-        setError(null);
-        setFinalResult('');
-        setFirstStepThinking('');
-        setSearchThinking('');
-        setIsThinkingActive(false);
+      // Clear the cache for new queries
+      try {
+        const storageKey = getStorageKey(query);
+        sessionStorage.removeItem(storageKey);
+        console.log('[Search] Cleared storage for key:', storageKey);
+      } catch (error) {
+        console.error('Error clearing sessionStorage:', error);
       }
       
-      // Execute search only if not already executed for this query
-      if (!hasExecuted) {
+      // Reset all state for new queries
+      setSteps([
+        {
+          id: 'understand',
+          title: 'AI Search Strategy Planner',
+          status: 'pending',
+          content: 'Conducting comprehensive query analysis and developing optimized search strategies...'
+        },
+        {
+          id: 'research',
+          title: 'Multi-Source Web Discovery & Content Scraping',
+          status: 'pending',
+          content: 'Executing optimized searches and scraping website content...'
+        }
+      ]);
+      setError(null);
+      setFinalResult('');
+      setFirstStepThinking('');
+      setSearchThinking('');
+      setIsThinkingActive(false);
+      
+      // Reset hasExecuted for new queries and execute
+      setHasExecuted(false);
+      console.log('[Search] Executing search for new query');
+      executeSearch(query);
+    } else {
+      // This is a cached query, check if we need to execute
+      const shouldExecute = !hasExecuted && !savedState?.hasExecuted;
+      console.log('[Search] Cached query - should execute:', shouldExecute);
+      
+      if (shouldExecute) {
+        console.log('[Search] Executing search for cached query');
         executeSearch(query);
+      } else {
+        console.log('[Search] Skipping execution - already executed');
       }
     }
-  }, [query]);
+  }, [query, savedState]);
+  
+  // Separate effect to handle hasExecuted state synchronization
+  useEffect(() => {
+    // If we have saved state and hasExecuted doesn't match, sync it
+    if (savedState?.hasExecuted !== undefined && hasExecuted !== savedState.hasExecuted) {
+      console.log('[Search] Syncing hasExecuted state:', savedState.hasExecuted);
+      setHasExecuted(savedState.hasExecuted);
+    }
+  }, [savedState?.hasExecuted]);
   
   // Update a step's status
   const updateStepStatus = (id: string, status: StepStatus, result?: string) => {
@@ -1223,3 +1261,4 @@ Error details: ${err instanceof Error ? err.message : String(err)}
 };
 
 export default Search; 
+
