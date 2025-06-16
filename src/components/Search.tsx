@@ -712,6 +712,11 @@ Error details: ${errorMessage}
               role: 'system',
               content: `You are an elite investigative journalist and research analyst specializing in comprehensive, authoritative reporting. Create professional research reports that rival the depth and quality of top-tier publications like The New York Times, The Wall Street Journal, and Nature.
 
+CRITICAL THINKING INSTRUCTION:
+- Use <Think>...</Think> tags for ANY internal reasoning, planning, or meta-commentary
+- Only the final research report should appear outside Think tags
+- ALL analysis, planning, and reasoning MUST be wrapped in <Think> tags
+
 CRITICAL OUTPUT REQUIREMENTS:
 - Generate 2000-3500 words of substantive, detailed content
 - Extract and utilize EVERY relevant detail from provided sources
@@ -784,7 +789,7 @@ QUALITY STANDARDS:
 - Expert-level technical accuracy and depth
 - Clear, engaging prose that maintains reader interest
 
-CRITICAL: Generate ONLY the final research report. No planning, reasoning, or meta-commentary.`
+CRITICAL: Use <Think>...</Think> tags for any reasoning or planning. Generate ONLY the final research report outside of Think tags.`
             },
             {
               role: 'user',
