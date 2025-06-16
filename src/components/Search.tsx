@@ -39,12 +39,6 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
       title: 'Multi-Source Web Discovery & Content Scraping',
       status: 'pending',
       content: 'Executing optimized searches and scraping website content...'
-    },
-    {
-      id: 'analyze',
-      title: 'AI Content Analysis & Synthesis',
-      status: 'pending',
-      content: 'Analyzing scraped content and synthesizing comprehensive insights...'
     }
   ]);
   const [error, setError] = useState<string | null>(null);
@@ -575,94 +569,8 @@ Output only the numbered search phrases, nothing else.`;
       const serperResults = await executeSerperStep(finalSearchQueries);
       console.timeEnd('Step 2: Web Discovery & Content Scraping');
       
-      // Step 3: AI Content Analysis & Synthesis - Analyze scraped website content
-      console.time('Step 3: AI Content Analysis & Synthesis');
-      
-      // Enhanced content preparation for Step 3 analysis
-      const qualityScrapedSources = serperResults.sources.filter((s: any) => s.scraped && s.isQualityContent);
-      const snippetOnlySources = serperResults.sources.filter((s: any) => !s.scraped || !s.isQualityContent);
-      
-      // Structured content for analysis - prioritize quality scraped content
-      const structuredContent = qualityScrapedSources
-        .map((s: any, i: number) => {
-          const headingsText = s.headings?.length > 0 ? `\nKey Headings: ${s.headings.join(', ')}` : '';
-          const contentPreview = s.content.length > 1500 ? s.content.substring(0, 1500) + '...' : s.content;
-          
-          return `## Source ${i+1}: ${s.title}
-**URL:** ${s.url}
-**Content Quality:** High (${s.wordCount} words, extracted from ${s.contentSource})${headingsText}
-**Content:**
-${contentPreview}`;
-        })
-        .join('\n\n---\n\n');
-      
-      // Fallback content from snippets
-      const fallbackContent = snippetOnlySources
-        .map((s: any, i: number) => `**Snippet ${i+1}:** ${s.title} - ${s.content || s.snippet}`)
-        .join('\n');
-      
-      // Combined content for analysis
-      const scrapedContent = structuredContent + (fallbackContent ? '\n\n## Additional Snippet Sources:\n' + fallbackContent : '');
-      
-      const allSourcesInfo = serperResults.sources
-        .map((s: any, i: number) => {
-          const qualityIndicator = s.isQualityContent ? '✓ High Quality' : s.scraped ? '⚠ Low Quality' : '📄 Snippet Only';
-          const wordInfo = s.wordCount ? ` (${s.wordCount} words)` : '';
-          return `${i+1}. ${s.title} - ${s.url} [${qualityIndicator}${wordInfo}]`;
-        })
-        .join('\n');
-      
-      const analysisResult = await executeNvidiaStep(
-        'analyze',
-        `You are an AI Content Analysis & Synthesis Specialist specializing in comprehensive web content analysis. You excel at processing large volumes of scraped website content, extracting key insights, and synthesizing information from multiple high-quality sources.
-
-ENHANCED CAPABILITIES:
-- Deep analysis of full website content (not just snippets)
-- Quality assessment of scraped vs snippet-only sources
-- Cross-source validation and fact-checking
-- Thematic synthesis across multiple sources
-- Identification of content gaps and contradictions
-
-RESPONSE FORMAT: Respond ONLY with a structured markdown bullet list. Each bullet represents one distinct analytical insight or synthesis point.
-
-ANALYSIS METHODOLOGY: Prioritize high-quality scraped content over snippets, identify key themes and patterns, assess source reliability, cross-reference claims, resolve contradictions, and extract actionable insights.`,
-        `Conduct comprehensive analysis and synthesis of the scraped website content for: "${shortenedQuery}"
-
-Present your analytical findings as structured bullet points (one insight per bullet).
-
-**SEARCH STRATEGY:** ${finalSearchQueries.join(', ')}
-
-**CONTENT QUALITY BREAKDOWN:**
-- High Quality Sources: ${qualityScrapedSources.length} (full content scraped)
-- Low Quality/Snippet Sources: ${snippetOnlySources.length}
-- Total Sources: ${serperResults.totalSources}
-
-**STRUCTURED WEBSITE CONTENT:**
-${scrapedContent}
-
-**ALL SOURCES OVERVIEW:**
-${allSourcesInfo}
-
-**ANALYSIS FOCUS AREAS:**
-- **Primary Analysis:** Extract key facts and insights from high-quality scraped content
-- **Source Quality Assessment:** Evaluate reliability and depth of information from each source type
-- **Cross-Source Validation:** Identify agreements, contradictions, and information gaps
-- **Thematic Synthesis:** Identify patterns and themes across multiple sources
-- **Content Depth Analysis:** Compare insights from full content vs snippet-only sources
-- **Actionable Intelligence:** Extract practical implications and recommendations
-- **Confidence Scoring:** Assess reliability levels for different claims based on source quality
-- **Information Completeness:** Identify what information is missing or needs further research
-
-**SPECIAL INSTRUCTIONS:**
-- Prioritize insights from high-quality scraped sources over snippet-only sources
-- Clearly distinguish between verified information (from full content) and limited information (from snippets)
-- Highlight any contradictions between sources and attempt to resolve them
-- Focus on substantive insights that demonstrate deep understanding of the actual website content`
-      );
-      console.timeEnd('Step 3: AI Content Analysis & Synthesis');
-      
       // Final Output: Generate comprehensive research paper directly to main chat
-      await generateFinalOutput(shortenedQuery, strategyResult, analysisResult, serperResults);
+      await generateFinalOutput(shortenedQuery, strategyResult, serperResults);
       
     } catch (err) {
       console.error('Error in search execution:', err);
@@ -690,7 +598,6 @@ Error details: ${errorMessage}
   const generateFinalOutput = async (
     query: string,
     strategyResult: string,
-    analysisResult: string,
     serperResults: any
   ) => {
     console.time('Final Output Generation');
@@ -717,8 +624,19 @@ CRITICAL: Always show your thinking process using <think> tags before providing 
 
 <think>
 Let me analyze the research data and plan my comprehensive report...
-I need to examine the sources and identify key themes...
-My approach will be to structure this as...
+
+First, I'll examine the scraped content from each source to identify key themes and insights:
+- Source analysis: Looking at [specific sources] for [specific information]
+- Content quality assessment: [evaluation of source reliability]
+- Key findings extraction: [major insights discovered]
+- Cross-source validation: [checking for contradictions/agreements]
+- Synthesis approach: [how I'll structure the comprehensive report]
+
+My analysis reveals:
+[Detailed analysis of the content, identifying patterns, themes, and key insights]
+
+My approach will be to structure this as:
+[Report structure planning with specific sections based on findings]
 </think>
 
 Then provide your final research report after the thinking process.
@@ -809,8 +727,8 @@ Generate a comprehensive research report using the provided data and following t
 
 **Search Strategy:** ${serperResults.searchQueries?.join(', ') || 'N/A'}
 
-**Analysis Results:** 
-${analysisResult}
+**Content Analysis Instructions:** 
+Analyze the scraped website content below to identify key themes, extract insights, validate information across sources, and synthesize comprehensive findings. Focus on high-quality scraped content over snippet-only sources.
 
 **Sources:** ${serperResults.totalSources} total sources, ${serperResults.scrapedSources} with full content
 
@@ -819,25 +737,40 @@ ${serperResults.sources.map((s: any, i: number) =>
   `[${i+1}] ${s.title} - ${s.url.replace('https://', '').replace('http://', '').split('/')[0]} ${s.scraped ? '✓ Full Content' : '○ Summary'}`
 ).join('\n')}
 
-**Content Database:**
+**Content Database for Analysis:**
 ${serperResults.sources
   .filter((s: any) => s.scraped && s.content)
   .slice(0, 8)
-  .map((s: any, i: number) => `
+  .map((s: any, i: number) => {
+    const qualityIndicator = s.isQualityContent ? '✓ HIGH QUALITY' : '⚠ LOWER QUALITY';
+    const wordCount = s.wordCount ? ` (${s.wordCount} words)` : '';
+    const headings = s.headings?.length > 0 ? `\nKEY HEADINGS: ${s.headings.join(', ')}` : '';
+    
+    return `
 SOURCE [${i+1}]: ${s.title}
 DOMAIN: ${s.url.replace('https://', '').replace('http://', '').split('/')[0]}
-CONTENT: ${s.content.substring(0, 1200)}...
----`)
+QUALITY: ${qualityIndicator}${wordCount}${headings}
+CONTENT: ${s.content.substring(0, 1500)}...
+---`;
+  })
   .join('\n')}
 
-Requirements:
-- 1500-2500 words minimum
-- Follow report structure from system prompt
+ANALYSIS & SYNTHESIS REQUIREMENTS:
+In your <think> tags, perform comprehensive content analysis:
+- Examine each high-quality source for key insights and data points
+- Identify patterns, themes, and contradictions across sources
+- Assess source reliability and content quality
+- Cross-validate claims and resolve any conflicts
+- Extract specific quotes, statistics, and technical details
+- Synthesize findings into coherent themes
+
+REPORT REQUIREMENTS:
+- 1500-2500 words minimum comprehensive research report
+- Follow structured format from system prompt with detailed sections
 - Include specific names, dates, statistics, locations, technical details
 - Use numbered citations [1], [2], [3] corresponding to source registry
-- Create detailed subsections with extensive analysis
+- Create detailed subsections with extensive analysis based on your thinking
 - Include tables for comparative data when relevant
-- Extract specific quotes, data points, technical specifications
 - Provide multiple perspectives and stakeholder analysis
 - Analyze implications, consequences, future projections
 - Bold important terms, names, statistics, findings
@@ -938,11 +871,10 @@ Requirements:
 # Response for: ${query}
 
 ## Key Findings
-${analysisResult.split('\n').slice(0, 5).join('\n')}
+Based on the search results from ${serperResults.totalSources} sources, I can provide a partial analysis.
 
 ## Summary
-Based on the available information, I can provide a partial answer to your query.
-Some steps took longer than expected, but I've compiled the most relevant insights.
+I successfully gathered information from multiple sources but encountered processing time constraints while generating the comprehensive report. Please try again for a complete analysis.
 
 *Note: This is a partial response due to processing time constraints.*
 `;
@@ -959,10 +891,10 @@ Some steps took longer than expected, but I've compiled the most relevant insigh
 # Search Results for: ${query}
 
 ## Analysis Summary
-${analysisResult.substring(0, 500)}...
+I successfully collected information from ${serperResults.totalSources} sources but encountered an issue while generating the comprehensive analysis.
 
 ## Error Note
-I encountered an issue while generating the final comprehensive report. The above summary provides key insights from the analysis.
+I encountered an issue while generating the final comprehensive report. Please try again for a complete analysis.
 
 Error details: ${err instanceof Error ? err.message : String(err)}
 `;
