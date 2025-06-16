@@ -2,10 +2,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import styles from './Search.module.css';
 import { dedupedSerperRequest } from '@/utils/api-request-cache';
-import ReactMarkdown from 'react-markdown';
 import { motion } from 'framer-motion';
 import ThinkingButton from './ThinkingButton';
-import remarkGfm from 'remark-gfm';
 
 // Define step types
 type StepStatus = 'pending' | 'active' | 'completed' | 'error';
@@ -1161,21 +1159,6 @@ Error details: ${err instanceof Error ? err.message : String(err)}
               content={searchThinking} 
               isLive={isThinkingActive}
             />
-          </div>
-        )}
-        
-        {/* Final Output Display */}
-        {finalResult && finalResult.trim().length > 0 && (
-          <div className="mt-6">
-            <h3 className="text-base font-medium mb-3 text-cyan-400">Research Report</h3>
-            <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700">
-              <ReactMarkdown 
-                remarkPlugins={[remarkGfm]}
-                className="prose prose-sm dark:prose-invert max-w-none text-gray-200"
-              >
-                {finalResult}
-              </ReactMarkdown>
-            </div>
           </div>
         )}
         
