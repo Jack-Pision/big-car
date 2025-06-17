@@ -1683,37 +1683,40 @@ function TestChatComponent() {
   useEffect(() => {
     const saveMessages = async () => {
       if (activeSessionId && messages.length > 0) {
-        try {
-          // Use optimized batch saving
-          await optimizedSupabaseService.saveSessionMessages(activeSessionId, messages);
-          // Timestamp is updated automatically in batch
-          
-          // Update session title with AI-generated title after first AI response
-          const userMessages = messages.filter(msg => msg.role === 'user');
-          const aiMessages = messages.filter(msg => msg.role === 'assistant' && msg.isProcessed);
-          
-          // If this is the first AI response (1 user message, 1 completed AI message)
-          if (userMessages.length === 1 && aiMessages.length === 1) {
-            const firstUserMessage = userMessages[0];
-            const firstAiMessage = aiMessages[0];
-            
-            // Update title with AI-generated version
-            try {
-              // For performance, use simple title generation instead of AI
-              const simpleTitle = firstUserMessage.content.split(' ').slice(0, 5).join(' ');
-              await optimizedSupabaseService.updateSessionTitle(
-                activeSessionId, 
-                simpleTitle.length > 30 ? simpleTitle.substring(0, 30) + '...' : simpleTitle
-              );
-              // Trigger sidebar refresh to show updated title
-              setSidebarRefreshTrigger(prev => prev + 1);
-            } catch (error) {
-              console.error('Failed to update session title:', error);
-            }
-          }
-        } catch (error) {
-          console.error('Error saving messages:', error);
-        }
+        // Only save when last message is fully processed (skip during streaming)
+        const lastMsg = messages[messages.length - 1];
+        if (!lastMsg.isProcessed) return;
+         try {
+           // Use optimized batch saving
+           await optimizedSupabaseService.saveSessionMessages(activeSessionId, messages);
+           // Timestamp is updated automatically in batch
+           
+           // Update session title with AI-generated title after first AI response
+           const userMessages = messages.filter(msg => msg.role === 'user');
+           const aiMessages = messages.filter(msg => msg.role === 'assistant' && msg.isProcessed);
+           
+           // If this is the first AI response (1 user message, 1 completed AI message)
+           if (userMessages.length === 1 && aiMessages.length === 1) {
+             const firstUserMessage = userMessages[0];
+             const firstAiMessage = aiMessages[0];
+             
+             // Update title with AI-generated version
+             try {
+               // For performance, use simple title generation instead of AI
+               const simpleTitle = firstUserMessage.content.split(' ').slice(0, 5).join(' ');
+               await optimizedSupabaseService.updateSessionTitle(
+                 activeSessionId, 
+                 simpleTitle.length > 30 ? simpleTitle.substring(0, 30) + '...' : simpleTitle
+               );
+               // Trigger sidebar refresh to show updated title
+               setSidebarRefreshTrigger(prev => prev + 1);
+             } catch (error) {
+               console.error('Failed to update session title:', error);
+             }
+           }
+         } catch (error) {
+           console.error('Error saving messages:', error);
+         }
       }
     };
 
