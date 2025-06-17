@@ -77,12 +77,12 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
   const [error, setError] = useState<string | null>(savedState?.error || null);
   const [finalResult, setFinalResult] = useState<string>(savedState?.finalResult || '');
   const [firstStepThinking, setFirstStepThinking] = useState<string>(savedState?.firstStepThinking || '');
-  const [isExpanded, setIsExpanded] = useState(true); // Auto-expand for better UX
+  const [isExpanded, setIsExpanded] = useState(savedState?.isExpanded ?? true); // Persisted expand state
   const [hasExecuted, setHasExecuted] = useState<boolean>(savedState?.hasExecuted || false);
   
   // Think box state for Search component
   const [searchThinking, setSearchThinking] = useState<string>(savedState?.searchThinking || '');
-  const [isThinkingActive, setIsThinkingActive] = useState(true); // Auto-expand for better UX
+  const [isThinkingActive, setIsThinkingActive] = useState(savedState?.isThinkingActive ?? true); // Persisted thinking state
   
   // Save state to sessionStorage whenever relevant state changes
   const saveStateToStorage = useCallback(() => {
@@ -97,6 +97,8 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
         finalResult,
         firstStepThinking,
         searchThinking,
+        isExpanded,
+        isThinkingActive,
         hasExecuted,
         timestamp: Date.now()
       };
@@ -106,7 +108,7 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
     } catch (error) {
       console.error('Error saving to sessionStorage:', error);
     }
-  }, [query, steps, error, finalResult, firstStepThinking, searchThinking, hasExecuted]);
+  }, [query, steps, error, finalResult, firstStepThinking, searchThinking, isExpanded, isThinkingActive, hasExecuted]);
   
   // Function to clear old cache entries (keep only last 10 searches)
   const cleanupOldCacheEntries = () => {
@@ -137,7 +139,7 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
       saveStateToStorage();
       cleanupOldCacheEntries();
     }
-  }, [steps, error, finalResult, firstStepThinking, searchThinking, hasExecuted]);
+  }, [steps, error, finalResult, firstStepThinking, searchThinking, isExpanded, isThinkingActive, hasExecuted]);
   
   // Handle new query detection and auto-execute search
   useEffect(() => {
@@ -218,6 +220,13 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
       }
       if (savedState.searchThinking !== searchThinking) {
         setSearchThinking(savedState.searchThinking);
+      }
+      // Restore expand and thinking-active flags
+      if (typeof savedState.isExpanded === 'boolean' && savedState.isExpanded !== isExpanded) {
+        setIsExpanded(savedState.isExpanded);
+      }
+      if (typeof savedState.isThinkingActive === 'boolean' && savedState.isThinkingActive !== isThinkingActive) {
+        setIsThinkingActive(savedState.isThinkingActive);
       }
       
       console.log('[Search] ✅ State restoration completed - NO AUTO-EXECUTION');
@@ -1124,7 +1133,7 @@ Error details: ${err instanceof Error ? err.message : String(err)}
           {/* Expand/Collapse Arrow Button */}
           <motion.div
             className="absolute right-4 top-1/2 -translate-y-1/2 cursor-pointer"
-            onClick={() => setIsExpanded((v) => !v)}
+            onClick={() => setIsExpanded((v: boolean) => !v)}
             animate={{ rotate: isExpanded ? 0 : 180 }}
             transition={{ duration: 0.3 }}
             style={{ display: 'flex', alignItems: 'center' }}
