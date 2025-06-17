@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
+    "@langchain/core": "^0.3.59",
+    "@langchain/openai": "^0.5.13",
     "@supabase/supabase-js": "^2.49.4",
     "@types/jsdom": "^21.1.7",
     "@vercel/analytics": "^1.5.0",
