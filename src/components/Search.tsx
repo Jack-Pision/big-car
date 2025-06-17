@@ -27,11 +27,19 @@ export interface SearchProps {
 
 const MAX_STEP1_PROMPT_LENGTH = 3000; // Increased for enhanced prompts
 
+// Helper for safe base64-encoding of Unicode strings
+const safeBtoa = (str: string): string => {
+  const bytes = new TextEncoder().encode(str);
+  let binary = '';
+  bytes.forEach((b) => { binary += String.fromCharCode(b); });
+  return btoa(binary);
+};
+
 const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
   // Generate storage key based on query to maintain separate states for different searches
   const getStorageKey = (searchQuery: string) => {
     // Use a more reliable hash to avoid collisions
-    const hash = btoa(unescape(encodeURIComponent(searchQuery))).replace(/[+/=]/g, '');
+    const hash = safeBtoa(searchQuery).replace(/[+/=]/g, '');
     return `search_state_${hash.slice(0, 32)}`;
   };
   
@@ -302,7 +310,7 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
       if (stepId !== 'understand') {
         // Safe Unicode base64 encoding
         const keyStr = conciseSystemPrompt + conciseUserPrompt;
-        const b64 = btoa(unescape(encodeURIComponent(keyStr)));
+        const b64 = safeBtoa(keyStr);
         const hash = b64.slice(0, 32);
         cacheKey = `search_${stepId}_${hash}`;
         cachedResult = smartCache.get<string>(cacheKey);
