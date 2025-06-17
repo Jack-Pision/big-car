@@ -312,7 +312,7 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
       
       // Add a timeout to avoid hanging on slow responses
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 25000); // 25 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout for Nvidia step
       
       const response = await fetchNvidiaWithDelay('/api/nvidia', {
         method: 'POST',
@@ -403,15 +403,19 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
       return finalResult;
     } catch (err) {
       console.error(`Error in ${stepId} step:`, err);
-      // If it's an abort error (timeout), provide a special message
+      // If it's an abort error (timeout), treat as completed for the planner
       const errorMessage = err instanceof Error 
         ? (err.name === 'AbortError' 
-            ? 'This step took too long to complete. Continuing with partial results.'
+            ? 'This step took too long to complete. Proceeding with partial strategy.'
             : err.message) 
         : String(err);
       
-      // Still mark as completed but with an error flag
-      updateStepStatus(stepId, 'error', errorMessage);
+      // For the planning step, treat timeout as completed; otherwise flag error
+      if (stepId === 'understand') {
+        updateStepStatus(stepId, 'completed', errorMessage);
+      } else {
+        updateStepStatus(stepId, 'error', errorMessage);
+      }
       
       // Return a partial result instead of failing completely
       return `[Step timed out - proceeding with limited information]`;
@@ -686,7 +690,6 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
     try {
       setError(null);
       setFirstStepThinking(''); // Reset the first step thinking for new searches
-      setHasExecuted(true); // Mark that search has been executed to prevent re-execution on refresh
       
       // Shorten the query if it's very long
       const shortenedQuery = query.length > 500 ? query.substring(0, 500) + "..." : query;
@@ -767,6 +770,8 @@ Output only the numbered search phrases, nothing else.`;
       // Final Output: Generate comprehensive research paper directly to main chat
       await generateFinalOutput(shortenedQuery, strategyResult, serperResults);
       
+      // Mark full search completed, enable state persistence
+      setHasExecuted(true);
     } catch (err) {
       console.error('Error in search execution:', err);
       const errorMessage = err instanceof Error ? err.message : String(err);
