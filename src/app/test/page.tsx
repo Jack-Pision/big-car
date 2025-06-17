@@ -2138,16 +2138,15 @@ function TestChatComponent() {
             );
           });
           
-          // Then, after a brief delay, apply final processing with embedded think tags
+          // Then, after a brief delay, apply final processing WITHOUT embedding think tags
+          // since thinking was already displayed during live streaming
           setTimeout(() => {
             setMessages((prev) => {
               return prev.map(msg => 
                 msg.id === aiMessageId 
                   ? { 
                       ...msg, 
-                      content: finalThinkContent.trim().length > 0 
-                        ? `<think>${finalThinkContent}</think>${finalMainContent}` // Embed think tags for ThinkingButton to process
-                        : finalMainContent, // No thinking content, just main content
+                      content: finalMainContent, // Only main content, no think tags to avoid duplication
                       contentType: 'conversation',
                       isProcessed: true,
                     }
