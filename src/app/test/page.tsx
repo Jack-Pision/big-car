@@ -7,6 +7,7 @@ import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import Sidebar from '../../components/Sidebar';
 import HamburgerMenu from '../../components/HamburgerMenu';
+import AuthProvider, { useAuth } from '../../components/AuthProvider';
 import { useRouter } from 'next/navigation';
 import { supabase, createSupabaseClient } from '@/lib/supabase-client';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -1580,7 +1581,8 @@ const extractThinkContentDuringStream = (content: string) => {
   };
 };
 
-export default function TestChat() {
+function TestChatComponent() {
+  const { user, showSettingsModal } = useAuth();
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<LocalMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -2939,11 +2941,21 @@ export default function TestChat() {
           onNewChat={handleNewChatRequest}
           onSelectSession={handleSelectSession}
           refreshTrigger={sidebarRefreshTrigger}
+          user={user}
+          onSettingsClick={showSettingsModal}
         />
       </div>
       {chatError && (
         <div className="text-red-500 text-sm text-center mt-2">{chatError}</div>
       )}
     </>
+  );
+}
+
+export default function TestChat() {
+  return (
+    <AuthProvider>
+      <TestChatComponent />
+    </AuthProvider>
   );
 } 
