@@ -298,7 +298,8 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
       
       // Check cache first for this specific step
       const cacheKey = `search_${stepId}_${btoa(conciseSystemPrompt + conciseUserPrompt).slice(0, 32)}`;
-      const cachedResult = smartCache.get<string>(cacheKey);
+      // Always call Nvidia for the 'understand' step; only cache later steps
+      const cachedResult = stepId === 'understand' ? null : smartCache.get<string>(cacheKey);
       
       if (cachedResult) {
         console.log(`[Search Cache] Using cached result for step: ${stepId}`);
