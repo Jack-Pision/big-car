@@ -3,10 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { Session } from '@/lib/types';
 import {
+  optimizedSupabaseService,
   getSessions,
   deleteSession as deleteSessionFromService,
   updateSessionTitle,
-} from '@/lib/supabase-session-service';
+} from '@/lib/optimized-supabase-service';
 
 interface SidebarProps {
   open: boolean;
@@ -47,7 +48,8 @@ export default function Sidebar({
     const loadSessions = async () => {
       if (open) {
         try {
-          const sessions = await getSessions();
+          // Use optimized service with caching
+          const sessions = await optimizedSupabaseService.getSessions();
           setSessions(sessions);
         } catch (error) {
           console.error('Error loading sessions:', error);

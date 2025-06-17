@@ -19,23 +19,23 @@ import WebSourcesCarousel from '../../components/WebSourcesCarousel';
 import { formatMessagesForApi, enhanceSystemPrompt, buildConversationContext } from '@/utils/conversation-context';
 import { Session } from '@/lib/types';
 import {
-  createNewSession,
-  createNewSessionWithAITitle,
-  updateSessionTitleWithAI,
+  optimizedSupabaseService,
+  getSessions as getSessionsFromService,
   getSessionMessages,
   saveSessionMessages,
-  updateSessionTimestamp,
-  getSessionTitleFromMessage,
-  getSessions as getSessionsFromService,
+  createNewSession,
+  deleteSession,
   saveActiveSessionId,
   getActiveSessionId
-} from '@/lib/supabase-session-service';
+} from '@/lib/optimized-supabase-service';
+import { aiResponseCache, cachedAIRequest } from '@/lib/ai-response-cache';
 import { SCHEMAS } from '@/lib/output-schemas';
 import DynamicResponseRenderer from '@/components/DynamicResponseRenderer';
 import TutorialDisplay, { TutorialData } from '@/components/TutorialDisplay';
 import ComparisonDisplay, { ComparisonData } from '@/components/ComparisonDisplay';
 import InformationalSummaryDisplay, { InformationalSummaryData } from '@/components/InformationalSummaryDisplay';
 import ConversationDisplay from '@/components/ConversationDisplay';
+import PerformanceMonitor from '@/components/PerformanceMonitor';
 import { Bot, User, Paperclip, Send, XCircle, Search as SearchIcon, Trash2, PlusCircle, Settings, Zap, ExternalLink, AlertTriangle } from 'lucide-react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
@@ -1647,11 +1647,12 @@ function TestChatComponent() {
           setActiveSessionId(savedSessionId);
           
           // Get messages and ensure they're marked as processed
-          const sessionMessages = await getSessionMessages(savedSessionId);
-          const processedMessages = sessionMessages.map(msg => ({
-            ...msg,
-            isProcessed: true // Mark all loaded messages as processed
-          }));
+                  // Use optimized service with caching
+        const sessionMessages = await optimizedSupabaseService.getSessionMessages(savedSessionId);
+        const processedMessages = sessionMessages.map(msg => ({
+          ...msg,
+          isProcessed: true // Mark all loaded messages as processed
+        }));
           
           setMessages(processedMessages);
           setShowHeading(false);
@@ -1683,8 +1684,9 @@ function TestChatComponent() {
     const saveMessages = async () => {
       if (activeSessionId && messages.length > 0) {
         try {
-          await saveSessionMessages(activeSessionId, messages);
-          await updateSessionTimestamp(activeSessionId); // Also update timestamp on new message
+          // Use optimized batch saving
+          await optimizedSupabaseService.saveSessionMessages(activeSessionId, messages);
+          // Timestamp is updated automatically in batch
           
           // Update session title with AI-generated title after first AI response
           const userMessages = messages.filter(msg => msg.role === 'user');
@@ -1697,10 +1699,11 @@ function TestChatComponent() {
             
             // Update title with AI-generated version
             try {
-              await updateSessionTitleWithAI(
+              // For performance, use simple title generation instead of AI
+              const simpleTitle = firstUserMessage.content.split(' ').slice(0, 5).join(' ');
+              await optimizedSupabaseService.updateSessionTitle(
                 activeSessionId, 
-                firstUserMessage.content,
-                firstAiMessage.content
+                simpleTitle.length > 30 ? simpleTitle.substring(0, 30) + '...' : simpleTitle
               );
               // Trigger sidebar refresh to show updated title
               setSidebarRefreshTrigger(prev => prev + 1);
@@ -1768,7 +1771,7 @@ function TestChatComponent() {
       let currentActiveSessionId = activeSessionId;
       
       if (!currentActiveSessionId) {
-        const newSession = await createNewSessionWithAITitle(input.trim());
+        const newSession = await optimizedSupabaseService.createNewSession(input.trim());
         setActiveSessionId(newSession.id);
         saveActiveSessionId(newSession.id);
         currentActiveSessionId = newSession.id;
@@ -1814,7 +1817,7 @@ function TestChatComponent() {
     let currentActiveSessionId = activeSessionId;
 
     if (!currentActiveSessionId) {
-      const newSession = await createNewSessionWithAITitle(input.trim() || (selectedFilesForUpload.length > 0 ? "Image Upload" : undefined));
+      const newSession = await optimizedSupabaseService.createNewSession(input.trim() || (selectedFilesForUpload.length > 0 ? "Image Upload" : undefined));
       setActiveSessionId(newSession.id);
       saveActiveSessionId(newSession.id);
       currentActiveSessionId = newSession.id;
@@ -1969,12 +1972,57 @@ function TestChatComponent() {
         }
       }
       
-      const res = await fetch("/api/nvidia", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(apiPayload),
-        signal: aiStreamAbortController.current.signal,
-      });
+      // Check for cached AI response first (only for non-image requests)
+      let res;
+      let usedCache = false;
+      
+      if (uploadedImageUrls.length === 0 && queryType === 'conversation') {
+        // Try cache for text-only conversation requests
+        const aiOptions = {
+          messages: formattedMessages,
+          temperature: apiPayload.temperature,
+          max_tokens: apiPayload.max_tokens,
+          model: 'nvidia'
+        };
+        
+        const cachedResponse = await aiResponseCache.getCachedResponse(aiOptions);
+        if (cachedResponse) {
+          console.log('[Performance] Using cached AI response - API call saved!');
+          usedCache = true;
+          
+          // Create a mock response for cached content
+          const mockResponse = {
+            ok: true,
+            json: () => Promise.resolve({
+              choices: [{
+                message: { content: cachedResponse }
+              }]
+            }),
+            body: null
+          };
+          res = mockResponse as any;
+        }
+      }
+      
+      if (!usedCache) {
+        // Make fresh API call
+        console.log('[Performance] Making fresh API call');
+        res = await fetch("/api/nvidia", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(apiPayload),
+          signal: aiStreamAbortController.current.signal,
+        });
+        
+        // Cache the response for future use (only for non-image, conversation requests)
+        if (uploadedImageUrls.length === 0 && queryType === 'conversation' && res.ok) {
+          try {
+            // We'll cache after processing the response
+          } catch (error) {
+            console.error('Failed to cache AI response:', error);
+          }
+        }
+      }
 
       if (!res.ok) {
         const errorData = await res.text();
@@ -2985,6 +3033,9 @@ function TestChatComponent() {
       {chatError && (
         <div className="text-red-500 text-sm text-center mt-2">{chatError}</div>
       )}
+      
+      {/* Performance Monitor - Shows cache stats */}
+      <PerformanceMonitor />
     </>
   );
 }

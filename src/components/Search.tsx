@@ -2,6 +2,8 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import styles from './Search.module.css';
 import { dedupedSerperRequest } from '@/utils/api-request-cache';
+import { smartCache } from '@/lib/smart-cache';
+import { aiResponseCache } from '@/lib/ai-response-cache';
 import { motion } from 'framer-motion';
 import ThinkingButton from './ThinkingButton';
 
@@ -280,6 +282,19 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
         ? userPrompt.substring(0, 1000) + "..."
         : userPrompt;
       
+      // Check cache first for this specific step
+      const cacheKey = `search_${stepId}_${btoa(conciseSystemPrompt + conciseUserPrompt).slice(0, 32)}`;
+      const cachedResult = smartCache.get<string>(cacheKey);
+      
+      if (cachedResult) {
+        console.log(`[Search Cache] Using cached result for step: ${stepId}`);
+        updateStepStatus(stepId, 'completed');
+        if (stepId === 'understand') {
+          setFirstStepThinking(cachedResult);
+        }
+        return cachedResult;
+      }
+      
       // Add a timeout to avoid hanging on slow responses
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 25000); // 25 second timeout
@@ -364,6 +379,10 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
       
       // Limit result size for faster processing in next steps
       const finalResult = result.length > 2000 ? result.substring(0, 2000) + "..." : result;
+      
+      // Cache the result for future use (cache for 30 minutes)
+      smartCache.set(cacheKey, finalResult, 30 * 60 * 1000);
+      console.log(`[Search Cache] Cached result for step: ${stepId}`);
       
       updateStepStatus(stepId, 'completed');
       return finalResult;
