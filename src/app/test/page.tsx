@@ -2138,15 +2138,17 @@ function TestChatComponent() {
             );
           });
           
-          // Then, after a brief delay, apply final processing WITHOUT embedding think tags
-          // since thinking was already displayed during live streaming
+          // Then, after a brief delay, apply final processing WITH embedded think tags
+          // to preserve thinking content for "Thought" state after completion
           setTimeout(() => {
             setMessages((prev) => {
               return prev.map(msg => 
                 msg.id === aiMessageId 
                   ? { 
                       ...msg, 
-                      content: finalMainContent, // Only main content, no think tags to avoid duplication
+                      content: finalThinkContent.trim().length > 0 
+                        ? `<think>${finalThinkContent}</think>${finalMainContent}` // Preserve thinking for permanent "Thought" state
+                        : finalMainContent, // No thinking content, just main content
                       contentType: 'conversation',
                       isProcessed: true,
                     }
@@ -2157,9 +2159,10 @@ function TestChatComponent() {
         }
         
         // Clear the live thinking state with a smooth transition
+        // BUT keep the thinking content embedded in the message for permanent display
         setTimeout(() => {
           setCurrentThinkingMessageId(null);
-          setLiveThinking('');
+          setLiveThinking(''); // Clear live state but thinking remains in message content
         }, 400); // Clear thinking state after content transition
         
         // Handle image context if needed
