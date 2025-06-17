@@ -1640,6 +1640,9 @@ function TestChatComponent() {
   // Effect to load the last active session or create a new one on initial load
   useEffect(() => {
     const loadActiveSession = async () => {
+      // Check if user exists at the time of execution instead of depending on it
+      if (!user) return;
+      
       try {
         const savedSessionId = await getActiveSessionId();
         if (savedSessionId) {
@@ -1674,10 +1677,9 @@ function TestChatComponent() {
       }
     };
 
-    if (user) {
-      loadActiveSession();
-    }
-  }, [user]);
+    // Only run this effect once when component mounts
+    loadActiveSession();
+  }, []); // Empty dependency array - only run once
 
   // Effect to save messages whenever they change for the active session
   useEffect(() => {
