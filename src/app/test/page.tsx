@@ -29,7 +29,7 @@ import {
   getSessions as getSessionsFromService,
   saveActiveSessionId,
   getActiveSessionId
-} from '@/lib/session-service';
+} from '@/lib/supabase-session-service';
 import { SCHEMAS } from '@/lib/output-schemas';
 import DynamicResponseRenderer from '@/components/DynamicResponseRenderer';
 import TutorialDisplay, { TutorialData } from '@/components/TutorialDisplay';
@@ -1639,59 +1639,85 @@ function TestChatComponent() {
 
   // Effect to load the last active session or create a new one on initial load
   useEffect(() => {
-    const savedSessionId = getActiveSessionId();
-    if (savedSessionId) {
-      // Load the saved session
-      setActiveSessionId(savedSessionId);
-      
-      // Get messages and ensure they're marked as processed
-      const sessionMessages = getSessionMessages(savedSessionId);
-      const processedMessages = sessionMessages.map(msg => ({
-        ...msg,
-        isProcessed: true // Mark all loaded messages as processed
-      }));
-      
-      setMessages(processedMessages);
-      setShowHeading(false);
-      setHasInteracted(true);
-    } else {
-      // Show welcome page for new users
-      setShowHeading(true);
-      setHasInteracted(false);
-      setActiveSessionId(null);
-      setMessages([]);
+    const loadActiveSession = async () => {
+      try {
+        const savedSessionId = await getActiveSessionId();
+        if (savedSessionId) {
+          // Load the saved session
+          setActiveSessionId(savedSessionId);
+          
+          // Get messages and ensure they're marked as processed
+          const sessionMessages = await getSessionMessages(savedSessionId);
+          const processedMessages = sessionMessages.map(msg => ({
+            ...msg,
+            isProcessed: true // Mark all loaded messages as processed
+          }));
+          
+          setMessages(processedMessages);
+          setShowHeading(false);
+          setHasInteracted(true);
+        } else {
+          // Show welcome page for new users
+          setShowHeading(true);
+          setHasInteracted(false);
+          setActiveSessionId(null);
+          setMessages([]);
+        }
+      } catch (error) {
+        console.error('Error loading active session:', error);
+        // Fallback to showing welcome page
+        setShowHeading(true);
+        setHasInteracted(false);
+        setActiveSessionId(null);
+        setMessages([]);
+      }
+    };
+
+    if (user) {
+      loadActiveSession();
     }
-  }, []);
+  }, [user]);
 
   // Effect to save messages whenever they change for the active session
   useEffect(() => {
-    if (activeSessionId && messages.length > 0) {
-      saveSessionMessages(activeSessionId, messages);
-      updateSessionTimestamp(activeSessionId); // Also update timestamp on new message
-      
-      // Update session title with AI-generated title after first AI response
-      const userMessages = messages.filter(msg => msg.role === 'user');
-      const aiMessages = messages.filter(msg => msg.role === 'assistant' && msg.isProcessed);
-      
-      // If this is the first AI response (1 user message, 1 completed AI message)
-      if (userMessages.length === 1 && aiMessages.length === 1) {
-        const firstUserMessage = userMessages[0];
-        const firstAiMessage = aiMessages[0];
-        
-        // Update title with AI-generated version
-        updateSessionTitleWithAI(
-          activeSessionId, 
-          firstUserMessage.content,
-          firstAiMessage.content
-        ).then(() => {
-          // Trigger sidebar refresh to show updated title
-          setSidebarRefreshTrigger(prev => prev + 1);
-        }).catch(error => {
-          console.error('Failed to update session title:', error);
-        });
+    const saveMessages = async () => {
+      if (activeSessionId && messages.length > 0) {
+        try {
+          await saveSessionMessages(activeSessionId, messages);
+          await updateSessionTimestamp(activeSessionId); // Also update timestamp on new message
+          
+          // Update session title with AI-generated title after first AI response
+          const userMessages = messages.filter(msg => msg.role === 'user');
+          const aiMessages = messages.filter(msg => msg.role === 'assistant' && msg.isProcessed);
+          
+          // If this is the first AI response (1 user message, 1 completed AI message)
+          if (userMessages.length === 1 && aiMessages.length === 1) {
+            const firstUserMessage = userMessages[0];
+            const firstAiMessage = aiMessages[0];
+            
+            // Update title with AI-generated version
+            try {
+              await updateSessionTitleWithAI(
+                activeSessionId, 
+                firstUserMessage.content,
+                firstAiMessage.content
+              );
+              // Trigger sidebar refresh to show updated title
+              setSidebarRefreshTrigger(prev => prev + 1);
+            } catch (error) {
+              console.error('Failed to update session title:', error);
+            }
+          }
+        } catch (error) {
+          console.error('Error saving messages:', error);
+        }
       }
+    };
+
+    if (user) {
+      saveMessages();
     }
-  }, [messages, activeSessionId]);
+  }, [messages, activeSessionId, user]);
 
   // Helper to show the image in chat
   const showImageMsg = (content: string, imgSrc: string) => {
@@ -2191,31 +2217,38 @@ function TestChatComponent() {
   // Add a function to clear the Advance Search conversation history
 
 
-  const handleSelectSession = (sessionId: string) => {
+  const handleSelectSession = async (sessionId: string) => {
     if (!sessionId) { // Handling deletion or empty selection case
         handleNewChatRequest();
         return;
     }
-    setActiveSessionId(sessionId);
-    saveActiveSessionId(sessionId); // Save the active session
     
-    // Get messages and ensure they're marked as processed
-    const sessionMessages = getSessionMessages(sessionId);
-    const processedMessages = sessionMessages.map(msg => ({
-      ...msg,
-      isProcessed: true // Mark all loaded messages as processed
-    }));
-    
-    setMessages(processedMessages);
-    setInput('');
-    setImagePreviewUrls([]);
-    setSelectedFilesForUpload([]);
-    setShowHeading(messages.length === 0); // Show heading if the loaded session is empty
-    setHasInteracted(true); // Assume interaction when a session is selected
-    setSidebarOpen(false); // Close sidebar
+    try {
+      setActiveSessionId(sessionId);
+      await saveActiveSessionId(sessionId); // Save the active session
+      
+      // Get messages and ensure they're marked as processed
+      const sessionMessages = await getSessionMessages(sessionId);
+      const processedMessages = sessionMessages.map(msg => ({
+        ...msg,
+        isProcessed: true // Mark all loaded messages as processed
+      }));
+      
+      setMessages(processedMessages);
+      setInput('');
+      setImagePreviewUrls([]);
+      setSelectedFilesForUpload([]);
+      setShowHeading(processedMessages.length === 0); // Show heading if the loaded session is empty
+      setHasInteracted(true); // Assume interaction when a session is selected
+      setSidebarOpen(false); // Close sidebar
+    } catch (error) {
+      console.error('Error selecting session:', error);
+      // Fallback to new chat
+      handleNewChatRequest();
+    }
   };
 
-  const handleNewChatRequest = () => {
+  const handleNewChatRequest = async () => {
     setSidebarOpen(false);
     setInput('');
     setImagePreviewUrls([]);
@@ -2223,7 +2256,11 @@ function TestChatComponent() {
     setShowHeading(true); // Show welcoming heading
     setHasInteracted(false); // Reset interaction state
     setActiveSessionId(null);
-    saveActiveSessionId(null); // Clear the active session
+    try {
+      await saveActiveSessionId(null); // Clear the active session
+    } catch (error) {
+      console.error('Error clearing active session:', error);
+    }
     setMessages([]);
   };
 

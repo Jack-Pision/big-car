@@ -1,6 +1,7 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
+import { getBoardContent, saveBoardContent } from '@/lib/supabase-board-service';
 import Split from 'react-split';
 import Sidebar from '../../components/Sidebar';
 import { useRouter } from 'next/navigation';
@@ -272,14 +273,39 @@ export default function BoardPage() {
     document.execCommand(command, false, value);
   }
 
-  // Auto-save board content to localStorage
+  // Auto-save board content to Supabase
   useEffect(() => {
-    localStorage.setItem("boardContent", sections.join("\n"));
-    localStorage.setItem("boardTitle", boardTitle);
+    const saveToSupabase = async () => {
+      try {
+        await saveBoardContent(boardTitle, sections.join("\n"));
+      } catch (error) {
+        console.error('Error saving board content:', error);
+      }
+    };
+
+    // Debounce saves to avoid too many API calls
+    const timeoutId = setTimeout(saveToSupabase, 1000);
+    return () => clearTimeout(timeoutId);
   }, [sections, boardTitle]);
+  
+  // Load board content from Supabase on mount
   useEffect(() => {
-    setSections(localStorage.getItem("boardContent")?.split("\n") || [""]);
-    setBoardTitle(localStorage.getItem("boardTitle") || "Untitled Document");
+    const loadBoardContent = async () => {
+      try {
+        const boardContent = await getBoardContent();
+        if (boardContent) {
+          setSections(boardContent.content.split("\n") || [""]);
+          setBoardTitle(boardContent.title || "Untitled Document");
+        }
+      } catch (error) {
+        console.error('Error loading board content:', error);
+        // Fallback to empty content
+        setSections([""]);
+        setBoardTitle("Untitled Document");
+      }
+    };
+
+    loadBoardContent();
   }, []);
 
   return (

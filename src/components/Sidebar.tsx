@@ -5,7 +5,8 @@ import { Session } from '@/lib/types';
 import {
   getSessions,
   deleteSession as deleteSessionFromService,
-} from '@/lib/session-service';
+  updateSessionTitle,
+} from '@/lib/supabase-session-service';
 
 interface SidebarProps {
   open: boolean;
@@ -43,21 +44,36 @@ export default function Sidebar({
   const router = useRouter();
 
   useEffect(() => {
-    if (open) {
-      setSessions(getSessions());
-    }
+    const loadSessions = async () => {
+      if (open) {
+        try {
+          const sessions = await getSessions();
+          setSessions(sessions);
+        } catch (error) {
+          console.error('Error loading sessions:', error);
+          setSessions([]);
+        }
+      }
+    };
+    
+    loadSessions();
   }, [open, refreshTrigger]);
 
   const handleSessionSelect = (sessionId: string) => {
     onSelectSession(sessionId);
   };
 
-  const handleDeleteSession = (sessionId: string) => {
-    deleteSessionFromService(sessionId);
-    setSessions(getSessions());
-    setShowDeleteId(null);
-    if (activeSessionId === sessionId) {
-      onSelectSession('');
+  const handleDeleteSession = async (sessionId: string) => {
+    try {
+      await deleteSessionFromService(sessionId);
+      const sessions = await getSessions();
+      setSessions(sessions);
+      setShowDeleteId(null);
+      if (activeSessionId === sessionId) {
+        onSelectSession('');
+      }
+    } catch (error) {
+      console.error('Error deleting session:', error);
     }
   };
 
@@ -86,13 +102,22 @@ export default function Sidebar({
   };
 
   // Handler for save edit
-  const handleEditSave = (id: string) => {
-    setSessions((prev) => prev.map(s => s.id === id ? { ...s, title: editValue } : s));
-    // Persist the change
-    const updatedSessions = getSessions().map(s => s.id === id ? { ...s, title: editValue } : s);
-    localStorage.setItem('sessions', JSON.stringify(updatedSessions));
-    setEditingId(null);
-    setEditValue('');
+  const handleEditSave = async (id: string) => {
+    try {
+      // Update UI optimistically
+      setSessions((prev) => prev.map(s => s.id === id ? { ...s, title: editValue } : s));
+      
+      // Persist the change to Supabase
+      await updateSessionTitle(id, editValue);
+      
+      setEditingId(null);
+      setEditValue('');
+    } catch (error) {
+      console.error('Error updating session title:', error);
+      // Revert UI change on error
+      const sessions = await getSessions();
+      setSessions(sessions);
+    }
   };
 
   // Handler for cancel edit

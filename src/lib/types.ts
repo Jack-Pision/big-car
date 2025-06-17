@@ -1,28 +1,55 @@
 export interface Session {
   id: string;
+  user_id?: string;
   title: string;
-  timestamp: number; // Timestamp of the last message or session creation
-  // You might want to add a snippet of the last message later
+  created_at?: string;
+  updated_at?: string;
+  // For backward compatibility with localStorage
+  timestamp?: number;
 }
 
-// Re-exporting existing Message type if needed, or it can be imported directly
-// For now, we assume Message type is available from where it's currently defined.
-// If not, we would include it here:
-/*
 export interface Message {
-  role: 'user' | 'assistant' | 'deep-research';
+  id?: string;
+  session_id?: string;
+  user_id?: string;
+  role: 'user' | 'assistant' | 'search-ui';
   content: string;
+  image_urls?: string[];
+  web_sources?: any;
+  structured_content?: any;
+  parent_id?: string;
+  query?: string;
+  is_search_result?: boolean;
+  is_processed?: boolean;
+  is_streaming?: boolean;
+  content_type?: string;
+  created_at?: string;
+  // For backward compatibility with localStorage
   imageUrls?: string[];
-  webSources?: WebSource[]; // Assuming WebSource is defined elsewhere or here
-  researchId?: string;
-  id: string;
-  timestamp: number;
+  webSources?: any;
+  structuredContent?: any;
   parentId?: string;
+  isSearchResult?: boolean;
+  isProcessed?: boolean;
+  isStreaming?: boolean;
+  contentType?: string;
+  timestamp?: number;
 }
 
-export interface WebSource {
-  url: string;
+export interface BoardContent {
+  id?: string;
+  user_id?: string;
   title: string;
-  snippet?: string;
+  content: string;
+  created_at?: string;
+  updated_at?: string;
 }
-*/ 
+
+export interface UserPreferences {
+  id?: string;
+  user_id?: string;
+  active_session_id?: string | null;
+  preferences?: any;
+  created_at?: string;
+  updated_at?: string;
+} 

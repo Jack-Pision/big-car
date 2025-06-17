@@ -2,8 +2,10 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { getCurrentSession, onAuthStateChange } from '@/lib/auth';
+import { migrateLocalStorageToSupabase, clearLocalStorageData, hasLocalStorageData } from '@/lib/migrate-to-supabase';
 import AuthModal from './AuthModal';
 import SettingsModal from './SettingsModal';
+import toast from 'react-hot-toast';
 
 interface User {
   id: string;
@@ -51,10 +53,24 @@ export default function AuthProvider({ children }: AuthProviderProps) {
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = onAuthStateChange((session) => {
+    const { data: { subscription } } = onAuthStateChange(async (session) => {
       if (session?.user && session.user.email) {
         setUser(session.user as User);
         setAuthModalOpen(false);
+        
+        // Check for localStorage data migration
+        if (hasLocalStorageData()) {
+          try {
+            const result = await migrateLocalStorageToSupabase();
+            if (result.success && (result.sessionsCount > 0 || result.messagesCount > 0)) {
+              toast.success(`Successfully migrated ${result.sessionsCount} sessions and ${result.messagesCount} messages to your account!`);
+              clearLocalStorageData();
+            }
+          } catch (error) {
+            console.error('Migration failed:', error);
+            toast.error('Failed to migrate your chat history. Please contact support if this persists.');
+          }
+        }
       } else {
         setUser(null);
         setAuthModalOpen(true);
