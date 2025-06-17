@@ -2750,8 +2750,10 @@ function TestChatComponent() {
                 const cleanContent = rawContent.replace(/<thinking-indicator.*?>\n<\/thinking-indicator>\n|<thinking-indicator.*?\/>/g, '');
                 const isStoppedMsg = cleanContent.trim() === '[Response stopped by user]';
                 
-                // Process think tags and extract them
-                const { processedContent, thinkBlocks, isLiveThinking } = processThinkTags(cleanContent);
+                // Process think tags and extract them - BUT SKIP for search results since Search component already handled thinking
+                const { processedContent, thinkBlocks, isLiveThinking } = msg.isSearchResult 
+                  ? { processedContent: cleanContent, thinkBlocks: [], isLiveThinking: false }
+                  : processThinkTags(cleanContent);
                 const finalContent = makeCitationsClickable(processedContent, msg.webSources || []);
                 
                 if (showPulsingDot && i === messages.length -1 ) setShowPulsingDot(false);
