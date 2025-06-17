@@ -31,16 +31,7 @@ CREATE TABLE IF NOT EXISTS messages (
     CONSTRAINT messages_role_valid CHECK (role IN ('user', 'assistant', 'search-ui'))
 );
 
--- Create board_content table for board functionality
-CREATE TABLE IF NOT EXISTS board_content (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-    title TEXT NOT NULL DEFAULT 'Untitled Document',
-    content TEXT NOT NULL DEFAULT '',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    CONSTRAINT board_title_length CHECK (char_length(title) <= 200)
-);
+
 
 -- Create user_preferences table for settings
 CREATE TABLE IF NOT EXISTS user_preferences (
@@ -58,13 +49,13 @@ CREATE INDEX IF NOT EXISTS sessions_updated_at_idx ON sessions(updated_at DESC);
 CREATE INDEX IF NOT EXISTS messages_session_id_idx ON messages(session_id);
 CREATE INDEX IF NOT EXISTS messages_user_id_idx ON messages(user_id);
 CREATE INDEX IF NOT EXISTS messages_created_at_idx ON messages(created_at);
-CREATE INDEX IF NOT EXISTS board_content_user_id_idx ON board_content(user_id);
+
 CREATE INDEX IF NOT EXISTS user_preferences_user_id_idx ON user_preferences(user_id);
 
 -- Enable Row Level Security
 ALTER TABLE sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
-ALTER TABLE board_content ENABLE ROW LEVEL SECURITY;
+
 ALTER TABLE user_preferences ENABLE ROW LEVEL SECURITY;
 
 -- Create RLS policies for sessions
@@ -93,18 +84,7 @@ CREATE POLICY "Users can update own messages" ON messages
 CREATE POLICY "Users can delete own messages" ON messages
     FOR DELETE USING (auth.uid() = user_id);
 
--- Create RLS policies for board_content
-CREATE POLICY "Users can view own board content" ON board_content
-    FOR SELECT USING (auth.uid() = user_id);
 
-CREATE POLICY "Users can insert own board content" ON board_content
-    FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can update own board content" ON board_content
-    FOR UPDATE USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can delete own board content" ON board_content
-    FOR DELETE USING (auth.uid() = user_id);
 
 -- Create RLS policies for user_preferences
 CREATE POLICY "Users can view own preferences" ON user_preferences
@@ -132,8 +112,7 @@ $$ language 'plpgsql';
 CREATE TRIGGER update_sessions_updated_at BEFORE UPDATE ON sessions
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_board_content_updated_at BEFORE UPDATE ON board_content
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
 
 CREATE TRIGGER update_user_preferences_updated_at BEFORE UPDATE ON user_preferences
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column(); 

@@ -36,14 +36,7 @@ export interface Message {
   timestamp?: number;
 }
 
-export interface BoardContent {
-  id?: string;
-  user_id?: string;
-  title: string;
-  content: string;
-  created_at?: string;
-  updated_at?: string;
-}
+
 
 export interface UserPreferences {
   id?: string;
