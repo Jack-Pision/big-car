@@ -1681,49 +1681,44 @@ function TestChatComponent() {
 
   // Effect to save messages whenever they change for the active session
   useEffect(() => {
-    const saveMessages = async () => {
-      if (activeSessionId && messages.length > 0) {
-        // Only save when last message is fully processed (skip during streaming)
-        const lastMsg = messages[messages.length - 1];
-        if (!lastMsg.isProcessed) return;
-         try {
-           // Use optimized batch saving
-           await optimizedSupabaseService.saveSessionMessages(activeSessionId, messages);
-           // Timestamp is updated automatically in batch
-           
-           // Update session title with AI-generated title after first AI response
-           const userMessages = messages.filter(msg => msg.role === 'user');
-           const aiMessages = messages.filter(msg => msg.role === 'assistant' && msg.isProcessed);
-           
-           // If this is the first AI response (1 user message, 1 completed AI message)
-           if (userMessages.length === 1 && aiMessages.length === 1) {
-             const firstUserMessage = userMessages[0];
-             const firstAiMessage = aiMessages[0];
-             
-             // Update title with AI-generated version
-             try {
-               // For performance, use simple title generation instead of AI
-               const simpleTitle = firstUserMessage.content.split(' ').slice(0, 5).join(' ');
-               await optimizedSupabaseService.updateSessionTitle(
-                 activeSessionId, 
-                 simpleTitle.length > 30 ? simpleTitle.substring(0, 30) + '...' : simpleTitle
-               );
-               // Trigger sidebar refresh to show updated title
-               setSidebarRefreshTrigger(prev => prev + 1);
-             } catch (error) {
-               console.error('Failed to update session title:', error);
-             }
-           }
-         } catch (error) {
-           console.error('Error saving messages:', error);
-         }
-      }
-    };
+    // Removed automatic saving on every message change
+    // Messages are now saved explicitly when queries complete
+  }, []);
 
-    if (user) {
-      saveMessages();
+  // Function to save messages and update session title when query completes
+  const saveMessagesOnQueryComplete = async (currentMessages: LocalMessage[]) => {
+    if (!activeSessionId || !user || currentMessages.length === 0) return;
+    
+    try {
+      // Use optimized batch saving
+      await optimizedSupabaseService.saveSessionMessages(activeSessionId, currentMessages);
+      
+      // Update session title with AI-generated title after first AI response
+      const userMessages = currentMessages.filter(msg => msg.role === 'user');
+      const aiMessages = currentMessages.filter(msg => msg.role === 'assistant' && msg.isProcessed);
+      
+      // If this is the first AI response (1 user message, 1 completed AI message)
+      if (userMessages.length === 1 && aiMessages.length === 1) {
+        const firstUserMessage = userMessages[0];
+        
+        // Update title with AI-generated version
+        try {
+          // For performance, use simple title generation instead of AI
+          const simpleTitle = firstUserMessage.content.split(' ').slice(0, 5).join(' ');
+          await optimizedSupabaseService.updateSessionTitle(
+            activeSessionId, 
+            simpleTitle.length > 30 ? simpleTitle.substring(0, 30) + '...' : simpleTitle
+          );
+          // Trigger sidebar refresh to show updated title
+          setSidebarRefreshTrigger(prev => prev + 1);
+        } catch (error) {
+          console.error('Failed to update session title:', error);
+        }
+      }
+    } catch (error) {
+      console.error('Error saving messages:', error);
     }
-  }, [messages, activeSessionId, user]);
+  };
 
   // Helper to show the image in chat
   const showImageMsg = (content: string, imgSrc: string) => {
@@ -2055,7 +2050,12 @@ function TestChatComponent() {
           webSources: [],
           isProcessed: true
       };
-      setMessages((prev) => [...prev, aiMsg]);
+      setMessages((prev) => {
+        const updatedMessages = [...prev, aiMsg];
+        // Save messages to Supabase now that the structured query is complete
+        saveMessagesOnQueryComplete(updatedMessages);
+        return updatedMessages;
+      });
       } else { 
         // Default to streaming logic for all other cases (including 'conversation')
         const reader = res.body?.getReader();
@@ -2145,7 +2145,7 @@ function TestChatComponent() {
           // to preserve thinking content for "Thought" state after completion
           setTimeout(() => {
             setMessages((prev) => {
-              return prev.map(msg => 
+              const updatedMessages = prev.map(msg => 
                 msg.id === aiMessageId 
                   ? { 
                       ...msg, 
@@ -2157,6 +2157,11 @@ function TestChatComponent() {
                     }
                   : msg
               );
+              
+              // Save messages to Supabase now that the chat query is complete
+              saveMessagesOnQueryComplete(updatedMessages);
+              
+              return updatedMessages;
             });
           }, 300); // Small delay for smooth transition
         }
@@ -2189,8 +2194,9 @@ function TestChatComponent() {
       }
     } catch (err: any) {
       if (err.name === 'AbortError') {
-      setMessages((prev) => [
-        ...prev,
+      setMessages((prev) => {
+        const updatedMessages = [
+          ...prev,
           { 
             role: "assistant" as const, 
             content: "[Response stopped by user]", 
@@ -2200,20 +2206,29 @@ function TestChatComponent() {
             imageUrls: uploadedImageUrls.length > 0 ? uploadedImageUrls : undefined,
             isProcessed: true // Mark as processed
           },
-        ]);
+        ];
+        // Save messages to Supabase after abort
+        saveMessagesOnQueryComplete(updatedMessages);
+        return updatedMessages;
+      });
       } else {
-        setMessages((prev) => [
-          ...prev,
-          { 
-            role: "assistant" as const, 
-            content: "Error: " + (err?.message || String(err)), 
-            id: uuidv4(),
-            timestamp: Date.now(),
-            parentId: userMessageId, 
-            imageUrls: uploadedImageUrls.length > 0 ? uploadedImageUrls : undefined,
-            isProcessed: true // Mark as processed
-          },
-        ]);
+        setMessages((prev) => {
+          const updatedMessages = [
+            ...prev,
+            { 
+              role: "assistant" as const, 
+              content: "Error: " + (err?.message || String(err)), 
+              id: uuidv4(),
+              timestamp: Date.now(),
+              parentId: userMessageId, 
+              imageUrls: uploadedImageUrls.length > 0 ? uploadedImageUrls : undefined,
+              isProcessed: true // Mark as processed
+            },
+          ];
+          // Save messages to Supabase after error
+          saveMessagesOnQueryComplete(updatedMessages);
+          return updatedMessages;
+        });
       }
     } finally {
       setIsAiResponding(false);
@@ -2957,20 +2972,27 @@ function TestChatComponent() {
                     onComplete={(result: any, sources?: any[]) => {
                       // Add the search result as a new assistant message with search-specific flag and sources
                       console.log('Search completed:', result);
-                      setMessages(prev => [
-                        ...prev,
-                        {
-                          role: 'assistant',
-                          id: uuidv4(),
-                          content: result,
-                          timestamp: Date.now(),
-                          isProcessed: true,
-                          parentId: msg.id,
-                          contentType: 'search-result',
-                          isSearchResult: true,
-                          webSources: sources || []
-                        }
-                      ]);
+                      setMessages(prev => {
+                        const updatedMessages = [
+                          ...prev,
+                          {
+                            role: 'assistant' as const,
+                            id: uuidv4(),
+                            content: result,
+                            timestamp: Date.now(),
+                            isProcessed: true,
+                            parentId: msg.id,
+                            contentType: 'search-result',
+                            isSearchResult: true,
+                            webSources: sources || []
+                          }
+                        ];
+                        
+                        // Save messages to Supabase now that the search query is complete
+                        saveMessagesOnQueryComplete(updatedMessages);
+                        
+                        return updatedMessages;
+                      });
                     }}
                   />
                 );
