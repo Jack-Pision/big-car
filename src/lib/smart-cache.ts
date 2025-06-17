@@ -58,10 +58,10 @@ class SmartCache {
     let bestMatch: SemanticCacheItem | null = null;
     let bestScore = 0;
 
-    for (const [key, item] of this.semanticCache) {
+    this.semanticCache.forEach((item, key) => {
       if (this.isExpired(item)) {
         this.semanticCache.delete(key);
-        continue;
+        return;
       }
 
       const similarity = this.calculateSimilarity(query, item.query);
@@ -69,7 +69,7 @@ class SmartCache {
         bestMatch = item;
         bestScore = similarity;
       }
-    }
+    });
 
     return bestMatch;
   }
@@ -82,17 +82,17 @@ class SmartCache {
   // Clean expired items and enforce size limits
   private cleanup(): void {
     // Remove expired items
-    for (const [key, item] of this.cache) {
+    this.cache.forEach((item, key) => {
       if (this.isExpired(item)) {
         this.cache.delete(key);
       }
-    }
+    });
 
-    for (const [key, item] of this.semanticCache) {
+    this.semanticCache.forEach((item, key) => {
       if (this.isExpired(item)) {
         this.semanticCache.delete(key);
       }
-    }
+    });
 
     // Enforce size limits (LRU eviction)
     if (this.cache.size > CACHE_CONFIG.MAX_CACHE_SIZE) {
