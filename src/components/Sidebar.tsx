@@ -46,7 +46,7 @@ export default function Sidebar({
 
   useEffect(() => {
     const loadSessions = async () => {
-      if (open) {
+    if (open) {
         try {
           // Use optimized service with caching
           const sessions = await optimizedSupabaseService.getSessions();
@@ -54,7 +54,7 @@ export default function Sidebar({
         } catch (error) {
           console.error('Error loading sessions:', error);
           setSessions([]);
-        }
+    }
       }
     };
     
@@ -70,9 +70,9 @@ export default function Sidebar({
       await deleteSessionFromService(sessionId);
       const sessions = await getSessions();
       setSessions(sessions);
-      setShowDeleteId(null);
-      if (activeSessionId === sessionId) {
-        onSelectSession('');
+    setShowDeleteId(null);
+    if (activeSessionId === sessionId) {
+      onSelectSession('');
       }
     } catch (error) {
       console.error('Error deleting session:', error);
@@ -107,13 +107,13 @@ export default function Sidebar({
   const handleEditSave = async (id: string) => {
     try {
       // Update UI optimistically
-      setSessions((prev) => prev.map(s => s.id === id ? { ...s, title: editValue } : s));
+    setSessions((prev) => prev.map(s => s.id === id ? { ...s, title: editValue } : s));
       
       // Persist the change to Supabase
       await updateSessionTitle(id, editValue);
       
-      setEditingId(null);
-      setEditValue('');
+    setEditingId(null);
+    setEditValue('');
     } catch (error) {
       console.error('Error updating session title:', error);
       // Revert UI change on error
