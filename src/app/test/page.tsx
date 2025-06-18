@@ -1984,10 +1984,11 @@ function TestChatComponent() {
         // Call NVIDIA API with artifact prompt and streaming enabled
         const artifactPrompt = getArtifactPrompt(input.trim());
         
-        const response = await fetch('/api/nvidia', {
+        const response = await fetch('/api/openrouter-chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            model: 'google/gemini-2.0-flash-exp:free',
             messages: [{ role: 'user', content: artifactPrompt }],
             temperature: 0.3,
             max_tokens: 8192,
