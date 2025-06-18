@@ -1583,6 +1583,42 @@ const extractThinkContentDuringStream = (content: string) => {
   };
 };
 
+// Helper function to extract JSON from streaming artifact content
+const extractJsonFromStreamingContent = (content: string): any | null => {
+  try {
+    // Remove <think> tags and their content
+    let cleanContent = content.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+    
+    // Try to find JSON object in the content
+    const jsonMatch = cleanContent.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const jsonStr = jsonMatch[0];
+      return JSON.parse(jsonStr);
+    }
+    
+    return null;
+  } catch (error) {
+    return null;
+  }
+};
+
+// Helper function to check if streaming content looks complete for artifact
+const isArtifactContentComplete = (content: string): boolean => {
+  // Check if we have a complete JSON object
+  const jsonMatch = content.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) return false;
+  
+  try {
+    const jsonStr = jsonMatch[0];
+    const parsed = JSON.parse(jsonStr);
+    
+    // Check if it has the required artifact fields
+    return parsed.title && parsed.content && parsed.type;
+  } catch (error) {
+    return false;
+  }
+};
+
 function TestChatComponent() {
   const { user, showSettingsModal } = useAuth();
   const [input, setInput] = useState("");
@@ -1634,6 +1670,11 @@ function TestChatComponent() {
   // Live thinking states
   const [liveThinking, setLiveThinking] = useState<string>('');
   const [currentThinkingMessageId, setCurrentThinkingMessageId] = useState<string | null>(null);
+  
+  // Artifact streaming states
+  const [artifactStreamingContent, setArtifactStreamingContent] = useState<string>('');
+  const [isArtifactStreaming, setIsArtifactStreaming] = useState(false);
+  const [artifactProgress, setArtifactProgress] = useState<string>('');
 
   // This will control the position of the input box and heading (centered vs bottom)
   const inputPosition = isChatEmpty && !hasInteracted && !activeSessionId ? "center" : "bottom";
@@ -1811,7 +1852,7 @@ function TestChatComponent() {
 
     // Check if we're in artifact mode
     if (activeButton === 'artifact' || shouldTriggerArtifact(input.trim())) {
-      // Handle artifact creation
+      // Handle artifact creation with streaming
       let currentActiveSessionId = activeSessionId;
       
       if (!currentActiveSessionId) {
@@ -1839,9 +1880,27 @@ function TestChatComponent() {
       setInput('');
       setIsLoading(true);
       setIsAiResponding(true);
+      setIsArtifactStreaming(true);
+      setArtifactStreamingContent('');
+      setArtifactProgress('Initializing artifact generation...');
+
+      // Add placeholder AI message for streaming
+      const aiMessageId = uuidv4();
+      const placeholderAiMessage: LocalMessage = {
+        role: 'assistant',
+        id: aiMessageId,
+        content: 'Creating your artifact...',
+        timestamp: Date.now(),
+        parentId: userMessageId,
+        contentType: 'artifact',
+        isStreaming: true,
+        isProcessed: false
+      };
+      
+      setMessages(prev => [...prev, placeholderAiMessage]);
 
       try {
-        // Call NVIDIA API with artifact prompt
+        // Call NVIDIA API with artifact prompt and streaming enabled
         const artifactPrompt = getArtifactPrompt(input.trim());
         
         const response = await fetch('/api/nvidia', {
@@ -1851,7 +1910,7 @@ function TestChatComponent() {
             messages: [{ role: 'user', content: artifactPrompt }],
             temperature: 0.3,
             max_tokens: 8192,
-            response_format: { type: "json_object" }
+            stream: true // Enable streaming for artifacts
           })
         });
 
@@ -1859,89 +1918,124 @@ function TestChatComponent() {
           throw new Error(`API request failed: ${response.status}`);
         }
 
-        const data = await response.json();
-        const content = data.choices?.[0]?.message?.content;
-        
-        if (!content) {
-          throw new Error('No content received from API');
+        const reader = response.body?.getReader();
+        if (!reader) {
+          throw new Error('No response body reader available');
         }
 
-        // Parse and validate artifact data
-        let artifactData;
+        let contentBuffer = '';
+        let lastArtifactData: any = null;
+
         try {
-          // Clean the content to remove any potential markdown code blocks or extra text
-          let cleanContent = content.trim();
-          
-          // Remove markdown code blocks if present
-          if (cleanContent.startsWith('```json') && cleanContent.endsWith('```')) {
-            cleanContent = cleanContent.slice(7, -3).trim();
-          } else if (cleanContent.startsWith('```') && cleanContent.endsWith('```')) {
-            cleanContent = cleanContent.slice(3, -3).trim();
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const chunk = new TextDecoder().decode(value);
+            const lines = chunk.split('\n');
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                const data = line.slice(6);
+                if (data === '[DONE]') continue;
+
+                try {
+                  const parsed = JSON.parse(data);
+                  const content = parsed.choices?.[0]?.delta?.content;
+                  
+                  if (content) {
+                    contentBuffer += content;
+                    setArtifactStreamingContent(contentBuffer);
+                    
+                    // Update progress based on content
+                    if (contentBuffer.includes('<think>')) {
+                      setArtifactProgress('Analyzing your request...');
+                    } else if (contentBuffer.includes('"title"')) {
+                      setArtifactProgress('Creating document structure...');
+                    } else if (contentBuffer.includes('"content"')) {
+                      setArtifactProgress('Generating content...');
+                    } else if (contentBuffer.includes('}')) {
+                      setArtifactProgress('Finalizing artifact...');
+                    }
+
+                    // Try to extract and validate artifact data as we stream
+                    const potentialArtifactData = extractJsonFromStreamingContent(contentBuffer);
+                    if (potentialArtifactData && isArtifactContentComplete(contentBuffer)) {
+                      lastArtifactData = potentialArtifactData;
+                    }
+                  }
+                } catch (parseError) {
+                  // Continue streaming even if individual chunks fail to parse
+                  console.warn('Failed to parse streaming chunk:', parseError);
+                }
+              }
+            }
           }
-          
-          // Try to find JSON object if there's extra text
-          const jsonMatch = cleanContent.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            cleanContent = jsonMatch[0];
-          }
-          
-          artifactData = JSON.parse(cleanContent);
-        } catch (parseError) {
-          console.error('JSON Parse Error:', parseError);
-          console.error('Raw content:', content);
-          console.log('JSON parsing failed, creating fallback artifact from raw content...');
-          
-          // If JSON parsing fails completely, create a fallback artifact
-          artifactData = createFallbackArtifact(content, input.trim());
+        } finally {
+          reader.releaseLock();
         }
 
-        if (!validateArtifactData(artifactData)) {
-          console.error('Invalid artifact data:', artifactData);
-          console.log('Attempting to create fallback artifact from raw content...');
-          
-          // Create fallback artifact from the raw content
-          artifactData = createFallbackArtifact(content, input.trim());
+        // Process final artifact data
+        let artifactData = lastArtifactData;
+        
+        if (!artifactData) {
+          // Try to extract JSON one more time from complete content
+          artifactData = extractJsonFromStreamingContent(contentBuffer);
+        }
+        
+        if (!artifactData || !validateArtifactData(artifactData)) {
+          console.log('Creating fallback artifact from streaming content...');
+          artifactData = createFallbackArtifact(contentBuffer, input.trim());
         }
 
         // Set artifact content and show viewer
         setArtifactContent(artifactData);
         setIsArtifactMode(true);
 
-        // Add AI message with artifact preview
-        const aiMessage: LocalMessage = {
+        // Update the AI message with final artifact
+        const finalAiMessage: LocalMessage = {
           role: 'assistant',
-          id: uuidv4(),
+          id: aiMessageId,
           content: `I've created a ${artifactData.type} titled "${artifactData.title}". Click to view it in the artifact viewer.`,
           timestamp: Date.now(),
           parentId: userMessageId,
           contentType: 'artifact',
           structuredContent: artifactData,
-          isProcessed: true
+          isProcessed: true,
+          isStreaming: false
         };
 
-        setMessages(prev => [...prev, aiMessage]);
+        setMessages(prev => prev.map(msg => 
+          msg.id === aiMessageId ? finalAiMessage : msg
+        ));
         
         // Save messages
-        const updatedMessages = [...messages, userMessage, aiMessage];
+        const updatedMessages = [...messages, userMessage, finalAiMessage];
         await saveMessagesOnQueryComplete(updatedMessages);
 
       } catch (error) {
-        console.error('Artifact generation error:', error);
+        console.error('Artifact streaming error:', error);
         
-        // Add error message
+        // Update the AI message with error
         const errorMessage: LocalMessage = {
           role: 'assistant',
-          id: uuidv4(),
+          id: aiMessageId,
           content: `Sorry, I encountered an error while creating the artifact: ${error instanceof Error ? error.message : 'Unknown error'}`,
           timestamp: Date.now(),
           parentId: userMessageId,
-          isProcessed: true
+          isProcessed: true,
+          isStreaming: false
         };
 
-        setMessages(prev => [...prev, errorMessage]);
+        setMessages(prev => prev.map(msg => 
+          msg.id === aiMessageId ? errorMessage : msg
+        ));
       } finally {
         setIsLoading(false);
         setIsAiResponding(false);
+        setIsArtifactStreaming(false);
+        setArtifactStreamingContent('');
+        setArtifactProgress('');
         setActiveButton(null); // Reset artifact mode
       }
 
@@ -2477,6 +2571,33 @@ function TestChatComponent() {
 
   // Fix the renderMessageContent function to use LocalMessage
   const renderMessageContent = (msg: LocalMessage) => {
+    // Handle artifact streaming progress
+    if (msg.contentType === 'artifact' && msg.isStreaming && !msg.isProcessed) {
+      return (
+        <div className="flex flex-col items-center p-6 bg-gray-50 dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
+          <div className="flex items-center space-x-3 mb-4">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+            <span className="text-lg font-medium text-gray-700 dark:text-gray-300">Creating Artifact</span>
+          </div>
+          {artifactProgress && (
+            <div className="text-sm text-gray-600 dark:text-gray-400 text-center">
+              {artifactProgress}
+            </div>
+          )}
+          {artifactStreamingContent && (
+            <div className="mt-4 w-full">
+              <div className="text-xs text-gray-500 dark:text-gray-500 mb-2">Preview:</div>
+              <div className="bg-white dark:bg-gray-900 rounded p-3 text-sm font-mono text-gray-700 dark:text-gray-300 max-h-32 overflow-y-auto">
+                {artifactStreamingContent.length > 200 
+                  ? artifactStreamingContent.substring(0, 200) + '...' 
+                  : artifactStreamingContent}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
     if (msg.contentType && msg.structuredContent) {
       switch (msg.contentType) {
         case 'tutorial':
@@ -2487,13 +2608,41 @@ function TestChatComponent() {
           return <InformationalSummaryDisplay data={msg.structuredContent as InformationalSummaryData} />;
         case 'conversation':
           return <ConversationDisplay data={msg.structuredContent as string} />;
+        case 'artifact':
+          // Show artifact preview card for completed artifacts
+          const artifactData = msg.structuredContent;
+          return (
+            <div 
+              className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={() => {
+                setArtifactContent(artifactData);
+                setIsArtifactMode(true);
+              }}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  {artifactData.title}
+                </h3>
+                <span className="text-xs bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200 px-2 py-1 rounded">
+                  {artifactData.type}
+                </span>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                {artifactData.content.substring(0, 150)}...
+              </p>
+              <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-500">
+                <span>{artifactData.wordCount} words • {artifactData.readingTime}</span>
+                <span className="text-blue-600 dark:text-blue-400">Click to view →</span>
+              </div>
+            </div>
+          );
         default:
           if (typeof msg.structuredContent === 'string') {
             return <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="prose dark:prose-invert max-w-none">{msg.structuredContent}</ReactMarkdown>;
           }
           return <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="prose dark:prose-invert max-w-none">{`Unsupported structured content: ${JSON.stringify(msg.structuredContent)}`}</ReactMarkdown>;
       }
-    }     else if (msg.content) {
+    } else if (msg.content) {
       const isDefaultChat = msg.contentType === 'conversation' || (msg.role === 'assistant' && !msg.contentType);
       if (isDefaultChat) {
         // Display content using standard ReactMarkdown - think tags are handled separately by processThinkTags

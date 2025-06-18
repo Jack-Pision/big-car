@@ -40,6 +40,68 @@ function generateCacheKey(messages: any[], options: any = {}): string {
   });
 }
 
+// Helper function to detect if this is an artifact generation request
+function isArtifactRequest(messages: any[]): boolean {
+  if (!messages || messages.length === 0) return false;
+  
+  const lastMessage = messages[messages.length - 1];
+  if (!lastMessage || !lastMessage.content) return false;
+  
+  const content = lastMessage.content.toLowerCase();
+  
+  // Check for artifact-related keywords in the prompt
+  const artifactKeywords = [
+    'create a document',
+    'write a guide',
+    'generate a report',
+    'create an essay',
+    'write an article',
+    'create a tutorial',
+    'generate content',
+    'artifact',
+    'document generation',
+    'respond with valid json',
+    'json format',
+    'structured output'
+  ];
+  
+  return artifactKeywords.some(keyword => content.includes(keyword));
+}
+
+// Enhanced prompt modification for artifact requests
+function enhanceArtifactPrompt(messages: any[]): any[] {
+  if (!isArtifactRequest(messages)) {
+    return messages;
+  }
+  
+  const lastMessage = messages[messages.length - 1];
+  const enhancedContent = `${lastMessage.content}
+
+IMPORTANT INSTRUCTIONS:
+- At the end of your response, provide a valid JSON object with the document structure
+- The JSON should include: title, content, type, category, tags, wordCount, readingTime
+- Format the JSON clearly and ensure it's valid
+- You can include your reasoning in <think> tags, but end with clean JSON
+- Example format:
+{
+  "title": "Document Title",
+  "content": "Full document content...",
+  "type": "document",
+  "category": "Educational",
+  "tags": ["example", "guide"],
+  "wordCount": 500,
+  "readingTime": "3 min"
+}`;
+
+  return [
+    ...messages.slice(0, -1),
+    {
+      ...lastMessage,
+      content: enhancedContent
+    }
+  ];
+}
+
 // New function to fetch image analysis from OpenRouter (via our existing proxy)
 async function fetchOpenRouterImageAnalysis(
   imageUrls: string[], 
@@ -140,25 +202,35 @@ async function fetchNvidiaText(messages: any[], options: any = {}) {
     });
   }
   
+  // Enhance messages for artifact requests
+  const enhancedMessages = enhanceArtifactPrompt(messages);
+  
+  // Check if this is an artifact request - if so, remove response_format to avoid compatibility issues
+  const isArtifact = isArtifactRequest(messages);
+  
   // If not in cache or expired, make the API call
   const payload = {
     model: 'deepseek-ai/deepseek-r1',
-    messages,
+    messages: enhancedMessages,
     temperature: options.temperature || 0.6,
     top_p: options.top_p || 0.95,
-    max_tokens: options.max_tokens || 1000, // Reduced from 10000 to 1000 for faster responses
+    max_tokens: options.max_tokens || (isArtifact ? 8192 : 1000), // Increased tokens for artifacts
     presence_penalty: options.presence_penalty || 0.8,
     frequency_penalty: options.frequency_penalty || 0.5,
     stream: options.stream !== undefined ? options.stream : true,
-    ...(options.response_format && { response_format: options.response_format })
+    // Remove response_format for DeepSeek R1 to avoid compatibility issues
+    // DeepSeek R1 doesn't properly support response_format and will return streaming anyway
+    // We'll parse JSON from the streaming content instead
   };
+  
+  console.log(`[NVIDIA API] Making request - Artifact: ${isArtifact}, Stream: ${payload.stream}, Max Tokens: ${payload.max_tokens}`);
   
   try {
     // Using fetchWithTimeout with increased timeout for NVIDIA API call
-  const res = await fetchWithTimeout('https://integrate.api.nvidia.com/v1/chat/completions', {
+    const res = await fetchWithTimeout('https://integrate.api.nvidia.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-      'Authorization': `Bearer ${TEXT_API_KEY}`,
+        'Authorization': `Bearer ${TEXT_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(payload),
@@ -205,7 +277,7 @@ async function fetchNvidiaText(messages: any[], options: any = {}) {
     
     // For streaming responses, we just return the stream
     if (payload.stream) {
-    return res;
+      return res;
     }
     
     // For non-streaming responses, cache the result
@@ -320,11 +392,11 @@ export async function POST(req: NextRequest) {
     const modelParams = {
       temperature: body.temperature || 0.6,
       top_p: body.top_p || 0.95,
-      max_tokens: body.max_tokens || 1000, // Reduced from 10000 to 1000 for faster responses
+      max_tokens: body.max_tokens || 1000, // Will be increased for artifacts in fetchNvidiaText
       presence_penalty: body.presence_penalty || 0.8,
       frequency_penalty: body.frequency_penalty || 0.5,
       stream: body.stream !== undefined ? body.stream : true,
-      ...(body.response_format && { response_format: body.response_format })
+      // Note: response_format is intentionally removed for DeepSeek R1 compatibility
     };
       
     // Make the API call with optimized messages and parameters
