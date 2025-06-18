@@ -1646,16 +1646,8 @@ function TestChatComponent() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [sidebarRefreshTrigger, setSidebarRefreshTrigger] = useState(0);
-  const [isArtifactMode, setIsArtifactMode] = useState(false);
-  const [artifactContent, setArtifactContent] = useState<ArtifactData | null>(null);
   const [isGeneratingArtifact, setIsGeneratingArtifact] = useState(false);
   const [artifactProgress, setArtifactProgress] = useState('');
-  
-  // Add state for resizable panes
-  const [leftPaneWidth, setLeftPaneWidth] = useState(55); // Default 55% for left pane
-  const [isResizing, setIsResizing] = useState(false);
-  const [resizeStartX, setResizeStartX] = useState(0);
-  const [resizeStartWidth, setResizeStartWidth] = useState(55);
 
   const [emptyBoxes, setEmptyBoxes] = useState<string[]>([]);
   const [showPulsingDot, setShowPulsingDot] = useState(false);
@@ -1689,45 +1681,7 @@ function TestChatComponent() {
   const isChatEmpty = messages.length === 0;
   const inputPosition = isChatEmpty && !hasInteracted && !activeSessionId ? "center" : "bottom";
 
-  // Mouse event handlers for resizable divider
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsResizing(true);
-    setResizeStartX(e.clientX);
-    setResizeStartWidth(leftPaneWidth);
-  }, [leftPaneWidth]);
 
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (!isResizing) return;
-    
-    const deltaX = e.clientX - resizeStartX;
-    const containerWidth = window.innerWidth;
-    const deltaPercent = (deltaX / containerWidth) * 100;
-    const newWidth = Math.max(30, Math.min(70, resizeStartWidth + deltaPercent)); // Constrain between 30% and 70%
-    
-    setLeftPaneWidth(newWidth);
-  }, [isResizing, resizeStartX, resizeStartWidth]);
-
-  const handleMouseUp = useCallback(() => {
-    setIsResizing(false);
-  }, []);
-
-  // Add mouse event listeners for resizing
-  useEffect(() => {
-    if (isResizing) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      document.body.style.cursor = 'col-resize';
-      document.body.style.userSelect = 'none';
-      
-      return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-        document.body.style.cursor = '';
-        document.body.style.userSelect = '';
-      };
-    }
-  }, [isResizing, handleMouseMove, handleMouseUp]);
 
   // Effect to load the last active session or create a new one on initial load
   useEffect(() => {
@@ -3024,7 +2978,7 @@ function TestChatComponent() {
                     const cleanContent = msg.content.replace('Response stopped by user.', '').trim();
                     
                     const processedContent = processThinkTags(cleanContent, msg.isStreaming || false);
-                    const finalContent = processedContent.processedContent || cleanContent;
+                    const finalContent = processedContent.mainContent || cleanContent;
                     
                     return (
                       <React.Fragment key={msg.id + '-assistant-' + i}>
@@ -3054,7 +3008,7 @@ function TestChatComponent() {
                                     <span className="text-sm text-yellow-400 font-medium">Thinking...</span>
                                   </div>
                                   <div className="text-gray-300 text-sm">
-                                    <TextReveal text={liveThinking} />
+                                    <TextReveal text={liveThinking} isLive={true} />
                                   </div>
                                 </div>
                               )}
