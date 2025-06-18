@@ -3024,7 +3024,7 @@ function TestChatComponent() {
                     const cleanContent = msg.content.replace('Response stopped by user.', '').trim();
                     
                     const processedContent = processThinkTags(cleanContent, msg.isStreaming || false);
-                    const finalContent = processedContent.mainContent || cleanContent;
+                    const finalContent = processedContent.processedContent || cleanContent;
                     
                     return (
                       <React.Fragment key={msg.id + '-assistant-' + i}>
