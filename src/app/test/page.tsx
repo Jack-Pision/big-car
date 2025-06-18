@@ -2881,7 +2881,403 @@ function TestChatComponent() {
     // Removed advanced search logic
   }, [isAiResponding]);
 
+  // Independent artifact message rendering system
+  const renderArtifactMessage = (msg: LocalMessage, i: number) => {
+    return (
+      <motion.div
+        key={msg.id + '-artifact-' + i}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: "easeOut" }}
+        className="w-full text-left flex flex-col items-start ai-response-text mb-4 relative"
+        style={{ color: '#fff', maxWidth: '100%', overflowWrap: 'break-word' }}
+      >
+        {/* Artifact Preview Card or Streaming Content */}
+        {msg.structuredContent ? (
+          <>
+            {/* Completed Artifact with Preview Card */}
+            <div className="w-full bg-gray-800 rounded-lg border border-gray-700 p-4 mb-2">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2 bg-blue-600 rounded-lg">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="9" y1="9" x2="15" y2="9"></line>
+                    <line x1="9" y1="13" x2="15" y2="13"></line>
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-white">{msg.structuredContent.title}</h3>
+                  <div className="flex items-center gap-4 text-sm text-gray-400">
+                    <span className="capitalize">{msg.structuredContent.type}</span>
+                    <span>{msg.structuredContent.metadata.wordCount} words</span>
+                    <span>{msg.structuredContent.metadata.estimatedReadTime}</span>
+                  </div>
+                </div>
+              </div>
+              
+              <p className="text-gray-300 text-sm mb-4">{msg.content}</p>
+              
+              <button
+                onClick={() => {
+                  setArtifactContent(msg.structuredContent);
+                  setIsArtifactMode(true);
+                }}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+                View in Artifact Viewer
+              </button>
+            </div>
+            
+            {/* Action buttons for completed artifact */}
+            {msg.isProcessed && (
+              <div className="w-full flex justify-start gap-2 mt-2">
+                <button
+                  onClick={() => handleCopy(msg.structuredContent.content)}
+                  className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
+                  aria-label="Copy artifact content"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
+                  <span className="text-xs">Copy</span>
+                </button>
+                
+                <button
+                  onClick={() => {
+                    const blob = new Blob([msg.structuredContent.content], { type: 'text/markdown' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${msg.structuredContent.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.md`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                  }}
+                  className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
+                  aria-label="Download artifact"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7,10 12,15 17,10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                  </svg>
+                  <span className="text-xs">Download</span>
+                </button>
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            {/* Streaming Artifact - show raw content in artifact viewer style */}
+            <div className="w-full bg-gray-800 rounded-lg border border-gray-700 p-4 mb-2">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2 bg-blue-600 rounded-lg">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="9" y1="9" x2="15" y2="9"></line>
+                    <line x1="9" y1="13" x2="15" y2="13"></line>
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-white">
+                    {msg.title || "Generating Artifact..."}
+                    {msg.isStreaming && (
+                      <span className="inline-block ml-2 w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
+                    )}
+                  </h3>
+                  <div className="flex items-center gap-4 text-sm text-gray-400">
+                    <span>Essay</span>
+                    {msg.isStreaming ? (
+                      <span>Streaming...</span>
+                    ) : (
+                      <span>Ready</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              {/* Streaming artifact content preview */}
+              <div className="text-gray-300 text-sm mb-4 max-h-32 overflow-hidden">
+                <ReactMarkdown className="prose prose-sm prose-invert">
+                  {msg.content.slice(0, 200) + (msg.content.length > 200 ? "..." : "")}
+                </ReactMarkdown>
+              </div>
+              
+              <button
+                onClick={() => {
+                  // For streaming artifacts, create temporary structured content
+                  const tempArtifact = {
+                    title: msg.title || "Generated Content",
+                    type: "document" as const,
+                    content: msg.content,
+                    metadata: {
+                      wordCount: msg.content.split(' ').length,
+                      estimatedReadTime: `${Math.ceil(msg.content.split(' ').length / 200)} min read`
+                    }
+                  };
+                  setArtifactContent(tempArtifact);
+                  setIsArtifactMode(true);
+                }}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+                disabled={!msg.content || msg.content.trim().length === 0}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+                View in Artifact Viewer
+              </button>
+            </div>
+            
+            {/* Action buttons for streaming artifact */}
+            {msg.content && msg.content.trim().length > 0 && (
+              <div className="w-full flex justify-start gap-2 mt-2">
+                <button
+                  onClick={() => handleCopy(msg.content)}
+                  className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
+                  aria-label="Copy artifact content"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
+                  <span className="text-xs">Copy</span>
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </motion.div>
+    );
+  };
 
+  // Independent search message rendering system
+  const renderSearchMessage = (msg: LocalMessage, i: number) => {
+    return (
+      <motion.div
+        key={msg.id + '-search-' + i}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: "easeOut" }}
+        className="w-full"
+      >
+        <Search
+          query={msg.query || ''}
+          sources={msg.webSources || []}
+          response={msg.content}
+          isLoading={msg.isStreaming || false}
+          onSourceClick={(url) => window.open(url, '_blank')}
+        />
+      </motion.div>
+    );
+  };
+
+  // Independent default chat message rendering system
+  const renderDefaultChatMessage = (msg: LocalMessage, i: number) => {
+    const { content: rawContent } = cleanAIResponse(msg.content);
+    // Don't filter out <think> tags, only remove thinking indicators
+    const cleanContent = rawContent.replace(/<thinking-indicator.*?>\n<\/thinking-indicator>\n|<thinking-indicator.*?\/>/g, '');
+    const isStoppedMsg = cleanContent.trim() === '[Response stopped by user]';
+    
+    // Process think tags and extract them
+    const { processedContent, thinkBlocks, isLiveThinking } = processThinkTags(cleanContent);
+    const finalContent = makeCitationsClickable(processedContent, msg.webSources || []);
+    
+    if (showPulsingDot && i === messages.length -1 ) setShowPulsingDot(false);
+    
+    return (
+      <React.Fragment key={msg.id + '-fragment-' + i}>
+        {/* Main AI response content */}
+        <motion.div
+          key={msg.id + '-text-' + i}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
+          className="w-full text-left flex flex-col items-start ai-response-text mb-4 relative"
+          style={{ color: '#fff', maxWidth: '100%', overflowWrap: 'break-word' }}
+        >
+          {msg.webSources && msg.webSources.length > 0 && (
+            <>
+              <WebSourcesCarousel sources={msg.webSources} />
+              <div style={{ height: '1.5rem' }} />
+            </>
+          )}
+          
+          {isStoppedMsg ? (
+            <span className="text-sm text-white italic font-light mb-2">[Response stopped by user]</span>
+          ) : (
+            <div className="w-full max-w-full overflow-hidden">
+              {/* Single consolidated thinking button - handles all thinking scenarios */}
+              {(currentThinkingMessageId === msg.id && liveThinking) && (
+                <ThinkingButton 
+                  key={`${msg.id}-live-thinking`} 
+                  content={liveThinking} 
+                  isLive={true} 
+                />
+              )}
+              
+              {/* Think blocks from processed content - show for all messages except the one currently live thinking */}
+              {currentThinkingMessageId !== msg.id && thinkBlocks.length > 0 && thinkBlocks.map((block, index) => (
+                <ThinkingButton key={`${msg.id}-think-${index}`} content={block.content} isLive={false} />
+              ))}
+              
+              {/* Main content - show if there's content or thinking is complete */}
+              {(processedContent.trim().length > 0 || !currentThinkingMessageId || currentThinkingMessageId !== msg.id) && (
+                <ReactMarkdown 
+                  remarkPlugins={[remarkGfm]} 
+                  rehypePlugins={[rehypeRaw]} 
+                  className="research-output"
+                  components={{
+                    // Enhanced components for professional research output
+                    h1: ({children}) => (
+                      <h1 className="text-3xl font-bold text-white mb-6 mt-8 border-b border-cyan-500/30 pb-3">
+                        {children}
+                      </h1>
+                    ),
+                    h2: ({children}) => (
+                      <h2 className="text-2xl font-semibold text-cyan-400 mb-4 mt-8 flex items-center gap-2">
+                        {children}
+                      </h2>
+                    ),
+                    h3: ({children}) => (
+                      <h3 className="text-xl font-semibold text-white mb-3 mt-6">
+                        {children}
+                      </h3>
+                    ),
+                    p: ({children}) => (
+                      <p className="text-gray-200 leading-relaxed mb-4 text-base">
+                        {children}
+                      </p>
+                    ),
+                    ul: ({children}) => (
+                      <ul className="space-y-2 mb-4 ml-4">
+                        {children}
+                      </ul>
+                    ),
+                    li: ({children}) => (
+                      <li className="text-gray-200 flex items-start gap-2">
+                        <span className="text-cyan-400 mt-1.5 text-xs">●</span>
+                        <span className="flex-1">{children}</span>
+                      </li>
+                    ),
+                    ol: ({children}) => (
+                      <ol className="space-y-2 mb-4 ml-4 list-decimal list-inside">
+                        {children}
+                      </ol>
+                    ),
+                    strong: ({children}) => (
+                      <strong className="text-white font-semibold">
+                        {children}
+                      </strong>
+                    ),
+                    table: ({children}) => (
+                      <div className="overflow-x-auto mb-6 max-w-full">
+                        <table className="w-full border-collapse border border-gray-600 rounded-lg" style={{tableLayout: 'fixed', maxWidth: '100%'}}>
+                          {children}
+                        </table>
+                      </div>
+                    ),
+                    thead: ({children}) => (
+                      <thead className="bg-gray-800">
+                        {children}
+                      </thead>
+                    ),
+                    th: ({children}) => (
+                      <th className="border border-gray-600 px-4 py-3 text-left text-cyan-400 font-semibold" style={{wordWrap: 'break-word', overflowWrap: 'break-word'}}>
+                        {children}
+                      </th>
+                    ),
+                    td: ({children}) => (
+                      <td className="border border-gray-600 px-4 py-3 text-gray-200" style={{wordWrap: 'break-word', overflowWrap: 'break-word'}}>
+                        {children}
+                      </td>
+                    ),
+                    blockquote: ({children}) => (
+                      <blockquote className="border-l-4 border-cyan-500 pl-4 py-2 rounded-r-lg mb-4 italic text-gray-300" style={{background: 'transparent'}}>
+                        {children}
+                      </blockquote>
+                    ),
+                    code: ({children, className}) => {
+                      const isInline = !className;
+                      if (isInline) {
+                        return (
+                          <code className="text-cyan-400 px-2 py-1 rounded text-sm font-mono" style={{background: 'rgba(55, 65, 81, 0.5)'}}>
+                            {children}
+                          </code>
+                        );
+                      }
+                      return (
+                        <code className="block text-gray-200 p-4 rounded-lg overflow-x-auto text-sm font-mono mb-4" style={{background: 'rgba(17, 24, 39, 0.8)'}}>
+                          {children}
+                        </code>
+                      );
+                    }
+                  }}
+                >
+                  {finalContent.replace(/<!-- think-block-\d+ -->/g, '')}
+                </ReactMarkdown>
+              )}
+            </div>
+          )}
+      
+          {/* Action buttons for text content */}
+          {msg.isProcessed && !isStoppedMsg && (
+            <div className="w-full flex justify-start gap-2 mt-2">
+              <button
+                onClick={() => handleCopy(cleanContent)}
+                className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
+                aria-label="Copy response"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+                <span className="text-xs">Copy</span>
+              </button>
+              
+              <button
+                onClick={() => {
+                  try {
+                    // Find the corresponding user message
+                    const userMsgIndex = messages.findIndex(m => m.id === msg.parentId);
+                    let userMsg = userMsgIndex >= 0 ? messages[userMsgIndex] : 
+                                messages.find(m => m.role === 'user' && m.timestamp && m.timestamp < (msg.timestamp || Infinity));
+                    
+                    // If we still don't have a user message, use the last one as fallback
+                    if (!userMsg) {
+                      userMsg = [...messages].reverse().find(m => m.role === 'user');
+                    }
+                    
+                    if (userMsg) {
+                      handleRetry(userMsg.content);
+                    } else {
+                      console.error('Could not find a user message to retry');
+                    }
+                  } catch (error) {
+                    console.error('Error handling retry button click:', error);
+                  }
+                }}
+                className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
+                aria-label="Retry with different response"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                  <path d="M3 3v5h5"></path>
+                </svg>
+                <span className="text-xs">Retry</span>
+              </button>
+            </div>
+          )}
+        </motion.div>
+      </React.Fragment>
+    );
+  };
 
   return (
     <>
@@ -3067,135 +3463,13 @@ function TestChatComponent() {
           <div className="w-full max-w-3xl mx-auto flex flex-col gap-4 items-center justify-center z-10 pt-12 pb-4">
             {messages.map((msg, i) => {
               if (msg.role === "assistant") {
-                // Handle search results separately - bypass all Think box processing
-                if (msg.isSearchResult) {
-                  return (
-                    <motion.div
-                      key={msg.id + '-search-result-' + i}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, ease: "easeOut" }}
-                      className="w-full text-left flex flex-col items-start ai-response-text mb-4 relative"
-                      style={{ color: '#fff', maxWidth: '100%', overflowWrap: 'break-word' }}
-                    >
-                      {/* Clean search result rendering - no Think boxes, no processing */}
-                      <ReactMarkdown 
-                        remarkPlugins={[remarkGfm]} 
-                        rehypePlugins={[rehypeRaw]} 
-                        className="search-result-output"
-                      >
-                        {msg.content}
-                      </ReactMarkdown>
-                      
-                      {/* Action buttons for search results */}
-                      {msg.isProcessed && (
-                        <div className="w-full flex justify-start gap-2 mt-2">
-                          <button
-                            onClick={() => handleCopy(msg.content)}
-                            className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
-                            aria-label="Copy search result"
-                          >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                            </svg>
-                            <span className="text-xs">Copy</span>
-                          </button>
-                        </div>
-                      )}
-                    </motion.div>
-                  );
+                // Complete separation with independent rendering systems
+                if (msg.contentType === 'artifact') {
+                  return renderArtifactMessage(msg, i); // Early return - no fallthrough
                 }
                 
-                // Handle artifact messages
-                if (msg.contentType === 'artifact' && msg.structuredContent) {
-                  return (
-                    <motion.div
-                      key={msg.id + '-artifact-' + i}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, ease: "easeOut" }}
-                      className="w-full text-left flex flex-col items-start ai-response-text mb-4 relative"
-                      style={{ color: '#fff', maxWidth: '100%', overflowWrap: 'break-word' }}
-                    >
-                      {/* Artifact Preview Card */}
-                      <div className="w-full bg-gray-800 rounded-lg border border-gray-700 p-4 mb-2">
-                        <div className="flex items-center gap-3 mb-3">
-                          <div className="p-2 bg-blue-600 rounded-lg">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                              <line x1="9" y1="9" x2="15" y2="9"></line>
-                              <line x1="9" y1="13" x2="15" y2="13"></line>
-                            </svg>
-                          </div>
-                          <div className="flex-1">
-                            <h3 className="text-lg font-semibold text-white">{msg.structuredContent.title}</h3>
-                            <div className="flex items-center gap-4 text-sm text-gray-400">
-                              <span className="capitalize">{msg.structuredContent.type}</span>
-                              <span>{msg.structuredContent.metadata.wordCount} words</span>
-                              <span>{msg.structuredContent.metadata.estimatedReadTime}</span>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <p className="text-gray-300 text-sm mb-4">{msg.content}</p>
-                        
-                        <button
-                          onClick={() => {
-                            setArtifactContent(msg.structuredContent);
-                            setIsArtifactMode(true);
-                          }}
-                          className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
-                        >
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                            <circle cx="12" cy="12" r="3"></circle>
-                          </svg>
-                          View in Artifact Viewer
-                        </button>
-                      </div>
-                      
-                      {/* Action buttons for artifact */}
-                      {msg.isProcessed && (
-                        <div className="w-full flex justify-start gap-2 mt-2">
-                          <button
-                            onClick={() => handleCopy(msg.structuredContent.content)}
-                            className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
-                            aria-label="Copy artifact content"
-                          >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                            </svg>
-                            <span className="text-xs">Copy</span>
-                          </button>
-                          
-                          <button
-                            onClick={() => {
-                              const blob = new Blob([msg.structuredContent.content], { type: 'text/markdown' });
-                              const url = URL.createObjectURL(blob);
-                              const a = document.createElement('a');
-                              a.href = url;
-                              a.download = `${msg.structuredContent.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.md`;
-                              document.body.appendChild(a);
-                              a.click();
-                              document.body.removeChild(a);
-                              URL.revokeObjectURL(url);
-                            }}
-                            className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
-                            aria-label="Download artifact"
-                          >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                              <polyline points="7,10 12,15 17,10"></polyline>
-                              <line x1="12" y1="15" x2="12" y2="3"></line>
-                            </svg>
-                            <span className="text-xs">Download</span>
-                          </button>
-                        </div>
-                      )}
-                    </motion.div>
-                  );
+                if (msg.isSearchResult) {
+                  return renderSearchMessage(msg, i); // Early return - no fallthrough
                 }
                 
                 if (msg.contentType && msg.structuredContent) {
@@ -3271,237 +3545,10 @@ function TestChatComponent() {
                   );
                 }
 
-                const { content: rawContent } = cleanAIResponse(msg.content);
-                // Don't filter out <think> tags, only remove thinking indicators
-                const cleanContent = rawContent.replace(/<thinking-indicator.*?>\n<\/thinking-indicator>\n|<thinking-indicator.*?\/>/g, '');
-                const isStoppedMsg = cleanContent.trim() === '[Response stopped by user]';
-                
-                // Process think tags and extract them - BUT SKIP for search results since Search component already handled thinking
-                const { processedContent, thinkBlocks, isLiveThinking } = msg.isSearchResult 
-                  ? { processedContent: cleanContent, thinkBlocks: [], isLiveThinking: false }
-                  : processThinkTags(cleanContent);
-                const finalContent = makeCitationsClickable(processedContent, msg.webSources || []);
-                
-                if (showPulsingDot && i === messages.length -1 ) setShowPulsingDot(false);
-                
-                return (
-                  <React.Fragment key={msg.id + '-fragment-' + i}>
-                    {/* Main AI response content */}
-                    <motion.div
-                      key={msg.id + '-text-' + i}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, ease: "easeOut" }}
-                      className="w-full text-left flex flex-col items-start ai-response-text mb-4 relative"
-                      style={{ color: '#fff', maxWidth: '100%', overflowWrap: 'break-word' }}
-                    >
-                      {msg.webSources && msg.webSources.length > 0 && (
-                        <>
-                          <WebSourcesCarousel sources={msg.webSources} />
-                          <div style={{ height: '1.5rem' }} />
-                        </>
-                      )}
-                      
-                      {isStoppedMsg ? (
-                        <span className="text-sm text-white italic font-light mb-2">[Response stopped by user]</span>
-                      ) : (
-                        <div className="w-full max-w-full overflow-hidden">
-                          {/* Single consolidated thinking button - handles all thinking scenarios */}
-                          {(currentThinkingMessageId === msg.id && liveThinking) && (
-                            <ThinkingButton 
-                              key={`${msg.id}-live-thinking`} 
-                              content={liveThinking} 
-                              isLive={true} 
-                            />
-                          )}
-                          
-                          {/* Think blocks from processed content - show for all messages except the one currently live thinking */}
-                          {currentThinkingMessageId !== msg.id && thinkBlocks.length > 0 && thinkBlocks.map((block, index) => (
-                            <ThinkingButton key={`${msg.id}-think-${index}`} content={block.content} isLive={false} />
-                          ))}
-                          
-                          {/* Main content - show if there's content or thinking is complete */}
-                          {(processedContent.trim().length > 0 || !currentThinkingMessageId || currentThinkingMessageId !== msg.id) && (
-                            <ReactMarkdown 
-                              remarkPlugins={[remarkGfm]} 
-                              rehypePlugins={[rehypeRaw]} 
-                              className="research-output"
-                              components={{
-                                // Enhanced components for professional research output
-                                h1: ({children}) => (
-                                  <h1 className="text-3xl font-bold text-white mb-6 mt-8 border-b border-cyan-500/30 pb-3">
-                                    {children}
-                                  </h1>
-                                ),
-                                h2: ({children}) => (
-                                  <h2 className="text-2xl font-semibold text-cyan-400 mb-4 mt-8 flex items-center gap-2">
-                                    {children}
-                                  </h2>
-                                ),
-                                h3: ({children}) => (
-                                  <h3 className="text-xl font-semibold text-white mb-3 mt-6">
-                                    {children}
-                                  </h3>
-                                ),
-                                p: ({children}) => (
-                                  <p className="text-gray-200 leading-relaxed mb-4 text-base">
-                                    {children}
-                                  </p>
-                                ),
-                                ul: ({children}) => (
-                                  <ul className="space-y-2 mb-4 ml-4">
-                                    {children}
-                                  </ul>
-                                ),
-                                li: ({children}) => (
-                                  <li className="text-gray-200 flex items-start gap-2">
-                                    <span className="text-cyan-400 mt-1.5 text-xs">●</span>
-                                    <span className="flex-1">{children}</span>
-                                  </li>
-                                ),
-                                ol: ({children}) => (
-                                  <ol className="space-y-2 mb-4 ml-4 list-decimal list-inside">
-                                    {children}
-                                  </ol>
-                                ),
-                                strong: ({children}) => (
-                                  <strong className="text-white font-semibold">
-                                    {children}
-                                  </strong>
-                                ),
-                                table: ({children}) => (
-                                  <div className="overflow-x-auto mb-6 max-w-full">
-                                    <table className="w-full border-collapse border border-gray-600 rounded-lg" style={{tableLayout: 'fixed', maxWidth: '100%'}}>
-                                      {children}
-                                    </table>
-                                  </div>
-                                ),
-                                thead: ({children}) => (
-                                  <thead className="bg-gray-800">
-                                    {children}
-                                  </thead>
-                                ),
-                                th: ({children}) => (
-                                  <th className="border border-gray-600 px-4 py-3 text-left text-cyan-400 font-semibold" style={{wordWrap: 'break-word', overflowWrap: 'break-word'}}>
-                                    {children}
-                                  </th>
-                                ),
-                                td: ({children}) => (
-                                  <td className="border border-gray-600 px-4 py-3 text-gray-200" style={{wordWrap: 'break-word', overflowWrap: 'break-word'}}>
-                                    {children}
-                                  </td>
-                                ),
-                                blockquote: ({children}) => (
-                                  <blockquote className="border-l-4 border-cyan-500 pl-4 py-2 rounded-r-lg mb-4 italic text-gray-300" style={{background: 'transparent'}}>
-                                    {children}
-                                  </blockquote>
-                                ),
-                                code: ({children, className}) => {
-                                  const isInline = !className;
-                                  if (isInline) {
-                                    return (
-                                      <code className="text-cyan-400 px-2 py-1 rounded text-sm font-mono" style={{background: 'rgba(55, 65, 81, 0.5)'}}>
-                                        {children}
-                                      </code>
-                                    );
-                                  }
-                                  return (
-                                    <code className="block text-gray-200 p-4 rounded-lg overflow-x-auto text-sm font-mono mb-4" style={{background: 'rgba(17, 24, 39, 0.8)'}}>
-                                      {children}
-                                    </code>
-                                  );
-                                }
-                              }}
-                            >
-                              {finalContent.replace(/<!-- think-block-\d+ -->/g, '')}
-                            </ReactMarkdown>
-                          )}
-                        </div>
-                      )}
-                  
-                      {/* Action buttons for text content */}
-                      {msg.isProcessed && !isStoppedMsg && (
-                        <div className="w-full flex justify-start gap-2 mt-2">
-                          <button
-                            onClick={() => handleCopy(cleanContent)}
-                            className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
-                            aria-label="Copy response"
-                          >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                            </svg>
-                            <span className="text-xs">Copy</span>
-                          </button>
-                          
-                          <button
-                            onClick={() => {
-                              try {
-                                // Find the corresponding user message
-                                const userMsgIndex = messages.findIndex(m => m.id === msg.parentId);
-                                let userMsg = userMsgIndex >= 0 ? messages[userMsgIndex] : 
-                                            messages.find(m => m.role === 'user' && m.timestamp && m.timestamp < (msg.timestamp || Infinity));
-                                
-                                // If we still don't have a user message, use the last one as fallback
-                                if (!userMsg) {
-                                  userMsg = [...messages].reverse().find(m => m.role === 'user');
-                                }
-                                
-                                if (userMsg) {
-                                  handleRetry(userMsg.content);
-                                } else {
-                                  console.error('Could not find a user message to retry');
-                                }
-                              } catch (error) {
-                                console.error('Error handling retry button click:', error);
-                              }
-                            }}
-                            className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
-                            aria-label="Retry with different response"
-                          >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
-                              <path d="M3 3v5h5"></path>
-                            </svg>
-                            <span className="text-xs">Retry</span>
-                          </button>
-                        </div>
-                      )}
-                    </motion.div>
-                  </React.Fragment>
-                );
+                // Default chat message rendering - all other cases
+                return renderDefaultChatMessage(msg, i);
               } else if (msg.role === 'search-ui') {
-                return (
-                  <Search
-                    key={msg.id}
-                    query={msg.query || msg.content}
-                    onComplete={(result: any, sources?: any[]) => {
-                      // Add the search result as a new assistant message with search-specific flag and sources
-                      console.log('Search completed:', result);
-                      setMessages(prev => {
-                        const updatedMessages = [
-                        ...prev,
-                        {
-                            role: 'assistant' as const,
-                          id: uuidv4(),
-                          content: result,
-                          timestamp: Date.now(),
-                          isProcessed: true,
-                          parentId: msg.id,
-                          contentType: 'search-result',
-                          isSearchResult: true,
-                          webSources: sources || []
-                        }
-                        ];
-                        
-                        // Save messages to Supabase now that the search query is complete
-                        saveMessagesOnQueryComplete(updatedMessages);
-                        
-                        return updatedMessages;
-                      });
-                    }}
-                  />
-                );
+                return renderSearchMessage(msg, i);
               } else {
                 return (
                 <div
