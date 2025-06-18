@@ -1871,6 +1871,39 @@ function TestChatComponent() {
     }
   }, [messages]);
 
+  // Auto-scroll during live reasoning streaming
+  useEffect(() => {
+    if (scrollRef.current && liveReasoning) {
+      scrollRef.current.scrollTo({
+        top: scrollRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
+  }, [liveReasoning]);
+
+  // Auto-scroll during reasoning mode streaming (both thinking and final output)
+  useEffect(() => {
+    let scrollTimeout: NodeJS.Timeout;
+    
+    if (scrollRef.current && isAiResponding && activeButton === 'reasoning') {
+      // Throttle scrolling to avoid excessive scroll calls during rapid streaming
+      scrollTimeout = setTimeout(() => {
+        if (scrollRef.current) {
+          scrollRef.current.scrollTo({
+            top: scrollRef.current.scrollHeight,
+            behavior: 'smooth'
+          });
+        }
+      }, 100); // Small delay to throttle scroll calls
+    }
+    
+    return () => {
+      if (scrollTimeout) {
+        clearTimeout(scrollTimeout);
+      }
+    };
+  }, [messages, isAiResponding, activeButton, liveReasoning]);
+
 
 
   async function handleSend(e: React.FormEvent) {
