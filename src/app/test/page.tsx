@@ -2516,17 +2516,15 @@ function TestChatComponent() {
           }, 300); // Small delay for smooth transition
         }
         
-        // Clear the live thinking state with a smooth transition
-        // BUT keep the thinking content embedded in the message for permanent display
-        setTimeout(() => {
-          if (activeButton === 'reasoning') {
-            setLiveReasoning('');
-            setCurrentReasoningMessageId(null);
-          } else {
-            setLiveThinking('');
-            setCurrentThinkingMessageId(null);
-          }
-        }, 400); // Clear thinking state after content transition
+        // Clear the live thinking state immediately to prevent double display
+        // The thinking content is now embedded in the message for permanent display
+        if (activeButton === 'reasoning') {
+          setLiveReasoning('');
+          setCurrentReasoningMessageId(null);
+        } else {
+          setLiveThinking('');
+          setCurrentThinkingMessageId(null);
+        }
         
         // Handle image context if needed
         if (uploadedImageUrls.length > 0 && aiMessageId) {
