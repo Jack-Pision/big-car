@@ -1669,6 +1669,7 @@ function TestChatComponent() {
   // Separate live thinking state for Reasoning mode to avoid duplication with default chat
   const [liveReasoning, setLiveReasoning] = useState('');
   const [currentReasoningMessageId, setCurrentReasoningMessageId] = useState<string | null>(null);
+  const reasoningThinkLengthRef = useRef(0);
   
   // Artifact streaming states
   const [artifactStreamingContent, setArtifactStreamingContent] = useState<string>('');
