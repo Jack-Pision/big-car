@@ -2335,17 +2335,20 @@ function TestChatComponent() {
       }
       
       if (!usedCache) {
+        // Determine endpoint: use NVIDIA for reasoning mode, OpenRouter otherwise
+        const apiEndpoint = activeButton === 'reasoning' ? '/api/nvidia' : '/api/openrouter-chat';
+
         // Make fresh API call
-        console.log('[Performance] Making fresh API call');
-        res = await fetch("/api/openrouter-chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(apiPayload),
+        console.log(`[Performance] Making fresh API call to ${apiEndpoint}`);
+        res = await fetch(apiEndpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(apiPayload),
           signal: newAbortController.signal,
         });
         
         // Cache the response for future use (only for non-image, conversation requests)
-        if (uploadedImageUrls.length === 0 && queryType === 'conversation' && res.ok) {
+        if (uploadedImageUrls.length === 0 && queryType === 'conversation' && res.ok && activeButton !== 'reasoning') {
           try {
             // We'll cache after processing the response
           } catch (error) {
