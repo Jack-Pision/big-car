@@ -16,3 +16,5 @@ alwaysApply: true
 7. Always make changes where user asks you to do, don't do anything extra
 
 8. ** Always save push and commit after every change/query
+
+9. ** You are developing an AI chatbot.**
