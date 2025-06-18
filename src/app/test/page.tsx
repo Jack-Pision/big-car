@@ -3054,7 +3054,7 @@ function TestChatComponent() {
                                     <span className="text-sm text-yellow-400 font-medium">Thinking...</span>
                                   </div>
                                   <div className="text-gray-300 text-sm">
-                                    <TextReveal text={liveThinking} isLive={true} />
+                                    <TextReveal text={liveThinking} />
                                   </div>
                                 </div>
                               )}
