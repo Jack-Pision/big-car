@@ -47,7 +47,7 @@ import { Message as ConversationMessage } from "@/utils/conversation-context";
 import { filterAIThinking } from '../../utils/content-filter';
 import ThinkingButton from '@/components/ThinkingButton';
 import { ArtifactViewer } from '@/components/ArtifactViewer';
-import { shouldTriggerArtifact, getArtifactPrompt, artifactSchema, validateArtifactData, createFallbackArtifact, type ArtifactData } from '@/utils/artifact-utils';
+import { shouldTriggerArtifact, getArtifactPrompt, artifactSchema, validateArtifactData, createFallbackArtifact, createArtifactFromRawContent, extractTitleFromContent, type ArtifactData } from '@/utils/artifact-utils';
 
 // Define a type that includes all possible query types (including the ones in SCHEMAS and 'conversation')
 type QueryType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversation';
@@ -2004,11 +2004,8 @@ function TestChatComponent() {
           throw new Error('No response body reader available');
         }
 
-        let contentBuffer = '';
-        let lastArtifactData: any = null;
-        let rawStreamingContent = '';
-        let isInsideContent = false;
-        let startedStreaming = false;
+        let rawContent = '';
+        let hasStartedContent = false;
 
         try {
           while (true) {
@@ -2028,60 +2025,34 @@ function TestChatComponent() {
                   const content = parsed.choices?.[0]?.delta?.content;
                   
                   if (content) {
-                    contentBuffer += content;
-                    setArtifactStreamingContent(contentBuffer);
+                    rawContent += content;
+                    setArtifactStreamingContent(rawContent);
                     
-                    // Update progress based on content structure
-                    if (contentBuffer.includes('<think>') && !startedStreaming) {
-                      setArtifactProgress('Analyzing your request...');
-                    } else if (contentBuffer.includes('"title"') && !startedStreaming) {
-                      setArtifactProgress('Creating document structure...');
-                    } else if (contentBuffer.includes('"content"') && !startedStreaming) {
+                    // Update progress based on content progress
+                    if (!hasStartedContent && rawContent.trim().length > 0) {
                       setArtifactProgress('Writing content...');
-                      startedStreaming = true;
+                      hasStartedContent = true;
                     }
 
-                    // IMMEDIATE STREAMING: Extract content as it's being written
-                    if (contentBuffer.includes('"content":')) {
-                      isInsideContent = true;
-                      
-                      // Extract everything after "content": " (including incomplete content)
-                      const contentStartMatch = contentBuffer.match(/"content":\s*"([^"]*(?:\\.[^"]*)*)/);
-                      if (contentStartMatch) {
-                        let streamingContent = contentStartMatch[1];
-                        
-                        // Clean up escape sequences for immediate display
-                        streamingContent = streamingContent
-                          .replace(/\\n/g, '\n')
-                          .replace(/\\"/g, '"')
-                          .replace(/\\t/g, '\t')
-                          .replace(/\\\\/g, '\\');
-                        
-                        // Update artifact content immediately with streaming content
-                        if (streamingContent !== rawStreamingContent) {
-                          rawStreamingContent = streamingContent;
-                          
-                          setArtifactContent(prev => prev ? {
-                            ...prev,
-                            content: streamingContent,
-                            metadata: {
-                              ...prev.metadata,
-                              wordCount: streamingContent.split(' ').filter(word => word.length > 0).length,
-                              estimatedReadTime: `${Math.max(1, Math.ceil(streamingContent.split(' ').filter(word => word.length > 0).length / 200))} minutes`
-                            }
-                          } : {
-                            ...placeholderArtifact,
-                            content: streamingContent
-                          });
-                        }
+                    // DIRECT STREAMING: Update artifact with raw content immediately
+                    const words = rawContent.split(/\s+/).filter(word => word.length > 0).length;
+                    const estimatedTime = Math.max(1, Math.ceil(words / 200));
+                    
+                    // Extract title from content as it streams
+                    const currentTitle = extractTitleFromContent(rawContent, input.trim()) || quickTitle;
+                    
+                    // Update artifact content in real-time with raw markdown
+                    setArtifactContent(prev => ({
+                      type: 'document' as const,
+                      title: currentTitle,
+                      content: rawContent,
+                      metadata: {
+                        wordCount: words,
+                        estimatedReadTime: `${estimatedTime} minute${estimatedTime !== 1 ? 's' : ''}`,
+                        category: prev?.metadata.category || 'General Document',
+                        tags: prev?.metadata.tags || ['document', 'ai-generated']
                       }
-                    }
-
-                    // Still try to extract complete artifact data for final processing
-                    const potentialArtifactData = extractJsonFromStreamingContent(contentBuffer);
-                    if (potentialArtifactData && isArtifactContentComplete(contentBuffer)) {
-                      lastArtifactData = potentialArtifactData;
-                    }
+                    }));
                   }
                 } catch (parseError) {
                   // Continue streaming even if individual chunks fail to parse
@@ -2094,31 +2065,21 @@ function TestChatComponent() {
           reader.releaseLock();
         }
 
-        // Process final artifact data
-        let artifactData = lastArtifactData;
+        // Create final artifact from raw content
+        const finalArtifactData = createArtifactFromRawContent(rawContent, input.trim());
         
-        if (!artifactData) {
-          // Try to extract JSON one more time from complete content
-          artifactData = extractJsonFromStreamingContent(contentBuffer);
-        }
-        
-        if (!artifactData || !validateArtifactData(artifactData)) {
-          console.log('Creating fallback artifact from streaming content...');
-          artifactData = createFallbackArtifact(contentBuffer, input.trim());
-        }
-
         // Set final artifact content
-        setArtifactContent(artifactData);
+        setArtifactContent(finalArtifactData);
 
         // Update the AI message with final artifact
         const finalAiMessage: LocalMessage = {
           role: 'assistant',
           id: aiMessageId,
-          content: `I've created a ${artifactData.type} titled "${artifactData.title}". Click to view it in the artifact viewer.`,
+          content: `I've created a ${finalArtifactData.type} titled "${finalArtifactData.title}". Click to view it in the artifact viewer.`,
           timestamp: Date.now(),
           parentId: userMessageId,
           contentType: 'artifact',
-          structuredContent: artifactData,
+          structuredContent: finalArtifactData,
           isProcessed: true,
           isStreaming: false
         };

@@ -79,39 +79,29 @@ export const shouldTriggerArtifact = (query: string): boolean => {
   return artifactTriggers.some(pattern => pattern.test(query));
 };
 
-// Generate the prompt for artifact creation
+// Generate the prompt for artifact creation (Raw Output Method)
 export const getArtifactPrompt = (userQuery: string): string => {
-  return `You are a professional document creation assistant. You must respond with ONLY a valid JSON object, no additional text before or after.
-
-**CRITICAL INSTRUCTIONS:**
-1. Return ONLY valid JSON - no explanations, no markdown code blocks, no additional text
-2. Ensure all JSON strings are properly escaped
-3. Use double quotes for all JSON keys and string values
-4. Do not include any text outside the JSON object
+  return `You are a professional document creation assistant. Write a comprehensive, well-structured document using markdown formatting.
 
 **CONTENT REQUIREMENTS:**
 - Generate substantial content (minimum 800 words)
 - Use professional formatting with clear structure
 - Include relevant headings, subheadings, and sections
-- Use markdown formatting within the content string
+- Use proper markdown formatting (headers, lists, emphasis, etc.)
 - Provide actionable information and insights
+- Write in a clear, engaging, and informative style
 
-**REQUIRED JSON FORMAT:**
-{
-  "type": "document",
-  "title": "Clear, descriptive title",
-  "content": "# Main Title\\n\\n## Introduction\\n\\nYour comprehensive content here with proper markdown formatting...\\n\\n## Conclusion\\n\\nSummary and final thoughts.",
-  "metadata": {
-    "wordCount": 1200,
-    "estimatedReadTime": "6 minutes",
-    "category": "Educational Content",
-    "tags": ["essay", "bangladesh", "education"]
-  }
-}
+**FORMATTING GUIDELINES:**
+- Start with a main title using # (H1)
+- Use ## for major sections (H2)
+- Use ### for subsections (H3)
+- Include introduction and conclusion sections
+- Use bullet points, numbered lists, and emphasis where appropriate
+- Ensure logical flow and good readability
 
 **USER REQUEST:** ${userQuery}
 
-Generate a comprehensive document addressing this request. Return ONLY the JSON object.`;
+Write the document now using proper markdown formatting:`;
 };
 
 // Estimate reading time based on word count
@@ -199,25 +189,33 @@ export const validateArtifactData = (data: any): data is ArtifactData => {
   );
 };
 
-// Create a fallback artifact from raw content
-export const createFallbackArtifact = (content: string, query: string): ArtifactData => {
-  const words = content.split(/\s+/).length;
+// Extract title from raw markdown content
+export const extractTitleFromContent = (content: string, query: string): string => {
+  // Try to extract title from content's first H1 header
+  const titleMatch = content.match(/^#\s+(.+)$/m);
+  if (titleMatch) {
+    return titleMatch[1].trim();
+  }
+  
+  // Fallback to query-based title generation
+  if (query.toLowerCase().includes('essay')) {
+    return `Essay: ${query.replace(/create|write|generate|an|essay|about/gi, '').trim()}`;
+  } else if (query.toLowerCase().includes('guide')) {
+    return `Guide: ${query.replace(/create|write|generate|a|guide|for|on|about/gi, '').trim()}`;
+  } else if (query.toLowerCase().includes('report')) {
+    return `Report: ${query.replace(/create|write|generate|a|report|on|about/gi, '').trim()}`;
+  }
+  
+  return 'Generated Document';
+};
+
+// Create artifact from raw markdown content (for streaming)
+export const createArtifactFromRawContent = (content: string, query: string): ArtifactData => {
+  const words = content.split(/\s+/).filter(word => word.length > 0).length;
   const readingTime = estimateReadingTime(words);
   const category = extractCategory('document', query);
   const tags = generateTags(query);
-  
-  // Try to extract title from content
-  let title = 'Generated Document';
-  const titleMatch = content.match(/^#\s+(.+)$/m);
-  if (titleMatch) {
-    title = titleMatch[1].trim();
-  } else if (query.toLowerCase().includes('essay')) {
-    title = `Essay: ${query.replace(/create|write|generate|an|essay|about/gi, '').trim()}`;
-  } else if (query.toLowerCase().includes('guide')) {
-    title = `Guide: ${query.replace(/create|write|generate|a|guide|for|on|about/gi, '').trim()}`;
-  } else if (query.toLowerCase().includes('report')) {
-    title = `Report: ${query.replace(/create|write|generate|a|report|on|about/gi, '').trim()}`;
-  }
+  const title = extractTitleFromContent(content, query);
   
   return {
     type: 'document',
@@ -230,4 +228,9 @@ export const createFallbackArtifact = (content: string, query: string): Artifact
       tags: tags
     }
   };
+};
+
+// Create a fallback artifact from raw content (legacy function for compatibility)
+export const createFallbackArtifact = (content: string, query: string): ArtifactData => {
+  return createArtifactFromRawContent(content, query);
 }; 
