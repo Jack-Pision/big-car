@@ -3461,112 +3461,32 @@ function TestChatComponent() {
           {/* Conversation and other UI below */}
           <div className="w-full max-w-3xl mx-auto flex flex-col gap-4 items-center justify-center z-10 pt-12 pb-4">
             {messages.map((msg, i) => {
-              if (msg.role === "assistant") {
-                // Complete separation with independent rendering systems
+              // Assistant responses: artifacts first, then search results, then default chat
+              if (msg.role === 'assistant') {
                 if (msg.contentType === 'artifact') {
-                  return renderArtifactMessage(msg, i); // Early return - no fallthrough
+                  return renderArtifactMessage(msg, i);
                 }
-                
                 if (msg.isSearchResult) {
-                  return renderSearchMessage(msg, i); // Early return - no fallthrough
+                  return renderSearchMessage(msg, i);
                 }
-                
-                if (msg.contentType && msg.structuredContent) {
-                  return (
-                    <motion.div
-                      key={msg.id + '-structured-' + i}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, ease: "easeOut" }}
-                      className="w-full text-left flex flex-col items-start ai-response-text mb-4 relative"
-                      style={{ color: '#fff', maxWidth: '100%', overflowWrap: 'break-word' }}
-                    >
-                      {msg.webSources && msg.webSources.length > 0 && (
-                        <>
-                          <WebSourcesCarousel sources={msg.webSources} />
-                          <div style={{ height: '1.5rem' }} />
-                        </>
-                      )}
-                      <DynamicResponseRenderer 
-                        data={msg.structuredContent} 
-                        type={msg.contentType} 
-                      />
-                      
-                      {/* Action buttons for structured content */}
-                      {msg.isProcessed && (
-                        <div className="w-full flex justify-start gap-2 mt-2">
-                          <button
-                            onClick={() => handleCopy(msg.structuredContent)}
-                            className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
-                            aria-label="Copy response"
-                          >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                            </svg>
-                            <span className="text-xs">Copy</span>
-                          </button>
-                          
-                          <button
-                            onClick={() => {
-                              try {
-                                // Find the corresponding user message
-                                const userMsgIndex = messages.findIndex(m => m.id === msg.parentId);
-                                let userMsg = userMsgIndex >= 0 ? messages[userMsgIndex] : 
-                                            messages.find(m => m.role === 'user' && m.timestamp && m.timestamp < (msg.timestamp || Infinity));
-                                
-                                // If we still don't have a user message, use the last one as fallback
-                                if (!userMsg) {
-                                  userMsg = [...messages].reverse().find(m => m.role === 'user');
-                                }
-                                
-                                if (userMsg) {
-                                  handleRetry(userMsg.content);
-                                } else {
-                                  console.error('Could not find a user message to retry');
-                                }
-                              } catch (error) {
-                                console.error('Error handling retry button click:', error);
-                              }
-                            }}
-                            className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
-                            aria-label="Retry with different response"
-                          >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
-                              <path d="M3 3v5h5"></path>
-                            </svg>
-                            <span className="text-xs">Retry</span>
-                          </button>
-                        </div>
-                      )}
-                    </motion.div>
-                  );
-                }
-
-                // Default chat message rendering - all other cases
                 return renderDefaultChatMessage(msg, i);
-              } else if (msg.role === 'search-ui') {
+              }
+              // Search UI messages
+              if (msg.role === 'search-ui') {
                 return renderSearchMessage(msg, i);
-              } else {
-                return (
+              }
+              // User messages
+              return (
                 <div
                   key={msg.id + '-user-' + i}
                   className="px-3 py-2 rounded-xl shadow bg-cyan-500 text-white self-end max-w-[80%] text-base flex flex-col items-end mb-2"
                 >
-                  {/* Only show message content and images, no menu */}
-                    {msg.imageUrls && msg.imageUrls.map((url, index) => (
-                      <img 
-                        key={index}
-                        src={url} 
-                        alt={`Preview ${index + 1}`} 
-                        className="max-w-xs max-h-64 rounded-md mb-2 self-end" 
-                      />
-                    ))}
-                    <div>{msg.content}</div>
+                  {msg.imageUrls && msg.imageUrls.map((url, index) => (
+                    <img key={index} src={url} alt={`Preview ${index + 1}`} className="max-w-xs max-h-64 rounded-md mb-2 self-end" />
+                  ))}
+                  <div>{msg.content}</div>
                 </div>
-                );
-              }
+              );
             })}
             
             {/* Remove the standalone thinking box since it's now integrated within the messages flow */}
