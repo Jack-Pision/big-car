@@ -36,7 +36,7 @@ import ComparisonDisplay, { ComparisonData } from '@/components/ComparisonDispla
 import InformationalSummaryDisplay, { InformationalSummaryData } from '@/components/InformationalSummaryDisplay';
 import ConversationDisplay from '@/components/ConversationDisplay';
 import PerformanceMonitor from '@/components/PerformanceMonitor';
-import { Bot, User, Paperclip, Send, XCircle, Search as SearchIcon, Trash2, PlusCircle, Settings, Zap, ExternalLink, AlertTriangle } from 'lucide-react';
+import { Bot, User, Paperclip, Send, XCircle, Search as SearchIcon, Trash2, PlusCircle, Settings, Zap, ExternalLink, AlertTriangle, Brain } from 'lucide-react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import Image from 'next/image';
@@ -48,13 +48,14 @@ import { filterAIThinking } from '../../utils/content-filter';
 import ThinkingButton from '@/components/ThinkingButton';
 import { ArtifactViewer } from '@/components/ArtifactViewer';
 import { shouldTriggerArtifact, getArtifactPrompt, artifactSchema, validateArtifactData, createFallbackArtifact, createArtifactFromRawContent, extractTitleFromContent, type ArtifactData } from '@/utils/artifact-utils';
+import ReasoningDisplay from '@/components/ReasoningDisplay';
 
 // Define a type that includes all possible query types (including the ones in SCHEMAS and 'conversation')
-type QueryType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversation';
+type QueryType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversation' | 'reasoning';
 
 // Define types for query classification and content display
 type QueryClassificationType = keyof typeof SCHEMAS;
-type ContentDisplayType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversation';
+type ContentDisplayType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversation' | 'reasoning';
 
 const BASE_SYSTEM_PROMPT = `You are Tehom AI, a helpful and intelligent assistant. Respond in a natural, conversational tone. Always write in markdown formatting in every output dynamically. 
 
@@ -2749,6 +2750,8 @@ function TestChatComponent() {
             false, 
             `${artifactData.metadata?.wordCount || 0} words • ${artifactData.metadata?.estimatedReadTime || '2 minutes'}`
           );
+        case 'reasoning':
+          return <ReasoningDisplay data={msg.structuredContent as string} />;
         default:
           if (typeof msg.structuredContent === 'string') {
             return <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="prose dark:prose-invert max-w-none">{msg.structuredContent}</ReactMarkdown>;
@@ -2756,7 +2759,7 @@ function TestChatComponent() {
           return <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="prose dark:prose-invert max-w-none">{`Unsupported structured content: ${JSON.stringify(msg.structuredContent)}`}</ReactMarkdown>;
       }
     } else if (msg.content) {
-      const isDefaultChat = msg.contentType === 'conversation' || (msg.role === 'assistant' && !msg.contentType);
+      const isDefaultChat = (msg.contentType === 'conversation' || msg.contentType === 'reasoning' || (msg.role === 'assistant' && !msg.contentType));
       if (isDefaultChat) {
         // Display content using standard ReactMarkdown - think tags are handled separately by processThinkTags
         return (
@@ -3510,6 +3513,20 @@ function TestChatComponent() {
                         <line x1="9" y1="13" x2="15" y2="13"></line>
                       </svg>
                       <span className="whitespace-nowrap text-xs font-medium">Artifact</span>
+                    </button>
+
+                    {/* Reasoning button */}
+                    <button
+                      type="button"
+                      className={`flex items-center gap-1.5 rounded-full transition px-3 py-1.5 flex-shrink-0 text-xs font-medium
+                        ${activeButton === 'reasoning' ? 'bg-gray-800 text-cyan-400' : 'bg-gray-800 text-gray-400 opacity-60'}
+                        hover:bg-gray-700`}
+                      style={{ height: "36px" }}
+                      tabIndex={0}
+                      onClick={() => handleButtonClick('reasoning')}
+                    >
+                      <Brain size={16} strokeWidth={2} style={{ color: activeButton === 'reasoning' ? '#22d3ee' : '#a3a3a3' }} />
+                      <span className="whitespace-nowrap text-xs font-medium">Reasoning</span>
                     </button>
               </div>
 
