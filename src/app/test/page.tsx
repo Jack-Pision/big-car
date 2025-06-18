@@ -3524,7 +3524,7 @@ function TestChatComponent() {
       {/* Resizable Divider */}
       {isArtifactMode && (
         <div
-          className="fixed top-16 bottom-0 bg-gray-600 hover:bg-gray-500 cursor-col-resize z-[10000] transition-colors"
+          className="fixed top-0 bottom-0 bg-gray-600 hover:bg-gray-500 cursor-col-resize z-[10001] transition-colors"
           style={{ 
             left: `${leftPaneWidth}%`, 
             width: '4px',
@@ -3537,7 +3537,7 @@ function TestChatComponent() {
       {/* Artifact Viewer - Right Pane Split Screen */}
       {isArtifactMode && artifactContent && (
         <div 
-          className="fixed top-16 right-0 bottom-0 z-[9999] bg-[#161618] border-l border-gray-700" 
+          className="fixed top-0 right-0 bottom-0 z-[10000] bg-[#161618] border-l border-gray-700" 
           style={{ 
             width: `${100 - leftPaneWidth}%`,
             left: `${leftPaneWidth}%`
