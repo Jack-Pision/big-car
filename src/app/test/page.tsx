@@ -2300,7 +2300,7 @@ function TestChatComponent() {
           messages: formattedMessages,
           temperature: apiPayload.temperature,
           max_tokens: apiPayload.max_tokens,
-          model: 'nvidia'
+          model: 'google/gemini-2.0-flash-exp:free'
         };
         
         const cachedResponse = await aiResponseCache.getCachedResponse(aiOptions);
@@ -2325,7 +2325,7 @@ function TestChatComponent() {
       if (!usedCache) {
         // Make fresh API call
         console.log('[Performance] Making fresh API call');
-        res = await fetch("/api/nvidia", {
+        res = await fetch("/api/openrouter-chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(apiPayload),
