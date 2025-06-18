@@ -46,6 +46,8 @@ import Search from '@/components/Search';
 import { Message as ConversationMessage } from "@/utils/conversation-context";
 import { filterAIThinking } from '../../utils/content-filter';
 import ThinkingButton from '@/components/ThinkingButton';
+import { ArtifactViewer } from '@/components/ArtifactViewer';
+import { shouldTriggerArtifact, getArtifactPrompt, artifactSchema, validateArtifactData, type ArtifactData } from '@/utils/artifact-utils';
 
 // Define a type that includes all possible query types (including the ones in SCHEMAS and 'conversation')
 type QueryType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversation';
@@ -1601,6 +1603,8 @@ function TestChatComponent() {
   const [sidebarRefreshTrigger, setSidebarRefreshTrigger] = useState(0);
   const [activeMode, setActiveMode] = useState<'chat' | 'search'>('chat');
   const [activeButton, setActiveButton] = useState<string | null>(null);
+  const [artifactContent, setArtifactContent] = useState<any>(null);
+  const [isArtifactMode, setIsArtifactMode] = useState(false);
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef1 = useRef<HTMLInputElement>(null);
@@ -1805,7 +1809,119 @@ function TestChatComponent() {
       return;
     }
 
+    // Check if we're in artifact mode
+    if (activeButton === 'artifact' || shouldTriggerArtifact(input.trim())) {
+      // Handle artifact creation
+      let currentActiveSessionId = activeSessionId;
+      
+      if (!currentActiveSessionId) {
+        const newSession = await optimizedSupabaseService.createNewSession(input.trim());
+        setActiveSessionId(newSession.id);
+        saveActiveSessionId(newSession.id);
+        currentActiveSessionId = newSession.id;
+        setMessages([]);
+      }
 
+      if (!hasInteracted) setHasInteracted(true);
+      if (showHeading) setShowHeading(false);
+
+      // Add user message
+      const userMessageId = uuidv4();
+      const userMessage: LocalMessage = {
+        role: 'user',
+        id: userMessageId,
+        content: input,
+        timestamp: Date.now(),
+        isProcessed: true
+      };
+      
+      setMessages(prev => [...prev, userMessage]);
+      setInput('');
+      setIsLoading(true);
+      setIsAiResponding(true);
+
+      try {
+        // Call NVIDIA API with artifact prompt
+        const artifactPrompt = getArtifactPrompt(input.trim());
+        
+        const response = await fetch('/api/nvidia', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: [{ role: 'user', content: artifactPrompt }],
+            temperature: 0.3,
+            max_tokens: 8192,
+            response_format: { type: "json_object" }
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`API request failed: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content;
+        
+        if (!content) {
+          throw new Error('No content received from API');
+        }
+
+        // Parse and validate artifact data
+        let artifactData;
+        try {
+          artifactData = JSON.parse(content);
+        } catch (parseError) {
+          throw new Error('Failed to parse artifact JSON');
+        }
+
+        if (!validateArtifactData(artifactData)) {
+          throw new Error('Invalid artifact data structure');
+        }
+
+        // Set artifact content and show viewer
+        setArtifactContent(artifactData);
+        setIsArtifactMode(true);
+
+        // Add AI message with artifact preview
+        const aiMessage: LocalMessage = {
+          role: 'assistant',
+          id: uuidv4(),
+          content: `I've created a ${artifactData.type} titled "${artifactData.title}". Click to view it in the artifact viewer.`,
+          timestamp: Date.now(),
+          parentId: userMessageId,
+          contentType: 'artifact',
+          structuredContent: artifactData,
+          isProcessed: true
+        };
+
+        setMessages(prev => [...prev, aiMessage]);
+        
+        // Save messages
+        const updatedMessages = [...messages, userMessage, aiMessage];
+        await saveMessagesOnQueryComplete(updatedMessages);
+
+      } catch (error) {
+        console.error('Artifact generation error:', error);
+        
+        // Add error message
+        const errorMessage: LocalMessage = {
+          role: 'assistant',
+          id: uuidv4(),
+          content: `Sorry, I encountered an error while creating the artifact: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          timestamp: Date.now(),
+          parentId: userMessageId,
+          isProcessed: true
+        };
+
+        setMessages(prev => [...prev, errorMessage]);
+      } finally {
+        setIsLoading(false);
+        setIsAiResponding(false);
+        setActiveButton(null); // Reset artifact mode
+      }
+
+      return;
+    }
 
     // If we get here, we're in default chat mode
     let userMessageId = '';
@@ -2608,6 +2724,24 @@ function TestChatComponent() {
                       </svg>
                       <span className="whitespace-nowrap text-xs font-medium">Advance Search</span>
                     </button>
+
+                    {/* Artifact button */}
+                    <button
+                      type="button"
+                      className={`flex items-center gap-1.5 rounded-full transition px-3 py-1.5 flex-shrink-0 text-xs font-medium
+                        ${activeButton === 'artifact' ? 'bg-gray-800 text-cyan-400' : 'bg-gray-800 text-gray-400 opacity-60'}
+                        hover:bg-gray-700`}
+                      style={{ height: "36px" }}
+                      tabIndex={0}
+                      onClick={() => handleButtonClick('artifact')}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: activeButton === 'artifact' ? '#22d3ee' : '#a3a3a3' }}>
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="9" y1="9" x2="15" y2="9"></line>
+                        <line x1="9" y1="13" x2="15" y2="13"></line>
+                      </svg>
+                      <span className="whitespace-nowrap text-xs font-medium">Artifact</span>
+                    </button>
               </div>
 
                   {/* Right group: Plus, Send */}
@@ -2694,6 +2828,97 @@ function TestChatComponent() {
                   );
                 }
                 
+                // Handle artifact messages
+                if (msg.contentType === 'artifact' && msg.structuredContent) {
+                  return (
+                    <motion.div
+                      key={msg.id + '-artifact-' + i}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, ease: "easeOut" }}
+                      className="w-full text-left flex flex-col items-start ai-response-text mb-4 relative"
+                      style={{ color: '#fff', maxWidth: '100%', overflowWrap: 'break-word' }}
+                    >
+                      {/* Artifact Preview Card */}
+                      <div className="w-full bg-gray-800 rounded-lg border border-gray-700 p-4 mb-2">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="p-2 bg-blue-600 rounded-lg">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                              <line x1="9" y1="9" x2="15" y2="9"></line>
+                              <line x1="9" y1="13" x2="15" y2="13"></line>
+                            </svg>
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="text-lg font-semibold text-white">{msg.structuredContent.title}</h3>
+                            <div className="flex items-center gap-4 text-sm text-gray-400">
+                              <span className="capitalize">{msg.structuredContent.type}</span>
+                              <span>{msg.structuredContent.metadata.wordCount} words</span>
+                              <span>{msg.structuredContent.metadata.estimatedReadTime}</span>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <p className="text-gray-300 text-sm mb-4">{msg.content}</p>
+                        
+                        <button
+                          onClick={() => {
+                            setArtifactContent(msg.structuredContent);
+                            setIsArtifactMode(true);
+                          }}
+                          className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                          </svg>
+                          View in Artifact Viewer
+                        </button>
+                      </div>
+                      
+                      {/* Action buttons for artifact */}
+                      {msg.isProcessed && (
+                        <div className="w-full flex justify-start gap-2 mt-2">
+                          <button
+                            onClick={() => handleCopy(msg.structuredContent.content)}
+                            className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
+                            aria-label="Copy artifact content"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                            <span className="text-xs">Copy</span>
+                          </button>
+                          
+                          <button
+                            onClick={() => {
+                              const blob = new Blob([msg.structuredContent.content], { type: 'text/markdown' });
+                              const url = URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.href = url;
+                              a.download = `${msg.structuredContent.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.md`;
+                              document.body.appendChild(a);
+                              a.click();
+                              document.body.removeChild(a);
+                              URL.revokeObjectURL(url);
+                            }}
+                            className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
+                            aria-label="Download artifact"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                              <polyline points="7,10 12,15 17,10"></polyline>
+                              <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            <span className="text-xs">Download</span>
+                          </button>
+                        </div>
+                      )}
+                    </motion.div>
+                  );
+                }
+
                 if (msg.contentType && msg.structuredContent) {
                   return (
                     <motion.div
@@ -3067,6 +3292,21 @@ function TestChatComponent() {
       
       {/* Performance Monitor - Shows cache stats */}
       <PerformanceMonitor />
+
+      {/* Artifact Viewer Overlay */}
+      {isArtifactMode && artifactContent && (
+        <div className="fixed inset-0 z-[9999] bg-black/50 flex items-center justify-center p-4">
+          <div className="w-full max-w-6xl h-full max-h-[90vh] bg-white rounded-lg shadow-2xl overflow-hidden">
+            <ArtifactViewer
+              artifact={artifactContent}
+              onClose={() => {
+                setIsArtifactMode(false);
+                setArtifactContent(null);
+              }}
+            />
+          </div>
+        </div>
+      )}
     </>
   );
 }

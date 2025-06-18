@@ -150,6 +150,7 @@ async function fetchNvidiaText(messages: any[], options: any = {}) {
     presence_penalty: options.presence_penalty || 0.8,
     frequency_penalty: options.frequency_penalty || 0.5,
     stream: options.stream !== undefined ? options.stream : true,
+    ...(options.response_format && { response_format: options.response_format })
   };
   
   try {
@@ -323,6 +324,7 @@ export async function POST(req: NextRequest) {
       presence_penalty: body.presence_penalty || 0.8,
       frequency_penalty: body.frequency_penalty || 0.5,
       stream: body.stream !== undefined ? body.stream : true,
+      ...(body.response_format && { response_format: body.response_format })
     };
       
     // Make the API call with optimized messages and parameters
