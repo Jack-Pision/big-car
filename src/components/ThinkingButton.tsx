@@ -101,7 +101,7 @@ const ThinkingButton: React.FC<ThinkingButtonProps> = ({ content, isLive = false
           
           {/* Title text */}
           <span className="font-medium text-sm flex-1" style={{ color: '#FCFCFC' }}>
-            {isLive ? `Thinking ${formatDuration(duration)}` : `Thought for ${formatDuration(duration)}`}
+            {isLive ? 'Thinking' : 'Thoughts'}
           </span>
           
           {/* Expand/collapse chevron */}
