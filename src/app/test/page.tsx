@@ -1671,6 +1671,7 @@ function TestChatComponent() {
   // Additional missing state variables
   const [showHeading, setShowHeading] = useState(true);
   const [selectedFilesForUpload, setSelectedFilesForUpload] = useState<File[]>([]);
+  const [imageCounter, setImageCounter] = useState(0);
 
   // Refs
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -2120,7 +2121,8 @@ function TestChatComponent() {
     console.log("[handleSend] Query:", input);
     console.log("[handleSend] Using default conversation mode");
 
-    aiStreamAbortController.current = new AbortController();
+    const newAbortController = new AbortController();
+    setAbortController(newAbortController);
 
       let userMessageId = uuidv4();
       const userMessageForDisplay: LocalMessage = {
@@ -2292,7 +2294,7 @@ function TestChatComponent() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(apiPayload),
-          signal: aiStreamAbortController.current.signal,
+          signal: newAbortController.signal,
         });
         
         // Cache the response for future use (only for non-image, conversation requests)
@@ -2516,15 +2518,15 @@ function TestChatComponent() {
     } finally {
       setIsAiResponding(false);
       setIsLoading(false);
-      aiStreamAbortController.current = null;
+      setAbortController(null);
     }
     setImagePreviewUrls([]);
     setSelectedFilesForUpload([]);
   }
 
   function handleStopAIResponse() {
-    if (aiStreamAbortController.current) {
-      aiStreamAbortController.current.abort();
+    if (abortController) {
+      abortController.abort();
     }
   }
 
