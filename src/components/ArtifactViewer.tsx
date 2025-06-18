@@ -127,11 +127,28 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({ artifact, onClos
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-6">
         <div className="max-w-none">
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            rehypePlugins={[rehypeRaw]}
-            className="prose prose-invert max-w-none"
-            components={{
+          {!artifact.content ? (
+            // Show streaming state when content is empty
+            <div className="flex flex-col items-center justify-center h-64">
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400"></div>
+                <span className="text-xl font-medium text-gray-300">AI is writing...</span>
+              </div>
+              <p className="text-gray-400 text-center max-w-md">
+                Your document is being generated in real-time. You'll see the content appear as it's written.
+              </p>
+              <div className="mt-6 flex items-center space-x-2">
+                <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce"></div>
+                <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce delay-100"></div>
+                <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce delay-200"></div>
+              </div>
+            </div>
+          ) : (
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              rehypePlugins={[rehypeRaw]}
+              className="prose prose-invert max-w-none"
+              components={{
               h1: ({ children }) => (
                 <h1 className="text-3xl font-bold text-gray-100 mb-6 mt-6 border-b border-gray-600 pb-3">
                   {children}
@@ -229,10 +246,11 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({ artifact, onClos
                   {children}
                 </a>
               )
-            }}
-          >
-            {artifact.content}
-          </ReactMarkdown>
+              }}
+            >
+              {artifact.content}
+            </ReactMarkdown>
+          )}
         </div>
       </div>
 

@@ -709,6 +709,7 @@ interface LocalMessage {
   parentId?: string;
   query?: string; // Add this property for search-ui messages
   isSearchResult?: boolean; // Add this property for search result messages
+  title?: string; // Add title for artifact preview cards
 }
 
 // Helper to enforce Advance Search output structure
@@ -1913,6 +1914,21 @@ function TestChatComponent() {
       if (!hasInteracted) setHasInteracted(true);
       if (showHeading) setShowHeading(false);
 
+      // Generate AI title quickly based on user input
+      const generateQuickTitle = (query: string): string => {
+        const lowerQuery = query.toLowerCase();
+        if (lowerQuery.includes('essay') || lowerQuery.includes('write about')) {
+          return query.replace(/write|create|essay|about/gi, '').trim() || 'Generated Essay';
+        } else if (lowerQuery.includes('guide') || lowerQuery.includes('tutorial')) {
+          return query.replace(/guide|tutorial|how to/gi, '').trim() + ' Guide' || 'User Guide';
+        } else if (lowerQuery.includes('report') || lowerQuery.includes('analysis')) {
+          return query.replace(/report|analysis|analyze/gi, '').trim() + ' Analysis' || 'Analysis Report';
+        }
+        return query.length > 50 ? query.substring(0, 50) + '...' : query;
+      };
+
+      const quickTitle = generateQuickTitle(input.trim());
+
       // Add user message
       const userMessageId = uuidv4();
       const userMessage: LocalMessage = {
@@ -1931,20 +1947,38 @@ function TestChatComponent() {
       setArtifactStreamingContent('');
       setArtifactProgress('Initializing artifact generation...');
 
-      // Add placeholder AI message for streaming
+      // Add immediate preview card with generated title
       const aiMessageId = uuidv4();
-      const placeholderAiMessage: LocalMessage = {
+      const previewMessage: LocalMessage = {
         role: 'assistant',
         id: aiMessageId,
         content: 'Creating your artifact...',
         timestamp: Date.now(),
         parentId: userMessageId,
         contentType: 'artifact',
+        title: quickTitle,
         isStreaming: true,
         isProcessed: false
       };
       
-      setMessages(prev => [...prev, placeholderAiMessage]);
+      setMessages(prev => [...prev, previewMessage]);
+
+      // Auto-open right pane immediately with placeholder content
+      setIsArtifactMode(true);
+      
+      // Create initial placeholder artifact for streaming
+      const placeholderArtifact = {
+        type: 'document' as const,
+        title: quickTitle,
+        content: '',
+        metadata: {
+          wordCount: 0,
+          estimatedReadTime: '0 minutes',
+          category: 'General Document',
+          tags: ['document', 'ai-generated']
+        }
+      };
+      setArtifactContent(placeholderArtifact);
 
       try {
         // Call NVIDIA API with artifact prompt and streaming enabled
@@ -1972,6 +2006,7 @@ function TestChatComponent() {
 
         let contentBuffer = '';
         let lastArtifactData: any = null;
+        let extractedContent = '';
 
         try {
           while (true) {
@@ -2001,6 +2036,23 @@ function TestChatComponent() {
                       setArtifactProgress('Creating document structure...');
                     } else if (contentBuffer.includes('"content"')) {
                       setArtifactProgress('Generating content...');
+                      
+                      // Try to extract and stream content to artifact viewer
+                      const contentMatch = contentBuffer.match(/"content":\s*"([^"]*(?:\\.[^"]*)*)/);
+                      if (contentMatch) {
+                        extractedContent = contentMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"');
+                        
+                        // Update artifact content in real-time
+                        setArtifactContent(prev => prev ? {
+                          ...prev,
+                          content: extractedContent,
+                          metadata: {
+                            ...prev.metadata,
+                            wordCount: extractedContent.split(' ').length,
+                            estimatedReadTime: `${Math.max(1, Math.ceil(extractedContent.split(' ').length / 200))} minutes`
+                          }
+                        } : placeholderArtifact);
+                      }
                     } else if (contentBuffer.includes('}')) {
                       setArtifactProgress('Finalizing artifact...');
                     }
@@ -2035,9 +2087,8 @@ function TestChatComponent() {
           artifactData = createFallbackArtifact(contentBuffer, input.trim());
         }
 
-        // Set artifact content and show viewer
+        // Set final artifact content
         setArtifactContent(artifactData);
-        setIsArtifactMode(true);
 
         // Update the AI message with final artifact
         const finalAiMessage: LocalMessage = {
@@ -2617,33 +2668,72 @@ function TestChatComponent() {
     setMessages([]);
   };
 
+  // Enhanced artifact preview card component (Claude-like)
+  const renderArtifactPreviewCard = (title: string, isStreaming: boolean, progress: string) => (
+    <div 
+      className="bg-gray-800 rounded-lg border border-gray-600 p-4 cursor-pointer hover:bg-gray-750 transition-colors"
+      onClick={() => {
+        if (!isStreaming && artifactContent) {
+          setArtifactContent(artifactContent);
+          setIsArtifactMode(true);
+        }
+      }}
+    >
+      <div className="flex items-center gap-3 mb-3">
+        <div className="p-2 bg-cyan-500/20 rounded-lg flex-shrink-0">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="9" y1="9" x2="15" y2="9"></line>
+            <line x1="9" y1="13" x2="15" y2="13"></line>
+          </svg>
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="text-white font-semibold text-lg truncate">{title}</h3>
+          <div className="flex items-center gap-4 text-sm text-gray-400 mt-1">
+            <span>Document</span>
+            {isStreaming && (
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
+                <span className="text-cyan-400">Writing...</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+      
+      {progress && (
+        <div className="text-sm text-gray-300 mb-3 bg-gray-700/50 rounded p-2">
+          {progress}
+        </div>
+      )}
+      
+      {isStreaming ? (
+        <div className="bg-cyan-500 text-white px-4 py-2 rounded-lg font-medium text-center">
+          <div className="flex items-center justify-center gap-2">
+            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            <span>Creating artifact...</span>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium text-center transition-colors">
+          <div className="flex items-center justify-center gap-2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+            <span>View in Artifact Viewer</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   // Fix the renderMessageContent function to use LocalMessage
   const renderMessageContent = (msg: LocalMessage) => {
-    // Handle artifact streaming progress
+    // Handle artifact streaming progress with enhanced preview card
     if (msg.contentType === 'artifact' && msg.isStreaming && !msg.isProcessed) {
-      return (
-        <div className="flex flex-col items-center p-6 bg-gray-50 dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
-          <div className="flex items-center space-x-3 mb-4">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
-            <span className="text-lg font-medium text-gray-700 dark:text-gray-300">Creating Artifact</span>
-          </div>
-          {artifactProgress && (
-            <div className="text-sm text-gray-600 dark:text-gray-400 text-center">
-              {artifactProgress}
-            </div>
-          )}
-          {artifactStreamingContent && (
-            <div className="mt-4 w-full">
-              <div className="text-xs text-gray-500 dark:text-gray-500 mb-2">Preview:</div>
-              <div className="bg-white dark:bg-gray-900 rounded p-3 text-sm font-mono text-gray-700 dark:text-gray-300 max-h-32 overflow-y-auto">
-                {artifactStreamingContent.length > 200 
-                  ? artifactStreamingContent.substring(0, 200) + '...' 
-                  : artifactStreamingContent}
-              </div>
-            </div>
-          )}
-        </div>
-      );
+      const title = msg.title || 'Generated Document';
+      return renderArtifactPreviewCard(title, true, artifactProgress);
     }
 
     if (msg.contentType && msg.structuredContent) {
@@ -2659,30 +2749,10 @@ function TestChatComponent() {
         case 'artifact':
           // Show artifact preview card for completed artifacts
           const artifactData = msg.structuredContent;
-          return (
-            <div 
-              className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 cursor-pointer hover:shadow-lg transition-shadow"
-              onClick={() => {
-                setArtifactContent(artifactData);
-                setIsArtifactMode(true);
-              }}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                  {artifactData.title}
-                </h3>
-                <span className="text-xs bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200 px-2 py-1 rounded">
-                  {artifactData.type}
-                </span>
-              </div>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                {artifactData.content.substring(0, 150)}...
-              </p>
-              <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-500">
-                <span>{artifactData.wordCount} words • {artifactData.readingTime}</span>
-                <span className="text-blue-600 dark:text-blue-400">Click to view →</span>
-              </div>
-            </div>
+          return renderArtifactPreviewCard(
+            artifactData.title || 'Generated Document', 
+            false, 
+            `${artifactData.metadata?.wordCount || 0} words • ${artifactData.metadata?.estimatedReadTime || '2 minutes'}`
           );
         default:
           if (typeof msg.structuredContent === 'string') {
