@@ -429,7 +429,7 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
       if (stepId === 'understand') {
         updateStepStatus(stepId, 'completed', errorMessage);
       } else {
-        updateStepStatus(stepId, 'error', errorMessage);
+      updateStepStatus(stepId, 'error', errorMessage);
       }
       
       // Return a partial result instead of failing completely

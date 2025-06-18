@@ -290,11 +290,11 @@ function postProcessAIChatResponse(text: string, isDefaultChat: boolean): string
     // 3. Fix cases where * is used for lists but might be confused with emphasis
     processedText = processedText.replace(/^(\s*)\*(?!\s)([^*]+)$/gm, '$1* $2');
     
-    // Remove circled numbers/letters and custom symbols (e.g., Γô╡ΓôçΓôëΓôÉΓôó)
-    processedText = processedText.replace(/[Γô╡Γô╢Γô╖Γô╕Γô╣Γô║Γô╗Γô╝Γô╜Γô╛ΓôçΓôëΓôÉΓôóΓôæΓôÆΓôôΓôöΓôòΓôûΓôùΓôÿΓôÖΓôÜΓô¢Γô£Γô¥Γô₧ΓôƒΓôáΓôíΓôóΓôúΓôñΓôÑΓôªΓôºΓô¿Γô⌐]/g, '');
+    // Remove circled numbers/letters and custom symbols (e.g., ⓵ⓇⓉⓐⓢ)
+    processedText = processedText.replace(/[⓵⓶⓷⓸⓹⓺⓻⓼⓽⓾ⓇⓉⓐⓢⓑⓒⓓⓔⓕⓖⓗⓘⓙⓚⓛⓜⓝⓞⓟⓠⓡⓢⓣⓤⓥⓦⓧⓨⓩ]/g, '');
     
-    // Collapse repeated numbers/dashes (e.g., 20KΓÇô20KΓÇô20KΓÇô50K => 20KΓÇô50K)
-    processedText = processedText.replace(/(\b\d+[KkMm]\b[ΓÇô-])(?:\1)+/g, '$1');
+    // Collapse repeated numbers/dashes (e.g., 20K–20K–20K–50K => 20K–50K)
+    processedText = processedText.replace(/(\b\d+[KkMm]\b[–-])(?:\1)+/g, '$1');
     // Remove accidental number/letter repetition at the start of lines (e.g., 2 2 Solution: => 2 Solution:)
     processedText = processedText.replace(/^(\d+)\s+\1\s+/gm, '$1 ');
     // Remove accidental dash repetition (e.g., - - - Item => - Item)
@@ -696,7 +696,7 @@ interface ImageContext {
 
 // Define a local (renamed) Message interface (not extending BaseMessage) to avoid type incompatibility
 interface LocalMessage {
-  role: 'user' | 'assistant' | 'search-ui' | 'reasoning-ui';
+  role: 'user' | 'assistant' | 'search-ui';
   isProcessed?: boolean;
   isStreaming?: boolean;
   imageUrls?: string[];
@@ -710,7 +710,6 @@ interface LocalMessage {
   query?: string; // Add this property for search-ui messages
   isSearchResult?: boolean; // Add this property for search result messages
   title?: string; // Add title for artifact preview cards
-  isReasoningResult?: boolean; // Add this property for reasoning result messages
 }
 
 // Helper to enforce Advance Search output structure
@@ -1642,7 +1641,7 @@ function TestChatComponent() {
   const [showThinkingBox, setShowThinkingBox] = useState(false);
   const [thinkingContent, setThinkingContent] = useState('');
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
-  const [activeMode, setActiveMode] = useState<'chat' | 'search' | 'reasoning'>('chat');
+  const [activeMode, setActiveMode] = useState<'chat' | 'search'>('chat');
   const [activeButton, setActiveButton] = useState<string | null>(null);
   const [chatError, setChatError] = useState<string | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -1786,14 +1785,8 @@ function TestChatComponent() {
     if (!activeSessionId || !user || currentMessages.length === 0) return;
     
     try {
-      // Convert LocalMessage[] to Message[] by filtering out reasoning-ui role messages
-      // which aren't supported by the backend
-      const messagesToSave = currentMessages.filter(msg => 
-        msg.role !== 'reasoning-ui'
-      ) as any[];
-      
       // Use optimized batch saving
-      await optimizedSupabaseService.saveSessionMessages(activeSessionId, messagesToSave);
+      await optimizedSupabaseService.saveSessionMessages(activeSessionId, currentMessages);
       
       // Update session title with AI-generated title after first AI response
       const userMessages = currentMessages.filter(msg => msg.role === 'user');
@@ -1865,183 +1858,7 @@ function TestChatComponent() {
     e.preventDefault();
     if (!input.trim()) return;
 
-    // First check if we're in reasoning mode
-    if (activeMode === 'reasoning') {
-      // Handle reasoning mode - replicate default chat functionality
-      let currentActiveSessionId = activeSessionId;
-      
-      if (!currentActiveSessionId) {
-        const newSession = await optimizedSupabaseService.createNewSession(input.trim());
-        setActiveSessionId(newSession.id);
-        saveActiveSessionId(newSession.id);
-        currentActiveSessionId = newSession.id;
-        setMessages([]);
-      }
-
-      if (!hasInteracted) setHasInteracted(true);
-      if (showHeading) setShowHeading(false);
-
-      // Add user message
-      const userMessageId = uuidv4();
-      const userMessage: LocalMessage = {
-        role: 'user',
-        id: userMessageId,
-        content: input,
-        timestamp: Date.now(),
-        isProcessed: true
-      };
-      
-      setMessages(prev => [...prev, userMessage]);
-      setInput('');
-      setIsLoading(true);
-      setIsAiResponding(true);
-
-      // Add AI message placeholder for reasoning mode
-      const aiMessageId = uuidv4();
-      const aiMessage: LocalMessage = {
-        role: 'reasoning-ui',
-        id: aiMessageId,
-        content: '',
-        timestamp: Date.now(),
-        parentId: userMessageId,
-        isProcessed: false,
-        isStreaming: true,
-        isReasoningResult: true
-      };
-      
-      setMessages(prev => [...prev, aiMessage]);
-      setCurrentThinkingMessageId(aiMessageId);
-
-      // Create abort controller for this request
-      const controller = new AbortController();
-      setAbortController(controller);
-
-      try {
-        // Use default chat prompt for reasoning mode
-        const prompt = getDefaultChatPrompt(input.trim());
-        
-        const response = await fetch('/api/openrouter-chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            messages: [
-              {
-                role: 'system',
-                content: prompt
-              },
-              ...convertToConversationMessages(messages).map(msg => ({
-                role: msg.role,
-                content: msg.content
-              })),
-              { role: 'user', content: input }
-            ]
-          }),
-          signal: controller.signal
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const reader = response.body?.getReader();
-        if (!reader) throw new Error('Failed to get response reader');
-
-        let buffer = '';
-        let accumulatedContent = '';
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          const chunk = new TextDecoder().decode(value);
-          buffer += chunk;
-
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
-
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const data = line.slice(6);
-              if (data === '[DONE]') continue;
-
-              try {
-                const parsed = JSON.parse(data);
-                const content = parsed.choices?.[0]?.delta?.content || '';
-                
-                if (content) {
-                  accumulatedContent += content;
-                  
-                  // Extract thinking content during stream
-                  const thinkContent = extractThinkContentDuringStream(accumulatedContent);
-                  if (thinkContent && typeof thinkContent === 'string') {
-                    setLiveThinking(thinkContent);
-                  }
-
-                  // Update message with accumulated content
-                  setMessages(prev => prev.map(msg => 
-                    msg.id === aiMessageId 
-                      ? { ...msg, content: accumulatedContent }
-                      : msg
-                  ));
-                }
-              } catch (e) {
-                console.error('Error parsing JSON:', e);
-              }
-            }
-          }
-        }
-
-        // Mark as completed
-        setMessages(prev => prev.map(msg => 
-          msg.id === aiMessageId 
-            ? { ...msg, isProcessed: true, isStreaming: false }
-            : msg
-        ));
-
-        // Save messages after reasoning completes
-        const updatedMessages = messages.map(msg => 
-          msg.id === aiMessageId 
-            ? { ...msg, content: accumulatedContent, isProcessed: true, isStreaming: false }
-            : msg
-        );
-        updatedMessages.push(userMessage);
-        updatedMessages.push({
-          ...aiMessage,
-          content: accumulatedContent,
-          isProcessed: true,
-          isStreaming: false
-        });
-        
-        saveMessagesOnQueryComplete(updatedMessages);
-
-      } catch (error: any) {
-        if (error.name === 'AbortError') {
-          console.log('Request aborted');
-          setMessages(prev => prev.map(msg => 
-            msg.id === aiMessageId 
-              ? { ...msg, content: '[Response stopped by user]', isProcessed: true, isStreaming: false }
-              : msg
-          ));
-        } else {
-          console.error('Error in reasoning mode:', error);
-          setMessages(prev => prev.map(msg => 
-            msg.id === aiMessageId 
-              ? { ...msg, content: `Error: ${error.message}`, isProcessed: true, isStreaming: false }
-              : msg
-          ));
-        }
-      } finally {
-        setIsLoading(false);
-        setIsAiResponding(false);
-        setCurrentThinkingMessageId(null);
-        setLiveThinking('');
-        setAbortController(null);
-      }
-      
-      return;
-    }
-
-    // Then check if we're in search mode
+    // First check if we're in search mode
     if (activeMode === 'search') {
       // Create session if needed for search mode
       let currentActiveSessionId = activeSessionId;
@@ -2073,11 +1890,11 @@ function TestChatComponent() {
       // Create a placeholder message for search results that will use the Search component
       const searchMessageId = uuidv4();
       const searchPlaceholder: LocalMessage = {
-        role: 'search-ui',
+          role: 'search-ui',
         id: searchMessageId,
         content: "Searching for: " + input,
-        query: input,
-        timestamp: Date.now(),
+          query: input,
+          timestamp: Date.now(),
         isProcessed: false,
         isStreaming: false
       };
@@ -2930,7 +2747,7 @@ function TestChatComponent() {
           return renderArtifactPreviewCard(
             artifactData.title || 'Generated Document', 
             false, 
-            `${artifactData.metadata?.wordCount || 0} words ΓÇó ${artifactData.metadata?.estimatedReadTime || '2 minutes'}`
+            `${artifactData.metadata?.wordCount || 0} words • ${artifactData.metadata?.estimatedReadTime || '2 minutes'}`
           );
         default:
           if (typeof msg.structuredContent === 'string') {
@@ -2939,8 +2756,6 @@ function TestChatComponent() {
           return <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="prose dark:prose-invert max-w-none">{`Unsupported structured content: ${JSON.stringify(msg.structuredContent)}`}</ReactMarkdown>;
       }
     } else if (msg.content) {
-      
-      
       const isDefaultChat = msg.contentType === 'conversation' || (msg.role === 'assistant' && !msg.contentType);
       if (isDefaultChat) {
         // Display content using standard ReactMarkdown - think tags are handled separately by processThinkTags
@@ -2998,7 +2813,7 @@ function TestChatComponent() {
   const chatAbortController = useRef<AbortController | null>(null);
   const searchAbortController = useRef<AbortController | null>(null);
 
-  function handleModeSwitch(newMode: 'chat' | 'search' | 'reasoning') {
+  function handleModeSwitch(newMode: 'chat' | 'search') {
     setActiveMode(newMode);
     setActiveButton(newMode);
   }
@@ -3130,20 +2945,20 @@ function TestChatComponent() {
                     <line x1="9" y1="9" x2="15" y2="9"></line>
                     <line x1="9" y1="13" x2="15" y2="13"></line>
                   </svg>
-                </div>
+              </div>
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold text-white">{msg.structuredContent.title}</h3>
                   <div className="flex items-center gap-4 text-sm text-gray-400">
                     <span className="capitalize">{msg.structuredContent.type}</span>
                     <span>{msg.structuredContent.metadata.wordCount} words</span>
                     <span>{msg.structuredContent.metadata.estimatedReadTime}</span>
-                  </div>
+        </div>
                 </div>
-              </div>
-              
+                </div>
+
               <p className="text-gray-300 text-sm mb-4">{cleanContent}</p>
               
-              <button
+                    <button
                 onClick={() => {
                   // Clean the structured content before passing to artifact viewer
                   const cleanedArtifact = {
@@ -3158,15 +2973,15 @@ function TestChatComponent() {
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                   <circle cx="12" cy="12" r="3"></circle>
-                </svg>
+                      </svg>
                 View in Artifact Viewer
-              </button>
-            </div>
-            
+                    </button>
+              </div>
+
             {/* Action buttons for completed artifact */}
             {msg.isProcessed && (
               <div className="w-full flex justify-start gap-2 mt-2">
-                <button
+                    <button 
                   onClick={() => handleCopy(cleanArtifactContent(msg.structuredContent.content))}
                   className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
                   aria-label="Copy artifact content"
@@ -3174,11 +2989,11 @@ function TestChatComponent() {
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                     <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                  </svg>
+              </svg>
                   <span className="text-xs">Copy</span>
-                </button>
-                
-                <button
+            </button>
+
+            <button
                   onClick={() => {
                     const cleanedContent = cleanArtifactContent(msg.structuredContent.content);
                     const blob = new Blob([cleanedContent], { type: 'text/markdown' });
@@ -3198,7 +3013,7 @@ function TestChatComponent() {
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                     <polyline points="7,10 12,15 17,10"></polyline>
                     <line x1="12" y1="15" x2="12" y2="3"></line>
-                  </svg>
+              </svg>
                   <span className="text-xs">Download</span>
                 </button>
               </div>
@@ -3214,7 +3029,7 @@ function TestChatComponent() {
                     <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
                     <line x1="9" y1="9" x2="15" y2="9"></line>
                     <line x1="9" y1="13" x2="15" y2="13"></line>
-                  </svg>
+                        </svg>
                 </div>
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold text-white">
@@ -3232,15 +3047,15 @@ function TestChatComponent() {
                     )}
                   </div>
                 </div>
-              </div>
+          </div>
               
               {/* Streaming artifact content preview - cleaned of thinking tags */}
               <div className="text-gray-300 text-sm mb-4 max-h-32 overflow-hidden">
                 <ReactMarkdown className="prose prose-sm prose-invert">
                   {cleanContent.slice(0, 200) + (cleanContent.length > 200 ? "..." : "")}
                 </ReactMarkdown>
-              </div>
-              
+      </div>
+
               <button
                 onClick={() => {
                   // For streaming artifacts, create temporary structured content with cleaned content
@@ -3271,243 +3086,34 @@ function TestChatComponent() {
             
             {/* Action buttons for streaming artifact */}
             {cleanContent && cleanContent.trim().length > 0 && (
-              <div className="w-full flex justify-start gap-2 mt-2">
-                <button
+                        <div className="w-full flex justify-start gap-2 mt-2">
+                          <button
                   onClick={() => handleCopy(cleanContent)}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
+                            className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
                   aria-label="Copy artifact content"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                  </svg>
-                  <span className="text-xs">Copy</span>
-                </button>
-              </div>
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                            <span className="text-xs">Copy</span>
+                          </button>
+                        </div>
             )}
           </>
-        )}
-      </motion.div>
-    );
+                      )}
+                    </motion.div>
+                  );
   };
-
-  // Independent reasoning message rendering system - replicates default chat but with special styling
-  const renderReasoningMessage = (msg: LocalMessage, i: number) => {
-    const { content: rawContent } = cleanAIResponse(msg.content);
-    // Don't filter out <think> tags, only remove thinking indicators
-    const cleanContent = rawContent.replace(/<thinking-indicator.*?>\n<\/thinking-indicator>\n|<thinking-indicator.*?\/>/g, '');
-    const isStoppedMsg = cleanContent.trim() === '[Response stopped by user]';
-    
-    // Process think tags and extract them
-    const { processedContent, thinkBlocks, isLiveThinking } = processThinkTags(cleanContent);
-    const finalContent = makeCitationsClickable(processedContent, msg.webSources || []);
-    
-    if (showPulsingDot && i === messages.length -1 ) setShowPulsingDot(false);
-    
-    return (
-      <React.Fragment key={msg.id + '-fragment-' + i}>
-        {/* Main AI response content */}
-        <motion.div
-          key={msg.id + '-text-' + i}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, ease: "easeOut" }}
-          className="w-full text-left flex flex-col items-start ai-response-text mb-4 relative reasoning-mode"
-          style={{ color: '#fff', maxWidth: '100%', overflowWrap: 'break-word', borderLeft: '3px solid #6366f1', paddingLeft: '12px', backgroundColor: 'rgba(99, 102, 241, 0.05)' }}
-        >
-          {/* Special reasoning mode indicator */}
-          <div className="reasoning-indicator mb-2 text-xs text-indigo-400 font-medium flex items-center gap-1.5">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M2 16.1A5 5 0 0 1 5.9 20M2 12.05A9 9 0 0 1 9.95 20M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"></path>
-              <line x1="2" y1="20" x2="2" y2="20"></line>
-            </svg>
-            Reasoning Mode
-          </div>
-          
-          {msg.webSources && msg.webSources.length > 0 && (
-            <>
-              <WebSourcesCarousel sources={msg.webSources} />
-              <div style={{ height: '1.5rem' }} />
-            </>
-          )}
-          
-          {isStoppedMsg ? (
-            <span className="text-sm text-white italic font-light mb-2">[Response stopped by user]</span>
-          ) : (
-            <div className="w-full max-w-full overflow-hidden">
-              {/* Single consolidated thinking button - handles all thinking scenarios */}
-              {(currentThinkingMessageId === msg.id && liveThinking) && (
-                <ThinkingButton 
-                  key={`${msg.id}-live-thinking`} 
-                  content={liveThinking} 
-                  isLive={true} 
-                />
-              )}
-              
-              {/* Think blocks from processed content - show for all messages except the one currently live thinking */}
-              {currentThinkingMessageId !== msg.id && thinkBlocks.length > 0 && thinkBlocks.map((block, index) => (
-                <ThinkingButton key={`${msg.id}-think-${index}`} content={block.content} isLive={false} />
-              ))}
-              
-              {/* Main content - show if there's content or thinking is complete */}
-              {(processedContent.trim().length > 0 || !currentThinkingMessageId || currentThinkingMessageId !== msg.id) && (
-                <ReactMarkdown 
-                  remarkPlugins={[remarkGfm]} 
-                  rehypePlugins={[rehypeRaw]} 
-                  className="research-output"
-                  components={{
-                    // Enhanced components for professional research output
-                    h1: ({children}) => (
-                      <h1 className="text-3xl font-bold text-white mb-6 mt-8 border-b border-indigo-500/30 pb-3">
-                        {children}
-                      </h1>
-                    ),
-                    h2: ({children}) => (
-                      <h2 className="text-2xl font-semibold text-indigo-400 mb-4 mt-8 flex items-center gap-2">
-                        {children}
-                      </h2>
-                    ),
-                    h3: ({children}) => (
-                      <h3 className="text-xl font-semibold text-white mb-3 mt-6">
-                        {children}
-                      </h3>
-                    ),
-                    p: ({children}) => (
-                      <p className="text-gray-200 leading-relaxed mb-4 text-base">
-                        {children}
-                      </p>
-                    ),
-                    ul: ({children}) => (
-                      <ul className="space-y-2 mb-4 ml-4">
-                        {children}
-                      </ul>
-                    ),
-                    li: ({children}) => (
-                      <li className="text-gray-200 flex items-start gap-2">
-                        <span className="text-indigo-400 mt-1.5 text-xs">ΓùÅ</span>
-                        <span className="flex-1">{children}</span>
-                      </li>
-                    ),
-                    ol: ({children}) => (
-                      <ol className="space-y-2 mb-4 ml-4 list-decimal list-inside">
-                        {children}
-                      </ol>
-                    ),
-                    strong: ({children}) => (
-                      <strong className="text-white font-semibold">
-                        {children}
-                      </strong>
-                    ),
-                    table: ({children}) => (
-                      <div className="overflow-x-auto mb-6 max-w-full">
-                        <table className="w-full border-collapse border border-gray-600 rounded-lg" style={{tableLayout: 'fixed', maxWidth: '100%'}}>
-                          {children}
-                        </table>
-                      </div>
-                    ),
-                    thead: ({children}) => (
-                      <thead className="bg-gray-800">
-                        {children}
-                      </thead>
-                    ),
-                    th: ({children}) => (
-                      <th className="border border-gray-600 px-4 py-3 text-left text-indigo-400 font-semibold" style={{wordWrap: 'break-word', overflowWrap: 'break-word'}}>
-                        {children}
-                      </th>
-                    ),
-                    td: ({children}) => (
-                      <td className="border border-gray-600 px-4 py-3 text-gray-200" style={{wordWrap: 'break-word', overflowWrap: 'break-word'}}>
-                        {children}
-                      </td>
-                    ),
-                    blockquote: ({children}) => (
-                      <blockquote className="border-l-4 border-indigo-500 pl-4 py-2 rounded-r-lg mb-4 italic text-gray-300" style={{background: 'transparent'}}>
-                        {children}
-                      </blockquote>
-                    ),
-                    code: ({children, className}) => {
-                      const isInline = !className;
-                      if (isInline) {
-                        return (
-                          <code className="text-indigo-400 px-2 py-1 rounded text-sm font-mono" style={{background: 'rgba(55, 65, 81, 0.5)'}}>
-                            {children}
-                          </code>
-                        );
-                      }
-                      return (
-                        <code className="block text-gray-200 p-4 rounded-lg overflow-x-auto text-sm font-mono mb-4" style={{background: 'rgba(17, 24, 39, 0.8)'}}>
-                          {children}
-                        </code>
-                      );
-                    }
-                  }}
-                >
-                  {finalContent.replace(/<!-- think-block-\d+ -->/g, '')}
-                </ReactMarkdown>
-              )}
-            </div>
-          )}
-      
-          {/* Action buttons for text content */}
-          {msg.isProcessed && !isStoppedMsg && (
-            <div className="w-full flex justify-start gap-2 mt-2">
-              <button
-                onClick={() => handleCopy(cleanContent)}
-                className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
-                aria-label="Copy response"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                </svg>
-                <span className="text-xs">Copy</span>
-              </button>
-              
-              <button
-                onClick={() => {
-                  try {
-                    // Find the corresponding user message
-                    const userMsgIndex = messages.findIndex(m => m.id === msg.parentId);
-                    let userMsg = userMsgIndex >= 0 ? messages[userMsgIndex] : 
-                                messages.find(m => m.role === 'user' && m.timestamp && m.timestamp < (msg.timestamp || Infinity));
-                    
-                    // If we still don't have a user message, use the last one as fallback
-                    if (!userMsg) {
-                      userMsg = [...messages].reverse().find(m => m.role === 'user');
-                    }
-                    
-                    if (userMsg) {
-                      handleRetry(userMsg.content);
-                    } else {
-                      console.error('Could not find a user message to retry');
-                    }
-                  } catch (error) {
-                    console.error('Error handling retry button click:', error);
-                  }
-                }}
-                className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
-                aria-label="Retry with this prompt"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38" />
-                </svg>
-                <span className="text-xs">Retry</span>
-              </button>
-            </div>
-          )}
-        </motion.div>
-      </React.Fragment>
-    );
-  };
-
+                
   // Independent search message rendering system
   const renderSearchMessage = (msg: LocalMessage, i: number) => {
-    return (
-      <motion.div
+                  return (
+                    <motion.div
         key={msg.id + '-search-' + i}
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, ease: "easeOut" }}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, ease: "easeOut" }}
         className="w-full"
       >
         {msg.isProcessed ? (
@@ -3523,7 +3129,7 @@ function TestChatComponent() {
               {msg.webSources && msg.webSources.length > 0 && (
                 <div className="mt-4">
                   <h4 className="text-md font-semibold text-white mb-2">Sources:</h4>
-                  <WebSourcesCarousel sources={msg.webSources} />
+                          <WebSourcesCarousel sources={msg.webSources} />
                 </div>
               )}
             </div>
@@ -3561,449 +3167,503 @@ function TestChatComponent() {
               saveMessagesOnQueryComplete(updatedMessages);
             }} 
           />
-        )}
-      </motion.div>
-    );
+                      )}
+                    </motion.div>
+                  );
   };
 
   // Independent default chat message rendering system
   const renderDefaultChatMessage = (msg: LocalMessage, i: number) => {
-    const { content: rawContent } = cleanAIResponse(msg.content);
-    // Don't filter out <think> tags, only remove thinking indicators
-    const cleanContent = rawContent.replace(/<thinking-indicator.*?>\n<\/thinking-indicator>\n|<thinking-indicator.*?\/>/g, '');
-    const isStoppedMsg = cleanContent.trim() === '[Response stopped by user]';
-    
-    // Process think tags and extract them
-    const { processedContent, thinkBlocks, isLiveThinking } = processThinkTags(cleanContent);
-    const finalContent = makeCitationsClickable(processedContent, msg.webSources || []);
-    
-    if (showPulsingDot && i === messages.length -1 ) setShowPulsingDot(false);
-    
-    return (
-      <React.Fragment key={msg.id + '-fragment-' + i}>
-        {/* Main AI response content */}
-        <motion.div
-          key={msg.id + '-text-' + i}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, ease: "easeOut" }}
-          className="w-full text-left flex flex-col items-start ai-response-text mb-4 relative"
-          style={{ color: '#fff', maxWidth: '100%', overflowWrap: 'break-word' }}
-        >
-          {msg.webSources && msg.webSources.length > 0 && (
-            <>
-              <WebSourcesCarousel sources={msg.webSources} />
-              <div style={{ height: '1.5rem' }} />
-            </>
-          )}
-          
-          {isStoppedMsg ? (
-            <span className="text-sm text-white italic font-light mb-2">[Response stopped by user]</span>
-          ) : (
-            <div className="w-full max-w-full overflow-hidden">
-              {/* Single consolidated thinking button - handles all thinking scenarios */}
-              {(currentThinkingMessageId === msg.id && liveThinking) && (
-                <ThinkingButton 
-                  key={`${msg.id}-live-thinking`} 
-                  content={liveThinking} 
-                  isLive={true} 
-                />
-              )}
-              
-              {/* Think blocks from processed content - show for all messages except the one currently live thinking */}
-              {currentThinkingMessageId !== msg.id && thinkBlocks.length > 0 && thinkBlocks.map((block, index) => (
-                <ThinkingButton key={`${msg.id}-think-${index}`} content={block.content} isLive={false} />
-              ))}
-              
-              {/* Main content - show if there's content or thinking is complete */}
-              {(processedContent.trim().length > 0 || !currentThinkingMessageId || currentThinkingMessageId !== msg.id) && (
-                <ReactMarkdown 
-                  remarkPlugins={[remarkGfm]} 
-                  rehypePlugins={[rehypeRaw]} 
-                  className="research-output"
-                  components={{
-                    // Enhanced components for professional research output
-                    h1: ({children}) => (
-                      <h1 className="text-3xl font-bold text-white mb-6 mt-8 border-b border-cyan-500/30 pb-3">
-                        {children}
-                      </h1>
-                    ),
-                    h2: ({children}) => (
-                      <h2 className="text-2xl font-semibold text-cyan-400 mb-4 mt-8 flex items-center gap-2">
-                        {children}
-                      </h2>
-                    ),
-                    h3: ({children}) => (
-                      <h3 className="text-xl font-semibold text-white mb-3 mt-6">
-                        {children}
-                      </h3>
-                    ),
-                    p: ({children}) => (
-                      <p className="text-gray-200 leading-relaxed mb-4 text-base">
-                        {children}
-                      </p>
-                    ),
-                    ul: ({children}) => (
-                      <ul className="space-y-2 mb-4 ml-4">
-                        {children}
-                      </ul>
-                    ),
-                    li: ({children}) => (
-                      <li className="text-gray-200 flex items-start gap-2">
-                        <span className="text-cyan-400 mt-1.5 text-xs">ΓùÅ</span>
-                        <span className="flex-1">{children}</span>
-                      </li>
-                    ),
-                    ol: ({children}) => (
-                      <ol className="space-y-2 mb-4 ml-4 list-decimal list-inside">
-                        {children}
-                      </ol>
-                    ),
-                    strong: ({children}) => (
-                      <strong className="text-white font-semibold">
-                        {children}
-                      </strong>
-                    ),
-                    table: ({children}) => (
-                      <div className="overflow-x-auto mb-6 max-w-full">
-                        <table className="w-full border-collapse border border-gray-600 rounded-lg" style={{tableLayout: 'fixed', maxWidth: '100%'}}>
-                          {children}
-                        </table>
-                      </div>
-                    ),
-                    thead: ({children}) => (
-                      <thead className="bg-gray-800">
-                        {children}
-                      </thead>
-                    ),
-                    th: ({children}) => (
-                      <th className="border border-gray-600 px-4 py-3 text-left text-cyan-400 font-semibold" style={{wordWrap: 'break-word', overflowWrap: 'break-word'}}>
-                        {children}
-                      </th>
-                    ),
-                    td: ({children}) => (
-                      <td className="border border-gray-600 px-4 py-3 text-gray-200" style={{wordWrap: 'break-word', overflowWrap: 'break-word'}}>
-                        {children}
-                      </td>
-                    ),
-                    blockquote: ({children}) => (
-                      <blockquote className="border-l-4 border-cyan-500 pl-4 py-2 rounded-r-lg mb-4 italic text-gray-300" style={{background: 'transparent'}}>
-                        {children}
-                      </blockquote>
-                    ),
-                    code: ({children, className}) => {
-                      const isInline = !className;
-                      if (isInline) {
-                        return (
-                          <code className="text-cyan-400 px-2 py-1 rounded text-sm font-mono" style={{background: 'rgba(55, 65, 81, 0.5)'}}>
-                            {children}
-                          </code>
-                        );
-                      }
-                      return (
-                        <code className="block text-gray-200 p-4 rounded-lg overflow-x-auto text-sm font-mono mb-4" style={{background: 'rgba(17, 24, 39, 0.8)'}}>
-                          {children}
-                        </code>
-                      );
-                    }
-                  }}
-                >
-                  {finalContent.replace(/<!-- think-block-\d+ -->/g, '')}
-                </ReactMarkdown>
-              )}
-            </div>
-          )}
-      
-          {/* Action buttons for text content */}
-          {msg.isProcessed && !isStoppedMsg && (
-            <div className="w-full flex justify-start gap-2 mt-2">
-              <button
-                onClick={() => handleCopy(cleanContent)}
-                className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
-                aria-label="Copy response"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                </svg>
-                <span className="text-xs">Copy</span>
-              </button>
-              
-              <button
-                onClick={() => {
-                  try {
-                    // Find the corresponding user message
-                    const userMsgIndex = messages.findIndex(m => m.id === msg.parentId);
-                    let userMsg = userMsgIndex >= 0 ? messages[userMsgIndex] : 
-                                messages.find(m => m.role === 'user' && m.timestamp && m.timestamp < (msg.timestamp || Infinity));
-                    
-                    // If we still don't have a user message, use the last one as fallback
-                    if (!userMsg) {
-                      userMsg = [...messages].reverse().find(m => m.role === 'user');
-                    }
-                    
-                    if (userMsg) {
-                      handleRetry(userMsg.content);
-                    } else {
-                      console.error('Could not find a user message to retry');
-                    }
-                  } catch (error) {
-                    console.error('Error handling retry button click:', error);
-                  }
-                }}
-                className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
-                aria-label="Retry with different response"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
-                  <path d="M3 3v5h5"></path>
-                </svg>
-                <span className="text-xs">Retry</span>
-              </button>
-            </div>
-          )}
-        </motion.div>
-      </React.Fragment>
-    );
+                const { content: rawContent } = cleanAIResponse(msg.content);
+                // Don't filter out <think> tags, only remove thinking indicators
+                const cleanContent = rawContent.replace(/<thinking-indicator.*?>\n<\/thinking-indicator>\n|<thinking-indicator.*?\/>/g, '');
+                const isStoppedMsg = cleanContent.trim() === '[Response stopped by user]';
+                
+                // Process think tags and extract them
+                const { processedContent, thinkBlocks, isLiveThinking } = processThinkTags(cleanContent);
+                const finalContent = makeCitationsClickable(processedContent, msg.webSources || []);
+                
+                if (showPulsingDot && i === messages.length -1 ) setShowPulsingDot(false);
+                
+                return (
+                  <React.Fragment key={msg.id + '-fragment-' + i}>
+                    {/* Main AI response content */}
+                    <motion.div
+                      key={msg.id + '-text-' + i}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, ease: "easeOut" }}
+                      className="w-full text-left flex flex-col items-start ai-response-text mb-4 relative"
+                      style={{ color: '#fff', maxWidth: '100%', overflowWrap: 'break-word' }}
+                    >
+                      {msg.webSources && msg.webSources.length > 0 && (
+                        <>
+                          <WebSourcesCarousel sources={msg.webSources} />
+                          <div style={{ height: '1.5rem' }} />
+                        </>
+                      )}
+                      
+                      {isStoppedMsg ? (
+                        <span className="text-sm text-white italic font-light mb-2">[Response stopped by user]</span>
+                      ) : (
+                        <div className="w-full max-w-full overflow-hidden">
+                          {/* Single consolidated thinking button - handles all thinking scenarios */}
+                          {(currentThinkingMessageId === msg.id && liveThinking) && (
+                            <ThinkingButton 
+                              key={`${msg.id}-live-thinking`} 
+                              content={liveThinking} 
+                              isLive={true} 
+                            />
+                          )}
+                          
+                          {/* Think blocks from processed content - show for all messages except the one currently live thinking */}
+                          {currentThinkingMessageId !== msg.id && thinkBlocks.length > 0 && thinkBlocks.map((block, index) => (
+                            <ThinkingButton key={`${msg.id}-think-${index}`} content={block.content} isLive={false} />
+                          ))}
+                          
+                          {/* Main content - show if there's content or thinking is complete */}
+                          {(processedContent.trim().length > 0 || !currentThinkingMessageId || currentThinkingMessageId !== msg.id) && (
+                            <ReactMarkdown 
+                              remarkPlugins={[remarkGfm]} 
+                              rehypePlugins={[rehypeRaw]} 
+                              className="research-output"
+                              components={{
+                                // Enhanced components for professional research output
+                                h1: ({children}) => (
+                                  <h1 className="text-3xl font-bold text-white mb-6 mt-8 border-b border-cyan-500/30 pb-3">
+                                    {children}
+                                  </h1>
+                                ),
+                                h2: ({children}) => (
+                                  <h2 className="text-2xl font-semibold text-cyan-400 mb-4 mt-8 flex items-center gap-2">
+                                    {children}
+                                  </h2>
+                                ),
+                                h3: ({children}) => (
+                                  <h3 className="text-xl font-semibold text-white mb-3 mt-6">
+                                    {children}
+                                  </h3>
+                                ),
+                                p: ({children}) => (
+                                  <p className="text-gray-200 leading-relaxed mb-4 text-base">
+                                    {children}
+                                  </p>
+                                ),
+                                ul: ({children}) => (
+                                  <ul className="space-y-2 mb-4 ml-4">
+                                    {children}
+                                  </ul>
+                                ),
+                                li: ({children}) => (
+                                  <li className="text-gray-200 flex items-start gap-2">
+                                    <span className="text-cyan-400 mt-1.5 text-xs">●</span>
+                                    <span className="flex-1">{children}</span>
+                                  </li>
+                                ),
+                                ol: ({children}) => (
+                                  <ol className="space-y-2 mb-4 ml-4 list-decimal list-inside">
+                                    {children}
+                                  </ol>
+                                ),
+                                strong: ({children}) => (
+                                  <strong className="text-white font-semibold">
+                                    {children}
+                                  </strong>
+                                ),
+                                table: ({children}) => (
+                                  <div className="overflow-x-auto mb-6 max-w-full">
+                                    <table className="w-full border-collapse border border-gray-600 rounded-lg" style={{tableLayout: 'fixed', maxWidth: '100%'}}>
+                                      {children}
+                                    </table>
+                                  </div>
+                                ),
+                                thead: ({children}) => (
+                                  <thead className="bg-gray-800">
+                                    {children}
+                                  </thead>
+                                ),
+                                th: ({children}) => (
+                                  <th className="border border-gray-600 px-4 py-3 text-left text-cyan-400 font-semibold" style={{wordWrap: 'break-word', overflowWrap: 'break-word'}}>
+                                    {children}
+                                  </th>
+                                ),
+                                td: ({children}) => (
+                                  <td className="border border-gray-600 px-4 py-3 text-gray-200" style={{wordWrap: 'break-word', overflowWrap: 'break-word'}}>
+                                    {children}
+                                  </td>
+                                ),
+                                blockquote: ({children}) => (
+                                  <blockquote className="border-l-4 border-cyan-500 pl-4 py-2 rounded-r-lg mb-4 italic text-gray-300" style={{background: 'transparent'}}>
+                                    {children}
+                                  </blockquote>
+                                ),
+                                code: ({children, className}) => {
+                                  const isInline = !className;
+                                  if (isInline) {
+                                    return (
+                                      <code className="text-cyan-400 px-2 py-1 rounded text-sm font-mono" style={{background: 'rgba(55, 65, 81, 0.5)'}}>
+                                        {children}
+                                      </code>
+                                    );
+                                  }
+                                  return (
+                                    <code className="block text-gray-200 p-4 rounded-lg overflow-x-auto text-sm font-mono mb-4" style={{background: 'rgba(17, 24, 39, 0.8)'}}>
+                                      {children}
+                                    </code>
+                                  );
+                                }
+                              }}
+                            >
+                              {finalContent.replace(/<!-- think-block-\d+ -->/g, '')}
+                            </ReactMarkdown>
+                          )}
+                        </div>
+                      )}
+                  
+                      {/* Action buttons for text content */}
+                      {msg.isProcessed && !isStoppedMsg && (
+                        <div className="w-full flex justify-start gap-2 mt-2">
+                          <button
+                            onClick={() => handleCopy(cleanContent)}
+                            className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
+                            aria-label="Copy response"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                            <span className="text-xs">Copy</span>
+                          </button>
+                          
+                          <button
+                            onClick={() => {
+                              try {
+                                // Find the corresponding user message
+                                const userMsgIndex = messages.findIndex(m => m.id === msg.parentId);
+                                let userMsg = userMsgIndex >= 0 ? messages[userMsgIndex] : 
+                                            messages.find(m => m.role === 'user' && m.timestamp && m.timestamp < (msg.timestamp || Infinity));
+                                
+                                // If we still don't have a user message, use the last one as fallback
+                                if (!userMsg) {
+                                  userMsg = [...messages].reverse().find(m => m.role === 'user');
+                                }
+                                
+                                if (userMsg) {
+                                  handleRetry(userMsg.content);
+                                } else {
+                                  console.error('Could not find a user message to retry');
+                                }
+                              } catch (error) {
+                                console.error('Error handling retry button click:', error);
+                              }
+                            }}
+                            className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
+                            aria-label="Retry with different response"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                              <path d="M3 3v5h5"></path>
+                            </svg>
+                            <span className="text-xs">Retry</span>
+                          </button>
+                        </div>
+                      )}
+                    </motion.div>
+                  </React.Fragment>
+                );
   };
 
-  // Independent reasoning message rendering system - replicates default chat but with special styling
-
-  return (
+                return (
     <>
-      <GlobalStyles />
       <div 
-        className="flex h-screen bg-gradient-to-br from-gray-900 via-gray-900 to-black text-white relative overflow-hidden"
-        style={{
-          backgroundImage: `
-            radial-gradient(circle at 20% 50%, rgba(120, 119, 198, 0.1) 0%, transparent 50%),
-            radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.1) 0%, transparent 50%),
-            radial-gradient(circle at 40% 80%, rgba(120, 219, 255, 0.1) 0%, transparent 50%)
-          `
+        className="min-h-screen flex flex-col px-4 sm:px-4 md:px-8 lg:px-0 transition-all duration-300" 
+        style={{ 
+          background: '#161618',
+          width: isArtifactMode ? `${leftPaneWidth}%` : '100%'
         }}
       >
-        {/* Sidebar */}
-        <Sidebar
-          isOpen={isSidebarOpen}
-          onClose={() => setIsSidebarOpen(false)}
-          sessions={sessions}
-          activeSessionId={activeSessionId}
-          onSessionSelect={handleSelectSession}
-          onSessionDelete={(sessionId: string) => {
-            const updatedSessions = sessions.filter(s => s.id !== sessionId);
-            setSessions(updatedSessions);
-            if (activeSessionId === sessionId && updatedSessions.length > 0) {
-              handleSelectSession(updatedSessions[0].id);
-            } else if (activeSessionId === sessionId) {
-              handleNewChatRequest();
-            }
-          }}
-          onNewSession={handleNewChatRequest}
+        <GlobalStyles />
+      {/* Single Header: always visible on all devices */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-[#161618] shadow-md shadow-black/30 lg:shadow-none h-14 flex items-center px-4">
+        <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
+        <img src="/Logo.svg" alt="Logo" className="ml-3" style={{ width: 90, height: 90 }} />
+      </header>
+
+      {/* Conversation area (scrollable) */}
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto w-full flex flex-col items-center justify-center relative px-4 sm:px-4 md:px-8 lg:px-0 pt-8"
+          style={{ paddingBottom: `${isChatEmpty && !hasInteracted ? 0 : inputBarHeight + EXTRA_GAP}px` }}
+      >
+          {/* Centered wrapper for heading and input */}
+        <div
+            className={`fixed left-1/2 -translate-x-1/2 w-full max-w-3xl flex flex-col items-center justify-center z-50 transition-all duration-500 ease-in-out ${
+              inputPosition === "center" ? "top-1/2 -translate-y-1/2" : "bottom-0 translate-y-0"
+          }`}
+        >
+            {/* Heading with fade animation */}
+            <h1 className={`text-[3.2rem] font-normal text-gray-200 text-center mb-6 transition-opacity duration-500 ${inputPosition === "center" ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
+            Seek and You'll find
+          </h1>
+
+            {/* Input form */}
+            <form
+              className="flex flex-col gap-2 rounded-2xl shadow-lg py-2 w-full px-4 pl-4 sm:px-6 md:px-8 lg:pl-4 lg:pr-0 mb-3 bg-[#232323] border border-white/20"
+              style={{ boxShadow: '0 4px 32px 0 rgba(0,0,0,0.32)' }}
+              onSubmit={handleSend}
+            >
+              {/* Image previews above textarea */}
+              {imagePreviewUrls.length > 0 && (
+                <div className="flex flex-row gap-2 mb-2 justify-start overflow-x-auto max-w-full">
+                  {imagePreviewUrls.map((url, idx) => (
+                    <div key={idx} className="relative flex-shrink-0">
+                      <img src={url} alt={`Preview ${idx + 1}`} className="w-16 h-16 object-cover rounded-lg" />
+                      <button
+                        type="button"
+                        className="absolute top-0 right-0 bg-black bg-opacity-60 text-white rounded-full p-1"
+                        onClick={() => removeImagePreview(idx)}
+                      >
+                        &times;
+                      </button>
+              </div>
+          ))}
+        </div>
+              )}
+
+              {/* Input area: textarea on top, actions below */}
+              <div className="flex flex-col w-full gap-2 items-center">
+                {/* Textarea row */}
+                <div className="w-full">
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={e => setInput(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.altKey) {
+                        e.preventDefault();
+                        if (!isLoading) handleSend(e);
+                      }
+                    }}
+                    className="w-full border-none outline-none bg-transparent px-2 py-1 text-gray-200 text-sm placeholder-gray-500 resize-none overflow-auto self-center rounded-lg"
+                    placeholder="Ask anything..."
+            disabled={isLoading}
+            rows={1}
+                    style={{ maxHeight: '96px', minHeight: '40px', lineHeight: '1.5' }}
+                  />
+                </div>
+
+                {/* Actions row */}
+                <div className="flex flex-row w-full items-center justify-between gap-2">
+                  {/* Left group: Search button only */}
+                  <div className="flex flex-row gap-2 items-center">
+                    {/* Search button */}
+                    <button
+                      type="button"
+                      onClick={() => handleModeSwitch(activeMode === 'search' ? 'chat' : 'search')}
+                      className={`
+                        flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 
+                        ${activeMode === 'search' ? 'bg-gray-800 text-cyan-400' : 'bg-gray-800 text-gray-400 opacity-60'}
+                        hover:opacity-100 hover:scale-105 active:scale-95
+                      `}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: activeMode === 'search' ? '#22d3ee' : '#a3a3a3' }}>
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
+                      </svg>
+                      Search
+                    </button>
+
+                    {/* Deep Research button (Advance Search) */}
+                    <button
+                      type="button"
+                      className={`flex items-center gap-1.5 rounded-full transition px-3 py-1.5 flex-shrink-0 text-xs font-medium
+                        ${activeButton === 'advance' ? 'bg-gray-800 text-cyan-400' : 'bg-gray-800 text-gray-400 opacity-60'}
+                        hover:bg-gray-700`}
+                      style={{ height: "36px" }}
+                      tabIndex={0}
+                      onClick={() => handleButtonClick('advance')}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: activeButton === 'advance' ? '#22d3ee' : '#a3a3a3' }}>
+                        <circle cx="12" cy="12" r="3" />
+                        <circle cx="19" cy="5" r="2" />
+                        <circle cx="5" cy="19" r="2" />
+                        <line x1="14.15" y1="14.15" x2="17" y2="17" />
+                        <line x1="6.85" y1="17.15" x2="10.15" y2="13.85" />
+                        <line x1="13.85" y1="10.15" x2="17.15" y2="6.85" />
+                      </svg>
+                      <span className="whitespace-nowrap text-xs font-medium">Advance Search</span>
+                    </button>
+
+                    {/* Artifact button */}
+                    <button
+                      type="button"
+                      className={`flex items-center gap-1.5 rounded-full transition px-3 py-1.5 flex-shrink-0 text-xs font-medium
+                        ${activeButton === 'artifact' ? 'bg-gray-800 text-cyan-400' : 'bg-gray-800 text-gray-400 opacity-60'}
+                        hover:bg-gray-700`}
+                      style={{ height: "36px" }}
+                      tabIndex={0}
+                      onClick={() => handleButtonClick('artifact')}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: activeButton === 'artifact' ? '#22d3ee' : '#a3a3a3' }}>
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="9" y1="9" x2="15" y2="9"></line>
+                        <line x1="9" y1="13" x2="15" y2="13"></line>
+                      </svg>
+                      <span className="whitespace-nowrap text-xs font-medium">Artifact</span>
+                    </button>
+              </div>
+
+                  {/* Right group: Plus, Send */}
+                  <div className="flex flex-row gap-2 items-center ml-auto pr-4">
+                    {/* Plus button */}
+                    <button 
+                      type="button" 
+                      className="p-2 rounded-full bg-gray-800 text-gray-300 hover:bg-gray-700 transition flex items-center justify-center flex-shrink-0"
+                      style={{ width: "36px", height: "36px" }}
+                      onClick={handleFirstPlusClick}
+                    >
+                      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+            </button>
+
+                    {/* Send/Stop button */}
+            <button
+                      type={isAiResponding ? "button" : "submit"}
+                      className="rounded-full bg-gray-200 hover:bg-white transition flex items-center justify-center flex-shrink-0"
+                      style={{ width: "36px", height: "36px", pointerEvents: isLoading && !isAiResponding ? 'none' : 'auto' }}
+                      onClick={isAiResponding ? handleStopAIResponse : undefined}
+                      disabled={isLoading && !isAiResponding}
+                      aria-label={isAiResponding ? "Stop AI response" : "Send"}
+                    >
+                      {isAiResponding ? (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <rect x="7" y="7" width="10" height="10" rx="2" fill="#374151" />
+              </svg>
+                      ) : (
+                        <svg width="16" height="16" fill="none" stroke="#374151" strokeWidth="2.5" viewBox="0 0 24 24">
+                          <path d="M12 19V5M5 12l7-7 7 7" />
+                        </svg>
+                      )}
+            </button>
+                  </div>
+                </div>
+          </div>
+        </form>
+      </div>
+
+          {/* Conversation and other UI below */}
+          <div className="w-full max-w-3xl mx-auto flex flex-col gap-4 items-center justify-center z-10 pt-12 pb-4">
+            {messages.map((msg, i) => {
+              // Assistant responses: artifacts first, then search results, then default chat
+              if (msg.role === 'assistant') {
+                if (msg.contentType === 'artifact') {
+                  return renderArtifactMessage(msg, i);
+                }
+                if (msg.isSearchResult) {
+                  return renderSearchMessage(msg, i);
+                }
+                return renderDefaultChatMessage(msg, i);
+              }
+              // Search UI messages
+              if (msg.role === 'search-ui') {
+                return renderSearchMessage(msg, i);
+              }
+              // User messages
+                return (
+                <div
+                  key={msg.id + '-user-' + i}
+                  className="px-3 py-2 rounded-xl shadow bg-cyan-500 text-white self-end max-w-[80%] text-base flex flex-col items-end mb-2"
+                >
+                    {msg.imageUrls && msg.imageUrls.map((url, index) => (
+                    <img key={index} src={url} alt={`Preview ${index + 1}`} className="max-w-xs max-h-64 rounded-md mb-2 self-end" />
+                    ))}
+                    <div>{msg.content}</div>
+                </div>
+                );
+            })}
+            
+            {/* Remove the standalone thinking box since it's now integrated within the messages flow */}
+      </div>
+        </div>
+
+        {/* Fixed Footer Bar Behind Input */}
+        <div
+          className={`fixed left-0 right-0 bottom-0 z-40 transition-opacity duration-300 ${isChatEmpty && !hasInteracted ? 'opacity-0' : 'opacity-100'}`}
+          style={{ height: `calc(${inputBarHeight}px + env(safe-area-inset-bottom, 0px))`, background: '#161618', pointerEvents: 'none' }}
+          aria-hidden="true"
         />
 
-        {/* Main Chat Interface */}
-        <div className="flex-1 flex flex-col min-w-0 relative">
-          {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-700/50 bg-gray-900/80 backdrop-blur-sm">
-            <div className="flex items-center space-x-4">
-              <HamburgerMenu
-                isOpen={isHamburgerOpen}
-                onToggle={() => setIsHamburgerOpen(!isHamburgerOpen)}
-                onSidebarToggle={() => setIsSidebarOpen(!isSidebarOpen)}
-              />
-              <div className="flex items-center space-x-2">
-                <Image
-                  src="/Logo.svg"
-                  alt="Tehom AI"
-                  width={32}
-                  height={32}
-                  className="w-8 h-8"
-                />
-                <h1 className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
-                  Tehom AI
-                </h1>
-              </div>
-            </div>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => router.push('/settings')}
-                className="p-2 hover:bg-gray-700/50 rounded-lg transition-colors"
-              >
-                <Settings size={20} />
-              </button>
-            </div>
-          </div>
+        {/* Overlay for sidebar */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black/20 z-[9998]"
+            aria-hidden="true"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
 
-          {/* Messages Area */}
-          <div className="flex-1 overflow-y-auto">
-            <div className="w-full max-w-3xl mx-auto flex flex-col gap-4 items-center justify-center z-10 pt-12 pb-4">
-              {messages.length === 0 ? (
-                <EmptyBox 
-                  mode={mode}
-                  onModeChange={handleModeSwitch}
-                  onExampleClick={(example) => {
-                    setInputText(example);
-                    inputRef.current?.focus();
-                  }}
-                />
-              ) : (
-                messages.map((msg, i) => {
-                  // Assistant responses: artifacts first, then search results, then reasoning, then default chat
-                  if (msg.role === 'assistant') {
-                    if (msg.contentType === 'artifact') {
-                      return renderArtifactMessage(msg, i);
-                    }
-                    if (msg.isSearchResult) {
-                      return renderSearchMessage(msg, i);
-                    }
-                    if (msg.isReasoningResult) {
-                      return renderReasoningMessage(msg, i);
-                    }
-                    return renderDefaultChatMessage(msg, i);
-                  }
-                  // Search UI messages
-                  if (msg.role === 'search-ui') {
-                    return renderSearchMessage(msg, i);
-                  }
-                  // Reasoning UI messages
-                  if (msg.role === 'reasoning-ui') {
-                    return renderReasoningMessage(msg, i);
-                  }
-                  // User messages
-                  return (
-                    <div
-                      key={msg.id + '-user-' + i}
-                      className="px-3 py-2 rounded-xl shadow bg-cyan-500 text-white self-end max-w-[80%] text-base flex flex-col items-end mb-2"
-                    >
-                      {msg.imageUrls && msg.imageUrls.map((url, index) => (
-                        <img key={index} src={url} alt={`Preview ${index + 1}`} className="max-w-xs max-h-64 rounded-md mb-2 self-end" />
-                      ))}
-                      <div>{msg.content}</div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
+        {/* Hidden file input */}
+          <input
+            type="file"
+          ref={fileInputRef1}
+            style={{ display: 'none' }}
+          onChange={handleFirstFileChange}
+          accept="image/*"
+          multiple
+        />
 
-          {/* Input Area */}
-          <div className="border-t border-gray-700/50 bg-gray-900/80 backdrop-blur-sm p-4">
-            {/* Mode Selection */}
-            <div className="flex justify-center mb-4">
-              <div className="flex bg-gray-700/50 rounded-lg p-1">
-                <button
-                  onClick={() => handleModeSwitch('chat')}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                    mode === 'chat' 
-                      ? 'bg-cyan-600 text-white' 
-                      : 'text-gray-300 hover:text-white hover:bg-gray-600/50'
-                  }`}
-                >
-                  Chat
-                </button>
-                <button
-                  onClick={() => handleModeSwitch('search')}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                    mode === 'search' 
-                      ? 'bg-cyan-600 text-white' 
-                      : 'text-gray-300 hover:text-white hover:bg-gray-600/50'
-                  }`}
-                >
-                  <SearchIcon size={16} className="inline mr-1" />
-                  Search
-                </button>
-                <button
-                  onClick={() => handleModeSwitch('reasoning')}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                    mode === 'reasoning' 
-                      ? 'bg-cyan-600 text-white' 
-                      : 'text-gray-300 hover:text-white hover:bg-gray-600/50'
-                  }`}
-                >
-                  <Zap size={16} className="inline mr-1" />
-                  Reasoning
-                </button>
-              </div>
-            </div>
-
-            {/* File Upload Preview */}
-            {imageFiles.length > 0 && (
-              <div className="mb-4">
-                <div className="flex flex-wrap gap-2">
-                  {imageFiles.map((file, index) => (
-                    <div key={index} className="relative">
-                      <img
-                        src={URL.createObjectURL(file)}
-                        alt={`Preview ${index + 1}`}
-                        className="w-20 h-20 object-cover rounded-lg border border-gray-600"
-                      />
-                      <button
-                        onClick={() => removeImagePreview(index)}
-                        className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-700"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Input */}
-            <form onSubmit={handleSend} className="flex items-end space-x-2">
-              <div className="flex-1 relative">
-                <textarea
-                  ref={inputRef}
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSend(e);
-                    }
-                  }}
-                  placeholder={`Type your ${mode} message...`}
-                  className="w-full bg-gray-800/70 border border-gray-600 text-white rounded-lg p-3 pr-12 resize-none focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent min-h-[50px] max-h-32"
-                  disabled={isGenerating}
-                  rows={1}
-                  style={{ 
-                    height: 'auto',
-                    minHeight: '50px'
-                  }}
-                  onInput={(e) => {
-                    const target = e.target as HTMLTextAreaElement;
-                    target.style.height = 'auto';
-                    target.style.height = Math.min(target.scrollHeight, 128) + 'px';
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={handleFirstPlusClick}
-                  className="absolute right-3 top-3 text-gray-400 hover:text-white transition-colors"
-                  disabled={isGenerating}
-                >
-                  <Paperclip size={20} />
-                </button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  onChange={handleFirstFileChange}
-                  className="hidden"
-                  multiple
-                  accept="image/*"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={isGenerating || (!inputText.trim() && imageFiles.length === 0)}
-                className="bg-cyan-600 hover:bg-cyan-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white p-3 rounded-lg transition-colors flex items-center justify-center"
-              >
-                <Send size={20} />
-              </button>
-            </form>
-          </div>
-        </div>
+        {/* Sidebar */}
+        <Sidebar
+          open={sidebarOpen}
+          activeSessionId={activeSessionId}
+          onClose={() => setSidebarOpen(false)}
+          onNewChat={handleNewChatRequest}
+          onSelectSession={handleSelectSession}
+          refreshTrigger={sidebarRefreshTrigger}
+          user={user}
+          onSettingsClick={showSettingsModal}
+        />
       </div>
+      {chatError && (
+        <div className="text-red-500 text-sm text-center mt-2">{chatError}</div>
+      )}
+      
+      {/* Performance Monitor - Shows cache stats */}
+      <PerformanceMonitor />
+
+      {/* Resizable Divider */}
+      {isArtifactMode && (
+        <div
+          className="fixed top-0 bottom-0 bg-gray-600 hover:bg-gray-500 cursor-col-resize z-[10001] transition-colors"
+          style={{ 
+            left: `${leftPaneWidth}%`, 
+            width: '4px',
+            transform: 'translateX(-2px)' // Center the divider on the boundary
+          }}
+          onMouseDown={handleMouseDown}
+        />
+      )}
+
+      {/* Artifact Viewer - Right Pane Split Screen */}
+      {isArtifactMode && artifactContent && (
+        <div 
+          className="fixed top-0 right-0 bottom-0 z-[10000] bg-[#161618] border-l border-gray-700" 
+          style={{ 
+            width: `${100 - leftPaneWidth}%`,
+            left: `${leftPaneWidth}%`
+          }}
+        >
+          <ArtifactViewer
+            artifact={artifactContent}
+            onClose={() => {
+              setIsArtifactMode(false);
+              setArtifactContent(null);
+            }}
+          />
+        </div>
+      )}
     </>
   );
 }
@@ -4014,4 +3674,4 @@ export default function TestChat() {
       <TestChatComponent />
     </AuthProvider>
   );
-}
+} 

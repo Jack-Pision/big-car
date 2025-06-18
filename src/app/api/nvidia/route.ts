@@ -227,10 +227,10 @@ async function fetchNvidiaText(messages: any[], options: any = {}) {
   
   try {
     // Using fetchWithTimeout with increased timeout for NVIDIA API call
-    const res = await fetchWithTimeout('https://integrate.api.nvidia.com/v1/chat/completions', {
+  const res = await fetchWithTimeout('https://integrate.api.nvidia.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${TEXT_API_KEY}`,
+      'Authorization': `Bearer ${TEXT_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(payload),
@@ -277,7 +277,7 @@ async function fetchNvidiaText(messages: any[], options: any = {}) {
     
     // For streaming responses, we just return the stream
     if (payload.stream) {
-      return res;
+    return res;
     }
     
     // For non-streaming responses, cache the result
