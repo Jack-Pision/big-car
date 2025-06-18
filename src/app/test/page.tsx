@@ -47,7 +47,7 @@ import { Message as ConversationMessage } from "@/utils/conversation-context";
 import { filterAIThinking } from '../../utils/content-filter';
 import ThinkingButton from '@/components/ThinkingButton';
 import { ArtifactViewer } from '@/components/ArtifactViewer';
-import { shouldTriggerArtifact, getArtifactPrompt, artifactSchema, validateArtifactData, type ArtifactData } from '@/utils/artifact-utils';
+import { shouldTriggerArtifact, getArtifactPrompt, artifactSchema, validateArtifactData, createFallbackArtifact, type ArtifactData } from '@/utils/artifact-utils';
 
 // Define a type that includes all possible query types (including the ones in SCHEMAS and 'conversation')
 type QueryType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversation';
@@ -1869,13 +1869,38 @@ function TestChatComponent() {
         // Parse and validate artifact data
         let artifactData;
         try {
-          artifactData = JSON.parse(content);
+          // Clean the content to remove any potential markdown code blocks or extra text
+          let cleanContent = content.trim();
+          
+          // Remove markdown code blocks if present
+          if (cleanContent.startsWith('```json') && cleanContent.endsWith('```')) {
+            cleanContent = cleanContent.slice(7, -3).trim();
+          } else if (cleanContent.startsWith('```') && cleanContent.endsWith('```')) {
+            cleanContent = cleanContent.slice(3, -3).trim();
+          }
+          
+          // Try to find JSON object if there's extra text
+          const jsonMatch = cleanContent.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            cleanContent = jsonMatch[0];
+          }
+          
+          artifactData = JSON.parse(cleanContent);
         } catch (parseError) {
-          throw new Error('Failed to parse artifact JSON');
+          console.error('JSON Parse Error:', parseError);
+          console.error('Raw content:', content);
+          console.log('JSON parsing failed, creating fallback artifact from raw content...');
+          
+          // If JSON parsing fails completely, create a fallback artifact
+          artifactData = createFallbackArtifact(content, input.trim());
         }
 
         if (!validateArtifactData(artifactData)) {
-          throw new Error('Invalid artifact data structure');
+          console.error('Invalid artifact data:', artifactData);
+          console.log('Attempting to create fallback artifact from raw content...');
+          
+          // Create fallback artifact from the raw content
+          artifactData = createFallbackArtifact(content, input.trim());
         }
 
         // Set artifact content and show viewer

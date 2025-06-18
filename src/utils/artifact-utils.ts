@@ -81,42 +81,37 @@ export const shouldTriggerArtifact = (query: string): boolean => {
 
 // Generate the prompt for artifact creation
 export const getArtifactPrompt = (userQuery: string): string => {
-  return `You are a professional document creation assistant specializing in generating comprehensive, well-structured documents. Create substantial, standalone content that can be used independently.
+  return `You are a professional document creation assistant. You must respond with ONLY a valid JSON object, no additional text before or after.
 
-**ARTIFACT GENERATION GUIDELINES:**
-- Generate content that is substantial (minimum 800 words)
-- Create self-contained, reusable documents
-- Use professional formatting with clear structure
-- Include relevant headings, subheadings, and sections
-- Provide actionable information and insights
-- Focus on high-quality, comprehensive content
-- Use markdown formatting for structure and readability
+**CRITICAL INSTRUCTIONS:**
+1. Return ONLY valid JSON - no explanations, no markdown code blocks, no additional text
+2. Ensure all JSON strings are properly escaped
+3. Use double quotes for all JSON keys and string values
+4. Do not include any text outside the JSON object
 
 **CONTENT REQUIREMENTS:**
-- Start with a clear introduction
-- Organize content with logical sections and subsections
-- Include practical examples where relevant
-- Provide actionable steps or recommendations
-- End with a conclusion or summary
-- Use bullet points, numbered lists, and tables where appropriate
+- Generate substantial content (minimum 800 words)
+- Use professional formatting with clear structure
+- Include relevant headings, subheadings, and sections
+- Use markdown formatting within the content string
+- Provide actionable information and insights
 
-**OUTPUT FORMAT:**
-Respond with a JSON object following this exact schema:
+**REQUIRED JSON FORMAT:**
 {
-  "type": "document|guide|report|analysis",
+  "type": "document",
   "title": "Clear, descriptive title",
-  "content": "Full document content in markdown format with proper headings, sections, and formatting",
+  "content": "# Main Title\\n\\n## Introduction\\n\\nYour comprehensive content here with proper markdown formatting...\\n\\n## Conclusion\\n\\nSummary and final thoughts.",
   "metadata": {
-    "wordCount": number,
-    "estimatedReadTime": "X minutes",
-    "category": "document_type",
-    "tags": ["tag1", "tag2", "tag3"]
+    "wordCount": 1200,
+    "estimatedReadTime": "6 minutes",
+    "category": "Educational Content",
+    "tags": ["essay", "bangladesh", "education"]
   }
 }
 
 **USER REQUEST:** ${userQuery}
 
-Generate a comprehensive, professional document that fully addresses the request with substantial depth and practical value.`;
+Generate a comprehensive document addressing this request. Return ONLY the JSON object.`;
 };
 
 // Estimate reading time based on word count
@@ -202,4 +197,37 @@ export const validateArtifactData = (data: any): data is ArtifactData => {
     typeof data.metadata.category === 'string' &&
     Array.isArray(data.metadata.tags)
   );
+};
+
+// Create a fallback artifact from raw content
+export const createFallbackArtifact = (content: string, query: string): ArtifactData => {
+  const words = content.split(/\s+/).length;
+  const readingTime = estimateReadingTime(words);
+  const category = extractCategory('document', query);
+  const tags = generateTags(query);
+  
+  // Try to extract title from content
+  let title = 'Generated Document';
+  const titleMatch = content.match(/^#\s+(.+)$/m);
+  if (titleMatch) {
+    title = titleMatch[1].trim();
+  } else if (query.toLowerCase().includes('essay')) {
+    title = `Essay: ${query.replace(/create|write|generate|an|essay|about/gi, '').trim()}`;
+  } else if (query.toLowerCase().includes('guide')) {
+    title = `Guide: ${query.replace(/create|write|generate|a|guide|for|on|about/gi, '').trim()}`;
+  } else if (query.toLowerCase().includes('report')) {
+    title = `Report: ${query.replace(/create|write|generate|a|report|on|about/gi, '').trim()}`;
+  }
+  
+  return {
+    type: 'document',
+    title: title,
+    content: content,
+    metadata: {
+      wordCount: words,
+      estimatedReadTime: readingTime,
+      category: category,
+      tags: tags
+    }
+  };
 }; 
