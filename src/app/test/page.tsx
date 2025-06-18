@@ -2881,8 +2881,30 @@ function TestChatComponent() {
     // Removed advanced search logic
   }, [isAiResponding]);
 
+  // Helper function to clean artifact content by removing all thinking tags
+  const cleanArtifactContent = (content: string): string => {
+    if (!content) return '';
+    
+    // Remove all <think>...</think> tags completely
+    let cleaned = content.replace(/<think>[\s\S]*?<\/think>/g, '');
+    
+    // Remove any <think-live></think-live> markers
+    cleaned = cleaned.replace(/<think-live><\/think-live>/g, '');
+    
+    // Remove any thinking indicators
+    cleaned = cleaned.replace(/<thinking-indicator.*?>\n<\/thinking-indicator>\n|<thinking-indicator.*?\/>/g, '');
+    
+    // Clean up extra whitespace that might be left behind
+    cleaned = cleaned.replace(/\n\s*\n\s*\n/g, '\n\n').trim();
+    
+    return cleaned;
+  };
+
   // Independent artifact message rendering system
   const renderArtifactMessage = (msg: LocalMessage, i: number) => {
+    // Clean the content to remove all thinking tags for artifacts
+    const cleanContent = cleanArtifactContent(msg.content);
+    
     return (
       <motion.div
         key={msg.id + '-artifact-' + i}
@@ -2915,11 +2937,16 @@ function TestChatComponent() {
                 </div>
               </div>
               
-              <p className="text-gray-300 text-sm mb-4">{msg.content}</p>
+              <p className="text-gray-300 text-sm mb-4">{cleanContent}</p>
               
               <button
                 onClick={() => {
-                  setArtifactContent(msg.structuredContent);
+                  // Clean the structured content before passing to artifact viewer
+                  const cleanedArtifact = {
+                    ...msg.structuredContent,
+                    content: cleanArtifactContent(msg.structuredContent.content)
+                  };
+                  setArtifactContent(cleanedArtifact);
                   setIsArtifactMode(true);
                 }}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
@@ -2936,7 +2963,7 @@ function TestChatComponent() {
             {msg.isProcessed && (
               <div className="w-full flex justify-start gap-2 mt-2">
                 <button
-                  onClick={() => handleCopy(msg.structuredContent.content)}
+                  onClick={() => handleCopy(cleanArtifactContent(msg.structuredContent.content))}
                   className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
                   aria-label="Copy artifact content"
                 >
@@ -2949,7 +2976,8 @@ function TestChatComponent() {
                 
                 <button
                   onClick={() => {
-                    const blob = new Blob([msg.structuredContent.content], { type: 'text/markdown' });
+                    const cleanedContent = cleanArtifactContent(msg.structuredContent.content);
+                    const blob = new Blob([cleanedContent], { type: 'text/markdown' });
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
@@ -2974,7 +3002,7 @@ function TestChatComponent() {
           </>
         ) : (
           <>
-            {/* Streaming Artifact - show raw content in artifact viewer style */}
+            {/* Streaming Artifact - show clean content in artifact viewer style */}
             <div className="w-full bg-gray-800 rounded-lg border border-gray-700 p-4 mb-2">
               <div className="flex items-center gap-3 mb-3">
                 <div className="p-2 bg-blue-600 rounded-lg">
@@ -3002,23 +3030,23 @@ function TestChatComponent() {
                 </div>
               </div>
               
-              {/* Streaming artifact content preview */}
+              {/* Streaming artifact content preview - cleaned of thinking tags */}
               <div className="text-gray-300 text-sm mb-4 max-h-32 overflow-hidden">
                 <ReactMarkdown className="prose prose-sm prose-invert">
-                  {msg.content.slice(0, 200) + (msg.content.length > 200 ? "..." : "")}
+                  {cleanContent.slice(0, 200) + (cleanContent.length > 200 ? "..." : "")}
                 </ReactMarkdown>
               </div>
               
               <button
                 onClick={() => {
-                  // For streaming artifacts, create temporary structured content
+                  // For streaming artifacts, create temporary structured content with cleaned content
                   const tempArtifact = {
                     title: msg.title || "Generated Content",
                     type: "document" as const,
-                    content: msg.content,
+                    content: cleanContent,
                     metadata: {
-                      wordCount: msg.content.split(' ').length,
-                      estimatedReadTime: `${Math.ceil(msg.content.split(' ').length / 200)} min read`,
+                      wordCount: cleanContent.split(' ').length,
+                      estimatedReadTime: `${Math.ceil(cleanContent.split(' ').length / 200)} min read`,
                       category: "", // placeholder category
                       tags: [] // placeholder tags
                     }
@@ -3027,7 +3055,7 @@ function TestChatComponent() {
                   setIsArtifactMode(true);
                 }}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
-                disabled={!msg.content || msg.content.trim().length === 0}
+                disabled={!cleanContent || cleanContent.trim().length === 0}
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
@@ -3038,10 +3066,10 @@ function TestChatComponent() {
             </div>
             
             {/* Action buttons for streaming artifact */}
-            {msg.content && msg.content.trim().length > 0 && (
+            {cleanContent && cleanContent.trim().length > 0 && (
               <div className="w-full flex justify-start gap-2 mt-2">
                 <button
-                  onClick={() => handleCopy(msg.content)}
+                  onClick={() => handleCopy(cleanContent)}
                   className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
                   aria-label="Copy artifact content"
                 >
