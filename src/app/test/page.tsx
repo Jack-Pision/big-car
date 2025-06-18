@@ -3018,7 +3018,9 @@ function TestChatComponent() {
                     content: msg.content,
                     metadata: {
                       wordCount: msg.content.split(' ').length,
-                      estimatedReadTime: `${Math.ceil(msg.content.split(' ').length / 200)} min read`
+                      estimatedReadTime: `${Math.ceil(msg.content.split(' ').length / 200)} min read`,
+                      category: "", // placeholder category
+                      tags: [] // placeholder tags
                     }
                   };
                   setArtifactContent(tempArtifact);
@@ -3067,13 +3069,10 @@ function TestChatComponent() {
         transition={{ duration: 0.3, ease: "easeOut" }}
         className="w-full"
       >
-        <Search
-          query={msg.query || ''}
-          sources={msg.webSources || []}
-          response={msg.content}
-          isLoading={msg.isStreaming || false}
-          onSourceClick={(url) => window.open(url, '_blank')}
-        />
+        {/* Render search results as plain markdown */}
+        <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="search-result-output">
+          {msg.content}
+        </ReactMarkdown>
       </motion.div>
     );
   };
