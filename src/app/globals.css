@@ -791,4 +791,22 @@ textarea::-webkit-scrollbar-thumb,
   100% {
     background-position: -200% 0;
   }
+}
+
+/* Custom scrollbar for thinking box */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: #4b5563;
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: #6b7280;
 } 
