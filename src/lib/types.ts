@@ -36,13 +36,30 @@ export interface Message {
   timestamp?: number;
 }
 
-
-
 export interface UserPreferences {
   id?: string;
   user_id?: string;
   active_session_id?: string | null;
   preferences?: any;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// Artifact entity for storing generated documents with versioning support
+export interface Artifact {
+  id?: string;
+  user_id?: string;
+  session_id?: string | null; // optional association to a chat session
+  title: string;
+  content: string;
+  type: 'document' | 'guide' | 'report' | 'analysis';
+  version: number; // starts at 1, increments with each edit
+  metadata: {
+    wordCount: number;
+    estimatedReadTime: string;
+    category: string;
+    tags: string[];
+  };
   created_at?: string;
   updated_at?: string;
 } 

@@ -18,11 +18,23 @@ interface ArtifactData {
 interface ArtifactViewerProps {
   artifact: ArtifactData;
   onClose: () => void;
+  versions?: ArtifactData[]; // Optional list of versions, newest last
 }
 
-export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({ artifact, onClose }) => {
+export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({ artifact, onClose, versions }) => {
+  // State to track selected version (default to latest if provided)
+  const [selectedVersionIndex, setSelectedVersionIndex] = useState(
+    versions && versions.length > 0 ? versions.length - 1 : 0
+  );
+
+  // State to switch between rendered markdown preview and raw markdown view
+  const [viewMode, setViewMode] = useState<'preview' | 'raw'>('preview');
+
+  // Determine which artifact data to display (selected version or single artifact)
+  const artifactData = versions && versions.length > 0 ? versions[selectedVersionIndex] : artifact;
+
   const handleCopy = () => {
-    navigator.clipboard.writeText(artifact.content);
+    navigator.clipboard.writeText(artifactData.content);
     // Show toast notification
     const toast = document.createElement('div');
     toast.textContent = 'Content copied to clipboard!';
@@ -52,11 +64,11 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({ artifact, onClos
   };
 
   const handleDownload = () => {
-    const blob = new Blob([artifact.content], { type: 'text/markdown' });
+    const blob = new Blob([artifactData.content], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${artifact.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.md`;
+    a.download = `${artifactData.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.md`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -76,18 +88,58 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({ artifact, onClos
             </svg>
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-gray-100">{artifact.title}</h2>
+            <h2 className="text-lg font-semibold text-gray-100">{artifactData.title}</h2>
             <div className="flex items-center gap-4 text-sm text-gray-400">
-              <span>{artifact.metadata.wordCount} words</span>
-              <span>{artifact.metadata.estimatedReadTime}</span>
+              <span>{artifactData.metadata.wordCount} words</span>
+              <span>{artifactData.metadata.estimatedReadTime}</span>
               <span className="px-2 py-1 bg-cyan-500/20 text-cyan-400 rounded-full text-xs">
-                {artifact.metadata.category}
+                {artifactData.metadata.category}
               </span>
             </div>
           </div>
         </div>
         
+        {/* Version selector & view toggle */}
         <div className="flex items-center gap-2">
+          {/* Version selector (only if multiple versions are provided) */}
+          {versions && versions.length > 1 && (
+            <select
+              value={selectedVersionIndex}
+              onChange={(e) => setSelectedVersionIndex(Number(e.target.value))}
+              className="bg-gray-800 text-gray-300 border border-gray-600 rounded px-2 py-1 text-sm mr-2 focus:outline-none"
+              title="Select version"
+            >
+              {versions.map((_, idx) => (
+                <option key={idx} value={idx}>{`v${idx + 1}`}</option>
+              ))}
+            </select>
+          )}
+
+          {/* View mode toggle */}
+          <button
+            onClick={() => setViewMode('preview')}
+            className={`p-2 rounded-lg transition-colors ${viewMode === 'preview' ? 'bg-gray-700 text-cyan-400' : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700'}`}
+            title="Preview mode"
+          >
+            {/* Eye icon */}
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </button>
+          <button
+            onClick={() => setViewMode('raw')}
+            className={`p-2 rounded-lg transition-colors ${viewMode === 'raw' ? 'bg-gray-700 text-cyan-400' : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700'}`}
+            title="Raw markdown"
+          >
+            {/* Code icon */}
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="16 18 22 12 16 6"></polyline>
+              <polyline points="8 6 2 12 8 18"></polyline>
+            </svg>
+          </button>
+
+          {/* Copy content */}
           <button
             onClick={handleCopy}
             className="p-2 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded-lg transition-colors"
@@ -98,7 +150,8 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({ artifact, onClos
               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
             </svg>
           </button>
-          
+
+          {/* Download markdown */}
           <button
             onClick={handleDownload}
             className="p-2 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded-lg transition-colors"
@@ -110,7 +163,8 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({ artifact, onClos
               <line x1="12" y1="15" x2="12" y2="3"></line>
             </svg>
           </button>
-          
+
+          {/* Close viewer */}
           <button
             onClick={onClose}
             className="p-2 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded-lg transition-colors"
@@ -127,7 +181,7 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({ artifact, onClos
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-6">
         <div className="max-w-none">
-          {!artifact.content ? (
+          {!artifactData.content ? (
             // Show streaming state when content is empty
             <div className="flex flex-col items-center justify-center h-64">
               <div className="flex items-center space-x-3 mb-4">
@@ -146,115 +200,121 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({ artifact, onClos
           ) : (
             <div className="relative">
               {/* Streaming content */}
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              rehypePlugins={[rehypeRaw]}
-              className="prose prose-invert max-w-none"
-              components={{
-              h1: ({ children }) => (
-                <h1 className="text-3xl font-bold text-gray-100 mb-6 mt-6 border-b border-gray-600 pb-3">
-                  {children}
-                </h1>
-              ),
-              h2: ({ children }) => (
-                <h2 className="text-2xl font-semibold text-gray-200 mb-4 mt-6">
-                  {children}
-                </h2>
-              ),
-              h3: ({ children }) => (
-                <h3 className="text-xl font-semibold text-gray-200 mb-3 mt-5">
-                  {children}
-                </h3>
-              ),
-              h4: ({ children }) => (
-                <h4 className="text-lg font-semibold text-gray-200 mb-2 mt-4">
-                  {children}
-                </h4>
-              ),
-              p: ({ children }) => (
-                <p className="text-gray-300 leading-relaxed mb-4 text-base">
-                  {children}
-                </p>
-              ),
-              ul: ({ children }) => (
-                <ul className="space-y-2 mb-4 ml-6 list-disc text-gray-300">
-                  {children}
-                </ul>
-              ),
-              ol: ({ children }) => (
-                <ol className="space-y-2 mb-4 ml-6 list-decimal text-gray-300">
-                  {children}
-                </ol>
-              ),
-              li: ({ children }) => (
-                <li className="text-gray-300">
-                  {children}
-                </li>
-              ),
-              blockquote: ({ children }) => (
-                <blockquote className="border-l-4 border-cyan-500 pl-6 py-2 mb-4 italic text-gray-400 bg-gray-800/50 rounded-r-lg">
-                  {children}
-                </blockquote>
-              ),
-              code: ({ children, className }) => {
-                const isInline = !className;
-                if (isInline) {
-                  return (
-                    <code className="bg-gray-700 text-cyan-300 px-2 py-1 rounded text-sm font-mono">
+              {viewMode === 'preview' ? (
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  rehypePlugins={[rehypeRaw]}
+                  className="prose prose-invert max-w-none"
+                  components={{
+                  h1: ({ children }) => (
+                    <h1 className="text-3xl font-bold text-gray-100 mb-6 mt-6 border-b border-gray-600 pb-3">
                       {children}
-                    </code>
-                  );
-                }
-                return (
-                  <code className="block bg-gray-900 text-gray-200 p-4 rounded-lg overflow-x-auto text-sm font-mono mb-4 border border-gray-700">
-                    {children}
-                  </code>
-                );
-              },
-              table: ({ children }) => (
-                <div className="overflow-x-auto mb-6">
-                  <table className="w-full border-collapse border border-gray-600 rounded-lg">
-                    {children}
-                  </table>
-                </div>
-              ),
-              thead: ({ children }) => (
-                <thead className="bg-gray-800">
-                  {children}
-                </thead>
-              ),
-              th: ({ children }) => (
-                <th className="border border-gray-600 px-4 py-3 text-left text-gray-200 font-semibold">
-                  {children}
-                </th>
-              ),
-              td: ({ children }) => (
-                <td className="border border-gray-600 px-4 py-3 text-gray-300">
-                  {children}
-                </td>
-              ),
-              strong: ({ children }) => (
-                <strong className="text-gray-100 font-semibold">
-                  {children}
-                </strong>
-              ),
-              em: ({ children }) => (
-                <em className="text-gray-300 italic">
-                  {children}
-                </em>
-              ),
-              a: ({ children, href }) => (
-                <a href={href} className="text-cyan-400 hover:text-cyan-300 underline">
-                  {children}
-                </a>
-              )
-              }}
-            >
-              {artifact.content}
-            </ReactMarkdown>
+                    </h1>
+                  ),
+                  h2: ({ children }) => (
+                    <h2 className="text-2xl font-semibold text-gray-200 mb-4 mt-6">
+                      {children}
+                    </h2>
+                  ),
+                  h3: ({ children }) => (
+                    <h3 className="text-xl font-semibold text-gray-200 mb-3 mt-5">
+                      {children}
+                    </h3>
+                  ),
+                  h4: ({ children }) => (
+                    <h4 className="text-lg font-semibold text-gray-200 mb-2 mt-4">
+                      {children}
+                    </h4>
+                  ),
+                  p: ({ children }) => (
+                    <p className="text-gray-300 leading-relaxed mb-4 text-base">
+                      {children}
+                    </p>
+                  ),
+                  ul: ({ children }) => (
+                    <ul className="space-y-2 mb-4 ml-6 list-disc text-gray-300">
+                      {children}
+                    </ul>
+                  ),
+                  ol: ({ children }) => (
+                    <ol className="space-y-2 mb-4 ml-6 list-decimal text-gray-300">
+                      {children}
+                    </ol>
+                  ),
+                  li: ({ children }) => (
+                    <li className="text-gray-300">
+                      {children}
+                    </li>
+                  ),
+                  blockquote: ({ children }) => (
+                    <blockquote className="border-l-4 border-cyan-500 pl-6 py-2 mb-4 italic text-gray-400 bg-gray-800/50 rounded-r-lg">
+                      {children}
+                    </blockquote>
+                  ),
+                  code: ({ children, className }) => {
+                    const isInline = !className;
+                    if (isInline) {
+                      return (
+                        <code className="bg-gray-700 text-cyan-300 px-2 py-1 rounded text-sm font-mono">
+                          {children}
+                        </code>
+                      );
+                    }
+                    return (
+                      <code className="block bg-gray-900 text-gray-200 p-4 rounded-lg overflow-x-auto text-sm font-mono mb-4 border border-gray-700">
+                        {children}
+                      </code>
+                    );
+                  },
+                  table: ({ children }) => (
+                    <div className="overflow-x-auto mb-6">
+                      <table className="w-full border-collapse border border-gray-600 rounded-lg">
+                        {children}
+                      </table>
+                    </div>
+                  ),
+                  thead: ({ children }) => (
+                    <thead className="bg-gray-800">
+                      {children}
+                    </thead>
+                  ),
+                  th: ({ children }) => (
+                    <th className="border border-gray-600 px-4 py-3 text-left text-gray-200 font-semibold">
+                      {children}
+                    </th>
+                  ),
+                  td: ({ children }) => (
+                    <td className="border border-gray-600 px-4 py-3 text-gray-300">
+                      {children}
+                    </td>
+                  ),
+                  strong: ({ children }) => (
+                    <strong className="text-gray-100 font-semibold">
+                      {children}
+                    </strong>
+                  ),
+                  em: ({ children }) => (
+                    <em className="text-gray-300 italic">
+                      {children}
+                    </em>
+                  ),
+                  a: ({ children, href }) => (
+                    <a href={href} className="text-cyan-400 hover:text-cyan-300 underline">
+                      {children}
+                    </a>
+                  )
+                  }}
+                >
+                  {artifactData.content}
+                </ReactMarkdown>
+              ) : (
+                <pre className="whitespace-pre-wrap text-gray-300 text-sm">
+                  {artifactData.content}
+                </pre>
+              )}
             
             {/* Streaming indicator - show when content is being written */}
-            {artifact.content && artifact.metadata.wordCount < 50 && (
+            {artifactData.content && artifactData.metadata.wordCount < 50 && (
               <div className="flex items-center gap-2 mt-4 text-cyan-400">
                 <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
                 <span className="text-sm">AI is writing...</span>
@@ -266,12 +326,12 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({ artifact, onClos
       </div>
 
       {/* Footer with tags */}
-      {artifact.metadata.tags.length > 0 && (
+      {artifactData.metadata.tags.length > 0 && (
         <div className="border-t border-gray-700 p-4 bg-[#1a1a1c]">
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-400">Tags:</span>
             <div className="flex flex-wrap gap-2">
-              {artifact.metadata.tags.map((tag, index) => (
+              {artifactData.metadata.tags.map((tag, index) => (
                 <span
                   key={index}
                   className="px-2 py-1 bg-gray-700 text-gray-300 rounded-full text-xs"
