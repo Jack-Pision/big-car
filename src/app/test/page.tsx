@@ -1666,6 +1666,10 @@ function TestChatComponent() {
   const [liveThinking, setLiveThinking] = useState<string>('');
   const [currentThinkingMessageId, setCurrentThinkingMessageId] = useState<string | null>(null);
   
+  // Separate live thinking state for Reasoning mode to avoid duplication with default chat
+  const [liveReasoning, setLiveReasoning] = useState('');
+  const [currentReasoningMessageId, setCurrentReasoningMessageId] = useState<string | null>(null);
+  
   // Artifact streaming states
   const [artifactStreamingContent, setArtifactStreamingContent] = useState<string>('');
   const [isArtifactStreaming, setIsArtifactStreaming] = useState(false);
@@ -2198,8 +2202,13 @@ function TestChatComponent() {
     
     // Create immediate thinking state for the upcoming AI response
     const upcomingAiMessageId = uuidv4();
-    setCurrentThinkingMessageId(upcomingAiMessageId);
-    setLiveThinking('Starting to think...');
+    if (activeButton === 'reasoning') {
+      setCurrentReasoningMessageId(upcomingAiMessageId);
+      setLiveReasoning('Starting to think...');
+    } else {
+      setCurrentThinkingMessageId(upcomingAiMessageId);
+      setLiveThinking('Starting to think...');
+    }
     
     // Create placeholder AI message immediately so think box can appear
     const placeholderAiMessage: LocalMessage = {
@@ -2210,7 +2219,7 @@ function TestChatComponent() {
       parentId: userMessageId,
       imageUrls: uploadedImageUrls.length > 0 ? uploadedImageUrls : undefined,
       webSources: [],
-      contentType: 'conversation',
+      contentType: activeButton === 'reasoning' ? 'reasoning' : 'conversation',
       isStreaming: true,
       isProcessed: false
     };
@@ -2444,8 +2453,13 @@ function TestChatComponent() {
                     
                     // Update live thinking display - this goes directly to think box
                     if (thinkContent && thinkContent.trim().length > 0) {
-                      setLiveThinking(thinkContent);
-                      setCurrentThinkingMessageId(aiMessageId); // Link thinking to the main message
+                      if (activeButton === 'reasoning') {
+                        setLiveReasoning(thinkContent);
+                        setCurrentReasoningMessageId(aiMessageId);
+                      } else {
+                        setLiveThinking(thinkContent);
+                        setCurrentThinkingMessageId(aiMessageId); // Link thinking to the main message
+                      }
                     }
                     
 
@@ -2504,8 +2518,13 @@ function TestChatComponent() {
         // Clear the live thinking state with a smooth transition
         // BUT keep the thinking content embedded in the message for permanent display
         setTimeout(() => {
-          setCurrentThinkingMessageId(null);
-          setLiveThinking(''); // Clear live state but thinking remains in message content
+          if (activeButton === 'reasoning') {
+            setLiveReasoning('');
+            setCurrentReasoningMessageId(null);
+          } else {
+            setLiveThinking('');
+            setCurrentThinkingMessageId(null);
+          }
         }, 400); // Clear thinking state after content transition
         
         // Handle image context if needed
@@ -3379,6 +3398,39 @@ function TestChatComponent() {
                 );
   };
 
+  // Add new renderer below default one
+  const renderReasoningMessage = (msg: LocalMessage, i: number) => {
+    const { content: rawContent } = cleanAIResponse(msg.content);
+    const cleanContent = rawContent.replace(/<thinking-indicator.*?>\n<\/thinking-indicator>\n|<thinking-indicator.*?\/>/g, '');
+
+    const { processedContent, thinkBlocks } = processThinkTags(cleanContent);
+    const finalContent = makeCitationsClickable(processedContent, msg.webSources || []);
+
+    return (
+      <React.Fragment key={msg.id + '-reasoning-' + i}>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: 'easeOut' }}
+          className="w-full text-left flex flex-col items-start ai-response-text mb-4 relative"
+          style={{ color: '#fff' }}
+        >
+          {/* Live reasoning box */}
+          {currentReasoningMessageId === msg.id && liveReasoning && (
+            <ThinkingButton content={liveReasoning} isLive={true} />
+          )}
+
+          {/* Static think blocks */}
+          {thinkBlocks.length > 0 && currentReasoningMessageId !== msg.id && thinkBlocks.map((block, idx) => (
+            <ThinkingButton key={`${msg.id}-think-${idx}`} content={block.content} isLive={false} />
+          ))}
+
+          <ReasoningDisplay data={finalContent.replace(/<!-- think-block-\d+ -->/g, '')} />
+        </motion.div>
+      </React.Fragment>
+    );
+  };
+
                 return (
     <>
       <div 
@@ -3583,6 +3635,9 @@ function TestChatComponent() {
                 }
                 if (msg.isSearchResult) {
                   return renderSearchMessage(msg, i);
+                }
+                if (msg.contentType === 'reasoning') {
+                  return renderReasoningMessage(msg, i);
                 }
                 return renderDefaultChatMessage(msg, i);
               }
