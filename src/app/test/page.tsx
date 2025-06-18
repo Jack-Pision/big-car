@@ -1570,23 +1570,27 @@ ${JSON.stringify(schema, null, 2)}`;
 
 // Function to extract think content during streaming and update live thinking state
 const extractThinkContentDuringStream = (content: string) => {
-  const thinkRegex = /<think>([\s\S]*?)(<\/think>|$)/g;
   let thinkContent = '';
   let mainContent = content;
+  
+  // First, handle complete think tags
+  const completeThinkRegex = /<think>([\s\S]*?)<\/think>/g;
   let match;
   
-  // Extract all think content
-  while ((match = thinkRegex.exec(content)) !== null) {
+  while ((match = completeThinkRegex.exec(content)) !== null) {
     thinkContent += match[1];
-    // Remove the think tags from main content
+    // Remove the complete think tags from main content
     mainContent = mainContent.replace(match[0], '');
   }
   
-  // Also handle partial think tags (when streaming)
-  const partialThinkMatch = content.match(/<think>([^<]*?)$/);
-  if (partialThinkMatch) {
-    thinkContent += partialThinkMatch[1];
-    mainContent = mainContent.replace(partialThinkMatch[0], '');
+  // Only handle partial think tags if no complete tags were found
+  // This prevents double-processing the same content
+  if (!thinkContent) {
+    const partialThinkMatch = content.match(/<think>([^<]*?)$/);
+    if (partialThinkMatch) {
+      thinkContent = partialThinkMatch[1];
+      mainContent = mainContent.replace(partialThinkMatch[0], '');
+    }
   }
   
   return {
