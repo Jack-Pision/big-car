@@ -1875,26 +1875,182 @@ function TestChatComponent() {
       if (showHeading) setShowHeading(false);
 
       // Add user message to chat
+      const userMessageId = uuidv4();
       setMessages(prev => [
         ...prev,
         { 
           role: 'user',
-          id: uuidv4(),
+          id: userMessageId,
           content: input,
-          timestamp: Date.now(),
-          isProcessed: true
-        },
-        { 
-          role: 'search-ui',
-          id: uuidv4(), 
-          content: input,
-          query: input,
           timestamp: Date.now(),
           isProcessed: true
         }
       ]);
+
+      // Create a placeholder message for search results
+      const searchMessageId = uuidv4();
+      const searchPlaceholder: LocalMessage = {
+        role: 'search-ui',
+        id: searchMessageId,
+        content: "Searching for: " + input + "\n\n*Processing search results...*",
+        query: input,
+        timestamp: Date.now(),
+        isProcessed: false,
+        isStreaming: true
+      };
       
+      setMessages(prev => [...prev, searchPlaceholder]);
       setInput('');
+      setIsLoading(true);
+      
+      // Execute the search using the Search component's functionality
+      try {
+        // First step: AI Search Strategy Planner - Generate optimized search queries
+        const response = await fetch('/api/nvidia', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: [
+              {
+                role: 'system',
+                content: `You are an AI Search Strategy Planner specializing in smart query analysis and Google-style search optimization. Transform the user question into 2-3 effective search phrases.`
+              },
+              {
+                role: 'user',
+                content: `Transform this question into 2-3 Google-style search phrases: ${input}`
+              }
+            ]
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`Nvidia API error: ${response.status}`);
+        }
+
+        const strategyResult = await response.json();
+        const searchQueries = strategyResult.choices[0].message.content
+          .split('\n')
+          .filter((line: string) => line.match(/^\d+\.\s/))
+          .map((line: string) => line.replace(/^\d+\.\s/, '').trim());
+
+        // Use original query if no queries extracted
+        const finalSearchQueries = searchQueries.length > 0 ? searchQueries : [input.trim()];
+        
+        // Update search message to show progress
+        setMessages(prev => prev.map(msg => 
+          msg.id === searchMessageId 
+            ? {...msg, content: "Searching for: " + input + "\n\n*Executing searches...*"} 
+            : msg
+        ));
+
+        // Step 2: Execute searches using Serper API
+        const searchResults: any[] = [];
+        for (const query of finalSearchQueries) {
+          const serperResponse = await fetch('/api/serper/search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              query, 
+              limit: 10
+            })
+          });
+
+          if (!serperResponse.ok) {
+            throw new Error(`Serper API error: ${serperResponse.status}`);
+          }
+
+          const serperData = await serperResponse.json();
+          if (serperData?.sources?.length > 0) {
+            searchResults.push(...serperData.sources);
+          }
+        }
+
+        // Update search message to show progress
+        setMessages(prev => prev.map(msg => 
+          msg.id === searchMessageId 
+            ? {...msg, content: "Searching for: " + input + "\n\n*Analyzing search results...*"} 
+            : msg
+        ));
+
+        // Step 3: Generate final output
+        const finalResponse = await fetch('/api/nvidia', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: [
+              {
+                role: 'system',
+                content: `You are a professional research analyst. Generate a comprehensive research report based on the search results provided.`
+              },
+              {
+                role: 'user',
+                content: `Original query: ${input}\n\nSearch results:\n${JSON.stringify(searchResults, null, 2)}\n\nPlease create a well-structured research report with the most relevant information from these sources.`
+              }
+            ]
+          })
+        });
+
+        if (!finalResponse.ok) {
+          throw new Error(`Nvidia API error: ${finalResponse.status}`);
+        }
+
+        const finalData = await finalResponse.json();
+        const finalContent = finalData.choices[0].message.content;
+
+        // Update the search message with the final content and mark as processed
+        setMessages(prev => prev.map(msg => 
+          msg.id === searchMessageId 
+            ? {
+                ...msg, 
+                content: finalContent, 
+                isProcessed: true, 
+                isStreaming: false,
+                isSearchResult: true,
+                webSources: searchResults
+              } 
+            : msg
+        ));
+
+        // Save messages after search completes
+        const updatedMessages = [
+          ...messages.filter(msg => msg.id !== searchMessageId),
+          { 
+            role: 'user' as 'user',
+            id: userMessageId,
+            content: input,
+            timestamp: Date.now(),
+            isProcessed: true
+          }, 
+          {
+            role: 'search-ui' as 'search-ui',
+            id: searchMessageId,
+            content: finalContent,
+            query: input,
+            timestamp: Date.now(),
+            isProcessed: true,
+            isSearchResult: true,
+            webSources: searchResults
+          }
+        ] as LocalMessage[];
+        
+        saveMessagesOnQueryComplete(updatedMessages);
+      } catch (error) {
+        console.error('Search error:', error);
+        // Update the search message with the error
+        setMessages(prev => prev.map(msg => 
+          msg.id === searchMessageId 
+            ? {
+                ...msg, 
+                content: `Error performing search: ${error instanceof Error ? error.message : 'Unknown error'}`, 
+                isProcessed: true, 
+                isStreaming: false
+              } 
+            : msg
+        ));
+      } finally {
+        setIsLoading(false);
+      }
+      
       return;
     }
 
