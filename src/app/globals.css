@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 body {
-  @apply bg-white text-neutral-900;
+  @apply bg-[#161618] text-neutral-100;
 }
 
 @layer base {
