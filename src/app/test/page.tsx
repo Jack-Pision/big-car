@@ -2095,11 +2095,13 @@ function TestChatComponent() {
       } catch (error) {
         console.error('Artifact streaming error:', error);
         
-        // Update the AI message with error
+        // Update the AI message with a more helpful error message
         const errorMessage: LocalMessage = {
           role: 'assistant',
           id: aiMessageId,
-          content: `Sorry, I encountered an error while creating the artifact: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          content: error instanceof Error && error.message.includes('504') 
+            ? `Sorry, I encountered an error while creating the artifact: API request failed: 504. The artifact generation timed out because it was taking too long. Please try again with a simpler request or try again later.`
+            : `Sorry, I encountered an error while creating the artifact: ${error instanceof Error ? error.message : 'Unknown error'}`,
           timestamp: Date.now(),
           parentId: userMessageId,
           isProcessed: true,

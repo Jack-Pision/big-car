@@ -4,7 +4,7 @@ const TEXT_API_KEY = process.env.NVIDIA_API_KEY || '';
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || '';
 
 // Update the fetchWithTimeout function to optimize timeout handling
-async function fetchWithTimeout(resource: string, options: any = {}, timeout = 25000) { // Increased to 25 seconds
+async function fetchWithTimeout(resource: string, options: any = {}, timeout = 45000) { // Increased to 45 seconds for artifact generation
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
   try {
@@ -234,7 +234,7 @@ async function fetchNvidiaText(messages: any[], options: any = {}) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(payload),
-    }, 25000); // 25-second timeout for NVIDIA API
+    }, isArtifact ? 45000 : 25000); // 45-second timeout for artifacts, 25-second for regular chats
 
     if (!res.ok) {
       const errorText = await res.text();
