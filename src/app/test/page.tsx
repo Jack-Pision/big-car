@@ -2454,7 +2454,15 @@ function TestChatComponent() {
                     // Update live thinking display - this goes directly to think box
                     if (thinkContent && thinkContent.trim().length > 0) {
                       if (activeButton === 'reasoning') {
-                        setLiveReasoning(thinkContent);
+                        // Append only the new part to avoid duplicate prefixes
+                        if (thinkContent.length < reasoningThinkLengthRef.current) {
+                          reasoningThinkLengthRef.current = 0; // reset if content shrank (new block)
+                        }
+                        const fresh = thinkContent.slice(reasoningThinkLengthRef.current);
+                        reasoningThinkLengthRef.current = thinkContent.length;
+                        if (fresh) {
+                          setLiveReasoning(prev => prev + fresh);
+                        }
                         setCurrentReasoningMessageId(aiMessageId);
                       } else {
                         setLiveThinking(thinkContent);
@@ -2521,6 +2529,7 @@ function TestChatComponent() {
           if (activeButton === 'reasoning') {
             setLiveReasoning('');
             setCurrentReasoningMessageId(null);
+            reasoningThinkLengthRef.current = 0;
           } else {
             setLiveThinking('');
             setCurrentThinkingMessageId(null);
