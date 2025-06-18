@@ -1669,7 +1669,7 @@ function TestChatComponent() {
   // Separate live thinking state for Reasoning mode to avoid duplication with default chat
   const [liveReasoning, setLiveReasoning] = useState('');
   const [currentReasoningMessageId, setCurrentReasoningMessageId] = useState<string | null>(null);
-  const reasoningThinkLengthRef = useRef(0);
+  const reasoningPrevRef = useRef('');
   
   // Artifact streaming states
   const [artifactStreamingContent, setArtifactStreamingContent] = useState<string>('');
@@ -2455,14 +2455,18 @@ function TestChatComponent() {
                     // Update live thinking display - this goes directly to think box
                     if (thinkContent && thinkContent.trim().length > 0) {
                       if (activeButton === 'reasoning') {
-                        // Append only the new part to avoid duplicate prefixes
-                        if (thinkContent.length < reasoningThinkLengthRef.current) {
-                          reasoningThinkLengthRef.current = 0; // reset if content shrank (new block)
+                        // Append only truly new part using overlap diff
+                        const prevShown = reasoningPrevRef.current;
+                        const nextFull = thinkContent;
+                        // limit overlap search to last 200 chars for efficiency
+                        let overlap = Math.min(200, prevShown.length, nextFull.length);
+                        while (overlap > 0 && prevShown.slice(-overlap) !== nextFull.slice(0, overlap)) {
+                          overlap--;
                         }
-                        const fresh = thinkContent.slice(reasoningThinkLengthRef.current);
-                        reasoningThinkLengthRef.current = thinkContent.length;
+                        const fresh = nextFull.slice(overlap);
                         if (fresh) {
                           setLiveReasoning(prev => prev + fresh);
+                          reasoningPrevRef.current += fresh;
                         }
                         setCurrentReasoningMessageId(aiMessageId);
                       } else {
@@ -2530,7 +2534,7 @@ function TestChatComponent() {
           if (activeButton === 'reasoning') {
             setLiveReasoning('');
             setCurrentReasoningMessageId(null);
-            reasoningThinkLengthRef.current = 0;
+            reasoningPrevRef.current = '';
           } else {
             setLiveThinking('');
             setCurrentThinkingMessageId(null);
