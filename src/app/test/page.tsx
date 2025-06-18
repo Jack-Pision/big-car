@@ -2887,19 +2887,24 @@ function TestChatComponent() {
   const cleanArtifactContent = (content: string): string => {
     if (!content) return '';
     
+    let result = content;
+    
+    // Remove any leading/trailing code fences
+    result = result.replace(/^```[a-zA-Z]*\n/, '').replace(/```$/, '');
+    
     // Remove all <think>...</think> tags completely
-    let cleaned = content.replace(/<think>[\s\S]*?<\/think>/g, '');
+    result = result.replace(/<think>[\s\S]*?<\/think>/g, '');
     
     // Remove any <think-live></think-live> markers
-    cleaned = cleaned.replace(/<think-live><\/think-live>/g, '');
+    result = result.replace(/<think-live><\/think-live>/g, '');
     
     // Remove any thinking indicators
-    cleaned = cleaned.replace(/<thinking-indicator.*?>\n<\/thinking-indicator>\n|<thinking-indicator.*?\/>/g, '');
+    result = result.replace(/<thinking-indicator.*?>\n<\/thinking-indicator>\n|<thinking-indicator.*?\/>/g, '');
     
     // Clean up extra whitespace that might be left behind
-    cleaned = cleaned.replace(/\n\s*\n\s*\n/g, '\n\n').trim();
+    result = result.replace(/\n\s*\n\s*\n/g, '\n\n').trim();
     
-    return cleaned;
+    return result;
   };
 
   // Independent artifact message rendering system

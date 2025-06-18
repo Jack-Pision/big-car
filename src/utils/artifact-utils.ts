@@ -81,7 +81,7 @@ export const shouldTriggerArtifact = (query: string): boolean => {
 
 // Generate the prompt for artifact creation (Raw Output Method)
 export const getArtifactPrompt = (userQuery: string): string => {
-  return `You are a professional document creation assistant. Write a comprehensive, well-structured document using markdown formatting.
+  return `You are a professional document creation assistant. Write a comprehensive, well-structured document using markdown formatting. IMPORTANT: Do not wrap the entire document in triple back-ticks (\`\`\`); output plain Markdown with headings, lists, emphasis, etc., but no code fences around the whole document.
 
 **CONTENT REQUIREMENTS:**
 - Generate substantial content (minimum 800 words)
