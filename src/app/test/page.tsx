@@ -1881,11 +1881,11 @@ function TestChatComponent() {
     }
   }, [liveReasoning]);
 
-  // Auto-scroll during reasoning mode streaming (both thinking and final output)
+  // Auto-scroll during any AI response or live reasoning (simplified and reliable)
   useEffect(() => {
     let scrollTimeout: NodeJS.Timeout;
     
-    if (scrollRef.current && isAiResponding && activeButton === 'reasoning') {
+    if (scrollRef.current && (isAiResponding || liveReasoning)) {
       // Throttle scrolling to avoid excessive scroll calls during rapid streaming
       scrollTimeout = setTimeout(() => {
         if (scrollRef.current) {
@@ -1902,7 +1902,7 @@ function TestChatComponent() {
         clearTimeout(scrollTimeout);
       }
     };
-  }, [messages, isAiResponding, activeButton, liveReasoning]);
+  }, [messages, isAiResponding, liveReasoning]);
 
 
 
@@ -2549,7 +2549,7 @@ function TestChatComponent() {
                       content: finalThinkContent.trim().length > 0 
                         ? `<think>${finalThinkContent}</think>${finalMainContent}` // Preserve thinking for permanent "Thought" state
                         : finalMainContent, // No thinking content, just main content
-                      contentType: 'conversation',
+                      contentType: 'reasoning',
                       isProcessed: true,
                     }
                   : msg
