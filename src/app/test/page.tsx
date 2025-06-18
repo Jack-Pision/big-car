@@ -35,7 +35,7 @@ import TutorialDisplay, { TutorialData } from '@/components/TutorialDisplay';
 import ComparisonDisplay, { ComparisonData } from '@/components/ComparisonDisplay';
 import InformationalSummaryDisplay, { InformationalSummaryData } from '@/components/InformationalSummaryDisplay';
 import ConversationDisplay from '@/components/ConversationDisplay';
-import PerformanceMonitor from '@/components/PerformanceMonitor';
+
 import { Bot, User, Paperclip, Send, XCircle, Search as SearchIcon, Trash2, PlusCircle, Settings, Zap, ExternalLink, AlertTriangle, Brain } from 'lucide-react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
@@ -3706,8 +3706,7 @@ function TestChatComponent() {
         <div className="text-red-500 text-sm text-center mt-2">{chatError}</div>
       )}
       
-      {/* Performance Monitor - Shows cache stats */}
-      <PerformanceMonitor />
+
 
       {/* Resizable Divider */}
       {isArtifactMode && (
