@@ -66,7 +66,7 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({ artifact, onClos
   return (
     <div className="h-full bg-[#161618] flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-700 bg-[#1a1a1c]">
+      <div className="flex items-center justify-between p-4 border-b border-gray-700 bg-[#1a1a1c] flex-shrink-0">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-cyan-500/20 rounded-lg">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

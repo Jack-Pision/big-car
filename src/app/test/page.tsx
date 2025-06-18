@@ -1620,52 +1620,45 @@ const isArtifactContentComplete = (content: string): boolean => {
 };
 
 function TestChatComponent() {
+  const router = useRouter();
   const { user, showSettingsModal } = useAuth();
-  const [input, setInput] = useState("");
+  
+  // State management
   const [messages, setMessages] = useState<LocalMessage[]>([]);
+  const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [chatError, setChatError] = useState(""); // Renamed from error to chatError
-  const [showHeading, setShowHeading] = useState(true);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const inputBarRef = useRef<HTMLDivElement>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [inputBarHeight, setInputBarHeight] = useState(96); // px, default
-  const BASE_HEIGHT = 48; // px (h-12)
-  const MAX_HEIGHT = BASE_HEIGHT * 3; // 3x
-  const EXTRA_GAP = 32; // px
+  const [isSearchMode, setIsSearchMode] = useState(false);
+  const [hasInteracted, setHasInteracted] = useState(false);
+  const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
+  const [imageContexts, setImageContexts] = useState<ImageContext[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
-  const [sidebarRefreshTrigger, setSidebarRefreshTrigger] = useState(0);
+  const [inputBarHeight, setInputBarHeight] = useState(96);
+  const [isAiResponding, setIsAiResponding] = useState(false);
+  const [abortController, setAbortController] = useState<AbortController | null>(null);
+  const [currentStreamContent, setCurrentStreamContent] = useState('');
+  const [isStreamingComplete, setIsStreamingComplete] = useState(false);
+  const [showThinkingBox, setShowThinkingBox] = useState(false);
+  const [thinkingContent, setThinkingContent] = useState('');
+  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
   const [activeMode, setActiveMode] = useState<'chat' | 'search'>('chat');
   const [activeButton, setActiveButton] = useState<string | null>(null);
-  const [artifactContent, setArtifactContent] = useState<any>(null);
+  const [chatError, setChatError] = useState<string | null>(null);
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [sidebarRefreshTrigger, setSidebarRefreshTrigger] = useState(0);
   const [isArtifactMode, setIsArtifactMode] = useState(false);
-  const router = useRouter();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const fileInputRef1 = useRef<HTMLInputElement>(null);
-
-  const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
-  const [selectedFilesForUpload, setSelectedFilesForUpload] = useState<File[]>([]);
-  const [isAiResponding, setIsAiResponding] = useState(false);
+  const [artifactContent, setArtifactContent] = useState<ArtifactData | null>(null);
+  const [isGeneratingArtifact, setIsGeneratingArtifact] = useState(false);
+  const [artifactProgress, setArtifactProgress] = useState('');
   
-  // Replace the simple string array with a more structured approach
-  const [imageContexts, setImageContexts] = useState<ImageContext[]>([]);
-  // Keep track of how many images have been uploaded
-  const [imageCounter, setImageCounter] = useState(0);
+  // Add state for resizable panes
+  const [leftPaneWidth, setLeftPaneWidth] = useState(55); // Default 55% for left pane
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizeStartX, setResizeStartX] = useState(0);
+  const [resizeStartWidth, setResizeStartWidth] = useState(55);
 
-  const aiStreamAbortController = useRef<AbortController | null>(null);
-
-
-
-  const [emptyBoxes, setEmptyBoxes] = useState<string[]>([]); // Array of box IDs
-
+  const [emptyBoxes, setEmptyBoxes] = useState<string[]>([]);
   const [showPulsingDot, setShowPulsingDot] = useState(false);
-
-  // Add a state to track if the chat is empty (no messages)
-  const isChatEmpty = messages.length === 0;
-  // Track if the user has sent the first message (for animation and session creation)
-  const [hasInteracted, setHasInteracted] = useState(false);
   
   // Live thinking states
   const [liveThinking, setLiveThinking] = useState<string>('');
@@ -1674,13 +1667,66 @@ function TestChatComponent() {
   // Artifact streaming states
   const [artifactStreamingContent, setArtifactStreamingContent] = useState<string>('');
   const [isArtifactStreaming, setIsArtifactStreaming] = useState(false);
-  const [artifactProgress, setArtifactProgress] = useState<string>('');
 
-  // This will control the position of the input box and heading (centered vs bottom)
+  // Additional missing state variables
+  const [showHeading, setShowHeading] = useState(true);
+  const [selectedFilesForUpload, setSelectedFilesForUpload] = useState<File[]>([]);
+
+  // Refs
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const inputBarRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const fileInputRef1 = useRef<HTMLInputElement>(null);
+  const isInitialLoadRef = useRef(true);
+
+  // Constants
+  const BASE_HEIGHT = 48;
+  const MAX_HEIGHT = BASE_HEIGHT * 3;
+  const EXTRA_GAP = 32;
+  
+  // Computed values
+  const isChatEmpty = messages.length === 0;
   const inputPosition = isChatEmpty && !hasInteracted && !activeSessionId ? "center" : "bottom";
 
-  // Add ref to track initial load - put this near the top with other state
-  const isInitialLoadRef = useRef(true);
+  // Mouse event handlers for resizable divider
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+    setResizeStartX(e.clientX);
+    setResizeStartWidth(leftPaneWidth);
+  }, [leftPaneWidth]);
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!isResizing) return;
+    
+    const deltaX = e.clientX - resizeStartX;
+    const containerWidth = window.innerWidth;
+    const deltaPercent = (deltaX / containerWidth) * 100;
+    const newWidth = Math.max(30, Math.min(70, resizeStartWidth + deltaPercent)); // Constrain between 30% and 70%
+    
+    setLeftPaneWidth(newWidth);
+  }, [isResizing, resizeStartX, resizeStartWidth]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsResizing(false);
+  }, []);
+
+  // Add mouse event listeners for resizing
+  useEffect(() => {
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+      
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      };
+    }
+  }, [isResizing, handleMouseMove, handleMouseUp]);
 
   // Effect to load the last active session or create a new one on initial load
   useEffect(() => {
@@ -2790,7 +2836,7 @@ function TestChatComponent() {
         className="min-h-screen flex flex-col px-4 sm:px-4 md:px-8 lg:px-0 transition-all duration-300" 
         style={{ 
           background: '#161618',
-          marginRight: isArtifactMode ? '45%' : '0'
+          width: isArtifactMode ? `${leftPaneWidth}%` : '100%'
         }}
       >
         <GlobalStyles />
@@ -3473,9 +3519,28 @@ function TestChatComponent() {
       {/* Performance Monitor - Shows cache stats */}
       <PerformanceMonitor />
 
+      {/* Resizable Divider */}
+      {isArtifactMode && (
+        <div
+          className="fixed top-16 bottom-0 bg-gray-600 hover:bg-gray-500 cursor-col-resize z-[10000] transition-colors"
+          style={{ 
+            left: `${leftPaneWidth}%`, 
+            width: '4px',
+            transform: 'translateX(-2px)' // Center the divider on the boundary
+          }}
+          onMouseDown={handleMouseDown}
+        />
+      )}
+
       {/* Artifact Viewer - Right Pane Split Screen */}
       {isArtifactMode && artifactContent && (
-        <div className="fixed top-14 right-0 bottom-0 z-[9999] bg-[#161618] border-l border-gray-700" style={{ width: '45%' }}>
+        <div 
+          className="fixed top-16 right-0 bottom-0 z-[9999] bg-[#161618] border-l border-gray-700" 
+          style={{ 
+            width: `${100 - leftPaneWidth}%`,
+            left: `${leftPaneWidth}%`
+          }}
+        >
           <ArtifactViewer
             artifact={artifactContent}
             onClose={() => {
