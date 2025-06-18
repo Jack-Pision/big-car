@@ -2006,7 +2006,9 @@ function TestChatComponent() {
 
         let contentBuffer = '';
         let lastArtifactData: any = null;
-        let extractedContent = '';
+        let rawStreamingContent = '';
+        let isInsideContent = false;
+        let startedStreaming = false;
 
         try {
           while (true) {
@@ -2029,35 +2031,53 @@ function TestChatComponent() {
                     contentBuffer += content;
                     setArtifactStreamingContent(contentBuffer);
                     
-                    // Update progress based on content
-                    if (contentBuffer.includes('<think>')) {
+                    // Update progress based on content structure
+                    if (contentBuffer.includes('<think>') && !startedStreaming) {
                       setArtifactProgress('Analyzing your request...');
-                    } else if (contentBuffer.includes('"title"')) {
+                    } else if (contentBuffer.includes('"title"') && !startedStreaming) {
                       setArtifactProgress('Creating document structure...');
-                    } else if (contentBuffer.includes('"content"')) {
-                      setArtifactProgress('Generating content...');
-                      
-                      // Try to extract and stream content to artifact viewer
-                      const contentMatch = contentBuffer.match(/"content":\s*"([^"]*(?:\\.[^"]*)*)/);
-                      if (contentMatch) {
-                        extractedContent = contentMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"');
-                        
-                        // Update artifact content in real-time
-                        setArtifactContent(prev => prev ? {
-                          ...prev,
-                          content: extractedContent,
-                          metadata: {
-                            ...prev.metadata,
-                            wordCount: extractedContent.split(' ').length,
-                            estimatedReadTime: `${Math.max(1, Math.ceil(extractedContent.split(' ').length / 200))} minutes`
-                          }
-                        } : placeholderArtifact);
-                      }
-                    } else if (contentBuffer.includes('}')) {
-                      setArtifactProgress('Finalizing artifact...');
+                    } else if (contentBuffer.includes('"content"') && !startedStreaming) {
+                      setArtifactProgress('Writing content...');
+                      startedStreaming = true;
                     }
 
-                    // Try to extract and validate artifact data as we stream
+                    // IMMEDIATE STREAMING: Extract content as it's being written
+                    if (contentBuffer.includes('"content":')) {
+                      isInsideContent = true;
+                      
+                      // Extract everything after "content": " (including incomplete content)
+                      const contentStartMatch = contentBuffer.match(/"content":\s*"([^"]*(?:\\.[^"]*)*)/);
+                      if (contentStartMatch) {
+                        let streamingContent = contentStartMatch[1];
+                        
+                        // Clean up escape sequences for immediate display
+                        streamingContent = streamingContent
+                          .replace(/\\n/g, '\n')
+                          .replace(/\\"/g, '"')
+                          .replace(/\\t/g, '\t')
+                          .replace(/\\\\/g, '\\');
+                        
+                        // Update artifact content immediately with streaming content
+                        if (streamingContent !== rawStreamingContent) {
+                          rawStreamingContent = streamingContent;
+                          
+                          setArtifactContent(prev => prev ? {
+                            ...prev,
+                            content: streamingContent,
+                            metadata: {
+                              ...prev.metadata,
+                              wordCount: streamingContent.split(' ').filter(word => word.length > 0).length,
+                              estimatedReadTime: `${Math.max(1, Math.ceil(streamingContent.split(' ').filter(word => word.length > 0).length / 200))} minutes`
+                            }
+                          } : {
+                            ...placeholderArtifact,
+                            content: streamingContent
+                          });
+                        }
+                      }
+                    }
+
+                    // Still try to extract complete artifact data for final processing
                     const potentialArtifactData = extractJsonFromStreamingContent(contentBuffer);
                     if (potentialArtifactData && isArtifactContentComplete(contentBuffer)) {
                       lastArtifactData = potentialArtifactData;

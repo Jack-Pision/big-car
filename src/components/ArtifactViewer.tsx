@@ -144,6 +144,8 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({ artifact, onClos
               </div>
             </div>
           ) : (
+            <div className="relative">
+              {/* Streaming content */}
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               rehypePlugins={[rehypeRaw]}
@@ -250,6 +252,15 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({ artifact, onClos
             >
               {artifact.content}
             </ReactMarkdown>
+            
+            {/* Streaming indicator - show when content is being written */}
+            {artifact.content && artifact.metadata.wordCount < 50 && (
+              <div className="flex items-center gap-2 mt-4 text-cyan-400">
+                <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
+                <span className="text-sm">AI is writing...</span>
+              </div>
+            )}
+            </div>
           )}
         </div>
       </div>
