@@ -329,11 +329,10 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout for Nvidia step
       
-      const response = await fetchNvidiaWithDelay('/api/openrouter-chat', {
+      const response = await fetchNvidiaWithDelay('/api/nvidia', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'google/gemini-2.0-flash-exp:free',
           messages: [
             {
               role: 'system',
@@ -827,11 +826,10 @@ Error details: ${errorMessage}
         setIsThinkingActive(true);
         setSearchThinking('Starting research analysis and synthesis...');
         
-        const finalResponse = await fetchNvidiaWithDelay('/api/openrouter-chat', {
+        const finalResponse = await fetchNvidiaWithDelay('/api/nvidia', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            model: 'google/gemini-2.0-flash-exp:free',
             messages: [
               {
                 role: 'system',
