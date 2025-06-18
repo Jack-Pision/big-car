@@ -1050,6 +1050,7 @@ const processThinkTags = (content: string, isLive: boolean = false) => {
   const parts = [];
   const thinkBlocks = [];
   let lastIndex = 0;
+  let allThinkContent = ''; // Combine all think content into one block
   
   // Find all think tag pairs
   const thinkRegex = /<think>([\s\S]*?)<\/think>/g;
@@ -1061,15 +1062,24 @@ const processThinkTags = (content: string, isLive: boolean = false) => {
       parts.push(content.slice(lastIndex, match.index));
     }
     
-    // Store the think content only if it's meaningful (not empty or just whitespace)
+    // Accumulate all think content instead of creating separate blocks
     const thinkContent = match[1].trim();
     if (thinkContent && thinkContent.length > 0) {
-      const thinkId: string = `think-block-${thinkBlocks.length}`;
-      thinkBlocks.push({ id: thinkId, content: thinkContent });
-      parts.push(`<!-- ${thinkId} -->`);
+      if (allThinkContent) {
+        allThinkContent += '\n\n' + thinkContent; // Combine with line breaks
+      } else {
+        allThinkContent = thinkContent;
+      }
     }
     
     lastIndex = match.index + match[0].length;
+  }
+  
+  // Create only ONE think block with all combined content
+  if (allThinkContent) {
+    const thinkId: string = `think-block-0`;
+    thinkBlocks.push({ id: thinkId, content: allThinkContent });
+    parts.push(`<!-- ${thinkId} -->`);
   }
   
   // Add remaining content after the last think tag
