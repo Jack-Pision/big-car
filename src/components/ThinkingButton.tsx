@@ -78,8 +78,11 @@ const ThinkingButton: React.FC<ThinkingButtonProps> = ({ content, isLive = false
       >
         {/* Header */}
         <div 
-          className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-gray-800/50 transition-colors"
+          className="flex items-center gap-3 px-4 py-3 cursor-pointer"
           onClick={() => setIsExpanded(!isExpanded)}
+          style={{
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.3)'
+          }}
         >
           {/* Atom icon */}
           <div className="w-5 h-5 flex-shrink-0">
@@ -97,7 +100,7 @@ const ThinkingButton: React.FC<ThinkingButtonProps> = ({ content, isLive = false
           </div>
           
           {/* Title text */}
-          <span className="text-gray-300 font-medium text-sm flex-1">
+          <span className="font-medium text-sm flex-1" style={{ color: '#FCFCFC' }}>
             {isLive ? `Thinking ${formatDuration(duration)}` : `Thought for ${formatDuration(duration)}`}
           </span>
           
@@ -124,7 +127,7 @@ const ThinkingButton: React.FC<ThinkingButtonProps> = ({ content, isLive = false
               scrollBehavior: isLive ? 'smooth' : 'auto'
             }}
           >
-            <div className="text-gray-400 text-sm leading-relaxed whitespace-pre-wrap select-text">
+            <div className="text-sm leading-relaxed whitespace-pre-wrap select-text" style={{ color: '#FCFCFC' }}>
               {content || 'Starting to think...'}
             </div>
           </div>
