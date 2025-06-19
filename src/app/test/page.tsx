@@ -2742,33 +2742,39 @@ function TestChatComponent(props?: TestChatProps) {
                   if (delta) {
                     contentBuffer += delta;
                     
-                    // Separate thinking and main content in real-time
-                    const { thinkContent, mainContent } = extractThinkContentDuringStream(contentBuffer);
-                    
-                    // Update the existing placeholder AI message with content
-                    if (aiMessageId) {
-                      setMessages((prev) => {
-                        return prev.map(msg => 
-                          msg.id === aiMessageId 
-                            ? { ...msg, content: mainContent, isStreaming: true }
-                            : msg
-                        );
-                      });
-                      hasCreatedMessage = true; // Mark as created after first update
+                    // Only extract think content for reasoning mode
+                    if (activeButton === 'reasoning') {
+                      // Separate thinking and main content in real-time for reasoning mode
+                      const { thinkContent, mainContent } = extractThinkContentDuringStream(contentBuffer);
                       
-                      // Note: Removed real-time saving during streaming for better performance
-                      // Final content will be saved instantly when streaming completes
-                    }
-                    
-                    // Update live thinking display - this goes directly to think box
-                    if (thinkContent && thinkContent.trim().length > 0) {
-                      if (activeButton === 'reasoning') {
-                        // Use simple direct replacement like default chat mode
+                      // Update the existing placeholder AI message with content
+                      if (aiMessageId) {
+                        setMessages((prev) => {
+                          return prev.map(msg => 
+                            msg.id === aiMessageId 
+                              ? { ...msg, content: mainContent, isStreaming: true }
+                              : msg
+                          );
+                        });
+                        hasCreatedMessage = true; // Mark as created after first update
+                      }
+                      
+                      // Update live thinking display - this goes directly to think box
+                      if (thinkContent && thinkContent.trim().length > 0) {
                         setLiveReasoning(thinkContent);
                         setCurrentReasoningMessageId(aiMessageId);
-                      } else {
-                      setLiveThinking(thinkContent);
-                      setCurrentThinkingMessageId(aiMessageId); // Link thinking to the main message
+                      }
+                    } else {
+                      // For default chat, use content directly without think processing
+                      if (aiMessageId) {
+                        setMessages((prev) => {
+                          return prev.map(msg => 
+                            msg.id === aiMessageId 
+                              ? { ...msg, content: contentBuffer, isStreaming: true }
+                              : msg
+                          );
+                        });
+                        hasCreatedMessage = true; // Mark as created after first update
                       }
                     }
                     
@@ -2785,48 +2791,90 @@ function TestChatComponent(props?: TestChatProps) {
         
         // FAST FINAL SAVE - No delays, instant save when streaming completes
         if (aiMessageId) {
-          const { thinkContent: finalThinkContent, mainContent: finalMainContent } = extractThinkContentDuringStream(contentBuffer);
-          
-          // 1. Update UI immediately (no delays)
-          setMessages((prev) => {
-            return prev.map(msg => 
-              msg.id === aiMessageId 
-                ? { 
-                    ...msg, 
-                    isStreaming: false,
-                    content: finalThinkContent.trim().length > 0 
-                      ? `<think>${finalThinkContent}</think>${finalMainContent}` 
-                      : finalMainContent,
-                    contentType: 'reasoning',
-                    isProcessed: true,
-                  }
-                : msg
-            );
-          });
-
-          // 2. Save final content instantly in background (no setTimeout delays)
-          const currentSessionId = sessionIdRef.current;
-          if (currentSessionId && aiMessageId) {
-            const finalContent = finalThinkContent.trim().length > 0 
-              ? `<think>${finalThinkContent}</think>${finalMainContent}` 
-              : finalMainContent;
+          if (activeButton === 'reasoning') {
+            // For reasoning mode, extract and embed think content
+            const { thinkContent: finalThinkContent, mainContent: finalMainContent } = extractThinkContentDuringStream(contentBuffer);
             
-            // Use saveMessageInstantly for reliable UPSERT operation
-            const completeMessage: LocalMessage = {
-              role: "assistant",
-              content: finalContent,
-              id: aiMessageId,
-              timestamp: Date.now(),
-              parentId: userMessageId,
-              contentType: 'reasoning',
-              isProcessed: true,
-              imageUrls: uploadedImageUrls.length > 0 ? uploadedImageUrls : undefined,
-            };
-            
-            // FAST SAVE - No delays, runs in background
-            saveMessageInstantly(currentSessionId, completeMessage).catch(error => {
-              console.error('[Fast Save] Failed to save final message:', error);
+            // 1. Update UI immediately (no delays)
+            setMessages((prev) => {
+              return prev.map(msg => 
+                msg.id === aiMessageId 
+                  ? { 
+                      ...msg, 
+                      isStreaming: false,
+                      content: finalThinkContent.trim().length > 0 
+                        ? `<think>${finalThinkContent}</think>${finalMainContent}` 
+                        : finalMainContent,
+                      contentType: 'reasoning',
+                      isProcessed: true,
+                    }
+                  : msg
+              );
             });
+
+            // 2. Save final content instantly in background (no setTimeout delays)
+            const currentSessionId = sessionIdRef.current;
+            if (currentSessionId && aiMessageId) {
+              const finalContent = finalThinkContent.trim().length > 0 
+                ? `<think>${finalThinkContent}</think>${finalMainContent}` 
+                : finalMainContent;
+              
+              // Use saveMessageInstantly for reliable UPSERT operation
+              const completeMessage: LocalMessage = {
+                role: "assistant",
+                content: finalContent,
+                id: aiMessageId,
+                timestamp: Date.now(),
+                parentId: userMessageId,
+                contentType: 'reasoning',
+                isProcessed: true,
+                imageUrls: uploadedImageUrls.length > 0 ? uploadedImageUrls : undefined,
+              };
+              
+              // FAST SAVE - No delays, runs in background
+              saveMessageInstantly(currentSessionId, completeMessage).catch(error => {
+                console.error('[Fast Save] Failed to save final message:', error);
+              });
+            }
+          } else {
+            // For default chat, use content directly and strip any think tags
+            const cleanedContent = contentBuffer.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+            
+            // 1. Update UI immediately (no delays)
+            setMessages((prev) => {
+              return prev.map(msg => 
+                msg.id === aiMessageId 
+                  ? { 
+                      ...msg, 
+                      isStreaming: false,
+                      content: cleanedContent,
+                      contentType: 'conversation',
+                      isProcessed: true,
+                    }
+                  : msg
+              );
+            });
+
+            // 2. Save final content instantly in background (no setTimeout delays)
+            const currentSessionId = sessionIdRef.current;
+            if (currentSessionId && aiMessageId) {
+              // Use saveMessageInstantly for reliable UPSERT operation
+              const completeMessage: LocalMessage = {
+                role: "assistant",
+                content: cleanedContent,
+                id: aiMessageId,
+                timestamp: Date.now(),
+                parentId: userMessageId,
+                contentType: 'conversation',
+                isProcessed: true,
+                imageUrls: uploadedImageUrls.length > 0 ? uploadedImageUrls : undefined,
+              };
+              
+              // FAST SAVE - No delays, runs in background
+              saveMessageInstantly(currentSessionId, completeMessage).catch(error => {
+                console.error('[Fast Save] Failed to save final message:', error);
+              });
+            }
           }
         }
         
@@ -2835,10 +2883,8 @@ function TestChatComponent(props?: TestChatProps) {
         if (activeButton === 'reasoning') {
           setLiveReasoning('');
           setCurrentReasoningMessageId(null);
-        } else {
-          setLiveThinking('');
-          setCurrentThinkingMessageId(null);
         }
+        // Note: No need to clear live thinking for default chat since we don't set it
         
         // Handle image context if needed
         if (uploadedImageUrls.length > 0 && aiMessageId) {
@@ -3538,13 +3584,15 @@ function TestChatComponent(props?: TestChatProps) {
   // Independent default chat message rendering system
   const renderDefaultChatMessage = (msg: LocalMessage, i: number) => {
                 const { content: rawContent } = cleanAIResponse(msg.content);
-                // Don't filter out <think> tags, only remove thinking indicators
-                const cleanContent = rawContent.replace(/<thinking-indicator.*?>\n<\/thinking-indicator>\n|<thinking-indicator.*?\/>/g, '');
+                // For default chat, remove think tags and thinking indicators completely
+                const cleanContent = rawContent
+                  .replace(/<think>[\s\S]*?<\/think>/g, '')
+                  .replace(/<thinking-indicator.*?>\n<\/thinking-indicator>\n|<thinking-indicator.*?\/>/g, '')
+                  .trim();
                 const isStoppedMsg = cleanContent.trim() === '[Response stopped by user]';
                 
-                // Process think tags and extract them
-                const { processedContent, thinkBlocks, isLiveThinking } = processThinkTags(cleanContent);
-                const finalContent = makeCitationsClickable(processedContent, msg.webSources || []);
+                // For default chat, skip think processing entirely
+                const finalContent = makeCitationsClickable(cleanContent, msg.webSources || []);
                 
                 if (showPulsingDot && i === messages.length -1 ) setShowPulsingDot(false);
                 
@@ -3570,22 +3618,8 @@ function TestChatComponent(props?: TestChatProps) {
                         <span className="text-xs text-white italic font-light mb-2">[Response stopped by user]</span>
                       ) : (
                         <div className="w-full max-w-full overflow-hidden">
-                          {/* Single consolidated thinking button - handles all thinking scenarios */}
-                          {(currentThinkingMessageId === msg.id && liveThinking) && (
-                            <ThinkingButton 
-                              key={`${msg.id}-live-thinking`} 
-                              content={liveThinking} 
-                              isLive={true} 
-                            />
-                          )}
-                          
-                          {/* Think blocks from processed content - show for all messages except the one currently live thinking */}
-                          {currentThinkingMessageId !== msg.id && thinkBlocks.length > 0 && thinkBlocks.map((block, index) => (
-                            <ThinkingButton key={`${msg.id}-think-${index}`} content={block.content} isLive={false} />
-                          ))}
-                          
-                          {/* Main content - show if there's content or thinking is complete */}
-                          {(processedContent.trim().length > 0 || !currentThinkingMessageId || currentThinkingMessageId !== msg.id) && (
+                          {/* For default chat, no thinking buttons - just show content directly */}
+                          {finalContent.trim().length > 0 && (
                             <ReactMarkdown 
                               remarkPlugins={[remarkGfm]} 
                               rehypePlugins={[rehypeRaw]} 
@@ -3677,7 +3711,7 @@ function TestChatComponent(props?: TestChatProps) {
                                 }
                               }}
                             >
-                              {finalContent.replace(/<!-- think-block-\d+ -->/g, '')}
+                              {finalContent}
                             </ReactMarkdown>
                           )}
                         </div>
@@ -3687,7 +3721,7 @@ function TestChatComponent(props?: TestChatProps) {
                       {msg.isProcessed && !isStoppedMsg && (
                         <div className="w-full flex justify-start gap-2 mt-2">
                           <button
-                            onClick={() => handleCopy(cleanContent)}
+                            onClick={() => handleCopy(finalContent)}
                             className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
                             aria-label="Copy response"
                           >
