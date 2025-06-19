@@ -453,11 +453,23 @@ export class OptimizedSupabaseService {
     smartCache.set(CACHE_KEYS.SESSIONS, null, 0);
   }
 
-  // Save active session ID
+  // Save active session ID with caching to prevent duplicate calls
   async saveActiveSessionId(sessionId: string | null): Promise<void> {
     try {
       const user = await this.getCachedUser();
       if (!user) return;
+
+      // Cache key for active session ID
+      const cacheKey = `active_session_${user.id}`;
+      const cachedSessionId = smartCache.get<string | null>(cacheKey);
+      
+      // Skip save if the session ID hasn't changed
+      if (cachedSessionId === sessionId) {
+        console.log('[Optimized Service] Skipping save - active session ID unchanged:', sessionId);
+        return;
+      }
+
+      console.log('[Optimized Service] Saving active session ID:', sessionId);
 
       const { error } = await supabase
         .from('user_preferences')
@@ -470,17 +482,33 @@ export class OptimizedSupabaseService {
 
       if (error) {
         console.error('Error saving active session ID:', error);
+        return;
       }
+
+      // Update cache after successful save
+      smartCache.set(cacheKey, sessionId, 5 * 60 * 1000); // Cache for 5 minutes
     } catch (error) {
       console.error('Error in saveActiveSessionId:', error);
     }
   }
 
-  // Get active session ID
+  // Get active session ID with caching to prevent duplicate reads
   async getActiveSessionId(): Promise<string | null> {
     try {
       const user = await this.getCachedUser();
       if (!user) return null;
+
+      // Cache key for active session ID
+      const cacheKey = `active_session_${user.id}`;
+      const cachedSessionId = smartCache.get<string | null>(cacheKey);
+      
+      // Return cached value if available
+      if (cachedSessionId !== undefined) {
+        console.log('[Optimized Service] Returning cached active session ID:', cachedSessionId);
+        return cachedSessionId;
+      }
+
+      console.log('[Optimized Service] Fetching active session ID from database');
 
       const { data, error } = await supabase
         .from('user_preferences')
@@ -490,14 +518,20 @@ export class OptimizedSupabaseService {
 
       if (error) {
         if (error.code === 'PGRST116') {
-          // No preferences found, return null
+          // No preferences found, cache null and return null
+          smartCache.set(cacheKey, null, 5 * 60 * 1000);
           return null;
         }
         console.error('Error getting active session ID:', error);
         return null;
       }
 
-      return data?.active_session_id || null;
+      const sessionId = data?.active_session_id || null;
+      
+      // Cache the result
+      smartCache.set(cacheKey, sessionId, 5 * 60 * 1000); // Cache for 5 minutes
+      
+      return sessionId;
     } catch (error) {
       console.error('Error in getActiveSessionId:', error);
       return null;

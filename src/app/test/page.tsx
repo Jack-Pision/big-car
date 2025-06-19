@@ -1763,8 +1763,14 @@ function TestChatComponent(props?: TestChatProps) {
   // Effect to load the active session (from URL hash, props, or saved state)
   useEffect(() => {
     const loadActiveSession = async () => {
-      // Check if user exists at the time of execution instead of depending on it
-      if (!user) return;
+      // Check if user exists and prevent duplicate runs
+      if (!user || !user.id) return;
+      
+      // PREVENT DUPLICATE LOADS: Skip if we already have an active session
+      if (activeSessionId || sessionIdRef.current) {
+        console.log('[Session Load] Skipping - session already active:', activeSessionId || sessionIdRef.current);
+        return;
+      }
       
       try {
         let sessionIdToLoad = initialSessionId;
@@ -1780,8 +1786,9 @@ function TestChatComponent(props?: TestChatProps) {
           }
         }
         
-        // Fallback to saved session if no other source
+        // Fallback to saved session if no other source (ONLY ONCE)
         if (!sessionIdToLoad) {
+          console.log('[Session Load] Fetching saved session ID - ONE TIME ONLY');
           const savedSessionId = await getActiveSessionId();
           sessionIdToLoad = savedSessionId ?? undefined;
         }
@@ -1807,8 +1814,7 @@ function TestChatComponent(props?: TestChatProps) {
             setHasInteracted(processedMessages.length > 0);
           }
           
-          // Save as active session
-          await saveActiveSessionId(sessionIdToLoad);
+          console.log('[Session Load] Session loaded successfully:', sessionIdToLoad);
         } else {
           // Show welcome page for new users
           setShowHeading(true);
@@ -1826,9 +1832,9 @@ function TestChatComponent(props?: TestChatProps) {
       }
     };
 
-    // Only run this effect once when component mounts
+    // Only run this effect once when component mounts with a user
     loadActiveSession();
-  }, [user]); // Only depend on user, not initialSessionId to prevent excessive re-runs
+  }, [user?.id]); // Depend on stable user.id instead of entire user object to prevent unnecessary re-runs
 
   // Messages are saved explicitly when queries complete - no automatic saving
 
