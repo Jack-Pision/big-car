@@ -1753,49 +1753,111 @@ function TestChatComponent() {
     }
   }, [isResizing, handleMouseMove, handleMouseUp]);
 
-  // Effect to load the last active session or create a new one on initial load
+  // Enhanced session restoration with multiple fallback strategies
   useEffect(() => {
     const loadActiveSession = async () => {
-      // Check if user exists at the time of execution instead of depending on it
-      if (!user) return;
-      
       try {
-        const savedSessionId = await getActiveSessionId();
-    if (savedSessionId) {
-      // Load the saved session
-      setActiveSessionId(savedSessionId);
-      
-      // Get messages and ensure they're marked as processed
-                  // Use optimized service with caching
-        const sessionMessages = await optimizedSupabaseService.getSessionMessages(savedSessionId);
-      const processedMessages = sessionMessages.map(msg => ({
-        ...msg,
-        isProcessed: true // Mark all loaded messages as processed
-      }));
-      
-      setMessages(processedMessages);
-      setShowHeading(false);
-      setHasInteracted(true);
-    } else {
-      // Show welcome page for new users
-      setShowHeading(true);
-      setHasInteracted(false);
-      setActiveSessionId(null);
-      setMessages([]);
-    }
-      } catch (error) {
-        console.error('Error loading active session:', error);
-        // Fallback to showing welcome page
+        setIsLoading(true);
+        
+        // Strategy 1: Try sessionStorage first for immediate restoration (covers page reload)
+        const sessionStorageSessionId = sessionStorage.getItem('active-session-id');
+        
+        if (sessionStorageSessionId) {
+          console.log('[Session Restore] Using sessionStorage session:', sessionStorageSessionId);
+          await loadSessionWithRetry(sessionStorageSessionId, 'sessionStorage');
+          return;
+        }
+        
+        // Strategy 2: Wait for user and try database saved session
+        if (user) {
+          const savedSessionId = await getActiveSessionId();
+          if (savedSessionId) {
+            console.log('[Session Restore] Using database session:', savedSessionId);
+            await loadSessionWithRetry(savedSessionId, 'database');
+            return;
+          }
+        }
+        
+        // Strategy 3: Show welcome page for new users
+        console.log('[Session Restore] No saved session, showing welcome');
         setShowHeading(true);
         setHasInteracted(false);
         setActiveSessionId(null);
         setMessages([]);
+        
+      } catch (error) {
+        console.error('[Session Restore] Failed to load session:', error);
+        // Fallback to welcome page
+        setShowHeading(true);
+        setHasInteracted(false);
+        setActiveSessionId(null);
+        setMessages([]);
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    // Only run this effect once when component mounts
+    // Helper function to load session with retry logic and error handling
+    const loadSessionWithRetry = async (sessionId: string, source: string, retries = 3) => {
+      for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+          console.log(`[Session Restore] Loading session ${sessionId} from ${source}, attempt ${attempt}`);
+          
+          setActiveSessionId(sessionId);
+          
+          // Save to sessionStorage for future page reloads
+          sessionStorage.setItem('active-session-id', sessionId);
+          
+          // Use optimized service with caching
+          const sessionMessages = await optimizedSupabaseService.getSessionMessages(sessionId);
+          
+          if (sessionMessages.length === 0 && attempt < retries) {
+            // Empty session might be cache issue, retry
+            console.log(`[Session Restore] Empty session on attempt ${attempt}, retrying...`);
+            await new Promise(resolve => setTimeout(resolve, 500));
+            continue;
+          }
+          
+          const processedMessages = sessionMessages.map(msg => ({
+            ...msg,
+            isProcessed: true // Mark all loaded messages as processed
+          }));
+          
+          setMessages(processedMessages);
+          setShowHeading(processedMessages.length === 0);
+          setHasInteracted(processedMessages.length > 0);
+          
+          // Save to database if loaded from sessionStorage
+          if (source === 'sessionStorage' && user) {
+            await saveActiveSessionId(sessionId);
+          }
+          
+          console.log(`[Session Restore] Successfully loaded ${processedMessages.length} messages`);
+          return;
+          
+        } catch (error) {
+          console.error(`[Session Restore] Attempt ${attempt} failed:`, error);
+          
+          if (attempt === retries) {
+            // Final attempt failed, clear invalid session
+            if (source === 'sessionStorage') {
+              sessionStorage.removeItem('active-session-id');
+            }
+            if (user && source === 'database') {
+              await saveActiveSessionId(null);
+            }
+            throw error;
+          }
+          
+          // Wait before retry
+          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+        }
+      }
+    };
+
+    // Run immediately and when user changes
     loadActiveSession();
-  }, []); // Empty dependency array - only run once
+  }, [user]); // Depend on user to re-run when authentication loads
 
   // Effect to save messages whenever they change for the active session
   useEffect(() => {
@@ -1908,6 +1970,47 @@ function TestChatComponent() {
     };
   }, [messages, isAiResponding, liveReasoning]);
 
+  // Persist session state before page unload (handles page refresh, navigation, etc.)
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (activeSessionId) {
+        sessionStorage.setItem('active-session-id', activeSessionId);
+        
+        // Save scroll position for restoration
+        if (scrollRef.current) {
+          sessionStorage.setItem('chat-scroll-position', scrollRef.current.scrollTop.toString());
+        }
+        
+        console.log('[Session Persist] Saved session state before unload:', activeSessionId);
+      }
+    };
+
+    // Add event listener
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [activeSessionId]);
+
+  // Restore scroll position after messages load
+  useEffect(() => {
+    if (messages.length > 0 && scrollRef.current) {
+      const savedScrollPosition = sessionStorage.getItem('chat-scroll-position');
+      if (savedScrollPosition) {
+        // Restore scroll position after a brief delay to ensure messages are rendered
+        setTimeout(() => {
+          if (scrollRef.current) {
+            scrollRef.current.scrollTop = parseInt(savedScrollPosition, 10);
+            // Clear the saved position after restoring
+            sessionStorage.removeItem('chat-scroll-position');
+          }
+        }, 100);
+      }
+    }
+  }, [messages]);
+
 
 
   async function handleSend(e: React.FormEvent) {
@@ -1922,7 +2025,11 @@ function TestChatComponent() {
       if (!currentActiveSessionId) {
         const newSession = await optimizedSupabaseService.createNewSession(input.trim());
         setActiveSessionId(newSession.id);
+        
+        // Save to both sessionStorage (immediate) and database (persistent)
+        sessionStorage.setItem('active-session-id', newSession.id);
         saveActiveSessionId(newSession.id);
+        
         currentActiveSessionId = newSession.id;
         setMessages([]);
       }
@@ -1973,7 +2080,11 @@ function TestChatComponent() {
       if (!currentActiveSessionId) {
         const newSession = await optimizedSupabaseService.createNewSession(input.trim());
         setActiveSessionId(newSession.id);
+        
+        // Save to both sessionStorage (immediate) and database (persistent)
+        sessionStorage.setItem('active-session-id', newSession.id);
         saveActiveSessionId(newSession.id);
+        
         currentActiveSessionId = newSession.id;
         setMessages([]);
       }
@@ -2203,7 +2314,11 @@ function TestChatComponent() {
     if (!currentActiveSessionId) {
       const newSession = await optimizedSupabaseService.createNewSession(input.trim() || (selectedFilesForUpload.length > 0 ? "Image Upload" : undefined));
       setActiveSessionId(newSession.id);
+      
+      // Save to both sessionStorage (immediate) and database (persistent)
+      sessionStorage.setItem('active-session-id', newSession.id);
       saveActiveSessionId(newSession.id);
+      
       currentActiveSessionId = newSession.id;
       setMessages([]);
     }
@@ -2696,28 +2811,84 @@ function TestChatComponent() {
     }
     
     try {
-    setActiveSessionId(sessionId);
-      await saveActiveSessionId(sessionId); // Save the active session
-    
-    // Get messages and ensure they're marked as processed
-      const sessionMessages = await getSessionMessages(sessionId);
-    const processedMessages = sessionMessages.map(msg => ({
-      ...msg,
-      isProcessed: true // Mark all loaded messages as processed
-    }));
-    
-    setMessages(processedMessages);
-    setInput('');
-    setImagePreviewUrls([]);
-    setSelectedFilesForUpload([]);
+      setIsLoading(true);
+      console.log('[Session Select] Loading session:', sessionId);
+      
+      setActiveSessionId(sessionId);
+      
+      // Save to both sessionStorage (immediate) and database (persistent)
+      sessionStorage.setItem('active-session-id', sessionId);
+      await saveActiveSessionId(sessionId);
+      
+      // Get messages using optimized service with retry logic
+      const sessionMessages = await loadSessionMessagesWithRetry(sessionId);
+      
+      const processedMessages = sessionMessages.map(msg => ({
+        ...msg,
+        isProcessed: true // Mark all loaded messages as processed
+      }));
+      
+      setMessages(processedMessages);
+      setInput('');
+      setImagePreviewUrls([]);
+      setSelectedFilesForUpload([]);
       setShowHeading(processedMessages.length === 0); // Show heading if the loaded session is empty
-    setHasInteracted(true); // Assume interaction when a session is selected
-    setSidebarOpen(false); // Close sidebar
+      setHasInteracted(true); // Assume interaction when a session is selected
+      setSidebarOpen(false); // Close sidebar
+      
+      console.log(`[Session Select] Successfully loaded ${processedMessages.length} messages`);
+      
     } catch (error) {
-      console.error('Error selecting session:', error);
-      // Fallback to new chat
-      handleNewChatRequest();
+      console.error('[Session Select] Error selecting session:', error);
+      
+      // Show user-friendly error message instead of just falling back
+      setMessages([{
+        role: 'assistant',
+        content: `❌ **Failed to load chat session**\n\nThere was an error loading this conversation. This might be due to:\n- Network connectivity issues\n- Session data corruption\n- Temporary service unavailability\n\n**What you can do:**\n- Try refreshing the page\n- Select a different conversation\n- Start a new chat\n\nIf the problem persists, your data is safe and this is likely a temporary issue.`,
+        id: `error-${Date.now()}`,
+        timestamp: Date.now(),
+        isProcessed: true
+      }]);
+      
+      setShowHeading(false);
+      setHasInteracted(true);
+      setSidebarOpen(false);
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  // Helper function to load session messages with retry logic
+  const loadSessionMessagesWithRetry = async (sessionId: string, retries = 3) => {
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        console.log(`[Session Messages] Loading attempt ${attempt} for session ${sessionId}`);
+        
+        // Use optimized service with caching
+        const messages = await optimizedSupabaseService.getSessionMessages(sessionId);
+        
+        if (messages.length === 0 && attempt < retries) {
+          // Empty might be cache issue, retry
+          console.log(`[Session Messages] Empty on attempt ${attempt}, retrying...`);
+          await new Promise(resolve => setTimeout(resolve, 500));
+          continue;
+        }
+        
+        return messages;
+        
+      } catch (error) {
+        console.error(`[Session Messages] Attempt ${attempt} failed:`, error);
+        
+        if (attempt === retries) {
+          throw error;
+        }
+        
+        // Wait before retry with exponential backoff
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+      }
+    }
+    
+    return [];
   };
 
   const handleNewChatRequest = async () => {
@@ -2728,6 +2899,10 @@ function TestChatComponent() {
     setShowHeading(true); // Show welcoming heading
     setHasInteracted(false); // Reset interaction state
     setActiveSessionId(null);
+    
+    // Clear both sessionStorage and database
+    sessionStorage.removeItem('active-session-id');
+    
     try {
       await saveActiveSessionId(null); // Clear the active session
     } catch (error) {
