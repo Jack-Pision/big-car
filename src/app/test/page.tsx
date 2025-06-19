@@ -1707,6 +1707,7 @@ function TestChatComponent(props?: TestChatProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef1 = useRef<HTMLInputElement>(null);
   const isInitialLoadRef = useRef(true);
+  const sessionIdRef = useRef<string | null>(null); // Store session ID for immediate access
 
   // Constants
   const BASE_HEIGHT = 48;
@@ -1786,6 +1787,7 @@ function TestChatComponent(props?: TestChatProps) {
         if (sessionIdToLoad) {
           // Load the specified or saved session
           setActiveSessionId(sessionIdToLoad);
+          sessionIdRef.current = sessionIdToLoad;
           
           // Get messages and ensure they're marked as processed
           // Use optimized service with caching
@@ -1857,6 +1859,7 @@ function TestChatComponent(props?: TestChatProps) {
       
       // Update state and save to Supabase (single call per session)
       setActiveSessionId(newSessionId);
+      sessionIdRef.current = newSessionId; // Store in ref for immediate access
       await saveActiveSessionId(newSessionId);
       
       return newSessionId;
@@ -1908,6 +1911,53 @@ function TestChatComponent(props?: TestChatProps) {
         console.error('Error updating URL:', error);
       }
     }
+    } catch (error) {
+      console.error('Error saving messages:', error);
+    }
+  };
+
+  // Function to save messages with explicit session ID (bypasses React state timing issues)
+  const saveMessagesOnQueryCompleteWithSessionId = async (currentMessages: LocalMessage[], explicitSessionId: string) => {
+    if (!explicitSessionId || !user || currentMessages.length === 0) return;
+    
+    try {
+      // Use optimized batch saving
+      await optimizedSupabaseService.saveSessionMessages(explicitSessionId, currentMessages);
+      
+      // Update session title with AI-generated title after first AI response
+      const userMessages = currentMessages.filter(msg => msg.role === 'user');
+      const aiMessages = currentMessages.filter(msg => msg.role === 'assistant' && msg.isProcessed);
+      
+      // If this is the first AI response (1 user message, 1 completed AI message)
+      if (userMessages.length === 1 && aiMessages.length === 1) {
+        const firstUserMessage = userMessages[0];
+        
+        // Update title with AI-generated version
+        try {
+          // For performance, use simple title generation instead of AI
+          const simpleTitle = firstUserMessage.content.split(' ').slice(0, 5).join(' ');
+          await optimizedSupabaseService.updateSessionTitle(
+            explicitSessionId, 
+            simpleTitle.length > 30 ? simpleTitle.substring(0, 30) + '...' : simpleTitle
+          );
+          // Trigger sidebar refresh to show updated title
+          setSidebarRefreshTrigger(prev => prev + 1);
+        } catch (error) {
+          console.error('Failed to update session title:', error);
+        }
+      }
+      
+      // Handle deferred URL update after AI response completes
+      if (pendingUrlUpdate) {
+        try {
+          // Use replaceState to avoid component rerender/remount
+          window.history.replaceState(null, '', pendingUrlUpdate);
+          setPendingUrlUpdate(null); // Clear the pending update
+          console.log('[URL Update] Deferred URL update applied:', pendingUrlUpdate);
+        } catch (error) {
+          console.error('Error updating URL:', error);
+        }
+      }
     } catch (error) {
       console.error('Error saving messages:', error);
     }
@@ -2621,8 +2671,11 @@ function TestChatComponent(props?: TestChatProps) {
                   : msg
               );
               
-              // Save messages to Supabase now that the chat query is complete
-              saveMessagesOnQueryComplete(updatedMessages);
+              // Save messages to Supabase with explicit session ID to avoid timing issues
+              const currentSessionId = sessionIdRef.current;
+              if (currentSessionId) {
+                saveMessagesOnQueryCompleteWithSessionId(updatedMessages, currentSessionId);
+              }
               
               return updatedMessages;
             });
@@ -2674,7 +2727,10 @@ function TestChatComponent(props?: TestChatProps) {
           },
         ];
         // Save messages to Supabase after abort
-        saveMessagesOnQueryComplete(updatedMessages);
+        const currentSessionId = sessionIdRef.current || activeSessionId;
+        if (currentSessionId) {
+          saveMessagesOnQueryCompleteWithSessionId(updatedMessages, currentSessionId);
+        }
         return updatedMessages;
       });
       } else {
@@ -2692,7 +2748,10 @@ function TestChatComponent(props?: TestChatProps) {
           },
           ];
           // Save messages to Supabase after error
-          saveMessagesOnQueryComplete(updatedMessages);
+          const currentSessionId = sessionIdRef.current || activeSessionId;
+          if (currentSessionId) {
+            saveMessagesOnQueryCompleteWithSessionId(updatedMessages, currentSessionId);
+          }
           return updatedMessages;
         });
       }
@@ -2759,6 +2818,7 @@ function TestChatComponent(props?: TestChatProps) {
     
     try {
       setActiveSessionId(sessionId);
+      sessionIdRef.current = sessionId; // Keep ref in sync
       await saveActiveSessionId(sessionId); // Save the active session
     
       // Get messages and ensure they're marked as processed
@@ -2793,6 +2853,7 @@ function TestChatComponent(props?: TestChatProps) {
     setShowHeading(true); // Show welcoming heading
     setHasInteracted(false); // Reset interaction state
     setActiveSessionId(null);
+    sessionIdRef.current = null; // Clear ref as well
     try {
       await saveActiveSessionId(null); // Clear the active session
     } catch (error) {
