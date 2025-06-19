@@ -12,6 +12,7 @@ const ThinkingButton: React.FC<ThinkingButtonProps> = ({ content, isLive = false
   const [duration, setDuration] = useState(0);
   const [startTime, setStartTime] = useState<number | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const collapsedContentRef = useRef<HTMLDivElement>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   
   // Start duration tracking when thinking begins
@@ -46,19 +47,18 @@ const ThinkingButton: React.FC<ThinkingButtonProps> = ({ content, isLive = false
     };
   }, [isLive, startTime]);
 
-  // Auto-scroll to bottom during live thinking
-  useEffect(() => {
-    if (isLive && isExpanded && contentRef.current) {
-      contentRef.current.scrollTop = contentRef.current.scrollHeight;
-    }
-  }, [content, isLive, isExpanded]);
-
-  // Auto-expand during live thinking
+  // Auto-scroll to bottom during live thinking - works in both collapsed and expanded states
   useEffect(() => {
     if (isLive) {
-      setIsExpanded(true);
+      if (isExpanded && contentRef.current) {
+        // Auto-scroll in expanded state
+        contentRef.current.scrollTop = contentRef.current.scrollHeight;
+      } else if (!isExpanded && mode === 'reasoning' && collapsedContentRef.current) {
+        // Auto-scroll in collapsed state for reasoning mode
+        collapsedContentRef.current.scrollTop = collapsedContentRef.current.scrollHeight;
+      }
     }
-  }, [isLive]);
+  }, [content, isLive, isExpanded, mode]);
 
   const formatDuration = (seconds: number) => {
     if (seconds === 0) return '0s';
@@ -122,18 +122,16 @@ const ThinkingButton: React.FC<ThinkingButtonProps> = ({ content, isLive = false
         {/* Collapsed content preview (only for Reasoning mode) */}
         {!isExpanded && mode === 'reasoning' && (
           <div 
-            className="px-4 pb-4 overflow-hidden"
-            style={{ height: '140px' }}
+            ref={collapsedContentRef}
+            className="px-4 pb-4 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent"
+            style={{ 
+              height: '140px',
+              scrollBehavior: isLive ? 'smooth' : 'auto'
+            }}
           >
             <div 
               className="text-sm leading-relaxed whitespace-pre-wrap select-text"
-              style={{ 
-                color: '#FCFCFC',
-                overflow: 'hidden',
-                display: '-webkit-box',
-                WebkitLineClamp: 8,
-                WebkitBoxOrient: 'vertical'
-              }}
+              style={{ color: '#FCFCFC' }}
             >
               {content || 'Starting to think...'}
             </div>
