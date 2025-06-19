@@ -1824,13 +1824,9 @@ function TestChatComponent(props?: TestChatProps) {
 
     // Only run this effect once when component mounts
     loadActiveSession();
-  }, [initialSessionId, user]); // Add dependencies for props and user
+  }, [user]); // Only depend on user, not initialSessionId to prevent excessive re-runs
 
-  // Effect to save messages whenever they change for the active session
-  useEffect(() => {
-    // Removed automatic saving on every message change
-    // Messages are now saved explicitly when queries complete
-  }, []);
+  // Messages are saved explicitly when queries complete - no automatic saving
 
   // Function to save messages and update session title when query completes
   const saveMessagesOnQueryComplete = async (currentMessages: LocalMessage[]) => {
@@ -2332,9 +2328,14 @@ function TestChatComponent(props?: TestChatProps) {
     setMessages((prev) => [...prev, userMessageForDisplay]);
     setInput("");
     
-    // User message will be saved with AI response as complete conversation
-    // This eliminates race conditions and reduces database calls by 50%
-    console.log('[Optimization] Skipping immediate user message save - will save complete conversation after AI response');
+    // Save the user message immediately to prevent loss during race conditions
+    if (currentActiveSessionId) {
+      try {
+        await optimizedSupabaseService.saveSessionMessages(currentActiveSessionId, [userMessageForDisplay]);
+      } catch (error) {
+        console.error('Error saving user message immediately:', error);
+      }
+    }
     
     // Clear any previous thinking state - each query gets fresh state
     setCurrentThinkingMessageId(null);
@@ -2618,26 +2619,7 @@ function TestChatComponent(props?: TestChatProps) {
         if (aiMessageId) {
           const { thinkContent: finalThinkContent, mainContent: finalMainContent } = extractThinkContentDuringStream(contentBuffer);
           
-          // Prepare final complete conversation for immediate save
-          const finalUpdatedMessages = messages.map(msg => 
-            msg.id === aiMessageId 
-              ? { 
-                  ...msg, 
-                  content: finalThinkContent.trim().length > 0 
-                    ? `<think>${finalThinkContent}</think>${finalMainContent}` // Preserve thinking for permanent "Thought" state
-                    : finalMainContent, // No thinking content, just main content
-                  contentType: 'reasoning',
-                  isProcessed: true,
-                  isStreaming: false, // Mark as completed
-                }
-              : msg
-          );
-          
-          // Save complete conversation immediately (fast like other AI chatbots)
-          console.log('[Optimization] Saving complete conversation immediately - no setTimeout delay');
-          saveMessagesOnQueryComplete(finalUpdatedMessages);
-          
-          // UI updates - First, stop streaming but keep content as-is for smooth transition
+          // First, stop streaming but keep content as-is for smooth transition
           setMessages((prev) => {
             return prev.map(msg => 
               msg.id === aiMessageId 
@@ -2650,10 +2632,30 @@ function TestChatComponent(props?: TestChatProps) {
             );
           });
           
-          // Then, after a brief delay, apply final processing for smooth UI
+          // Then, after a brief delay, apply final processing WITH embedded think tags
+          // to preserve thinking content for "Thought" state after completion
           setTimeout(() => {
-            setMessages(finalUpdatedMessages);
-          }, 300); // UI smoothness only, data already saved
+            setMessages((prev) => {
+              const updatedMessages = prev.map(msg => 
+                msg.id === aiMessageId 
+                  ? { 
+                      ...msg, 
+                      content: finalThinkContent.trim().length > 0 
+                        ? `<think>${finalThinkContent}</think>${finalMainContent}` // Preserve thinking for permanent "Thought" state
+                        : finalMainContent, // No thinking content, just main content
+                      contentType: 'reasoning',
+                      isProcessed: true,
+                      isStreaming: false, // Mark as completed
+                    }
+                  : msg
+              );
+              
+              // Save messages to Supabase now that the chat query is complete
+              saveMessagesOnQueryComplete(updatedMessages);
+              
+              return updatedMessages;
+            });
+          }, 300); // Small delay for smooth transition
         }
         
         // Clear the live thinking state immediately to prevent double display
