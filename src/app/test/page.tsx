@@ -3833,7 +3833,7 @@ function TestChatComponent(props?: TestChatProps) {
                       type="button"
                       onClick={() => handleModeSwitch(activeMode === 'search' ? 'chat' : 'search')}
                       className={`
-                        flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 
+                        flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium transition-all duration-200 
                         ${activeMode === 'search' ? 'bg-gray-800 text-cyan-400' : 'bg-gray-800 text-gray-400 opacity-60'}
                         hover:opacity-100 hover:scale-105 active:scale-95
                       `}
@@ -3843,27 +3843,6 @@ function TestChatComponent(props?: TestChatProps) {
                         <path d="m21 21-4.35-4.35"></path>
                       </svg>
                       Search
-                    </button>
-
-                    {/* Deep Research button (Advance Search) */}
-                    <button
-                      type="button"
-                      className={`flex items-center gap-1.5 rounded-full transition px-3 py-1.5 flex-shrink-0 text-xs font-medium
-                        ${activeButton === 'advance' ? 'bg-gray-800 text-cyan-400' : 'bg-gray-800 text-gray-400 opacity-60'}
-                        hover:bg-gray-700`}
-                      style={{ height: "36px" }}
-                      tabIndex={0}
-                      onClick={() => handleButtonClick('advance')}
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: activeButton === 'advance' ? '#22d3ee' : '#a3a3a3' }}>
-                        <circle cx="12" cy="12" r="3" />
-                        <circle cx="19" cy="5" r="2" />
-                        <circle cx="5" cy="19" r="2" />
-                        <line x1="14.15" y1="14.15" x2="17" y2="17" />
-                        <line x1="6.85" y1="17.15" x2="10.15" y2="13.85" />
-                        <line x1="13.85" y1="10.15" x2="17.15" y2="6.85" />
-                      </svg>
-                      <span className="whitespace-nowrap text-xs font-medium">Advance Search</span>
                     </button>
 
                     {/* Artifact button */}
