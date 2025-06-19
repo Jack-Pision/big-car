@@ -235,12 +235,12 @@ const ReasoningChat: React.FC<ReasoningChatProps> = ({ className = "" }) => {
         content: msg.content
       }));
 
-      const formattedMessages = formatMessagesForApi(conversationMessages, 'conversation');
-      const enhancedMessages = enhanceSystemPrompt(formattedMessages, BASE_SYSTEM_PROMPT);
-      const finalMessages = buildConversationContext(enhancedMessages, []);
+      const formattedMessages = formatMessagesForApi(BASE_SYSTEM_PROMPT, conversationMessages, trimmedInput, true);
+      const context = buildConversationContext(conversationMessages);
+      const enhancedPrompt = enhanceSystemPrompt(BASE_SYSTEM_PROMPT, context, trimmedInput);
 
       const apiPayload = {
-        messages: finalMessages,
+        messages: formattedMessages,
         model: "nvidia/llama-3.1-nemotron-70b-instruct",
         temperature: 0.7,
         max_tokens: 4000,
