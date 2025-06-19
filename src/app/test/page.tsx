@@ -3973,12 +3973,48 @@ function TestChatComponent(props?: TestChatProps) {
                 return (
                 <div
                   key={msg.id + '-user-' + i}
-                  className="px-3 py-2 rounded-xl shadow bg-cyan-500 text-white self-end max-w-[80%] text-base flex flex-col items-end mb-2"
+                  className="w-full flex justify-end items-start gap-3 mb-4"
                 >
+                  {/* User message bubble - dynamic width */}
+                  <div className="flex flex-col items-end max-w-[85%] min-w-[100px]">
+                    {/* Image previews if any */}
                     {msg.imageUrls && msg.imageUrls.map((url, index) => (
-                    <img key={index} src={url} alt={`Preview ${index + 1}`} className="max-w-xs max-h-64 rounded-md mb-2 self-end" />
+                      <img 
+                        key={index} 
+                        src={url} 
+                        alt={`Preview ${index + 1}`} 
+                        className="max-w-xs max-h-64 rounded-md mb-2" 
+                      />
                     ))}
-                    <div>{msg.content}</div>
+                    
+                    {/* Message content bubble */}
+                    <div
+                      className="px-4 py-3 rounded-2xl text-white text-base leading-relaxed"
+                      style={{ 
+                        backgroundColor: '#212121',
+                        borderBottomRightRadius: '8px', // Smaller radius for the corner near avatar
+                        wordWrap: 'break-word',
+                        overflowWrap: 'break-word'
+                      }}
+                    >
+                      {msg.content}
+                    </div>
+                  </div>
+                  
+                  {/* User profile avatar */}
+                  <div className="flex-shrink-0">
+                    {user?.user_metadata?.avatar_url ? (
+                      <img
+                        src={user.user_metadata.avatar_url}
+                        alt="User avatar"
+                        className="w-8 h-8 rounded-full"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                        {user?.user_metadata?.full_name?.charAt(0) || user?.email?.charAt(0).toUpperCase() || 'U'}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 );
             })}
