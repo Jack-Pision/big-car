@@ -2285,7 +2285,7 @@ function TestChatComponent() {
     }
 
     // If we get here, we're in default chat mode
-    let userMessageId = '';
+    let userMessageId: string;
     let uploadedImageUrls: string[] = [];
 
     try {
@@ -2319,7 +2319,7 @@ function TestChatComponent() {
     const newAbortController = new AbortController();
     setAbortController(newAbortController);
 
-      let userMessageId = uuidv4();
+      userMessageId = uuidv4();
       const userMessageForDisplay: LocalMessage = {
       role: "user" as const,
       content: input,
