@@ -1828,6 +1828,44 @@ function TestChatComponent(props?: TestChatProps) {
 
   // Messages are saved explicitly when queries complete - no automatic saving
 
+  // Consolidated session creation function to prevent redundant API calls
+  const ensureActiveSession = async (messageContent?: string): Promise<string> => {
+    if (activeSessionId) {
+      return activeSessionId; // Already have a session, return it
+    }
+
+    try {
+      let newSessionId: string;
+      
+      // Only use URL routing if we don't already have an initialSessionId (not on dynamic route)
+      if (!initialSessionId && messageContent) {
+        const {session, url} = await createNewSessionWithURL(messageContent);
+        newSessionId = session.id;
+        
+        // Set pending URL update for later application (after AI response)
+        setPendingUrlUpdate(url);
+      } else {
+        // Fallback to regular session creation
+        const newSession = await optimizedSupabaseService.createNewSession(messageContent);
+        newSessionId = newSession.id;
+        
+        // Set pending URL update for dynamic routes
+        if (initialSessionId) {
+          setPendingUrlUpdate(`/chat/${newSessionId}`);
+        }
+      }
+      
+      // Update state and save to Supabase (single call per session)
+      setActiveSessionId(newSessionId);
+      await saveActiveSessionId(newSessionId);
+      
+      return newSessionId;
+    } catch (error) {
+      console.error('Error creating session:', error);
+      throw error;
+    }
+  };
+
   // Function to save messages and update session title when query completes
   const saveMessagesOnQueryComplete = async (currentMessages: LocalMessage[]) => {
     if (!activeSessionId || !user || currentMessages.length === 0) return;
@@ -1953,31 +1991,8 @@ function TestChatComponent(props?: TestChatProps) {
 
     // First check if we're in search mode
     if (activeMode === 'search') {
-      // Create session if needed for search mode
-      let currentActiveSessionId = activeSessionId;
-      
-      if (!currentActiveSessionId) {
-        const messageContent = input.trim();
-        
-        // Only use URL routing if we don't already have an initialSessionId (not on dynamic route)
-        if (!initialSessionId && messageContent) {
-          const {session, url} = await createNewSessionWithURL(messageContent);
-          setActiveSessionId(session.id);
-          saveActiveSessionId(session.id);
-          currentActiveSessionId = session.id;
-          setMessages([]);
-          
-          // Update URL without page reload
-          router.push(url, { scroll: false });
-        } else {
-          // Fallback to regular session creation
-          const newSession = await optimizedSupabaseService.createNewSession(messageContent);
-          setActiveSessionId(newSession.id);
-          saveActiveSessionId(newSession.id);
-          currentActiveSessionId = newSession.id;
-          setMessages([]);
-        }
-      }
+      // Ensure we have an active session using consolidated function
+      const currentActiveSessionId = await ensureActiveSession(input.trim());
 
       if (!hasInteracted) setHasInteracted(true);
       if (showHeading) setShowHeading(false);
@@ -2019,31 +2034,8 @@ function TestChatComponent(props?: TestChatProps) {
 
     // Check if we're in artifact mode
     if (activeButton === 'artifact' || shouldTriggerArtifact(input.trim())) {
-      // Handle artifact creation with streaming
-      let currentActiveSessionId = activeSessionId;
-      
-      if (!currentActiveSessionId) {
-        const messageContent = input.trim();
-        
-        // Only use URL routing if we don't already have an initialSessionId (not on dynamic route)
-        if (!initialSessionId && messageContent) {
-          const {session, url} = await createNewSessionWithURL(messageContent);
-          setActiveSessionId(session.id);
-          saveActiveSessionId(session.id);
-          currentActiveSessionId = session.id;
-          setMessages([]);
-          
-          // Update URL without page reload
-          router.push(url, { scroll: false });
-        } else {
-          // Fallback to regular session creation
-          const newSession = await optimizedSupabaseService.createNewSession(messageContent);
-          setActiveSessionId(newSession.id);
-          saveActiveSessionId(newSession.id);
-          currentActiveSessionId = newSession.id;
-          setMessages([]);
-        }
-      }
+      // Ensure we have an active session using consolidated function
+      const currentActiveSessionId = await ensureActiveSession(input.trim());
 
       if (!hasInteracted) setHasInteracted(true);
       if (showHeading) setShowHeading(false);
@@ -2265,29 +2257,8 @@ function TestChatComponent(props?: TestChatProps) {
     try {
     if (!input.trim() || isLoading || isAiResponding) return;
 
-    let currentActiveSessionId = activeSessionId;
-
-    if (!currentActiveSessionId) {
-      const messageContent = input.trim() || (selectedFilesForUpload.length > 0 ? "Image Upload" : undefined);
-      
-      // Only use URL routing if we don't already have an initialSessionId (not on dynamic route)
-      if (!initialSessionId && messageContent) {
-        const {session, url} = await createNewSessionWithURL(messageContent);
-        setActiveSessionId(session.id);
-        saveActiveSessionId(session.id);
-        currentActiveSessionId = session.id;
-        // Store URL for later update after AI response completes
-        setPendingUrlUpdate(url);
-      } else {
-        // Fallback to regular session creation
-        const newSession = await optimizedSupabaseService.createNewSession(messageContent);
-        setActiveSessionId(newSession.id);
-        saveActiveSessionId(newSession.id);
-        currentActiveSessionId = newSession.id;
-        // Store URL for later update after AI response completes
-        setPendingUrlUpdate(`/chat/${newSession.id}`);
-      }
-    }
+    // Ensure we have an active session using consolidated function
+    const currentActiveSessionId = await ensureActiveSession(input.trim() || (selectedFilesForUpload.length > 0 ? "Image Upload" : undefined));
 
     if (!hasInteracted) setHasInteracted(true);
       
