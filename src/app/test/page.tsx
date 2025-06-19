@@ -1794,9 +1794,13 @@ function TestChatComponent(props?: TestChatProps) {
             isProcessed: true // Mark all loaded messages as processed
           }));
           
-          setMessages(processedMessages);
-          setShowHeading(false);
-          setHasInteracted(true);
+          // ONLY set messages if we're not in the middle of an active conversation
+          // This prevents overwriting messages during first message flow
+          if (!isAiResponding && !isLoading) {
+            setMessages(processedMessages);
+            setShowHeading(processedMessages.length === 0);
+            setHasInteracted(processedMessages.length > 0);
+          }
           
           // Save as active session
           await saveActiveSessionId(sessionIdToLoad);
@@ -2263,7 +2267,7 @@ function TestChatComponent(props?: TestChatProps) {
         setActiveSessionId(session.id);
         saveActiveSessionId(session.id);
         currentActiveSessionId = session.id;
-        setMessages([]);
+        // Don't clear messages during session creation to prevent race condition
         
         // Update URL without page reload
         router.push(url, { scroll: false });
@@ -2273,7 +2277,7 @@ function TestChatComponent(props?: TestChatProps) {
         setActiveSessionId(newSession.id);
         saveActiveSessionId(newSession.id);
         currentActiveSessionId = newSession.id;
-        setMessages([]);
+        // Don't clear messages during session creation to prevent race condition
       }
     }
 
@@ -2315,6 +2319,15 @@ function TestChatComponent(props?: TestChatProps) {
     }
     setMessages((prev) => [...prev, userMessageForDisplay]);
     setInput("");
+    
+    // Save the user message immediately to prevent loss during race conditions
+    if (currentActiveSessionId) {
+      try {
+        await optimizedSupabaseService.saveSessionMessages(currentActiveSessionId, [userMessageForDisplay]);
+      } catch (error) {
+        console.error('Error saving user message immediately:', error);
+      }
+    }
     
     // Clear any previous thinking state - each query gets fresh state
     setCurrentThinkingMessageId(null);
