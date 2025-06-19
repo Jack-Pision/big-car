@@ -24,6 +24,7 @@ import {
   getSessionMessages,
   saveSessionMessages,
   createNewSession,
+  createNewSessionWithURL,
   deleteSession,
   saveActiveSessionId,
   getActiveSessionId
@@ -1635,7 +1636,13 @@ const isArtifactContentComplete = (content: string): boolean => {
   }
 };
 
-function TestChatComponent() {
+interface TestChatProps {
+  initialSessionId?: string;
+  initialSessionTitle?: string;
+}
+
+function TestChatComponent(props: TestChatProps = {}) {
+  const { initialSessionId, initialSessionTitle } = props;
   const router = useRouter();
   const { user, showSettingsModal } = useAuth();
   
@@ -1749,36 +1756,43 @@ function TestChatComponent() {
     }
   }, [isResizing, handleMouseMove, handleMouseUp]);
 
-  // Effect to load the last active session or create a new one on initial load
+  // Effect to load the active session (either from props or saved state)
   useEffect(() => {
     const loadActiveSession = async () => {
       // Check if user exists at the time of execution instead of depending on it
       if (!user) return;
       
       try {
-        const savedSessionId = await getActiveSessionId();
-    if (savedSessionId) {
-      // Load the saved session
-      setActiveSessionId(savedSessionId);
-      
-      // Get messages and ensure they're marked as processed
-                  // Use optimized service with caching
-        const sessionMessages = await optimizedSupabaseService.getSessionMessages(savedSessionId);
-      const processedMessages = sessionMessages.map(msg => ({
-        ...msg,
-        isProcessed: true // Mark all loaded messages as processed
-      }));
-      
-      setMessages(processedMessages);
-      setShowHeading(false);
-      setHasInteracted(true);
-    } else {
-      // Show welcome page for new users
-      setShowHeading(true);
-      setHasInteracted(false);
-      setActiveSessionId(null);
-      setMessages([]);
-    }
+        // Use initialSessionId if provided, otherwise get saved session
+        const sessionIdToLoad = initialSessionId || await getActiveSessionId();
+        
+        if (sessionIdToLoad) {
+          // Load the specified or saved session
+          setActiveSessionId(sessionIdToLoad);
+          
+          // Get messages and ensure they're marked as processed
+          // Use optimized service with caching
+          const sessionMessages = await optimizedSupabaseService.getSessionMessages(sessionIdToLoad);
+          const processedMessages = sessionMessages.map(msg => ({
+            ...msg,
+            isProcessed: true // Mark all loaded messages as processed
+          }));
+          
+          setMessages(processedMessages);
+          setShowHeading(false);
+          setHasInteracted(true);
+          
+          // Save as active session if it came from initialSessionId
+          if (initialSessionId) {
+            await saveActiveSessionId(initialSessionId);
+          }
+        } else {
+          // Show welcome page for new users
+          setShowHeading(true);
+          setHasInteracted(false);
+          setActiveSessionId(null);
+          setMessages([]);
+        }
       } catch (error) {
         console.error('Error loading active session:', error);
         // Fallback to showing welcome page
@@ -1791,7 +1805,7 @@ function TestChatComponent() {
 
     // Only run this effect once when component mounts
     loadActiveSession();
-  }, []); // Empty dependency array - only run once
+  }, [initialSessionId, user]); // Add dependencies for props and user
 
   // Effect to save messages whenever they change for the active session
   useEffect(() => {
@@ -1916,11 +1930,26 @@ function TestChatComponent() {
       let currentActiveSessionId = activeSessionId;
       
       if (!currentActiveSessionId) {
-        const newSession = await optimizedSupabaseService.createNewSession(input.trim());
-        setActiveSessionId(newSession.id);
-        saveActiveSessionId(newSession.id);
-        currentActiveSessionId = newSession.id;
-        setMessages([]);
+        const messageContent = input.trim();
+        
+        // Only use URL routing if we don't already have an initialSessionId (not on dynamic route)
+        if (!initialSessionId && messageContent) {
+          const {session, url} = await createNewSessionWithURL(messageContent);
+          setActiveSessionId(session.id);
+          saveActiveSessionId(session.id);
+          currentActiveSessionId = session.id;
+          setMessages([]);
+          
+          // Update URL without page reload
+          router.push(url, { scroll: false });
+        } else {
+          // Fallback to regular session creation
+          const newSession = await optimizedSupabaseService.createNewSession(messageContent);
+          setActiveSessionId(newSession.id);
+          saveActiveSessionId(newSession.id);
+          currentActiveSessionId = newSession.id;
+          setMessages([]);
+        }
       }
 
       if (!hasInteracted) setHasInteracted(true);
@@ -1967,11 +1996,26 @@ function TestChatComponent() {
       let currentActiveSessionId = activeSessionId;
       
       if (!currentActiveSessionId) {
-        const newSession = await optimizedSupabaseService.createNewSession(input.trim());
-        setActiveSessionId(newSession.id);
-        saveActiveSessionId(newSession.id);
-        currentActiveSessionId = newSession.id;
-        setMessages([]);
+        const messageContent = input.trim();
+        
+        // Only use URL routing if we don't already have an initialSessionId (not on dynamic route)
+        if (!initialSessionId && messageContent) {
+          const {session, url} = await createNewSessionWithURL(messageContent);
+          setActiveSessionId(session.id);
+          saveActiveSessionId(session.id);
+          currentActiveSessionId = session.id;
+          setMessages([]);
+          
+          // Update URL without page reload
+          router.push(url, { scroll: false });
+        } else {
+          // Fallback to regular session creation
+          const newSession = await optimizedSupabaseService.createNewSession(messageContent);
+          setActiveSessionId(newSession.id);
+          saveActiveSessionId(newSession.id);
+          currentActiveSessionId = newSession.id;
+          setMessages([]);
+        }
       }
 
       if (!hasInteracted) setHasInteracted(true);
@@ -2197,11 +2241,26 @@ function TestChatComponent() {
     let currentActiveSessionId = activeSessionId;
 
     if (!currentActiveSessionId) {
-      const newSession = await optimizedSupabaseService.createNewSession(input.trim() || (selectedFilesForUpload.length > 0 ? "Image Upload" : undefined));
-      setActiveSessionId(newSession.id);
-      saveActiveSessionId(newSession.id);
-      currentActiveSessionId = newSession.id;
-      setMessages([]);
+      const messageContent = input.trim() || (selectedFilesForUpload.length > 0 ? "Image Upload" : undefined);
+      
+      // Only use URL routing if we don't already have an initialSessionId (not on dynamic route)
+      if (!initialSessionId && messageContent) {
+        const {session, url} = await createNewSessionWithURL(messageContent);
+        setActiveSessionId(session.id);
+        saveActiveSessionId(session.id);
+        currentActiveSessionId = session.id;
+        setMessages([]);
+        
+        // Update URL without page reload
+        router.push(url, { scroll: false });
+      } else {
+        // Fallback to regular session creation
+        const newSession = await optimizedSupabaseService.createNewSession(messageContent);
+        setActiveSessionId(newSession.id);
+        saveActiveSessionId(newSession.id);
+        currentActiveSessionId = newSession.id;
+        setMessages([]);
+      }
     }
 
     if (!hasInteracted) setHasInteracted(true);
@@ -2692,23 +2751,26 @@ function TestChatComponent() {
     }
     
     try {
-    setActiveSessionId(sessionId);
+      setActiveSessionId(sessionId);
       await saveActiveSessionId(sessionId); // Save the active session
     
-    // Get messages and ensure they're marked as processed
+      // Get messages and ensure they're marked as processed
       const sessionMessages = await getSessionMessages(sessionId);
-    const processedMessages = sessionMessages.map(msg => ({
-      ...msg,
-      isProcessed: true // Mark all loaded messages as processed
-    }));
-    
-    setMessages(processedMessages);
-    setInput('');
-    setImagePreviewUrls([]);
-    setSelectedFilesForUpload([]);
+      const processedMessages = sessionMessages.map(msg => ({
+        ...msg,
+        isProcessed: true // Mark all loaded messages as processed
+      }));
+      
+      setMessages(processedMessages);
+      setInput('');
+      setImagePreviewUrls([]);
+      setSelectedFilesForUpload([]);
       setShowHeading(processedMessages.length === 0); // Show heading if the loaded session is empty
-    setHasInteracted(true); // Assume interaction when a session is selected
-    setSidebarOpen(false); // Close sidebar
+      setHasInteracted(true); // Assume interaction when a session is selected
+      setSidebarOpen(false); // Close sidebar
+      
+      // Update URL to reflect the new session
+      router.push(`/chat/${sessionId}`, { scroll: false });
     } catch (error) {
       console.error('Error selecting session:', error);
       // Fallback to new chat
@@ -2730,6 +2792,9 @@ function TestChatComponent() {
       console.error('Error clearing active session:', error);
     }
     setMessages([]);
+    
+    // Navigate to main test page for new chat
+    router.push('/test', { scroll: false });
   };
 
   // Enhanced artifact preview card component (Claude-like)
@@ -3788,10 +3853,14 @@ function TestChatComponent() {
   );
 }
 
-export default function TestChat() {
+export default function TestChat(props: TestChatProps = {}) {
+  const { initialSessionId, initialSessionTitle } = props;
   return (
     <AuthProvider>
-      <TestChatComponent />
+      <TestChatComponent 
+        initialSessionId={initialSessionId}
+        initialSessionTitle={initialSessionTitle}
+      />
     </AuthProvider>
   );
 } 

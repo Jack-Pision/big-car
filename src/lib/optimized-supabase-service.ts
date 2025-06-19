@@ -393,6 +393,29 @@ export class OptimizedSupabaseService {
     }
   }
 
+  // Generate URL slug from message content
+  generateURLSlug(message: string): string {
+    return message
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '') // Remove special chars
+      .replace(/\s+/g, '-')        // Replace spaces with hyphens
+      .substring(0, 50)            // Limit length
+      .replace(/-+$/, '');         // Remove trailing hyphens
+  }
+
+  // Create new session with URL generation
+  async createNewSessionWithURL(firstMessageContent: string): Promise<{session: Session, url: string}> {
+    const session = await this.createNewSession(firstMessageContent);
+    
+    // Generate clean URL slug from first message
+    const urlSlug = this.generateURLSlug(firstMessageContent);
+    
+    return {
+      session,
+      url: `/chat/${session.id}${urlSlug ? `?title=${encodeURIComponent(urlSlug)}` : ''}`
+    };
+  }
+
   // Get cache statistics
   getCacheStats() {
     return smartCache.getStats();
@@ -440,4 +463,8 @@ export async function saveActiveSessionId(sessionId: string | null): Promise<voi
 
 export async function getActiveSessionId(): Promise<string | null> {
   return optimizedSupabaseService.getActiveSessionId();
+}
+
+export async function createNewSessionWithURL(firstMessageContent: string): Promise<{session: Session, url: string}> {
+  return optimizedSupabaseService.createNewSessionWithURL(firstMessageContent);
 } 
