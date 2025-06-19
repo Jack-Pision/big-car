@@ -2622,11 +2622,18 @@ function TestChatComponent(props?: TestChatProps) {
       }
       
       if (!usedCache) {
-        // Determine endpoint: use NVIDIA for reasoning mode, OpenRouter otherwise
-        const apiEndpoint = activeButton === 'reasoning' ? '/api/nvidia' : '/api/openrouter-chat';
+        // Use NVIDIA API for both default chat and reasoning modes
+        // Only reasoning mode and default chat use NVIDIA API now
+        const apiEndpoint = '/api/nvidia';
+        
+        // Determine the mode for API key selection
+        const chatMode = activeButton === 'reasoning' ? 'reasoning' : 'chat';
+        
+        // Add mode to the API payload for proper API key selection
+        apiPayload.mode = chatMode;
 
         // Make fresh API call
-        console.log(`[Performance] Making fresh API call to ${apiEndpoint}`);
+        console.log(`[Performance] Making fresh API call to ${apiEndpoint} with mode: ${chatMode}`);
         res = await fetch(apiEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

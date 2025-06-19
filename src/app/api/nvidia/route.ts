@@ -1,7 +1,21 @@
 import { NextRequest } from 'next/server';
 
 const TEXT_API_KEY = process.env.NVIDIA_API_KEY || '';
+const TEXT_API_KEY2 = process.env.NVIDIA_API_KEY2 || '';
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || '';
+
+// Function to select the appropriate API key based on mode
+function getApiKeyForMode(mode: string): string {
+  switch (mode) {
+    case 'reasoning':
+      return TEXT_API_KEY; // Use original key for reasoning mode
+    case 'chat':
+    case 'default':
+      return TEXT_API_KEY2; // Use new key for default chat mode
+    default:
+      return TEXT_API_KEY; // Fallback to original key
+  }
+}
 
 // Update the fetchWithTimeout function to optimize timeout handling
 async function fetchWithTimeout(resource: string, options: any = {}, timeout = 45000) { // Increased to 45 seconds for artifact generation
@@ -230,7 +244,7 @@ async function fetchNvidiaText(messages: any[], options: any = {}) {
   const res = await fetchWithTimeout('https://integrate.api.nvidia.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-      'Authorization': `Bearer ${TEXT_API_KEY}`,
+      'Authorization': `Bearer ${getApiKeyForMode(options.mode || 'default')}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(payload),
@@ -335,10 +349,10 @@ async function fetchNvidiaText(messages: any[], options: any = {}) {
 
 export async function POST(req: NextRequest) {
   // Validate required API keys at runtime
-  if (!TEXT_API_KEY) {
+  if (!TEXT_API_KEY && !TEXT_API_KEY2) {
     return new Response(JSON.stringify({
       error: 'Configuration Error',
-      details: 'NVIDIA_API_KEY is not configured'
+      details: 'Neither NVIDIA_API_KEY nor NVIDIA_API_KEY2 are configured'
     }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
@@ -380,6 +394,21 @@ export async function POST(req: NextRequest) {
       });
     }
     
+    // Validate mode and corresponding API key availability
+    const mode = body.mode || 'default';
+    const requiredApiKey = getApiKeyForMode(mode);
+    
+    if (!requiredApiKey) {
+      const keyName = mode === 'reasoning' ? 'NVIDIA_API_KEY' : 'NVIDIA_API_KEY2';
+      return new Response(JSON.stringify({
+        error: 'Configuration Error',
+        details: `${keyName} is required for ${mode} mode but is not configured`
+      }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
     // Limit message content length to reduce token size and response time
     const optimizedMessages = body.messages.map((msg: any) => ({
       ...msg,
@@ -396,6 +425,7 @@ export async function POST(req: NextRequest) {
       presence_penalty: body.presence_penalty || 0.8,
       frequency_penalty: body.frequency_penalty || 0.5,
       stream: body.stream !== undefined ? body.stream : true,
+      mode: mode,
       // Note: response_format is intentionally removed for DeepSeek R1 compatibility
     };
       
