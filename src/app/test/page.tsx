@@ -3016,7 +3016,7 @@ function TestChatComponent(props?: TestChatProps) {
         </div>
         <div className="flex-1 min-w-0">
           <h3 className="text-white font-semibold text-lg truncate">{title}</h3>
-          <div className="flex items-center gap-4 text-sm text-gray-400 mt-1">
+          <div className="flex items-center gap-4 text-xs text-gray-400 mt-1">
             <span>Document</span>
             {isStreaming && (
               <div className="flex items-center gap-2">
@@ -3029,7 +3029,7 @@ function TestChatComponent(props?: TestChatProps) {
       </div>
       
       {progress && (
-        <div className="text-sm text-gray-300 mb-3 bg-gray-700/50 rounded p-2">
+        <div className="text-xs text-gray-300 mb-3 bg-gray-700/50 rounded p-2">
           {progress}
         </div>
       )}
@@ -3282,7 +3282,7 @@ function TestChatComponent(props?: TestChatProps) {
               </div>
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold text-white">{msg.structuredContent.title}</h3>
-                  <div className="flex items-center gap-4 text-sm text-gray-400">
+                  <div className="flex items-center gap-4 text-xs text-gray-400">
                     <span className="capitalize">{msg.structuredContent.type}</span>
                     <span>{msg.structuredContent.metadata.wordCount} words</span>
                     <span>{msg.structuredContent.metadata.estimatedReadTime}</span>
@@ -3290,7 +3290,7 @@ function TestChatComponent(props?: TestChatProps) {
                 </div>
                 </div>
 
-              <p className="text-gray-300 text-sm mb-4">{cleanContent}</p>
+              <p className="text-gray-300 text-xs mb-4">{cleanContent}</p>
               
                     <button
                 onClick={() => {
@@ -3372,8 +3372,8 @@ function TestChatComponent(props?: TestChatProps) {
                       <span className="inline-block ml-2 w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
                     )}
                   </h3>
-                  <div className="flex items-center gap-4 text-sm text-gray-400">
-                    <span>Essay</span>
+                                      <div className="flex items-center gap-4 text-xs text-gray-400">
+                      <span>Essay</span>
                     {msg.isStreaming ? (
                       <span>Streaming...</span>
                     ) : (
@@ -3384,7 +3384,7 @@ function TestChatComponent(props?: TestChatProps) {
           </div>
               
               {/* Streaming artifact content preview - cleaned of thinking tags */}
-              <div className="text-gray-300 text-sm mb-4 max-h-32 overflow-hidden">
+              <div className="text-gray-300 text-xs mb-4 max-h-32 overflow-hidden">
                 <ReactMarkdown className="prose prose-sm prose-invert">
                   {cleanContent.slice(0, 200) + (cleanContent.length > 200 ? "..." : "")}
                 </ReactMarkdown>
@@ -3543,7 +3543,7 @@ function TestChatComponent(props?: TestChatProps) {
                       )}
                       
                       {isStoppedMsg ? (
-                        <span className="text-sm text-white italic font-light mb-2">[Response stopped by user]</span>
+                        <span className="text-xs text-white italic font-light mb-2">[Response stopped by user]</span>
                       ) : (
                         <div className="w-full max-w-full overflow-hidden">
                           {/* Single consolidated thinking button - handles all thinking scenarios */}
@@ -3584,7 +3584,7 @@ function TestChatComponent(props?: TestChatProps) {
                                   </h3>
                                 ),
                                 p: ({children}) => (
-                                  <p className="text-gray-200 leading-relaxed mb-4 text-base">
+                                  <p className="text-gray-200 leading-relaxed mb-4 text-sm">
                                     {children}
                                   </p>
                                 ),
@@ -3640,13 +3640,13 @@ function TestChatComponent(props?: TestChatProps) {
                                   const isInline = !className;
                                   if (isInline) {
                                     return (
-                                      <code className="text-cyan-400 px-2 py-1 rounded text-sm font-mono" style={{background: 'rgba(55, 65, 81, 0.5)'}}>
+                                      <code className="text-cyan-400 px-2 py-1 rounded text-xs font-mono" style={{background: 'rgba(55, 65, 81, 0.5)'}}>
                                         {children}
                                       </code>
                                     );
                                   }
                                   return (
-                                    <code className="block text-gray-200 p-4 rounded-lg overflow-x-auto text-sm font-mono mb-4" style={{background: 'rgba(17, 24, 39, 0.8)'}}>
+                                    <code className="block text-gray-200 p-4 rounded-lg overflow-x-auto text-xs font-mono mb-4" style={{background: 'rgba(17, 24, 39, 0.8)'}}>
                                       {children}
                                     </code>
                                   );
@@ -3989,7 +3989,7 @@ function TestChatComponent(props?: TestChatProps) {
                     
                     {/* Message content bubble */}
                     <div
-                      className="px-4 py-3 rounded-2xl text-white text-base leading-relaxed"
+                      className="px-4 py-3 rounded-2xl text-white text-sm leading-relaxed"
                       style={{ 
                         backgroundColor: '#212121',
                         borderBottomRightRadius: '8px', // Smaller radius for the corner near avatar

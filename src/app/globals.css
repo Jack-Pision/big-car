@@ -515,7 +515,7 @@ textarea::-webkit-scrollbar-thumb,
 }
 
 .research-output p {
-  @apply text-gray-200 leading-relaxed mb-4 text-base;
+  @apply text-gray-200 leading-relaxed mb-4 text-sm;
   background: transparent !important;
 }
 
@@ -568,12 +568,12 @@ textarea::-webkit-scrollbar-thumb,
 }
 
 .research-output code {
-  @apply text-cyan-400 px-2 py-1 rounded text-sm font-mono;
+  @apply text-cyan-400 px-2 py-1 rounded text-xs font-mono;
   background: rgba(55, 65, 81, 0.5) !important;
 }
 
 .research-output pre {
-  @apply text-gray-200 p-4 rounded-lg overflow-x-auto text-sm font-mono mb-4;
+  @apply text-gray-200 p-4 rounded-lg overflow-x-auto text-xs font-mono mb-4;
   background: rgba(17, 24, 39, 0.8) !important;
 }
 
@@ -584,7 +584,7 @@ textarea::-webkit-scrollbar-thumb,
 /* Citation styling for research output */
 .research-output a[href*="#citation"] {
   @apply text-cyan-400 hover:text-cyan-300 font-medium no-underline;
-  @apply bg-cyan-400/10 px-1.5 py-0.5 rounded text-sm;
+  @apply bg-cyan-400/10 px-1.5 py-0.5 rounded text-xs;
   @apply border border-cyan-400/30 hover:border-cyan-300/50;
   @apply transition-all duration-200;
 }

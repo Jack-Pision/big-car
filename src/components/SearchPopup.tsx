@@ -78,7 +78,7 @@ export default function SearchPopup({ open, chats, onClose, onRename, onDelete, 
               <input
                 ref={inputRef}
                 type="text"
-                className="w-full mb-4 px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-black/20 text-base bg-white text-[#1A1A1A]"
+                className="w-full mb-4 px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-black/20 text-sm bg-white text-[#1A1A1A]"
                 placeholder="Search chats…"
                 value={query}
                 onChange={e => setQuery(e.target.value)}
@@ -94,7 +94,7 @@ export default function SearchPopup({ open, chats, onClose, onRename, onDelete, 
                       {/* Chat label or input */}
                       {editingId === chat.id ? (
                         <input
-                          className="flex-1 bg-white border border-black rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-black"
+                          className="flex-1 bg-white border border-black rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-black"
                           value={editValue}
                           onChange={e => setEditValue(e.target.value)}
                           onClick={e => e.stopPropagation()}
@@ -139,11 +139,11 @@ export default function SearchPopup({ open, chats, onClose, onRename, onDelete, 
                               className="absolute right-0 mt-2 w-32 bg-white border border-gray-200 rounded-lg shadow-lg z-10"
                             >
                               <button
-                                className="w-full px-4 py-2 text-left text-sm text-[#1A1A1A] hover:bg-gray-100 rounded-t-lg focus:outline-none"
+                                className="w-full px-4 py-2 text-left text-xs text-[#1A1A1A] hover:bg-gray-100 rounded-t-lg focus:outline-none"
                                 onClick={() => { setEditingId(chat.id); setEditValue(chat.title); setDropdownId(null); }}
                               >Rename</button>
                               <button
-                                className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 rounded-b-lg focus:outline-none"
+                                className="w-full px-4 py-2 text-left text-xs text-red-600 hover:bg-red-50 rounded-b-lg focus:outline-none"
                                 onClick={() => { setConfirmDeleteId(chat.id); setDropdownId(null); }}
                               >Delete</button>
                             </motion.div>

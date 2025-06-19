@@ -89,7 +89,7 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({ artifact, onClos
           </div>
           <div>
             <h2 className="text-lg font-semibold text-gray-100">{artifactData.title}</h2>
-            <div className="flex items-center gap-4 text-sm text-gray-400">
+            <div className="flex items-center gap-4 text-xs text-gray-400">
               <span>{artifactData.metadata.wordCount} words</span>
               <span>{artifactData.metadata.estimatedReadTime}</span>
               <span className="px-2 py-1 bg-cyan-500/20 text-cyan-400 rounded-full text-xs">
@@ -106,7 +106,7 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({ artifact, onClos
             <select
               value={selectedVersionIndex}
               onChange={(e) => setSelectedVersionIndex(Number(e.target.value))}
-              className="bg-gray-800 text-gray-300 border border-gray-600 rounded px-2 py-1 text-sm mr-2 focus:outline-none"
+              className="bg-gray-800 text-gray-300 border border-gray-600 rounded px-2 py-1 text-xs mr-2 focus:outline-none"
               title="Select version"
             >
               {versions.map((_, idx) => (
@@ -227,7 +227,7 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({ artifact, onClos
                     </h4>
                   ),
                   p: ({ children }) => (
-                    <p className="text-gray-300 leading-relaxed mb-4 text-base">
+                    <p className="text-gray-300 leading-relaxed mb-4 text-sm">
                       {children}
                     </p>
                   ),
@@ -255,13 +255,13 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({ artifact, onClos
                     const isInline = !className;
                     if (isInline) {
                       return (
-                        <code className="bg-gray-700 text-cyan-300 px-2 py-1 rounded text-sm font-mono">
+                        <code className="bg-gray-700 text-cyan-300 px-2 py-1 rounded text-xs font-mono">
                           {children}
                         </code>
                       );
                     }
                     return (
-                      <code className="block bg-gray-900 text-gray-200 p-4 rounded-lg overflow-x-auto text-sm font-mono mb-4 border border-gray-700">
+                      <code className="block bg-gray-900 text-gray-200 p-4 rounded-lg overflow-x-auto text-xs font-mono mb-4 border border-gray-700">
                         {children}
                       </code>
                     );
@@ -308,7 +308,7 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({ artifact, onClos
                   {artifactData.content}
                 </ReactMarkdown>
               ) : (
-                <pre className="whitespace-pre-wrap text-gray-300 text-sm">
+                <pre className="whitespace-pre-wrap text-gray-300 text-xs">
                   {artifactData.content}
                 </pre>
               )}
@@ -317,7 +317,7 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({ artifact, onClos
             {artifactData.content && artifactData.metadata.wordCount < 50 && (
               <div className="flex items-center gap-2 mt-4 text-cyan-400">
                 <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
-                <span className="text-sm">AI is writing...</span>
+                <span className="text-xs">AI is writing...</span>
               </div>
             )}
             </div>
@@ -329,7 +329,7 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({ artifact, onClos
       {artifactData.metadata.tags.length > 0 && (
         <div className="border-t border-gray-700 p-4 bg-[#1a1a1c]">
           <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-400">Tags:</span>
+            <span className="text-xs text-gray-400">Tags:</span>
             <div className="flex flex-wrap gap-2">
               {artifactData.metadata.tags.map((tag, index) => (
                 <span
