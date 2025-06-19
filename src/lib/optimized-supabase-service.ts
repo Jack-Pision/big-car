@@ -144,60 +144,6 @@ export class OptimizedSupabaseService {
     });
   }
 
-  // Save individual message immediately
-  async saveMessageToSupabase(sessionId: string, message: Message): Promise<void> {
-    const user = await this.getCachedUser();
-    if (!user || !sessionId) {
-      console.warn('[Optimized Service] Cannot save message - no user or session');
-      return;
-    }
-
-    const messageToSave = {
-      id: message.id,
-      session_id: sessionId,
-      user_id: user.id,
-      role: message.role,
-      content: message.content,
-      image_urls: message.image_urls || message.imageUrls,
-      web_sources: message.web_sources || message.webSources,
-      structured_content: message.structured_content || message.structuredContent,
-      parent_id: message.parent_id || message.parentId,
-      query: message.query,
-      is_search_result: message.is_search_result || message.isSearchResult || false,
-      is_processed: message.is_processed || message.isProcessed || false,
-      is_streaming: message.is_streaming || message.isStreaming || false,
-      content_type: message.content_type || message.contentType,
-      created_at: message.created_at || new Date().toISOString()
-    };
-
-    try {
-      console.log('[Optimized Service] Saving individual message:', messageToSave.id);
-      
-      const { error } = await supabase
-        .from('messages')
-        .upsert(messageToSave, { 
-          onConflict: 'id',
-          ignoreDuplicates: true
-        });
-
-      if (error) {
-        console.error('[Optimized Service] Error saving individual message:', error);
-        throw error;
-      }
-
-      // Update cache
-      const cacheKey = CACHE_KEYS.MESSAGES(sessionId);
-      smartCache.set(cacheKey, null, 0); // Invalidate cache to force reload
-
-      // Update session timestamp
-      this.batchUpdateSessionTimestamp(sessionId);
-
-    } catch (error) {
-      console.error('[Optimized Service] Failed to save individual message:', error);
-      throw error;
-    }
-  }
-
   // Batch save messages to reduce database calls
   async saveSessionMessages(sessionId: string, messages: Message[]): Promise<void> {
     const user = await this.getCachedUser();
@@ -229,7 +175,7 @@ export class OptimizedSupabaseService {
       .from('messages')
       .upsert(messagesToInsert, { 
         onConflict: 'id',
-        ignoreDuplicates: true  // ✅ Fixed: Prevent "multiple rows returned" errors
+        ignoreDuplicates: false 
       });
 
     if (error) {
@@ -400,12 +346,7 @@ export class OptimizedSupabaseService {
   async saveActiveSessionId(sessionId: string | null): Promise<void> {
     try {
       const user = await this.getCachedUser();
-      if (!user) {
-        console.log('[saveActiveSessionId] No user found');
-        return;
-      }
-
-      console.log('[saveActiveSessionId] Saving session for user:', user.id, 'sessionId:', sessionId);
+      if (!user) return;
 
       const { error } = await supabase
         .from('user_preferences')
@@ -418,8 +359,6 @@ export class OptimizedSupabaseService {
 
       if (error) {
         console.error('Error saving active session ID:', error);
-      } else {
-        console.log('[saveActiveSessionId] Successfully saved active session:', sessionId);
       }
     } catch (error) {
       console.error('Error in saveActiveSessionId:', error);
@@ -430,89 +369,26 @@ export class OptimizedSupabaseService {
   async getActiveSessionId(): Promise<string | null> {
     try {
       const user = await this.getCachedUser();
-      if (!user) {
-        console.log('[getActiveSessionId] No user found');
-        return null;
-      }
+      if (!user) return null;
 
-      console.log('[getActiveSessionId] Getting active session for user:', user.id);
-
-      const { data: prefData, error: prefError } = await supabase
+      const { data, error } = await supabase
         .from('user_preferences')
         .select('active_session_id')
         .eq('user_id', user.id)
         .single();
 
-      if (prefError && prefError.code !== 'PGRST116') {
-        console.error('Error getting active session ID:', prefError);
-      }
-
-      // If we have a pointer and it's not null – use it immediately
-      if (prefData?.active_session_id) {
-        console.log('[getActiveSessionId] Found pointer in user_preferences:', prefData.active_session_id);
-        return prefData.active_session_id;
-      }
-
-      // Otherwise fall back to the most recently updated session
-      console.log('[getActiveSessionId] No pointer found – falling back to latest session');
-      const { data: latestSession, error: latestError } = await supabase
-        .from('sessions')
-        .select('id')
-        .eq('user_id', user.id)
-        .order('updated_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (latestError && latestError.code !== 'PGRST116') {
-        console.error('[getActiveSessionId] Error getting latest session:', latestError);
+      if (error) {
+        if (error.code === 'PGRST116') {
+          // No preferences found, return null
+          return null;
+        }
+        console.error('Error getting active session ID:', error);
         return null;
       }
 
-      if (latestSession?.id) {
-        console.log('[getActiveSessionId] Latest session id is', latestSession.id);
-        return latestSession.id;
-      }
-
-      console.log('[getActiveSessionId] User has no sessions');
-      return null;
+      return data?.active_session_id || null;
     } catch (error) {
       console.error('Error in getActiveSessionId:', error);
-      return null;
-    }
-  }
-
-  // Explicit helper to fetch the most recent session (useful elsewhere)
-  async getMostRecentSession(): Promise<Session | null> {
-    try {
-      const user = await this.getCachedUser();
-      if (!user) return null;
-
-      const { data, error } = await supabase
-        .from('sessions')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('updated_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (error) {
-        if (error.code === 'PGRST116') return null;
-        console.error('[Optimized Service] Error fetching most recent session:', error);
-        return null;
-      }
-
-      if (!data) return null;
-
-      return {
-        id: data.id,
-        title: data.title,
-        timestamp: new Date(data.created_at).getTime(),
-        user_id: data.user_id,
-        created_at: data.created_at,
-        updated_at: data.updated_at
-      } as Session;
-    } catch (error) {
-      console.error('[Optimized Service] getMostRecentSession failed:', error);
       return null;
     }
   }
@@ -546,10 +422,6 @@ export async function saveSessionMessages(sessionId: string, messages: Message[]
   return optimizedSupabaseService.saveSessionMessages(sessionId, messages);
 }
 
-export async function saveMessageToSupabase(sessionId: string, message: Message): Promise<void> {
-  return optimizedSupabaseService.saveMessageToSupabase(sessionId, message);
-}
-
 export async function createNewSession(firstMessageContent?: string): Promise<Session> {
   return optimizedSupabaseService.createNewSession(firstMessageContent);
 }
@@ -568,8 +440,4 @@ export async function saveActiveSessionId(sessionId: string | null): Promise<voi
 
 export async function getActiveSessionId(): Promise<string | null> {
   return optimizedSupabaseService.getActiveSessionId();
-}
-
-export async function getMostRecentSession(): Promise<Session | null> {
-  return optimizedSupabaseService.getMostRecentSession();
 } 
