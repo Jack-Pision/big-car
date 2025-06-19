@@ -2004,7 +2004,7 @@ function TestChatComponent() {
       if (!currentActiveSessionId) {
         const newSession = await optimizedSupabaseService.createNewSession(input.trim());
         setActiveSessionId(newSession.id);
-        saveActiveSessionId(newSession.id);
+        await saveActiveSessionId(newSession.id);
         currentActiveSessionId = newSession.id;
         setMessages([]);
       }
@@ -2057,7 +2057,7 @@ function TestChatComponent() {
       if (!currentActiveSessionId) {
         const newSession = await optimizedSupabaseService.createNewSession(input.trim());
         setActiveSessionId(newSession.id);
-        saveActiveSessionId(newSession.id);
+        await saveActiveSessionId(newSession.id);
         currentActiveSessionId = newSession.id;
         setMessages([]);
       }
@@ -2290,7 +2290,7 @@ function TestChatComponent() {
     if (!currentActiveSessionId) {
       const newSession = await optimizedSupabaseService.createNewSession(input.trim() || (selectedFilesForUpload.length > 0 ? "Image Upload" : undefined));
       setActiveSessionId(newSession.id);
-      saveActiveSessionId(newSession.id);
+      await saveActiveSessionId(newSession.id);
       currentActiveSessionId = newSession.id;
       setMessages([]);
     }

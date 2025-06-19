@@ -437,26 +437,82 @@ export class OptimizedSupabaseService {
 
       console.log('[getActiveSessionId] Getting active session for user:', user.id);
 
-      const { data, error } = await supabase
+      const { data: prefData, error: prefError } = await supabase
         .from('user_preferences')
         .select('active_session_id')
         .eq('user_id', user.id)
         .single();
 
-      if (error) {
-        if (error.code === 'PGRST116') {
-          // No preferences found, return null
-          console.log('[getActiveSessionId] No preferences found for user');
-          return null;
-        }
-        console.error('Error getting active session ID:', error);
+      if (prefError && prefError.code !== 'PGRST116') {
+        console.error('Error getting active session ID:', prefError);
+      }
+
+      // If we have a pointer and it's not null – use it immediately
+      if (prefData?.active_session_id) {
+        console.log('[getActiveSessionId] Found pointer in user_preferences:', prefData.active_session_id);
+        return prefData.active_session_id;
+      }
+
+      // Otherwise fall back to the most recently updated session
+      console.log('[getActiveSessionId] No pointer found – falling back to latest session');
+      const { data: latestSession, error: latestError } = await supabase
+        .from('sessions')
+        .select('id')
+        .eq('user_id', user.id)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (latestError && latestError.code !== 'PGRST116') {
+        console.error('[getActiveSessionId] Error getting latest session:', latestError);
         return null;
       }
 
-      console.log('[getActiveSessionId] Found data:', data);
-      return data?.active_session_id || null;
+      if (latestSession?.id) {
+        console.log('[getActiveSessionId] Latest session id is', latestSession.id);
+        return latestSession.id;
+      }
+
+      console.log('[getActiveSessionId] User has no sessions');
+      return null;
     } catch (error) {
       console.error('Error in getActiveSessionId:', error);
+      return null;
+    }
+  }
+
+  // Explicit helper to fetch the most recent session (useful elsewhere)
+  async getMostRecentSession(): Promise<Session | null> {
+    try {
+      const user = await this.getCachedUser();
+      if (!user) return null;
+
+      const { data, error } = await supabase
+        .from('sessions')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error) {
+        if (error.code === 'PGRST116') return null;
+        console.error('[Optimized Service] Error fetching most recent session:', error);
+        return null;
+      }
+
+      if (!data) return null;
+
+      return {
+        id: data.id,
+        title: data.title,
+        timestamp: new Date(data.created_at).getTime(),
+        user_id: data.user_id,
+        created_at: data.created_at,
+        updated_at: data.updated_at
+      } as Session;
+    } catch (error) {
+      console.error('[Optimized Service] getMostRecentSession failed:', error);
       return null;
     }
   }
@@ -512,4 +568,8 @@ export async function saveActiveSessionId(sessionId: string | null): Promise<voi
 
 export async function getActiveSessionId(): Promise<string | null> {
   return optimizedSupabaseService.getActiveSessionId();
+}
+
+export async function getMostRecentSession(): Promise<Session | null> {
+  return optimizedSupabaseService.getMostRecentSession();
 } 
