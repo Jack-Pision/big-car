@@ -66,7 +66,7 @@ const ThinkingButton: React.FC<ThinkingButtonProps> = ({ content, isLive = false
     const remainingSeconds = seconds % 60;
     return remainingSeconds > 0 ? `${minutes}m ${remainingSeconds}s` : `${minutes}m`;
   };
-
+  
   return (
     <div className="my-4 w-full max-w-4xl mx-auto">
       <div

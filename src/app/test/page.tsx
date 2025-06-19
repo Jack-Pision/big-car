@@ -711,10 +711,6 @@ interface LocalMessage {
   query?: string; // Add this property for search-ui messages
   isSearchResult?: boolean; // Add this property for search result messages
   title?: string; // Add title for artifact preview cards
-  
-  // Reasoning-specific fields for proper storage and display
-  thinkingContent?: string; // Separate field for thinking process
-  mainContent?: string; // Main response content without think tags
 }
 
 // Helper to enforce Advance Search output structure
@@ -1590,10 +1586,10 @@ const extractThinkContentDuringStream = (content: string) => {
   // Only handle partial think tags if no complete tags were found
   // This prevents double-processing the same content
   if (!thinkContent) {
-    const partialThinkMatch = content.match(/<think>([^<]*?)$/);
-    if (partialThinkMatch) {
+  const partialThinkMatch = content.match(/<think>([^<]*?)$/);
+  if (partialThinkMatch) {
       thinkContent = partialThinkMatch[1];
-      mainContent = mainContent.replace(partialThinkMatch[0], '');
+    mainContent = mainContent.replace(partialThinkMatch[0], '');
     }
   }
   
@@ -1753,111 +1749,49 @@ function TestChatComponent() {
     }
   }, [isResizing, handleMouseMove, handleMouseUp]);
 
-  // Enhanced session restoration with multiple fallback strategies
+  // Effect to load the last active session or create a new one on initial load
   useEffect(() => {
     const loadActiveSession = async () => {
+      // Check if user exists at the time of execution instead of depending on it
+      if (!user) return;
+      
       try {
-        setIsLoading(true);
-        
-        // Strategy 1: Try sessionStorage first for immediate restoration (covers page reload)
-        const sessionStorageSessionId = sessionStorage.getItem('active-session-id');
-        
-        if (sessionStorageSessionId) {
-          console.log('[Session Restore] Using sessionStorage session:', sessionStorageSessionId);
-          await loadSessionWithRetry(sessionStorageSessionId, 'sessionStorage');
-          return;
-        }
-        
-        // Strategy 2: Wait for user and try database saved session
-        if (user) {
-          const savedSessionId = await getActiveSessionId();
-          if (savedSessionId) {
-            console.log('[Session Restore] Using database session:', savedSessionId);
-            await loadSessionWithRetry(savedSessionId, 'database');
-            return;
-          }
-        }
-        
-        // Strategy 3: Show welcome page for new users
-        console.log('[Session Restore] No saved session, showing welcome');
-        setShowHeading(true);
-        setHasInteracted(false);
-        setActiveSessionId(null);
-        setMessages([]);
-        
+        const savedSessionId = await getActiveSessionId();
+    if (savedSessionId) {
+      // Load the saved session
+      setActiveSessionId(savedSessionId);
+      
+      // Get messages and ensure they're marked as processed
+                  // Use optimized service with caching
+        const sessionMessages = await optimizedSupabaseService.getSessionMessages(savedSessionId);
+      const processedMessages = sessionMessages.map(msg => ({
+        ...msg,
+        isProcessed: true // Mark all loaded messages as processed
+      }));
+      
+      setMessages(processedMessages);
+      setShowHeading(false);
+      setHasInteracted(true);
+    } else {
+      // Show welcome page for new users
+      setShowHeading(true);
+      setHasInteracted(false);
+      setActiveSessionId(null);
+      setMessages([]);
+    }
       } catch (error) {
-        console.error('[Session Restore] Failed to load session:', error);
-        // Fallback to welcome page
+        console.error('Error loading active session:', error);
+        // Fallback to showing welcome page
         setShowHeading(true);
         setHasInteracted(false);
         setActiveSessionId(null);
         setMessages([]);
-      } finally {
-        setIsLoading(false);
       }
     };
 
-    // Helper function to load session with retry logic and error handling
-    const loadSessionWithRetry = async (sessionId: string, source: string, retries = 3) => {
-      for (let attempt = 1; attempt <= retries; attempt++) {
-        try {
-          console.log(`[Session Restore] Loading session ${sessionId} from ${source}, attempt ${attempt}`);
-          
-          setActiveSessionId(sessionId);
-          
-          // Save to sessionStorage for future page reloads
-          sessionStorage.setItem('active-session-id', sessionId);
-          
-          // Use optimized service with caching
-          const sessionMessages = await optimizedSupabaseService.getSessionMessages(sessionId);
-          
-          if (sessionMessages.length === 0 && attempt < retries) {
-            // Empty session might be cache issue, retry
-            console.log(`[Session Restore] Empty session on attempt ${attempt}, retrying...`);
-            await new Promise(resolve => setTimeout(resolve, 500));
-            continue;
-          }
-          
-          const processedMessages = sessionMessages.map(msg => ({
-            ...msg,
-            isProcessed: true // Mark all loaded messages as processed
-          }));
-          
-          setMessages(processedMessages);
-          setShowHeading(processedMessages.length === 0);
-          setHasInteracted(processedMessages.length > 0);
-          
-          // Save to database if loaded from sessionStorage
-          if (source === 'sessionStorage' && user) {
-            await saveActiveSessionId(sessionId);
-          }
-          
-          console.log(`[Session Restore] Successfully loaded ${processedMessages.length} messages`);
-          return;
-          
-        } catch (error) {
-          console.error(`[Session Restore] Attempt ${attempt} failed:`, error);
-          
-          if (attempt === retries) {
-            // Final attempt failed, clear invalid session
-            if (source === 'sessionStorage') {
-              sessionStorage.removeItem('active-session-id');
-            }
-            if (user && source === 'database') {
-              await saveActiveSessionId(null);
-            }
-            throw error;
-          }
-          
-          // Wait before retry
-          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-        }
-      }
-    };
-
-    // Run immediately and when user changes
+    // Only run this effect once when component mounts
     loadActiveSession();
-  }, [user]); // Depend on user to re-run when authentication loads
+  }, []); // Empty dependency array - only run once
 
   // Effect to save messages whenever they change for the active session
   useEffect(() => {
@@ -1897,19 +1831,6 @@ function TestChatComponent() {
     }
     } catch (error) {
       console.error('Error saving messages:', error);
-    }
-  };
-
-  // New function for immediate message persistence during streaming
-  const saveMessagesImmediately = async (currentMessages: LocalMessage[]) => {
-    if (!activeSessionId || !user || currentMessages.length === 0) return;
-    
-    try {
-      // Save messages immediately without any delay
-      await optimizedSupabaseService.saveSessionMessages(activeSessionId, currentMessages);
-      console.log('[Immediate Save] Saved', currentMessages.length, 'messages to database');
-    } catch (error) {
-      console.error('[Immediate Save] Error saving messages:', error);
     }
   };
 
@@ -1983,47 +1904,6 @@ function TestChatComponent() {
     };
   }, [messages, isAiResponding, liveReasoning]);
 
-  // Persist session state before page unload (handles page refresh, navigation, etc.)
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (activeSessionId) {
-        sessionStorage.setItem('active-session-id', activeSessionId);
-        
-        // Save scroll position for restoration
-        if (scrollRef.current) {
-          sessionStorage.setItem('chat-scroll-position', scrollRef.current.scrollTop.toString());
-        }
-        
-        console.log('[Session Persist] Saved session state before unload:', activeSessionId);
-      }
-    };
-
-    // Add event listener
-    window.addEventListener('beforeunload', handleBeforeUnload);
-
-    // Cleanup
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, [activeSessionId]);
-
-  // Restore scroll position after messages load
-  useEffect(() => {
-    if (messages.length > 0 && scrollRef.current) {
-      const savedScrollPosition = sessionStorage.getItem('chat-scroll-position');
-      if (savedScrollPosition) {
-        // Restore scroll position after a brief delay to ensure messages are rendered
-        setTimeout(() => {
-          if (scrollRef.current) {
-            scrollRef.current.scrollTop = parseInt(savedScrollPosition, 10);
-            // Clear the saved position after restoring
-            sessionStorage.removeItem('chat-scroll-position');
-          }
-        }, 100);
-      }
-    }
-  }, [messages]);
-
 
 
   async function handleSend(e: React.FormEvent) {
@@ -2038,11 +1918,7 @@ function TestChatComponent() {
       if (!currentActiveSessionId) {
         const newSession = await optimizedSupabaseService.createNewSession(input.trim());
         setActiveSessionId(newSession.id);
-        
-        // Save to both sessionStorage (immediate) and database (persistent)
-        sessionStorage.setItem('active-session-id', newSession.id);
         saveActiveSessionId(newSession.id);
-        
         currentActiveSessionId = newSession.id;
         setMessages([]);
       }
@@ -2052,20 +1928,16 @@ function TestChatComponent() {
 
       // Add user message to chat
       const userMessageId = uuidv4();
-      const userMessage: LocalMessage = { 
-        role: 'user',
-        id: userMessageId,
-        content: input,
-        timestamp: Date.now(),
-        isProcessed: true
-      };
-      
-      setMessages(prev => {
-        const updatedMessages = [...prev, userMessage];
-        // Save immediately when user message is added
-        saveMessagesImmediately(updatedMessages);
-        return updatedMessages;
-      });
+      setMessages(prev => [
+        ...prev,
+        { 
+          role: 'user',
+          id: userMessageId,
+          content: input,
+          timestamp: Date.now(),
+          isProcessed: true
+        }
+      ]);
 
       // Create a placeholder message for search results that will use the Search component
       const searchMessageId = uuidv4();
@@ -2097,11 +1969,7 @@ function TestChatComponent() {
       if (!currentActiveSessionId) {
         const newSession = await optimizedSupabaseService.createNewSession(input.trim());
         setActiveSessionId(newSession.id);
-        
-        // Save to both sessionStorage (immediate) and database (persistent)
-        sessionStorage.setItem('active-session-id', newSession.id);
         saveActiveSessionId(newSession.id);
-        
         currentActiveSessionId = newSession.id;
         setMessages([]);
       }
@@ -2134,12 +2002,7 @@ function TestChatComponent() {
         isProcessed: true
       };
       
-      setMessages(prev => {
-        const updatedMessages = [...prev, userMessage];
-        // Save immediately when user message is added
-        saveMessagesImmediately(updatedMessages);
-        return updatedMessages;
-      });
+      setMessages(prev => [...prev, userMessage]);
       setInput('');
       setIsLoading(true);
       setIsAiResponding(true);
@@ -2161,12 +2024,7 @@ function TestChatComponent() {
         isProcessed: false
       };
       
-      setMessages(prev => {
-        const updatedMessages = [...prev, previewMessage];
-        // Save immediately when preview message is added
-        saveMessagesImmediately(updatedMessages);
-        return updatedMessages;
-      });
+      setMessages(prev => [...prev, previewMessage]);
 
       // Auto-open right pane immediately with placeholder content
       setIsArtifactMode(true);
@@ -2341,11 +2199,7 @@ function TestChatComponent() {
     if (!currentActiveSessionId) {
       const newSession = await optimizedSupabaseService.createNewSession(input.trim() || (selectedFilesForUpload.length > 0 ? "Image Upload" : undefined));
       setActiveSessionId(newSession.id);
-      
-      // Save to both sessionStorage (immediate) and database (persistent)
-      sessionStorage.setItem('active-session-id', newSession.id);
       saveActiveSessionId(newSession.id);
-      
       currentActiveSessionId = newSession.id;
       setMessages([]);
     }
@@ -2386,13 +2240,7 @@ function TestChatComponent() {
     if (selectedFilesForUpload.length > 0) {
         (userMessageForDisplay as any).imageUrls = imagePreviewUrls || undefined;
     }
-    
-    setMessages((prev) => {
-      const updatedMessages = [...prev, userMessageForDisplay];
-      // Save immediately when user message is added
-      saveMessagesImmediately(updatedMessages);
-      return updatedMessages;
-    });
+    setMessages((prev) => [...prev, userMessageForDisplay]);
     setInput("");
     
     // Clear any previous thinking state - each query gets fresh state
@@ -2405,8 +2253,8 @@ function TestChatComponent() {
       setCurrentReasoningMessageId(upcomingAiMessageId);
       setLiveReasoning('Starting to think...');
     } else {
-      setCurrentThinkingMessageId(upcomingAiMessageId);
-      setLiveThinking('Starting to think...');
+    setCurrentThinkingMessageId(upcomingAiMessageId);
+    setLiveThinking('Starting to think...');
     }
     
     // Create placeholder AI message immediately so think box can appear
@@ -2423,13 +2271,8 @@ function TestChatComponent() {
       isProcessed: false
     };
     
-    // Add placeholder AI message immediately and save to database
-    setMessages((prev) => {
-      const updatedMessages = [...prev, placeholderAiMessage];
-      // Save immediately when placeholder AI message is added
-      saveMessagesImmediately(updatedMessages);
-      return updatedMessages;
-    });
+    // Add placeholder AI message immediately
+    setMessages((prev) => [...prev, placeholderAiMessage]);
     
       if (selectedFilesForUpload.length > 0) {
         const clientSideSupabase = createSupabaseClient();
@@ -2554,9 +2397,9 @@ function TestChatComponent() {
         // Make fresh API call
         console.log(`[Performance] Making fresh API call to ${apiEndpoint}`);
         res = await fetch(apiEndpoint, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(apiPayload),
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(apiPayload),
           signal: newAbortController.signal,
         });
         
@@ -2646,18 +2489,11 @@ function TestChatComponent() {
                     // Update the existing placeholder AI message with content
                     if (aiMessageId) {
                       setMessages((prev) => {
-                        const updatedMessages = prev.map(msg => 
+                        return prev.map(msg => 
                           msg.id === aiMessageId 
                             ? { ...msg, content: mainContent, isStreaming: true }
                             : msg
                         );
-                        
-                        // Throttled save during streaming - only save occasionally to reduce load
-                        if (contentBuffer.length % 500 === 0) {
-                          saveMessagesImmediately(updatedMessages);
-                        }
-                        
-                        return updatedMessages;
                       });
                       hasCreatedMessage = true; // Mark as created after first update
                     }
@@ -2669,8 +2505,8 @@ function TestChatComponent() {
                         setLiveReasoning(thinkContent);
                         setCurrentReasoningMessageId(aiMessageId);
                       } else {
-                        setLiveThinking(thinkContent);
-                        setCurrentThinkingMessageId(aiMessageId); // Link thinking to the main message
+                      setLiveThinking(thinkContent);
+                      setCurrentThinkingMessageId(aiMessageId); // Link thinking to the main message
                       }
                     }
                     
@@ -2691,7 +2527,7 @@ function TestChatComponent() {
           
           // First, stop streaming but keep content as-is for smooth transition
           setMessages((prev) => {
-            const updatedMessages = prev.map(msg => 
+            return prev.map(msg => 
               msg.id === aiMessageId 
                 ? { 
                     ...msg, 
@@ -2700,32 +2536,31 @@ function TestChatComponent() {
                   }
                 : msg
             );
-            // Save immediately when streaming stops
-            saveMessagesImmediately(updatedMessages);
-            return updatedMessages;
           });
           
-          // Apply final processing WITH structured reasoning data immediately
-          // to preserve thinking content separately for proper storage and display
-          setMessages((prev) => {
-            const updatedMessages = prev.map(msg => 
-              msg.id === aiMessageId 
-                ? { 
-                    ...msg, 
-                    content: finalMainContent, // Main content without embedded tags
-                    contentType: 'reasoning',
-                    thinkingContent: finalThinkContent.trim() || undefined, // Separate thinking field
-                    mainContent: finalMainContent, // Separate main content field
-                    isProcessed: true,
-                  }
-                : msg
-            );
-            
-            // Save messages to Supabase immediately - no delay to prevent race condition
-            saveMessagesOnQueryComplete(updatedMessages);
-            
-            return updatedMessages;
-          });
+          // Then, after a brief delay, apply final processing WITH embedded think tags
+          // to preserve thinking content for "Thought" state after completion
+          setTimeout(() => {
+            setMessages((prev) => {
+              const updatedMessages = prev.map(msg => 
+                msg.id === aiMessageId 
+                  ? { 
+                      ...msg, 
+                      content: finalThinkContent.trim().length > 0 
+                        ? `<think>${finalThinkContent}</think>${finalMainContent}` // Preserve thinking for permanent "Thought" state
+                        : finalMainContent, // No thinking content, just main content
+                      contentType: 'reasoning',
+                      isProcessed: true,
+                    }
+                  : msg
+              );
+              
+              // Save messages to Supabase now that the chat query is complete
+              saveMessagesOnQueryComplete(updatedMessages);
+              
+              return updatedMessages;
+            });
+          }, 300); // Small delay for smooth transition
         }
         
         // Clear the live thinking state immediately to prevent double display
@@ -2857,84 +2692,28 @@ function TestChatComponent() {
     }
     
     try {
-      setIsLoading(true);
-      console.log('[Session Select] Loading session:', sessionId);
-      
-      setActiveSessionId(sessionId);
-      
-      // Save to both sessionStorage (immediate) and database (persistent)
-      sessionStorage.setItem('active-session-id', sessionId);
-      await saveActiveSessionId(sessionId);
-      
-      // Get messages using optimized service with retry logic
-      const sessionMessages = await loadSessionMessagesWithRetry(sessionId);
-      
-      const processedMessages = sessionMessages.map(msg => ({
-        ...msg,
-        isProcessed: true // Mark all loaded messages as processed
-      }));
-      
-      setMessages(processedMessages);
-      setInput('');
-      setImagePreviewUrls([]);
-      setSelectedFilesForUpload([]);
-      setShowHeading(processedMessages.length === 0); // Show heading if the loaded session is empty
-      setHasInteracted(true); // Assume interaction when a session is selected
-      setSidebarOpen(false); // Close sidebar
-      
-      console.log(`[Session Select] Successfully loaded ${processedMessages.length} messages`);
-      
-    } catch (error) {
-      console.error('[Session Select] Error selecting session:', error);
-      
-      // Show user-friendly error message instead of just falling back
-      setMessages([{
-        role: 'assistant',
-        content: `❌ **Failed to load chat session**\n\nThere was an error loading this conversation. This might be due to:\n- Network connectivity issues\n- Session data corruption\n- Temporary service unavailability\n\n**What you can do:**\n- Try refreshing the page\n- Select a different conversation\n- Start a new chat\n\nIf the problem persists, your data is safe and this is likely a temporary issue.`,
-        id: `error-${Date.now()}`,
-        timestamp: Date.now(),
-        isProcessed: true
-      }]);
-      
-      setShowHeading(false);
-      setHasInteracted(true);
-      setSidebarOpen(false);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Helper function to load session messages with retry logic
-  const loadSessionMessagesWithRetry = async (sessionId: string, retries = 3) => {
-    for (let attempt = 1; attempt <= retries; attempt++) {
-      try {
-        console.log(`[Session Messages] Loading attempt ${attempt} for session ${sessionId}`);
-        
-        // Use optimized service with caching
-        const messages = await optimizedSupabaseService.getSessionMessages(sessionId);
-        
-        if (messages.length === 0 && attempt < retries) {
-          // Empty might be cache issue, retry
-          console.log(`[Session Messages] Empty on attempt ${attempt}, retrying...`);
-          await new Promise(resolve => setTimeout(resolve, 500));
-          continue;
-        }
-        
-        return messages;
-        
-      } catch (error) {
-        console.error(`[Session Messages] Attempt ${attempt} failed:`, error);
-        
-        if (attempt === retries) {
-          throw error;
-        }
-        
-        // Wait before retry with exponential backoff
-        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-      }
-    }
+    setActiveSessionId(sessionId);
+      await saveActiveSessionId(sessionId); // Save the active session
     
-    return [];
+    // Get messages and ensure they're marked as processed
+      const sessionMessages = await getSessionMessages(sessionId);
+    const processedMessages = sessionMessages.map(msg => ({
+      ...msg,
+      isProcessed: true // Mark all loaded messages as processed
+    }));
+    
+    setMessages(processedMessages);
+    setInput('');
+    setImagePreviewUrls([]);
+    setSelectedFilesForUpload([]);
+      setShowHeading(processedMessages.length === 0); // Show heading if the loaded session is empty
+    setHasInteracted(true); // Assume interaction when a session is selected
+    setSidebarOpen(false); // Close sidebar
+    } catch (error) {
+      console.error('Error selecting session:', error);
+      // Fallback to new chat
+      handleNewChatRequest();
+    }
   };
 
   const handleNewChatRequest = async () => {
@@ -2945,10 +2724,6 @@ function TestChatComponent() {
     setShowHeading(true); // Show welcoming heading
     setHasInteracted(false); // Reset interaction state
     setActiveSessionId(null);
-    
-    // Clear both sessionStorage and database
-    sessionStorage.removeItem('active-session-id');
-    
     try {
       await saveActiveSessionId(null); // Clear the active session
     } catch (error) {
@@ -3671,7 +3446,13 @@ function TestChatComponent() {
 
   // Add new renderer below default one
   const renderReasoningMessage = (msg: LocalMessage, i: number) => {
-    return (
+    const { content: rawContent } = cleanAIResponse(msg.content);
+    const cleanContent = rawContent.replace(/<thinking-indicator.*?>\n<\/thinking-indicator>\n|<thinking-indicator.*?\/>/g, '');
+
+    const { processedContent, thinkBlocks } = processThinkTags(cleanContent);
+    const finalContent = makeCitationsClickable(processedContent, msg.webSources || []);
+
+                return (
       <React.Fragment key={msg.id + '-reasoning-' + i}>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -3680,17 +3461,17 @@ function TestChatComponent() {
           className="w-full text-left flex flex-col items-start ai-response-text mb-4 relative"
           style={{ color: '#fff' }}
         >
-          {/* Live reasoning box - only show during active streaming */}
+          {/* Live reasoning box */}
           {currentReasoningMessageId === msg.id && liveReasoning && (
             <ThinkingButton content={liveReasoning} isLive={true} />
           )}
 
-          {/* Use new structured ReasoningDisplay component */}
-          <ReasoningDisplay 
-            data={msg.content}
-            thinkingContent={msg.thinkingContent}
-            mainContent={msg.mainContent}
-          />
+          {/* Static think blocks */}
+          {thinkBlocks.length > 0 && currentReasoningMessageId !== msg.id && thinkBlocks.map((block, idx) => (
+            <ThinkingButton key={`${msg.id}-think-${idx}`} content={block.content} isLive={false} />
+          ))}
+
+          <ReasoningDisplay data={finalContent.replace(/<!-- think-block-\d+ -->/g, '')} />
         </motion.div>
       </React.Fragment>
     );

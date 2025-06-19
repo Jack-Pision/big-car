@@ -109,43 +109,33 @@ export class OptimizedSupabaseService {
         return [];
       }
 
-      const messages = data.map(msg => {
-        // Extract reasoning fields from structured content
-        const reasoning = msg.structured_content?.reasoning;
-        
-        return {
-          id: msg.id,
-          role: msg.role,
-          content: msg.content,
-          timestamp: new Date(msg.created_at).getTime(),
-          session_id: msg.session_id,
-          user_id: msg.user_id,
-          image_urls: msg.image_urls,
-          web_sources: msg.web_sources,
-          structured_content: msg.structured_content,
-          parent_id: msg.parent_id,
-          query: msg.query,
-          is_search_result: msg.is_search_result,
-          is_processed: msg.is_processed,
-          is_streaming: msg.is_streaming,
-          content_type: msg.content_type,
-          created_at: msg.created_at,
-          
-          // Restore reasoning fields from structured content
-          thinkingContent: reasoning?.thinkingContent,
-          mainContent: reasoning?.mainContent,
-          
-          // Backward compatibility
-          imageUrls: msg.image_urls,
-          webSources: msg.web_sources,
-          structuredContent: msg.structured_content,
-          parentId: msg.parent_id,
-          isSearchResult: msg.is_search_result,
-          isProcessed: msg.is_processed,
-          isStreaming: msg.is_streaming,
-          contentType: msg.content_type
-        };
-      });
+      const messages = data.map(msg => ({
+        id: msg.id,
+        role: msg.role,
+        content: msg.content,
+        timestamp: new Date(msg.created_at).getTime(),
+        session_id: msg.session_id,
+        user_id: msg.user_id,
+        image_urls: msg.image_urls,
+        web_sources: msg.web_sources,
+        structured_content: msg.structured_content,
+        parent_id: msg.parent_id,
+        query: msg.query,
+        is_search_result: msg.is_search_result,
+        is_processed: msg.is_processed,
+        is_streaming: msg.is_streaming,
+        content_type: msg.content_type,
+        created_at: msg.created_at,
+        // Backward compatibility
+        imageUrls: msg.image_urls,
+        webSources: msg.web_sources,
+        structuredContent: msg.structured_content,
+        parentId: msg.parent_id,
+        isSearchResult: msg.is_search_result,
+        isProcessed: msg.is_processed,
+        isStreaming: msg.is_streaming,
+        contentType: msg.content_type
+      }));
 
       // Cache for 10 minutes
       smartCache.set(cacheKey, messages, 10 * 60 * 1000);
@@ -160,39 +150,23 @@ export class OptimizedSupabaseService {
     if (!user) return;
 
     // Prepare batch insert
-    const messagesToInsert = messages.map(msg => {
-      // Handle reasoning-specific fields in structured_content
-      let structuredContent = msg.structured_content || msg.structuredContent || {};
-      
-      // Store reasoning fields in structured content for proper database storage
-      if (msg.thinkingContent || msg.mainContent) {
-        structuredContent = {
-          ...structuredContent,
-          reasoning: {
-            thinkingContent: msg.thinkingContent,
-            mainContent: msg.mainContent
-          }
-        };
-      }
-
-      return {
-        id: msg.id,
-        session_id: sessionId,
-        user_id: user.id,
-        role: msg.role,
-        content: msg.content,
-        image_urls: msg.image_urls || msg.imageUrls,
-        web_sources: msg.web_sources || msg.webSources,
-        structured_content: structuredContent,
-        parent_id: msg.parent_id || msg.parentId,
-        query: msg.query,
-        is_search_result: msg.is_search_result || msg.isSearchResult,
-        is_processed: msg.is_processed || msg.isProcessed,
-        is_streaming: msg.is_streaming || msg.isStreaming,
-        content_type: msg.content_type || msg.contentType,
-        created_at: msg.created_at || new Date().toISOString()
-      };
-    });
+    const messagesToInsert = messages.map(msg => ({
+      id: msg.id,
+      session_id: sessionId,
+      user_id: user.id,
+      role: msg.role,
+      content: msg.content,
+      image_urls: msg.image_urls || msg.imageUrls,
+      web_sources: msg.web_sources || msg.webSources,
+      structured_content: msg.structured_content || msg.structuredContent,
+      parent_id: msg.parent_id || msg.parentId,
+      query: msg.query,
+      is_search_result: msg.is_search_result || msg.isSearchResult,
+      is_processed: msg.is_processed || msg.isProcessed,
+      is_streaming: msg.is_streaming || msg.isStreaming,
+      content_type: msg.content_type || msg.contentType,
+      created_at: msg.created_at || new Date().toISOString()
+    }));
 
     console.log('[Optimized Service] Batch saving', messagesToInsert.length, 'messages');
 
