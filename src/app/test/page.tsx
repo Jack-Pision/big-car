@@ -2332,14 +2332,9 @@ function TestChatComponent(props?: TestChatProps) {
     setMessages((prev) => [...prev, userMessageForDisplay]);
     setInput("");
     
-    // Save the user message immediately to prevent loss during race conditions
-    if (currentActiveSessionId) {
-      try {
-        await optimizedSupabaseService.saveSessionMessages(currentActiveSessionId, [userMessageForDisplay]);
-      } catch (error) {
-        console.error('Error saving user message immediately:', error);
-      }
-    }
+    // User message will be saved with AI response as complete conversation
+    // This eliminates race conditions and reduces database calls by 50%
+    console.log('[Optimization] Skipping immediate user message save - will save complete conversation after AI response');
     
     // Clear any previous thinking state - each query gets fresh state
     setCurrentThinkingMessageId(null);
@@ -2623,7 +2618,26 @@ function TestChatComponent(props?: TestChatProps) {
         if (aiMessageId) {
           const { thinkContent: finalThinkContent, mainContent: finalMainContent } = extractThinkContentDuringStream(contentBuffer);
           
-          // First, stop streaming but keep content as-is for smooth transition
+          // Prepare final complete conversation for immediate save
+          const finalUpdatedMessages = messages.map(msg => 
+            msg.id === aiMessageId 
+              ? { 
+                  ...msg, 
+                  content: finalThinkContent.trim().length > 0 
+                    ? `<think>${finalThinkContent}</think>${finalMainContent}` // Preserve thinking for permanent "Thought" state
+                    : finalMainContent, // No thinking content, just main content
+                  contentType: 'reasoning',
+                  isProcessed: true,
+                  isStreaming: false, // Mark as completed
+                }
+              : msg
+          );
+          
+          // Save complete conversation immediately (fast like other AI chatbots)
+          console.log('[Optimization] Saving complete conversation immediately - no setTimeout delay');
+          saveMessagesOnQueryComplete(finalUpdatedMessages);
+          
+          // UI updates - First, stop streaming but keep content as-is for smooth transition
           setMessages((prev) => {
             return prev.map(msg => 
               msg.id === aiMessageId 
@@ -2636,29 +2650,10 @@ function TestChatComponent(props?: TestChatProps) {
             );
           });
           
-          // Then, after a brief delay, apply final processing WITH embedded think tags
-          // to preserve thinking content for "Thought" state after completion
+          // Then, after a brief delay, apply final processing for smooth UI
           setTimeout(() => {
-            setMessages((prev) => {
-              const updatedMessages = prev.map(msg => 
-                msg.id === aiMessageId 
-                  ? { 
-                      ...msg, 
-                      content: finalThinkContent.trim().length > 0 
-                        ? `<think>${finalThinkContent}</think>${finalMainContent}` // Preserve thinking for permanent "Thought" state
-                        : finalMainContent, // No thinking content, just main content
-                      contentType: 'reasoning',
-                      isProcessed: true,
-                    }
-                  : msg
-              );
-              
-              // Save messages to Supabase now that the chat query is complete
-              saveMessagesOnQueryComplete(updatedMessages);
-              
-              return updatedMessages;
-            });
-          }, 300); // Small delay for smooth transition
+            setMessages(finalUpdatedMessages);
+          }, 300); // UI smoothness only, data already saved
         }
         
         // Clear the live thinking state immediately to prevent double display
