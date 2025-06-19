@@ -1900,6 +1900,19 @@ function TestChatComponent() {
     }
   };
 
+  // New function for immediate message persistence during streaming
+  const saveMessagesImmediately = async (currentMessages: LocalMessage[]) => {
+    if (!activeSessionId || !user || currentMessages.length === 0) return;
+    
+    try {
+      // Save messages immediately without any delay
+      await optimizedSupabaseService.saveSessionMessages(activeSessionId, currentMessages);
+      console.log('[Immediate Save] Saved', currentMessages.length, 'messages to database');
+    } catch (error) {
+      console.error('[Immediate Save] Error saving messages:', error);
+    }
+  };
+
   // Helper to show the image in chat
   const showImageMsg = (content: string, imgSrc: string) => {
     setMessages((prev) => [
@@ -2039,16 +2052,20 @@ function TestChatComponent() {
 
       // Add user message to chat
       const userMessageId = uuidv4();
-      setMessages(prev => [
-        ...prev,
-        { 
-          role: 'user',
-          id: userMessageId,
-          content: input,
-          timestamp: Date.now(),
-          isProcessed: true
-        }
-      ]);
+      const userMessage: LocalMessage = { 
+        role: 'user',
+        id: userMessageId,
+        content: input,
+        timestamp: Date.now(),
+        isProcessed: true
+      };
+      
+      setMessages(prev => {
+        const updatedMessages = [...prev, userMessage];
+        // Save immediately when user message is added
+        saveMessagesImmediately(updatedMessages);
+        return updatedMessages;
+      });
 
       // Create a placeholder message for search results that will use the Search component
       const searchMessageId = uuidv4();
@@ -2117,7 +2134,12 @@ function TestChatComponent() {
         isProcessed: true
       };
       
-      setMessages(prev => [...prev, userMessage]);
+      setMessages(prev => {
+        const updatedMessages = [...prev, userMessage];
+        // Save immediately when user message is added
+        saveMessagesImmediately(updatedMessages);
+        return updatedMessages;
+      });
       setInput('');
       setIsLoading(true);
       setIsAiResponding(true);
@@ -2139,7 +2161,12 @@ function TestChatComponent() {
         isProcessed: false
       };
       
-      setMessages(prev => [...prev, previewMessage]);
+      setMessages(prev => {
+        const updatedMessages = [...prev, previewMessage];
+        // Save immediately when preview message is added
+        saveMessagesImmediately(updatedMessages);
+        return updatedMessages;
+      });
 
       // Auto-open right pane immediately with placeholder content
       setIsArtifactMode(true);
@@ -2359,7 +2386,13 @@ function TestChatComponent() {
     if (selectedFilesForUpload.length > 0) {
         (userMessageForDisplay as any).imageUrls = imagePreviewUrls || undefined;
     }
-    setMessages((prev) => [...prev, userMessageForDisplay]);
+    
+    setMessages((prev) => {
+      const updatedMessages = [...prev, userMessageForDisplay];
+      // Save immediately when user message is added
+      saveMessagesImmediately(updatedMessages);
+      return updatedMessages;
+    });
     setInput("");
     
     // Clear any previous thinking state - each query gets fresh state
@@ -2390,8 +2423,13 @@ function TestChatComponent() {
       isProcessed: false
     };
     
-    // Add placeholder AI message immediately
-    setMessages((prev) => [...prev, placeholderAiMessage]);
+    // Add placeholder AI message immediately and save to database
+    setMessages((prev) => {
+      const updatedMessages = [...prev, placeholderAiMessage];
+      // Save immediately when placeholder AI message is added
+      saveMessagesImmediately(updatedMessages);
+      return updatedMessages;
+    });
     
       if (selectedFilesForUpload.length > 0) {
         const clientSideSupabase = createSupabaseClient();
@@ -2608,11 +2646,18 @@ function TestChatComponent() {
                     // Update the existing placeholder AI message with content
                     if (aiMessageId) {
                       setMessages((prev) => {
-                        return prev.map(msg => 
+                        const updatedMessages = prev.map(msg => 
                           msg.id === aiMessageId 
                             ? { ...msg, content: mainContent, isStreaming: true }
                             : msg
                         );
+                        
+                        // Throttled save during streaming - only save occasionally to reduce load
+                        if (contentBuffer.length % 500 === 0) {
+                          saveMessagesImmediately(updatedMessages);
+                        }
+                        
+                        return updatedMessages;
                       });
                       hasCreatedMessage = true; // Mark as created after first update
                     }
@@ -2646,7 +2691,7 @@ function TestChatComponent() {
           
           // First, stop streaming but keep content as-is for smooth transition
           setMessages((prev) => {
-            return prev.map(msg => 
+            const updatedMessages = prev.map(msg => 
               msg.id === aiMessageId 
                 ? { 
                     ...msg, 
@@ -2655,31 +2700,32 @@ function TestChatComponent() {
                   }
                 : msg
             );
+            // Save immediately when streaming stops
+            saveMessagesImmediately(updatedMessages);
+            return updatedMessages;
           });
           
-          // Then, after a brief delay, apply final processing WITH structured reasoning data
+          // Apply final processing WITH structured reasoning data immediately
           // to preserve thinking content separately for proper storage and display
-          setTimeout(() => {
-            setMessages((prev) => {
-              const updatedMessages = prev.map(msg => 
-                msg.id === aiMessageId 
-                  ? { 
-                      ...msg, 
-                      content: finalMainContent, // Main content without embedded tags
-                      contentType: 'reasoning',
-                      thinkingContent: finalThinkContent.trim() || undefined, // Separate thinking field
-                      mainContent: finalMainContent, // Separate main content field
-                      isProcessed: true,
-                    }
-                  : msg
-              );
-              
-              // Save messages to Supabase now that the chat query is complete
-              saveMessagesOnQueryComplete(updatedMessages);
-              
-              return updatedMessages;
-            });
-          }, 300); // Small delay for smooth transition
+          setMessages((prev) => {
+            const updatedMessages = prev.map(msg => 
+              msg.id === aiMessageId 
+                ? { 
+                    ...msg, 
+                    content: finalMainContent, // Main content without embedded tags
+                    contentType: 'reasoning',
+                    thinkingContent: finalThinkContent.trim() || undefined, // Separate thinking field
+                    mainContent: finalMainContent, // Separate main content field
+                    isProcessed: true,
+                  }
+                : msg
+            );
+            
+            // Save messages to Supabase immediately - no delay to prevent race condition
+            saveMessagesOnQueryComplete(updatedMessages);
+            
+            return updatedMessages;
+          });
         }
         
         // Clear the live thinking state immediately to prevent double display
