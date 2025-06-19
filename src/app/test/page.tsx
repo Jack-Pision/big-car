@@ -1640,7 +1640,7 @@ const isArtifactContentComplete = (content: string): boolean => {
 
 function TestChatComponent() {
   const router = useRouter();
-  const { user, showSettingsModal } = useAuth();
+  const { user, loading, showSettingsModal } = useAuth();
   
   // State management
   const [messages, setMessages] = useState<LocalMessage[]>([]);
@@ -1755,35 +1755,60 @@ function TestChatComponent() {
   // Effect to load the last active session or create a new one on initial load
   useEffect(() => {
     const loadActiveSession = async () => {
-      // Check if user exists at the time of execution instead of depending on it
-      if (!user) return;
+      // ✅ Wait for authentication to complete before loading session
+      if (loading || !user) {
+        console.log('[Session Load] Waiting for auth...', { loading, hasUser: !!user });
+        return;
+      }
+      
+      // ✅ Add a small delay to ensure user auth is fully settled
+      await new Promise(resolve => setTimeout(resolve, 100));
       
       try {
+        console.log('[Session Load] Loading active session for user:', user.id);
         const savedSessionId = await getActiveSessionId();
-    if (savedSessionId) {
-      // Load the saved session
-      setActiveSessionId(savedSessionId);
-      
-      // Get messages and ensure they're marked as processed
-                  // Use optimized service with caching
-        const sessionMessages = await optimizedSupabaseService.getSessionMessages(savedSessionId);
-      const processedMessages = sessionMessages.map(msg => ({
-        ...msg,
-        isProcessed: true // Mark all loaded messages as processed
-      }));
-      
-      setMessages(processedMessages);
-      setShowHeading(false);
-      setHasInteracted(true);
-    } else {
-      // Show welcome page for new users
-      setShowHeading(true);
-      setHasInteracted(false);
-      setActiveSessionId(null);
-      setMessages([]);
-    }
+        console.log('[Session Load] getActiveSessionId returned:', savedSessionId);
+        
+        if (savedSessionId) {
+          console.log('[Session Load] Found saved session:', savedSessionId);
+          
+          // ✅ Verify the session exists and belongs to the user before loading
+          try {
+            const sessionMessages = await optimizedSupabaseService.getSessionMessages(savedSessionId);
+            console.log('[Session Load] Loaded messages count:', sessionMessages.length);
+            
+            // Load the saved session
+            setActiveSessionId(savedSessionId);
+            
+            const processedMessages = sessionMessages.map(msg => ({
+              ...msg,
+              isProcessed: true // Mark all loaded messages as processed
+            }));
+            
+            setMessages(processedMessages);
+            setShowHeading(processedMessages.length === 0);
+            setHasInteracted(processedMessages.length > 0);
+            
+            console.log('[Session Load] Successfully restored session:', savedSessionId);
+          } catch (sessionError) {
+            console.error('[Session Load] Session not accessible, clearing:', sessionError);
+            // Clear invalid session and show welcome page
+            await saveActiveSessionId(null);
+            setShowHeading(true);
+            setHasInteracted(false);
+            setActiveSessionId(null);
+            setMessages([]);
+          }
+        } else {
+          console.log('[Session Load] No saved session found, showing welcome page');
+          // Show welcome page for new users
+          setShowHeading(true);
+          setHasInteracted(false);
+          setActiveSessionId(null);
+          setMessages([]);
+        }
       } catch (error) {
-        console.error('Error loading active session:', error);
+        console.error('[Session Load] Error loading active session:', error);
         // Fallback to showing welcome page
         setShowHeading(true);
         setHasInteracted(false);
@@ -1792,9 +1817,9 @@ function TestChatComponent() {
       }
     };
 
-    // Only run this effect once when component mounts
+    // ✅ Run when user or loading state changes
     loadActiveSession();
-  }, []); // Empty dependency array - only run once
+  }, [user, loading]); // ✅ Fixed: Add user and loading as dependencies
 
   // Effect to save messages whenever they change for the active session
   useEffect(() => {
@@ -2762,17 +2787,22 @@ function TestChatComponent() {
     }
     
     try {
-    setActiveSessionId(sessionId);
-      await saveActiveSessionId(sessionId); // Save the active session
+      console.log('[Session Select] Switching to session:', sessionId);
+      
+      setActiveSessionId(sessionId);
+      await saveActiveSessionId(sessionId); // ✅ Save the active session (this should persist)
+      console.log('[Session Select] Saved as active session:', sessionId);
     
-    // Get messages and ensure they're marked as processed
+      // Get messages and ensure they're marked as processed
       const sessionMessages = await getSessionMessages(sessionId);
-    const processedMessages = sessionMessages.map(msg => ({
-      ...msg,
-      isProcessed: true // Mark all loaded messages as processed
-    }));
+      console.log('[Session Select] Loaded messages:', sessionMessages.length);
+      
+      const processedMessages = sessionMessages.map(msg => ({
+        ...msg,
+        isProcessed: true // Mark all loaded messages as processed
+      }));
     
-    setMessages(processedMessages);
+      setMessages(processedMessages);
     
     // ✅ Load and restore UI state from the session
     try {
@@ -2808,6 +2838,7 @@ function TestChatComponent() {
         
         console.log('[UI State] Successfully restored session UI state');
       } else {
+        console.log('[UI State] No previous UI state found, resetting');
         // Reset UI state sequence for new sessions
         uiStateService.resetInteractionSequence();
       }
@@ -2818,11 +2849,13 @@ function TestChatComponent() {
     setInput('');
     setImagePreviewUrls([]);
     setSelectedFilesForUpload([]);
-      setShowHeading(processedMessages.length === 0); // Show heading if the loaded session is empty
+    setShowHeading(processedMessages.length === 0); // Show heading if the loaded session is empty
     setHasInteracted(true); // Assume interaction when a session is selected
     setSidebarOpen(false); // Close sidebar
+    
+    console.log('[Session Select] Successfully switched to session:', sessionId);
     } catch (error) {
-      console.error('Error selecting session:', error);
+      console.error('[Session Select] Error selecting session:', error);
       // Fallback to new chat
       handleNewChatRequest();
     }

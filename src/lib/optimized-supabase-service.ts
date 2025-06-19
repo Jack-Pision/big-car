@@ -400,7 +400,12 @@ export class OptimizedSupabaseService {
   async saveActiveSessionId(sessionId: string | null): Promise<void> {
     try {
       const user = await this.getCachedUser();
-      if (!user) return;
+      if (!user) {
+        console.log('[saveActiveSessionId] No user found');
+        return;
+      }
+
+      console.log('[saveActiveSessionId] Saving session for user:', user.id, 'sessionId:', sessionId);
 
       const { error } = await supabase
         .from('user_preferences')
@@ -413,6 +418,8 @@ export class OptimizedSupabaseService {
 
       if (error) {
         console.error('Error saving active session ID:', error);
+      } else {
+        console.log('[saveActiveSessionId] Successfully saved active session:', sessionId);
       }
     } catch (error) {
       console.error('Error in saveActiveSessionId:', error);
@@ -423,7 +430,12 @@ export class OptimizedSupabaseService {
   async getActiveSessionId(): Promise<string | null> {
     try {
       const user = await this.getCachedUser();
-      if (!user) return null;
+      if (!user) {
+        console.log('[getActiveSessionId] No user found');
+        return null;
+      }
+
+      console.log('[getActiveSessionId] Getting active session for user:', user.id);
 
       const { data, error } = await supabase
         .from('user_preferences')
@@ -434,12 +446,14 @@ export class OptimizedSupabaseService {
       if (error) {
         if (error.code === 'PGRST116') {
           // No preferences found, return null
+          console.log('[getActiveSessionId] No preferences found for user');
           return null;
         }
         console.error('Error getting active session ID:', error);
         return null;
       }
 
+      console.log('[getActiveSessionId] Found data:', data);
       return data?.active_session_id || null;
     } catch (error) {
       console.error('Error in getActiveSessionId:', error);
