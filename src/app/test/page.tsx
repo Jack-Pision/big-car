@@ -23,6 +23,8 @@ import {
   getSessions as getSessionsFromService,
   getSessionMessages,
   saveSessionMessages,
+  saveMessageInstantly,
+  updateMessageContent,
   createNewSession,
   createNewSessionWithURL,
   deleteSession,
@@ -2047,18 +2049,25 @@ function TestChatComponent(props?: TestChatProps) {
       if (!hasInteracted) setHasInteracted(true);
       if (showHeading) setShowHeading(false);
 
-      // Add user message to chat
+      // Add user message to chat and save instantly
       const userMessageId = uuidv4();
-      setMessages(prev => [
-        ...prev,
-        { 
-          role: 'user',
-          id: userMessageId,
-          content: input,
-          timestamp: Date.now(),
-          isProcessed: true
-        }
-      ]);
+      const userMessage: LocalMessage = { 
+        role: 'user',
+        id: userMessageId,
+        content: input,
+        timestamp: Date.now(),
+        isProcessed: true
+      };
+      
+      setMessages(prev => [...prev, userMessage]);
+      
+      // INSTANT SAVE: Save user message immediately
+      try {
+        await saveMessageInstantly(currentActiveSessionId, userMessage);
+        console.log('[Search Mode] User message saved instantly');
+      } catch (error) {
+        console.error('[Search Mode] Failed to instantly save user message:', error);
+      }
 
       // Create a placeholder message for search results that will use the Search component
       const searchMessageId = uuidv4();
@@ -2073,6 +2082,15 @@ function TestChatComponent(props?: TestChatProps) {
       };
       
       setMessages(prev => [...prev, searchPlaceholder]);
+      
+      // INSTANT SAVE: Save search placeholder immediately
+      try {
+        await saveMessageInstantly(currentActiveSessionId, searchPlaceholder);
+        console.log('[Search Mode] Search placeholder saved instantly');
+      } catch (error) {
+        console.error('[Search Mode] Failed to instantly save search placeholder:', error);
+      }
+      
       setInput('');
       setIsLoading(true);
       
@@ -2105,7 +2123,7 @@ function TestChatComponent(props?: TestChatProps) {
 
       const quickTitle = generateQuickTitle(input.trim());
 
-      // Add user message
+      // Add user message and save instantly
       const userMessageId = uuidv4();
       const userMessage: LocalMessage = {
         role: 'user',
@@ -2116,6 +2134,15 @@ function TestChatComponent(props?: TestChatProps) {
       };
       
       setMessages(prev => [...prev, userMessage]);
+      
+      // INSTANT SAVE: Save user message immediately
+      try {
+        await saveMessageInstantly(currentActiveSessionId, userMessage);
+        console.log('[Artifact Mode] User message saved instantly');
+      } catch (error) {
+        console.error('[Artifact Mode] Failed to instantly save user message:', error);
+      }
+      
       setInput('');
       setIsLoading(true);
       setIsAiResponding(true);
@@ -2123,7 +2150,7 @@ function TestChatComponent(props?: TestChatProps) {
       setArtifactStreamingContent('');
       setArtifactProgress('Initializing artifact generation...');
 
-      // Add immediate preview card with generated title
+      // Add immediate preview card with generated title and save instantly
       const aiMessageId = uuidv4();
       const previewMessage: LocalMessage = {
         role: 'assistant',
@@ -2138,6 +2165,14 @@ function TestChatComponent(props?: TestChatProps) {
       };
       
       setMessages(prev => [...prev, previewMessage]);
+      
+      // INSTANT SAVE: Save AI preview message immediately
+      try {
+        await saveMessageInstantly(currentActiveSessionId, previewMessage);
+        console.log('[Artifact Mode] AI preview message saved instantly');
+      } catch (error) {
+        console.error('[Artifact Mode] Failed to instantly save AI preview message:', error);
+      }
 
       // Auto-open right pane immediately with placeholder content
       setIsArtifactMode(true);
@@ -2265,9 +2300,13 @@ function TestChatComponent(props?: TestChatProps) {
           msg.id === aiMessageId ? finalAiMessage : msg
         ));
         
-        // Save messages
-        const updatedMessages = [...messages, userMessage, finalAiMessage];
-        await saveMessagesOnQueryComplete(updatedMessages);
+        // INSTANT SAVE: Update AI message content immediately
+        try {
+          await updateMessageContent(currentActiveSessionId, aiMessageId, finalAiMessage.content, true);
+          console.log('[Artifact Mode] Final AI message content updated instantly');
+        } catch (error) {
+          console.error('[Artifact Mode] Failed to instantly update AI message content:', error);
+        }
 
       } catch (error) {
         console.error('Artifact streaming error:', error);
@@ -2349,12 +2388,13 @@ function TestChatComponent(props?: TestChatProps) {
     setMessages((prev) => [...prev, userMessageForDisplay]);
     setInput("");
     
-    // Save the user message immediately to prevent loss during race conditions
+    // INSTANT SAVE: Save user message immediately to prevent loss during race conditions
     if (currentActiveSessionId) {
       try {
-        await optimizedSupabaseService.saveSessionMessages(currentActiveSessionId, [userMessageForDisplay]);
+        await saveMessageInstantly(currentActiveSessionId, userMessageForDisplay);
+        console.log('[Default Chat] User message saved instantly');
       } catch (error) {
-        console.error('Error saving user message immediately:', error);
+        console.error('[Default Chat] Failed to instantly save user message:', error);
       }
     }
     
@@ -2386,8 +2426,18 @@ function TestChatComponent(props?: TestChatProps) {
       isProcessed: false
     };
     
-    // Add placeholder AI message immediately
+    // Add placeholder AI message immediately and save
     setMessages((prev) => [...prev, placeholderAiMessage]);
+    
+    // INSTANT SAVE: Save AI placeholder message immediately
+    if (currentActiveSessionId) {
+      try {
+        await saveMessageInstantly(currentActiveSessionId, placeholderAiMessage);
+        console.log('[Default Chat] AI placeholder message saved instantly');
+      } catch (error) {
+        console.error('[Default Chat] Failed to instantly save AI placeholder message:', error);
+      }
+    }
     
       if (selectedFilesForUpload.length > 0) {
         const clientSideSupabase = createSupabaseClient();
@@ -2558,8 +2608,12 @@ function TestChatComponent(props?: TestChatProps) {
       };
       setMessages((prev) => {
         const updatedMessages = [...prev, aiMsg];
-        // Save messages to Supabase now that the structured query is complete
-        saveMessagesOnQueryComplete(updatedMessages);
+        // INSTANT SAVE: Save structured query response immediately
+        if (currentActiveSessionId) {
+          saveMessageInstantly(currentActiveSessionId, aiMsg).catch(error => {
+            console.error('[Structured Query] Failed to instantly save AI message:', error);
+          });
+        }
         return updatedMessages;
       });
       } else { 
@@ -2611,6 +2665,13 @@ function TestChatComponent(props?: TestChatProps) {
                         );
                       });
                       hasCreatedMessage = true; // Mark as created after first update
+                      
+                      // INSTANT SAVE: Update message content in real-time during streaming
+                      if (currentActiveSessionId && mainContent.trim().length > 0) {
+                        updateMessageContent(currentActiveSessionId, aiMessageId, mainContent, false).catch(error => {
+                          console.error('[Default Chat] Failed to update streaming content:', error);
+                        });
+                      }
                     }
                     
                     // Update live thinking display - this goes directly to think box
@@ -2671,10 +2732,15 @@ function TestChatComponent(props?: TestChatProps) {
                   : msg
               );
               
-              // Save messages to Supabase with explicit session ID to avoid timing issues
+              // INSTANT SAVE: Mark message as processed and update final content
               const currentSessionId = sessionIdRef.current;
-              if (currentSessionId) {
-                saveMessagesOnQueryCompleteWithSessionId(updatedMessages, currentSessionId);
+              if (currentSessionId && aiMessageId) {
+                const finalContent = finalThinkContent.trim().length > 0 
+                  ? `<think>${finalThinkContent}</think>${finalMainContent}` 
+                  : finalMainContent;
+                updateMessageContent(currentSessionId, aiMessageId, finalContent, true).catch(error => {
+                  console.error('[Default Chat] Failed to update final message content:', error);
+                });
               }
               
               return updatedMessages;
@@ -2726,11 +2792,14 @@ function TestChatComponent(props?: TestChatProps) {
             isProcessed: true // Mark as processed
           },
         ];
-        // Save messages to Supabase after abort
-        const currentSessionId = sessionIdRef.current || activeSessionId;
-        if (currentSessionId) {
-          saveMessagesOnQueryCompleteWithSessionId(updatedMessages, currentSessionId);
-        }
+                  // INSTANT SAVE: Save abort message immediately
+          const currentSessionId = sessionIdRef.current || activeSessionId;
+          if (currentSessionId) {
+            const abortMessage = updatedMessages[updatedMessages.length - 1];
+            saveMessageInstantly(currentSessionId, abortMessage).catch(error => {
+              console.error('[Error Handling] Failed to instantly save abort message:', error);
+            });
+          }
         return updatedMessages;
       });
       } else {
@@ -2747,11 +2816,14 @@ function TestChatComponent(props?: TestChatProps) {
             isProcessed: true // Mark as processed
           },
           ];
-          // Save messages to Supabase after error
-          const currentSessionId = sessionIdRef.current || activeSessionId;
-          if (currentSessionId) {
-            saveMessagesOnQueryCompleteWithSessionId(updatedMessages, currentSessionId);
-          }
+                      // INSTANT SAVE: Save error message immediately
+            const currentSessionId = sessionIdRef.current || activeSessionId;
+            if (currentSessionId) {
+              const errorMessage = updatedMessages[updatedMessages.length - 1];
+              saveMessageInstantly(currentSessionId, errorMessage).catch(error => {
+                console.error('[Error Handling] Failed to instantly save error message:', error);
+              });
+            }
           return updatedMessages;
         });
       }

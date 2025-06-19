@@ -144,7 +144,118 @@ export class OptimizedSupabaseService {
     });
   }
 
-  // Batch save messages to reduce database calls
+  // INSTANT: Save single message immediately (for real-time saving)
+  async saveMessageInstantly(sessionId: string, message: Message): Promise<void> {
+    const user = await this.getCachedUser();
+    if (!user) return;
+
+    const messageToInsert = {
+      id: message.id,
+      session_id: sessionId,
+      user_id: user.id,
+      role: message.role,
+      content: message.content,
+      image_urls: message.image_urls || message.imageUrls,
+      web_sources: message.web_sources || message.webSources,
+      structured_content: message.structured_content || message.structuredContent,
+      parent_id: message.parent_id || message.parentId,
+      query: message.query,
+      is_search_result: message.is_search_result || message.isSearchResult,
+      is_processed: message.is_processed || message.isProcessed,
+      is_streaming: message.is_streaming || message.isStreaming,
+      content_type: message.content_type || message.contentType,
+      created_at: message.created_at || new Date().toISOString()
+    };
+
+    console.log('[Optimized Service] Instantly saving message:', message.id, message.role);
+
+    try {
+      // Use upsert for instant save
+      const { error } = await supabase
+        .from('messages')
+        .upsert([messageToInsert], { 
+          onConflict: 'id',
+          ignoreDuplicates: false 
+        });
+
+      if (error) {
+        console.error('Error instantly saving message:', error);
+        throw error;
+      }
+
+      // Update cache immediately
+      const cacheKey = CACHE_KEYS.MESSAGES(sessionId);
+      const cachedMessages = smartCache.get<Message[]>(cacheKey) || [];
+      const existingIndex = cachedMessages.findIndex(m => m.id === message.id);
+      
+      if (existingIndex >= 0) {
+        cachedMessages[existingIndex] = message;
+      } else {
+        cachedMessages.push(message);
+      }
+      
+      // Sort by timestamp to maintain order
+      cachedMessages.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+      
+      smartCache.set(cacheKey, cachedMessages, 10 * 60 * 1000);
+
+      // Update session timestamp (batched)
+      this.batchUpdateSessionTimestamp(sessionId);
+    } catch (error) {
+      console.error('Failed to instantly save message:', error);
+      // Don't throw - allow UI to continue, message will be saved on next batch
+    }
+  }
+
+  // INSTANT: Update message content during streaming
+  async updateMessageContent(sessionId: string, messageId: string, content: string, isProcessed: boolean = false): Promise<void> {
+    const user = await this.getCachedUser();
+    if (!user) return;
+
+    console.log('[Optimized Service] Updating message content:', messageId, 'processed:', isProcessed);
+
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .update({ 
+          content: content,
+          is_processed: isProcessed,
+          is_streaming: !isProcessed,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', messageId)
+        .eq('session_id', sessionId)
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error('Error updating message content:', error);
+        return; // Don't throw, allow streaming to continue
+      }
+
+      // Update cache immediately
+      const cacheKey = CACHE_KEYS.MESSAGES(sessionId);
+      const cachedMessages = smartCache.get<Message[]>(cacheKey) || [];
+      const messageIndex = cachedMessages.findIndex(m => m.id === messageId);
+      
+      if (messageIndex >= 0) {
+        cachedMessages[messageIndex] = {
+          ...cachedMessages[messageIndex],
+          content: content,
+          isProcessed: isProcessed,
+          is_processed: isProcessed,
+          isStreaming: !isProcessed,
+          is_streaming: !isProcessed
+        };
+        
+        smartCache.set(cacheKey, cachedMessages, 10 * 60 * 1000);
+      }
+    } catch (error) {
+      console.error('Failed to update message content:', error);
+      // Don't throw - allow streaming to continue
+    }
+  }
+
+  // Batch save messages to reduce database calls (keep existing for compatibility)
   async saveSessionMessages(sessionId: string, messages: Message[]): Promise<void> {
     const user = await this.getCachedUser();
     if (!user) return;
@@ -443,6 +554,14 @@ export async function getSessionMessages(sessionId: string): Promise<Message[]> 
 
 export async function saveSessionMessages(sessionId: string, messages: Message[]): Promise<void> {
   return optimizedSupabaseService.saveSessionMessages(sessionId, messages);
+}
+
+export async function saveMessageInstantly(sessionId: string, message: Message): Promise<void> {
+  return optimizedSupabaseService.saveMessageInstantly(sessionId, message);
+}
+
+export async function updateMessageContent(sessionId: string, messageId: string, content: string, isProcessed: boolean = false): Promise<void> {
+  return optimizedSupabaseService.updateMessageContent(sessionId, messageId, content, isProcessed);
 }
 
 export async function createNewSession(firstMessageContent?: string): Promise<Session> {
