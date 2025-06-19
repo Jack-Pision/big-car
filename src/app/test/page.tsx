@@ -1780,17 +1780,39 @@ function TestChatComponent(props?: TestChatProps) {
       // Mark that initial load is complete after this run
       isInitialLoadRef.current = false;
       
-      try {
+              try {
         let sessionIdToLoad = initialSessionId;
         
-        // Check for URL hash parameters (from dynamic routing redirect)
-        if (!sessionIdToLoad && typeof window !== 'undefined' && window.location.hash) {
-          const hashParams = new URLSearchParams(window.location.hash.substring(1));
-          const hashSessionId = hashParams.get('session');
-          if (hashSessionId) {
-            sessionIdToLoad = hashSessionId;
-            // Clear the hash after extracting the session ID
-            window.history.replaceState(null, '', window.location.pathname);
+        // ENHANCED URL SESSION DETECTION: Check multiple sources for session ID
+        if (!sessionIdToLoad && typeof window !== 'undefined') {
+          // 1. Check if we're on a chat URL path (most reliable for reloads)
+          const pathMatch = window.location.pathname.match(/^\/chat\/([a-zA-Z0-9-]+)$/);
+          if (pathMatch) {
+            sessionIdToLoad = pathMatch[1];
+            console.log('[Session Load] Found session in URL path:', sessionIdToLoad);
+          }
+          
+          // 2. Check URL search params (secondary)
+          if (!sessionIdToLoad) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlSessionId = urlParams.get('session');
+            if (urlSessionId) {
+              sessionIdToLoad = urlSessionId;
+              console.log('[Session Load] Found session in URL params:', sessionIdToLoad);
+            }
+          }
+          
+          // 3. Check URL hash parameters (fallback for legacy URLs)
+          if (!sessionIdToLoad && window.location.hash) {
+            const hashParams = new URLSearchParams(window.location.hash.substring(1));
+            const hashSessionId = hashParams.get('session');
+            if (hashSessionId) {
+              sessionIdToLoad = hashSessionId;
+              console.log('[Session Load] Found session in URL hash:', sessionIdToLoad);
+              // Convert hash to proper URL format for better persistence
+              const newUrl = `/chat/${hashSessionId}`;
+              window.history.replaceState(null, '', newUrl);
+            }
           }
         }
         
@@ -1799,6 +1821,13 @@ function TestChatComponent(props?: TestChatProps) {
           console.log('[Session Load] Fetching saved session ID - ONE TIME ONLY');
           const savedSessionId = await getActiveSessionId();
           sessionIdToLoad = savedSessionId ?? undefined;
+          
+          // If we loaded from saved session, update URL for future reloads
+          if (sessionIdToLoad && typeof window !== 'undefined') {
+            const newUrl = `/chat/${sessionIdToLoad}`;
+            window.history.replaceState(null, '', newUrl);
+            console.log('[Session Load] Updated URL for persistence:', newUrl);
+          }
         }
         
         if (sessionIdToLoad) {
@@ -1829,6 +1858,11 @@ function TestChatComponent(props?: TestChatProps) {
           setHasInteracted(false);
           setActiveSessionId(null);
           setMessages([]);
+          
+          // Clear URL if no session to load (ensure clean state)
+          if (typeof window !== 'undefined' && window.location.pathname !== '/test') {
+            window.history.replaceState(null, '', '/test');
+          }
         }
       } catch (error) {
         console.error('Error loading active session:', error);
@@ -1854,22 +1888,21 @@ function TestChatComponent(props?: TestChatProps) {
 
     try {
       let newSessionId: string;
+      let newUrl: string | null = null;
       
       // Only use URL routing if we don't already have an initialSessionId (not on dynamic route)
       if (!initialSessionId && messageContent) {
         const {session, url} = await createNewSessionWithURL(messageContent);
         newSessionId = session.id;
-        
-        // Set pending URL update for later application (after AI response)
-        setPendingUrlUpdate(url);
+        newUrl = url;
       } else {
         // Fallback to regular session creation
         const newSession = await optimizedSupabaseService.createNewSession(messageContent);
         newSessionId = newSession.id;
         
-        // Set pending URL update for dynamic routes
+        // Generate URL for dynamic routes
         if (initialSessionId) {
-          setPendingUrlUpdate(`/chat/${newSessionId}`);
+          newUrl = `/chat/${newSessionId}`;
         }
       }
       
@@ -1877,6 +1910,12 @@ function TestChatComponent(props?: TestChatProps) {
       setActiveSessionId(newSessionId);
       sessionIdRef.current = newSessionId; // Store in ref for immediate access
       await saveActiveSessionId(newSessionId);
+      
+      // IMMEDIATE URL UPDATE - Don't wait for AI response completion
+      if (newUrl && typeof window !== 'undefined') {
+        window.history.replaceState(null, '', newUrl);
+        console.log('[Session Creation] URL updated immediately:', newUrl);
+      }
       
       return newSessionId;
     } catch (error) {
@@ -1916,17 +1955,8 @@ function TestChatComponent(props?: TestChatProps) {
       }
     }
     
-    // Handle deferred URL update after AI response completes
-    if (pendingUrlUpdate) {
-      try {
-        // Use replaceState to avoid component rerender/remount
-        window.history.replaceState(null, '', pendingUrlUpdate);
-        setPendingUrlUpdate(null); // Clear the pending update
-        console.log('[URL Update] Deferred URL update applied:', pendingUrlUpdate);
-      } catch (error) {
-        console.error('Error updating URL:', error);
-      }
-    }
+    // URL updates now happen immediately when session is created
+    // No deferred URL updates needed - URLs are set instantly for better UX
     } catch (error) {
       console.error('Error saving messages:', error);
     }
@@ -1963,17 +1993,8 @@ function TestChatComponent(props?: TestChatProps) {
         }
       }
       
-      // Handle deferred URL update after AI response completes
-      if (pendingUrlUpdate) {
-        try {
-          // Use replaceState to avoid component rerender/remount
-          window.history.replaceState(null, '', pendingUrlUpdate);
-          setPendingUrlUpdate(null); // Clear the pending update
-          console.log('[URL Update] Deferred URL update applied:', pendingUrlUpdate);
-        } catch (error) {
-          console.error('Error updating URL:', error);
-        }
-      }
+      // URL updates now happen immediately when session is created
+      // No deferred URL updates needed - URLs are set instantly for better UX
     } catch (error) {
       console.error('Error saving messages:', error);
     }

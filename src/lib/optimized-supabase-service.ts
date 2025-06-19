@@ -538,14 +538,52 @@ export class OptimizedSupabaseService {
     }
   }
 
-  // Generate URL slug from message content
+  // Enhanced URL slug generation with intelligent title extraction
   generateURLSlug(message: string): string {
-    return message
+    // Remove common stop words and extract meaningful content
+    const stopWords = new Set([
+      'how', 'to', 'what', 'is', 'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'by', 'for', 
+      'with', 'about', 'into', 'through', 'during', 'before', 'after', 'above', 'below', 'up', 'down',
+      'out', 'off', 'over', 'under', 'again', 'further', 'then', 'once', 'can', 'could', 'should',
+      'would', 'will', 'shall', 'may', 'might', 'must', 'ought', 'i', 'you', 'he', 'she', 'it', 'we',
+      'they', 'me', 'him', 'her', 'us', 'them', 'my', 'your', 'his', 'its', 'our', 'their', 'this',
+      'that', 'these', 'those', 'am', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 
+      'had', 'do', 'does', 'did', 'get', 'got', 'make', 'made', 'take', 'took', 'come', 'came', 'go',
+      'went', 'see', 'saw', 'know', 'knew', 'think', 'thought', 'say', 'said', 'tell', 'told', 'use',
+      'used', 'work', 'worked', 'try', 'tried', 'need', 'needed', 'want', 'wanted', 'give', 'gave',
+      'find', 'found', 'help', 'helped', 'ask', 'asked', 'seem', 'seemed', 'feel', 'felt', 'become',
+      'became', 'leave', 'left', 'put', 'set', 'keep', 'kept', 'let', 'begin', 'began', 'start',
+      'started', 'show', 'showed', 'hear', 'heard', 'play', 'played', 'run', 'ran', 'move', 'moved',
+      'live', 'lived', 'believe', 'believed', 'bring', 'brought', 'happen', 'happened', 'write',
+      'wrote', 'provide', 'provided', 'sit', 'sat', 'stand', 'stood', 'lose', 'lost', 'pay', 'paid',
+      'meet', 'met', 'include', 'included', 'continue', 'continued', 'serve', 'served', 'die', 'died',
+      'send', 'sent', 'expect', 'expected', 'build', 'built', 'stay', 'stayed', 'fall', 'fell',
+      'cut', 'reach', 'reached', 'kill', 'killed', 'remain', 'remained', 'suggest', 'suggested',
+      'raise', 'raised', 'pass', 'passed', 'sell', 'sold', 'require', 'required', 'report', 'reported',
+      'decide', 'decided', 'pull', 'pulled'
+    ]);
+
+    // Clean and tokenize the message
+    const words = message
       .toLowerCase()
-      .replace(/[^a-z0-9\s]/g, '') // Remove special chars
-      .replace(/\s+/g, '-')        // Replace spaces with hyphens
-      .substring(0, 50)            // Limit length
-      .replace(/-+$/, '');         // Remove trailing hyphens
+      .replace(/[^\w\s]/g, ' ') // Replace special chars with spaces
+      .split(/\s+/)
+      .filter(word => word.length > 2 && !stopWords.has(word)) // Remove short words and stop words
+      .slice(0, 6); // Take first 6 meaningful words
+
+    // If no meaningful words found, fall back to original method
+    if (words.length === 0) {
+      return message
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, '')
+        .replace(/\s+/g, '-')
+        .substring(0, 40)
+        .replace(/-+$/, '');
+    }
+
+    // Create clean slug from meaningful words
+    const slug = words.join('-').substring(0, 40);
+    return slug.replace(/-+$/, ''); // Remove trailing hyphens
   }
 
   // Create new session with URL generation
