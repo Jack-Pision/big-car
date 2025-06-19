@@ -3827,20 +3827,21 @@ function TestChatComponent(props?: TestChatProps) {
                 {/* Actions row */}
                 <div className="flex flex-row w-full items-center justify-between gap-2">
                   {/* Left group: Tab bar with Search, Artifact, Think */}
-                  <div className="flex flex-row items-center bg-gray-800 rounded-full p-1">
+                  <div className="flex flex-row items-center rounded-lg p-1" style={{ backgroundColor: '#161618' }}>
                     {/* Search tab */}
                     <button
                       type="button"
                       onClick={() => handleModeSwitch(activeMode === 'search' ? 'chat' : 'search')}
                       className={`
-                        flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200 
+                        flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200 
                         ${activeMode === 'search' 
-                          ? 'bg-gray-700 border border-cyan-400/50' 
-                          : 'hover:bg-gray-700/50'
+                          ? 'border' 
+                          : 'hover:brightness-150'
                         }
                       `}
                       style={{ 
-                        color: activeMode === 'search' ? '#FCFCFC' : 'rgba(252, 252, 252, 0.6)'
+                        color: activeMode === 'search' ? '#FCFCFC' : 'rgba(252, 252, 252, 0.6)',
+                        borderColor: activeMode === 'search' ? '#FCFCFC' : 'transparent'
                       }}
                     >
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -3853,14 +3854,15 @@ function TestChatComponent(props?: TestChatProps) {
                     <button
                       type="button"
                       className={`
-                        flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200 
+                        flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200 
                         ${activeButton === 'artifact' 
-                          ? 'bg-gray-700 border border-cyan-400/50' 
-                          : 'hover:bg-gray-700/50'
+                          ? 'border' 
+                          : 'hover:brightness-150'
                         }
                       `}
                       style={{ 
-                        color: activeButton === 'artifact' ? '#FCFCFC' : 'rgba(252, 252, 252, 0.6)'
+                        color: activeButton === 'artifact' ? '#FCFCFC' : 'rgba(252, 252, 252, 0.6)',
+                        borderColor: activeButton === 'artifact' ? '#FCFCFC' : 'transparent'
                       }}
                       onClick={() => handleButtonClick('artifact')}
                     >
@@ -3875,14 +3877,15 @@ function TestChatComponent(props?: TestChatProps) {
                     <button
                       type="button"
                       className={`
-                        flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200 
+                        flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200 
                         ${activeButton === 'reasoning' 
-                          ? 'bg-gray-700 border border-cyan-400/50' 
-                          : 'hover:bg-gray-700/50'
+                          ? 'border' 
+                          : 'hover:brightness-150'
                         }
                       `}
                       style={{ 
-                        color: activeButton === 'reasoning' ? '#FCFCFC' : 'rgba(252, 252, 252, 0.6)'
+                        color: activeButton === 'reasoning' ? '#FCFCFC' : 'rgba(252, 252, 252, 0.6)',
+                        borderColor: activeButton === 'reasoning' ? '#FCFCFC' : 'transparent'
                       }}
                       onClick={() => handleButtonClick('reasoning')}
                     >
