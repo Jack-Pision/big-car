@@ -81,9 +81,6 @@ const ThinkingButton: React.FC<ThinkingButtonProps> = ({ content, isLive = false
         <div 
           className="flex items-center gap-3 px-4 py-3 cursor-pointer"
           onClick={() => setIsExpanded(!isExpanded)}
-          style={{
-            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.3)'
-          }}
         >
           {/* Atom icon */}
           <div className="w-5 h-5 flex-shrink-0">
