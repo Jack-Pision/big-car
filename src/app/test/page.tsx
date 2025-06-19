@@ -23,11 +23,14 @@ import {
   getSessions as getSessionsFromService,
   getSessionMessages,
   saveSessionMessages,
+  saveMessageToSupabase,
   createNewSession,
   deleteSession,
   saveActiveSessionId,
   getActiveSessionId
 } from '@/lib/optimized-supabase-service';
+import { uiStateService } from '@/lib/ui-state-service';
+import { UIStateSnapshot } from '@/lib/ui-state-types';
 import { aiResponseCache, cachedAIRequest } from '@/lib/ai-response-cache';
 import { SCHEMAS } from '@/lib/output-schemas';
 import DynamicResponseRenderer from '@/components/DynamicResponseRenderer';
@@ -1800,6 +1803,64 @@ function TestChatComponent() {
   }, []);
 
   // Function to save messages and update session title when query completes
+  // Helper to capture current UI state
+  const captureCurrentUIState = (): UIStateSnapshot => {
+    return uiStateService.captureUIState(
+      activeButton || 'chat',
+      activeMode,
+      {
+        queryType: 'conversation',
+        searchQuery: input,
+        liveReasoning,
+        currentReasoningMessageId,
+        isArtifactMode,
+        leftPaneWidth,
+        uploadedImages: imagePreviewUrls, // Use existing imagePreviewUrls state
+        imageDescriptions: imageContexts,
+        imageCounter,
+        imagePreviewUrls,
+        temperature: 0.7, // Add current temperature
+        model: 'default', // Add current model
+        systemPrompt: BASE_SYSTEM_PROMPT,
+        isAiResponding,
+        isLoading,
+        sidebarOpen,
+        showHeading,
+        hasInteracted,
+        isChatEmpty: messages.length === 0,
+        inputBarHeight,
+        userPreferences: {},
+        sessionId: activeSessionId || undefined
+      }
+    );
+  };
+
+  // Save individual message with UI state
+  const saveMessageWithUIState = async (
+    message: LocalMessage, 
+    interactionType: 'user_query' | 'ai_response'
+  ) => {
+    if (!activeSessionId || !user) return;
+
+    try {
+      // Save message to database
+      await saveMessageToSupabase(activeSessionId, message);
+      
+      // Capture and save UI state
+      const uiState = captureCurrentUIState();
+      await uiStateService.saveUIState(
+        activeSessionId,
+        message.id || null,
+        interactionType,
+        uiState
+      );
+      
+      console.log(`[UI State] Saved ${interactionType} with UI state:`, message.id);
+    } catch (error) {
+      console.error(`[UI State] Error saving ${interactionType}:`, error);
+    }
+  };
+
   const saveMessagesOnQueryComplete = async (currentMessages: LocalMessage[]) => {
     if (!activeSessionId || !user || currentMessages.length === 0) return;
     
@@ -1928,16 +1989,18 @@ function TestChatComponent() {
 
       // Add user message to chat
       const userMessageId = uuidv4();
-      setMessages(prev => [
-        ...prev,
-        { 
-          role: 'user',
-          id: userMessageId,
-          content: input,
-          timestamp: Date.now(),
-          isProcessed: true
-        }
-      ]);
+      const userMessage: LocalMessage = { 
+        role: 'user',
+        id: userMessageId,
+        content: input,
+        timestamp: Date.now(),
+        isProcessed: true
+      };
+      
+      setMessages(prev => [...prev, userMessage]);
+      
+      // Save user message immediately with UI state
+      await saveMessageWithUIState(userMessage, 'user_query');
 
       // Create a placeholder message for search results that will use the Search component
       const searchMessageId = uuidv4();
@@ -2003,6 +2066,9 @@ function TestChatComponent() {
       };
       
       setMessages(prev => [...prev, userMessage]);
+      
+      // Save user message immediately with UI state
+      await saveMessageWithUIState(userMessage, 'user_query');
       setInput('');
       setIsLoading(true);
       setIsAiResponding(true);
@@ -2241,6 +2307,10 @@ function TestChatComponent() {
         (userMessageForDisplay as any).imageUrls = imagePreviewUrls || undefined;
     }
     setMessages((prev) => [...prev, userMessageForDisplay]);
+    
+    // Save user message immediately with UI state
+    await saveMessageWithUIState(userMessageForDisplay, 'user_query');
+    
     setInput("");
     
     // Clear any previous thinking state - each query gets fresh state
@@ -2703,6 +2773,48 @@ function TestChatComponent() {
     }));
     
     setMessages(processedMessages);
+    
+    // ✅ Load and restore UI state from the session
+    try {
+      const lastUIState = await uiStateService.getLastUIState(sessionId);
+      if (lastUIState) {
+        console.log('[UI State] Restoring session UI state:', lastUIState);
+        
+        // Restore mode and button states
+        setActiveButton(lastUIState.activeButton || null);
+        setActiveMode(lastUIState.activeMode || 'chat');
+        
+        // Restore image context if it exists
+        if (lastUIState.imageContext) {
+          setImageContexts(lastUIState.imageContext.imageDescriptions || []);
+          setImageCounter(lastUIState.imageContext.imageCounter || 0);
+          setImagePreviewUrls(lastUIState.imageContext.imagePreviewUrls || []);
+        }
+        
+        // Restore reasoning state if it exists
+        if (lastUIState.reasoningState) {
+          setLiveReasoning(lastUIState.reasoningState.liveReasoning || '');
+          setCurrentReasoningMessageId(lastUIState.reasoningState.currentReasoningMessageId || null);
+        }
+        
+        // Restore artifact state if it exists
+        if (lastUIState.artifactState) {
+          setIsArtifactMode(lastUIState.artifactState.isArtifactMode || false);
+          setLeftPaneWidth(lastUIState.artifactState.leftPaneWidth || 50);
+          if (lastUIState.artifactState.artifactContent) {
+            setArtifactContent(lastUIState.artifactState.artifactContent);
+          }
+        }
+        
+        console.log('[UI State] Successfully restored session UI state');
+      } else {
+        // Reset UI state sequence for new sessions
+        uiStateService.resetInteractionSequence();
+      }
+    } catch (error) {
+      console.error('[UI State] Error restoring session UI state:', error);
+    }
+    
     setInput('');
     setImagePreviewUrls([]);
     setSelectedFilesForUpload([]);
@@ -2867,8 +2979,26 @@ function TestChatComponent() {
 
 
 
-  const handleButtonClick = (key: string) => {
-    setActiveButton(prev => (prev === key ? null : key));
+  const handleButtonClick = async (key: string) => {
+    const newActiveButton = activeButton === key ? null : key;
+    
+    // Capture UI state before mode switch
+    if (activeSessionId && user) {
+      try {
+        const uiState = captureCurrentUIState();
+        await uiStateService.saveUIState(
+          activeSessionId,
+          null,
+          'mode_switch',
+          uiState
+        );
+        console.log(`[UI State] Saved mode switch from ${activeButton} to ${newActiveButton}`);
+      } catch (error) {
+        console.error('[UI State] Error saving mode switch:', error);
+      }
+    }
+    
+    setActiveButton(newActiveButton);
   };
 
   // Add helper function to convert LocalMessage[] to ConversationMessage[] by type casting

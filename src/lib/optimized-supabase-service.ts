@@ -144,6 +144,60 @@ export class OptimizedSupabaseService {
     });
   }
 
+  // Save individual message immediately
+  async saveMessageToSupabase(sessionId: string, message: Message): Promise<void> {
+    const user = await this.getCachedUser();
+    if (!user || !sessionId) {
+      console.warn('[Optimized Service] Cannot save message - no user or session');
+      return;
+    }
+
+    const messageToSave = {
+      id: message.id,
+      session_id: sessionId,
+      user_id: user.id,
+      role: message.role,
+      content: message.content,
+      image_urls: message.image_urls || message.imageUrls,
+      web_sources: message.web_sources || message.webSources,
+      structured_content: message.structured_content || message.structuredContent,
+      parent_id: message.parent_id || message.parentId,
+      query: message.query,
+      is_search_result: message.is_search_result || message.isSearchResult || false,
+      is_processed: message.is_processed || message.isProcessed || false,
+      is_streaming: message.is_streaming || message.isStreaming || false,
+      content_type: message.content_type || message.contentType,
+      created_at: message.created_at || new Date().toISOString()
+    };
+
+    try {
+      console.log('[Optimized Service] Saving individual message:', messageToSave.id);
+      
+      const { error } = await supabase
+        .from('messages')
+        .upsert(messageToSave, { 
+          onConflict: 'id',
+          ignoreDuplicates: true
+        });
+
+      if (error) {
+        console.error('[Optimized Service] Error saving individual message:', error);
+        throw error;
+      }
+
+      // Update cache
+      const cacheKey = CACHE_KEYS.MESSAGES(sessionId);
+      smartCache.set(cacheKey, null, 0); // Invalidate cache to force reload
+
+      // Update session timestamp
+      this.batchUpdateSessionTimestamp(sessionId);
+
+    } catch (error) {
+      console.error('[Optimized Service] Failed to save individual message:', error);
+      throw error;
+    }
+  }
+
   // Batch save messages to reduce database calls
   async saveSessionMessages(sessionId: string, messages: Message[]): Promise<void> {
     const user = await this.getCachedUser();
@@ -175,7 +229,7 @@ export class OptimizedSupabaseService {
       .from('messages')
       .upsert(messagesToInsert, { 
         onConflict: 'id',
-        ignoreDuplicates: false 
+        ignoreDuplicates: true  // ✅ Fixed: Prevent "multiple rows returned" errors
       });
 
     if (error) {
@@ -420,6 +474,10 @@ export async function getSessionMessages(sessionId: string): Promise<Message[]> 
 
 export async function saveSessionMessages(sessionId: string, messages: Message[]): Promise<void> {
   return optimizedSupabaseService.saveSessionMessages(sessionId, messages);
+}
+
+export async function saveMessageToSupabase(sessionId: string, message: Message): Promise<void> {
+  return optimizedSupabaseService.saveMessageToSupabase(sessionId, message);
 }
 
 export async function createNewSession(firstMessageContent?: string): Promise<Session> {
