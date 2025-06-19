@@ -1766,11 +1766,19 @@ function TestChatComponent(props?: TestChatProps) {
       // Check if user exists and prevent duplicate runs
       if (!user || !user.id) return;
       
-      // PREVENT DUPLICATE LOADS: Skip if we already have an active session
-      if (activeSessionId || sessionIdRef.current) {
-        console.log('[Session Load] Skipping - session already active:', activeSessionId || sessionIdRef.current);
+      // SMART DUPLICATE PREVENTION: Allow page reloads but prevent browser focus/blur re-runs
+      // Only skip if we have BOTH activeSessionId AND loaded messages AND this isn't initial load
+      const hasActiveSession = activeSessionId && sessionIdRef.current;
+      const hasLoadedMessages = messages.length > 0;
+      const isInitialLoad = isInitialLoadRef.current;
+      
+      if (hasActiveSession && hasLoadedMessages && !isInitialLoad) {
+        console.log('[Session Load] Skipping - legitimate active session with loaded messages:', activeSessionId);
         return;
       }
+      
+      // Mark that initial load is complete after this run
+      isInitialLoadRef.current = false;
       
       try {
         let sessionIdToLoad = initialSessionId;
