@@ -515,8 +515,9 @@ textarea::-webkit-scrollbar-thumb,
 }
 
 .research-output p {
-  @apply text-gray-200 leading-relaxed mb-4 text-sm;
+  @apply leading-relaxed mb-4 text-sm;
   background: transparent !important;
+  color: #FCFCFC !important;
 }
 
 .research-output ul {
@@ -525,7 +526,8 @@ textarea::-webkit-scrollbar-thumb,
 }
 
 .research-output li {
-  @apply text-gray-200 flex items-start gap-2;
+  @apply flex items-start gap-2;
+  color: #FCFCFC !important;
 }
 
 .research-output ol {
@@ -534,7 +536,8 @@ textarea::-webkit-scrollbar-thumb,
 }
 
 .research-output strong {
-  @apply text-white font-semibold;
+  @apply font-semibold;
+  color: #FCFCFC !important;
 }
 
 .research-output table {
@@ -556,15 +559,17 @@ textarea::-webkit-scrollbar-thumb,
 }
 
 .research-output td {
-  @apply border border-gray-600 px-4 py-3 text-gray-200;
+  @apply border border-gray-600 px-4 py-3;
   background: transparent !important;
   word-wrap: break-word;
   overflow-wrap: break-word;
+  color: #FCFCFC !important;
 }
 
 .research-output blockquote {
-  @apply border-l-4 border-cyan-500 pl-4 py-2 rounded-r-lg mb-4 italic text-gray-300;
+  @apply border-l-4 border-cyan-500 pl-4 py-2 rounded-r-lg mb-4 italic;
   background: transparent !important;
+  color: #FCFCFC !important;
 }
 
 .research-output code {
@@ -573,8 +578,9 @@ textarea::-webkit-scrollbar-thumb,
 }
 
 .research-output pre {
-  @apply text-gray-200 p-4 rounded-lg overflow-x-auto text-xs font-mono mb-4;
+  @apply p-4 rounded-lg overflow-x-auto text-xs font-mono mb-4;
   background: rgba(17, 24, 39, 0.8) !important;
+  color: #FCFCFC !important;
 }
 
 .research-output pre code {

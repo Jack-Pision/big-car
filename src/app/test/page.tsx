@@ -3265,7 +3265,7 @@ function TestChatComponent(props?: TestChatProps) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, ease: "easeOut" }}
         className="w-full text-left flex flex-col items-start ai-response-text mb-4 relative"
-        style={{ color: '#fff', maxWidth: '100%', overflowWrap: 'break-word' }}
+        style={{ color: '#FCFCFC', maxWidth: '100%', overflowWrap: 'break-word' }}
       >
         {/* Artifact Preview Card or Streaming Content */}
         {msg.structuredContent ? (
@@ -3533,7 +3533,7 @@ function TestChatComponent(props?: TestChatProps) {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.3, ease: "easeOut" }}
                       className="w-full text-left flex flex-col items-start ai-response-text mb-4 relative"
-                      style={{ color: '#fff', maxWidth: '100%', overflowWrap: 'break-word' }}
+                      style={{ color: '#FCFCFC', maxWidth: '100%', overflowWrap: 'break-word' }}
                     >
                       {msg.webSources && msg.webSources.length > 0 && (
                         <>
@@ -3569,7 +3569,7 @@ function TestChatComponent(props?: TestChatProps) {
                               components={{
                                 // Enhanced components for professional research output
                                 h1: ({children}) => (
-                                  <h1 className="text-3xl font-bold text-white mb-6 mt-8 border-b border-cyan-500/30 pb-3">
+                                  <h1 className="text-3xl font-bold mb-6 mt-8 border-b border-cyan-500/30 pb-3" style={{ color: '#FCFCFC' }}>
                                     {children}
                                   </h1>
                                 ),
@@ -3579,12 +3579,12 @@ function TestChatComponent(props?: TestChatProps) {
                                   </h2>
                                 ),
                                 h3: ({children}) => (
-                                  <h3 className="text-xl font-semibold text-white mb-3 mt-6">
+                                  <h3 className="text-xl font-semibold mb-3 mt-6" style={{ color: '#FCFCFC' }}>
                                     {children}
                                   </h3>
                                 ),
                                 p: ({children}) => (
-                                  <p className="text-gray-200 leading-relaxed mb-4 text-sm">
+                                  <p className="leading-relaxed mb-4 text-sm" style={{ color: '#FCFCFC' }}>
                                     {children}
                                   </p>
                                 ),
@@ -3594,7 +3594,7 @@ function TestChatComponent(props?: TestChatProps) {
                                   </ul>
                                 ),
                                 li: ({children}) => (
-                                  <li className="text-gray-200 flex items-start gap-2">
+                                  <li className="flex items-start gap-2" style={{ color: '#FCFCFC' }}>
                                     <span className="text-cyan-400 mt-1.5 text-xs">●</span>
                                     <span className="flex-1">{children}</span>
                                   </li>
@@ -3605,7 +3605,7 @@ function TestChatComponent(props?: TestChatProps) {
                                   </ol>
                                 ),
                                 strong: ({children}) => (
-                                  <strong className="text-white font-semibold">
+                                  <strong className="font-semibold" style={{ color: '#FCFCFC' }}>
                                     {children}
                                   </strong>
                                 ),
@@ -3627,12 +3627,12 @@ function TestChatComponent(props?: TestChatProps) {
                                   </th>
                                 ),
                                 td: ({children}) => (
-                                  <td className="border border-gray-600 px-4 py-3 text-gray-200" style={{wordWrap: 'break-word', overflowWrap: 'break-word'}}>
+                                  <td className="border border-gray-600 px-4 py-3" style={{wordWrap: 'break-word', overflowWrap: 'break-word', color: '#FCFCFC'}}>
                                     {children}
                                   </td>
                                 ),
                                 blockquote: ({children}) => (
-                                  <blockquote className="border-l-4 border-cyan-500 pl-4 py-2 rounded-r-lg mb-4 italic text-gray-300" style={{background: 'transparent'}}>
+                                  <blockquote className="border-l-4 border-cyan-500 pl-4 py-2 rounded-r-lg mb-4 italic" style={{background: 'transparent', color: '#FCFCFC'}}>
                                     {children}
                                   </blockquote>
                                 ),
@@ -3646,7 +3646,7 @@ function TestChatComponent(props?: TestChatProps) {
                                     );
                                   }
                                   return (
-                                    <code className="block text-gray-200 p-4 rounded-lg overflow-x-auto text-xs font-mono mb-4" style={{background: 'rgba(17, 24, 39, 0.8)'}}>
+                                    <code className="block p-4 rounded-lg overflow-x-auto text-xs font-mono mb-4" style={{background: 'rgba(17, 24, 39, 0.8)', color: '#FCFCFC'}}>
                                       {children}
                                     </code>
                                   );
@@ -3727,7 +3727,7 @@ function TestChatComponent(props?: TestChatProps) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, ease: 'easeOut' }}
           className="w-full text-left flex flex-col items-start ai-response-text mb-4 relative"
-          style={{ color: '#fff' }}
+          style={{ color: '#FCFCFC' }}
         >
           {/* Live reasoning box */}
           {currentReasoningMessageId === msg.id && liveReasoning && (
@@ -3989,8 +3989,9 @@ function TestChatComponent(props?: TestChatProps) {
                     
                     {/* Message content bubble */}
                     <div
-                      className="px-4 py-3 rounded-2xl text-white text-sm leading-relaxed"
+                      className="px-4 py-3 rounded-2xl text-sm leading-relaxed"
                       style={{ 
+                        color: '#FCFCFC',
                         backgroundColor: '#212121',
                         borderBottomRightRadius: '8px', // Smaller radius for the corner near avatar
                         wordWrap: 'break-word',
