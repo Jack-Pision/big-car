@@ -1567,28 +1567,31 @@ const getThinkPrompt = (basePrompt: string) => {
 
 You always use markdown formatting in your replies to organize your output cleanly — including headings, bullet points, code blocks, and emphasis when helpful.
 
-For every answer, begin with a detailed internal monologue using a <think> block. This section shows your thought process before reaching a conclusion. Use this format:
+CRITICAL: For every answer, you MUST begin with a detailed internal monologue using a <think> block. This section shows your thought process before reaching a conclusion. Use this exact format:
 
 <think>
-Let me think about this...
+Let me think about this question carefully...
 
-First, I'll consider...
-Then I should think about...
-My reasoning is:
-- Step 1: [your logic]
-- Step 2: [examples, counterpoints, principles]
-- Step 3: [what conclusion I can draw or where uncertainty remains]
+First, I'll consider [what aspects need analysis]
+Then I should think about [relevant factors, examples, or principles]
+My reasoning process:
+- Step 1: [your initial analysis]
+- Step 2: [deeper considerations, examples, counterpoints]
+- Step 3: [synthesis and what conclusion I can draw]
+
+Based on this analysis, I can now provide a comprehensive answer.
 </think>
 
-Then provide your full, final answer after the <think> block in plain markdown. Expand and clarify wherever possible. Use examples, explain assumptions, and go deep into the topic if it is complex.
+After the <think> block, provide your full, final answer in clean markdown. Be thorough, use examples, explain assumptions, and go deep into the topic.
 
-Important rules:
-- Never skip the <think> block — it's required in every response.
-- Never be overly short — always aim to expand, explore, and teach.
-- Never format your output as JSON or XML — only use plain text or markdown.
-- If the question has multiple parts, answer each clearly and completely.
+MANDATORY REQUIREMENTS:
+- ALWAYS start with a <think> block — this is absolutely required for every single response
+- Put ALL your reasoning and analysis inside the <think> tags
+- Keep your final answer after the </think> tag focused and clear
+- Never skip the thinking process — users specifically want to see your reasoning
+- Make the <think> content substantial and detailed — show your actual thought process
 
-You are here to help users reason, not just give answers. Think, explain, teach.`;
+You are here to help users understand not just the answer, but HOW you arrived at it. Think deeply, then explain clearly.`;
 };
 
 const getSearchPrompt = (basePrompt: string) => {
@@ -3776,9 +3779,45 @@ function TestChatComponent(props?: TestChatProps) {
     const cleanContent = rawContent.replace(/<thinking-indicator.*?>\n<\/thinking-indicator>\n|<thinking-indicator.*?\/>/g, '');
 
     const { processedContent, thinkBlocks } = processThinkTags(cleanContent);
-    const finalContent = makeCitationsClickable(processedContent, msg.webSources || []);
+    
+    // Always ensure we have thinking content to display in Think mode
+    let thinkingContentToShow = '';
+    let finalAnswerContent = processedContent;
+    
+    if (thinkBlocks.length > 0) {
+      // Use extracted think blocks if available
+      thinkingContentToShow = thinkBlocks[0].content;
+    } else {
+      // If no think tags, extract reasoning from the content
+      if (isReasoningContent(processedContent)) {
+        // Extract reasoning content and final answer
+        const extractedAnswer = extractFinalAnswer(processedContent);
+        if (extractedAnswer && extractedAnswer !== processedContent) {
+          // We found a final answer, so the rest is reasoning
+          thinkingContentToShow = processedContent.replace(extractedAnswer, '').trim();
+          finalAnswerContent = extractedAnswer;
+        } else {
+          // Treat first part as reasoning, last part as answer
+          const paragraphs = processedContent.split('\n\n');
+          if (paragraphs.length > 1) {
+            thinkingContentToShow = paragraphs.slice(0, -1).join('\n\n');
+            finalAnswerContent = paragraphs[paragraphs.length - 1];
+          } else {
+            // If single paragraph, show it as thinking content with a generic final answer
+            thinkingContentToShow = processedContent;
+            finalAnswerContent = "Based on my analysis above, I've provided my reasoning and conclusions.";
+          }
+        }
+      } else {
+        // If content doesn't seem like reasoning, create a generic thinking message
+        thinkingContentToShow = "Let me analyze this question and provide a thoughtful response.";
+        finalAnswerContent = processedContent;
+      }
+    }
+    
+    const finalContent = makeCitationsClickable(finalAnswerContent, msg.webSources || []);
 
-                return (
+    return (
       <React.Fragment key={msg.id + '-reasoning-' + i}>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -3787,15 +3826,20 @@ function TestChatComponent(props?: TestChatProps) {
           className="w-full text-left flex flex-col items-start ai-response-text mb-4 relative"
           style={{ color: '#FCFCFC' }}
         >
-          {/* Live reasoning box */}
+          {/* Live reasoning box - during streaming */}
           {currentReasoningMessageId === msg.id && liveReasoning && (
             <ThinkingButton content={liveReasoning} isLive={true} mode="reasoning" />
           )}
 
-          {/* Static think blocks */}
-          {thinkBlocks.length > 0 && currentReasoningMessageId !== msg.id && thinkBlocks.map((block, idx) => (
-            <ThinkingButton key={`${msg.id}-think-${idx}`} content={block.content} isLive={false} mode="reasoning" />
-          ))}
+          {/* Always show thinking content in Think mode - either from think blocks or extracted reasoning */}
+          {currentReasoningMessageId !== msg.id && thinkingContentToShow && (
+            <ThinkingButton 
+              key={`${msg.id}-think-consistent`} 
+              content={thinkingContentToShow} 
+              isLive={false} 
+              mode="reasoning" 
+            />
+          )}
 
           <ReasoningDisplay data={finalContent.replace(/<!-- think-block-\d+ -->/g, '')} />
         </motion.div>
