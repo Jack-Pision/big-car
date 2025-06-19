@@ -52,6 +52,7 @@ import ThinkingButton from '@/components/ThinkingButton';
 import { ArtifactViewer } from '@/components/ArtifactViewer';
 import { shouldTriggerArtifact, getArtifactPrompt, artifactSchema, validateArtifactData, createFallbackArtifact, createArtifactFromRawContent, extractTitleFromContent, type ArtifactData } from '@/utils/artifact-utils';
 import ReasoningDisplay from '@/components/ReasoningDisplay';
+import ReasoningChat from '@/components/ReasoningChat';
 
 // Define a type that includes all possible query types (including the ones in SCHEMAS and 'conversation')
 type QueryType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversation' | 'reasoning';
@@ -3714,7 +3715,16 @@ function TestChatComponent(props?: TestChatProps) {
     );
   };
 
-                return (
+                // Conditional rendering based on active button
+  if (activeButton === 'reasoning') {
+    return (
+      <>
+        <ReasoningChat className="w-full h-screen" />
+      </>
+    );
+  }
+
+  return (
     <>
       <div 
         className="min-h-screen flex flex-col px-4 sm:px-4 md:px-8 lg:px-0 transition-all duration-300" 
