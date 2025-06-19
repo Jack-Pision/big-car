@@ -3908,15 +3908,19 @@ function TestChatComponent(props?: TestChatProps) {
                     {/* Plus button */}
                     <button 
                       type="button" 
-                      className="p-2 rounded-full bg-gray-800 text-gray-300 hover:bg-gray-700 transition flex items-center justify-center flex-shrink-0"
-                      style={{ width: "36px", height: "36px" }}
+                      className="p-2 rounded-full text-gray-300 hover:brightness-150 transition flex items-center justify-center flex-shrink-0"
+                      style={{ 
+                        width: "36px", 
+                        height: "36px",
+                        backgroundColor: '#161618'
+                      }}
                       onClick={handleFirstPlusClick}
                     >
                       <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-            </button>
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                      </svg>
+                    </button>
 
                     {/* Send/Stop button */}
             <button
