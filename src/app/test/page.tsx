@@ -2300,12 +2300,12 @@ function TestChatComponent(props?: TestChatProps) {
           msg.id === aiMessageId ? finalAiMessage : msg
         ));
         
-        // INSTANT SAVE: Update AI message content immediately
+        // FAST SAVE: Save complete artifact message instantly
         try {
-          await updateMessageContent(currentActiveSessionId, aiMessageId, finalAiMessage.content, true);
-          console.log('[Artifact Mode] Final AI message content updated instantly');
+          await saveMessageInstantly(currentActiveSessionId, finalAiMessage);
+          console.log('[Artifact Mode] Final AI message saved instantly');
         } catch (error) {
-          console.error('[Artifact Mode] Failed to instantly update AI message content:', error);
+          console.error('[Artifact Mode] Failed to instantly save AI message:', error);
         }
 
       } catch (error) {
@@ -2666,12 +2666,8 @@ function TestChatComponent(props?: TestChatProps) {
                       });
                       hasCreatedMessage = true; // Mark as created after first update
                       
-                      // INSTANT SAVE: Update message content in real-time during streaming
-                      if (currentActiveSessionId && mainContent.trim().length > 0) {
-                        updateMessageContent(currentActiveSessionId, aiMessageId, mainContent, false).catch(error => {
-                          console.error('[Default Chat] Failed to update streaming content:', error);
-                        });
-                      }
+                      // Note: Removed real-time saving during streaming for better performance
+                      // Final content will be saved instantly when streaming completes
                     }
                     
                     // Update live thinking display - this goes directly to think box
@@ -2697,55 +2693,51 @@ function TestChatComponent(props?: TestChatProps) {
           }
         }
         
-        // Apply smooth post-processing after streaming is complete
+        // FAST FINAL SAVE - No delays, instant save when streaming completes
         if (aiMessageId) {
           const { thinkContent: finalThinkContent, mainContent: finalMainContent } = extractThinkContentDuringStream(contentBuffer);
           
-          // First, stop streaming but keep content as-is for smooth transition
+          // 1. Update UI immediately (no delays)
           setMessages((prev) => {
             return prev.map(msg => 
               msg.id === aiMessageId 
                 ? { 
                     ...msg, 
-                    isStreaming: false, // Stop streaming animation
-                    // Keep existing content for now - no jarring replacement
+                    isStreaming: false,
+                    content: finalThinkContent.trim().length > 0 
+                      ? `<think>${finalThinkContent}</think>${finalMainContent}` 
+                      : finalMainContent,
+                    contentType: 'reasoning',
+                    isProcessed: true,
                   }
                 : msg
             );
           });
-          
-          // Then, after a brief delay, apply final processing WITH embedded think tags
-          // to preserve thinking content for "Thought" state after completion
-          setTimeout(() => {
-            setMessages((prev) => {
-              const updatedMessages = prev.map(msg => 
-                msg.id === aiMessageId 
-                  ? { 
-                      ...msg, 
-                      content: finalThinkContent.trim().length > 0 
-                        ? `<think>${finalThinkContent}</think>${finalMainContent}` // Preserve thinking for permanent "Thought" state
-                        : finalMainContent, // No thinking content, just main content
-                      contentType: 'reasoning',
-                      isProcessed: true,
-                      isStreaming: false, // Mark as completed
-                    }
-                  : msg
-              );
-              
-              // INSTANT SAVE: Mark message as processed and update final content
-              const currentSessionId = sessionIdRef.current;
-              if (currentSessionId && aiMessageId) {
-                const finalContent = finalThinkContent.trim().length > 0 
-                  ? `<think>${finalThinkContent}</think>${finalMainContent}` 
-                  : finalMainContent;
-                updateMessageContent(currentSessionId, aiMessageId, finalContent, true).catch(error => {
-                  console.error('[Default Chat] Failed to update final message content:', error);
-                });
-              }
-              
-              return updatedMessages;
+
+          // 2. Save final content instantly in background (no setTimeout delays)
+          const currentSessionId = sessionIdRef.current;
+          if (currentSessionId && aiMessageId) {
+            const finalContent = finalThinkContent.trim().length > 0 
+              ? `<think>${finalThinkContent}</think>${finalMainContent}` 
+              : finalMainContent;
+            
+            // Use saveMessageInstantly for reliable UPSERT operation
+            const completeMessage: LocalMessage = {
+              role: "assistant",
+              content: finalContent,
+              id: aiMessageId,
+              timestamp: Date.now(),
+              parentId: userMessageId,
+              contentType: 'reasoning',
+              isProcessed: true,
+              imageUrls: uploadedImageUrls.length > 0 ? uploadedImageUrls : undefined,
+            };
+            
+            // FAST SAVE - No delays, runs in background
+            saveMessageInstantly(currentSessionId, completeMessage).catch(error => {
+              console.error('[Fast Save] Failed to save final message:', error);
             });
-          }, 300); // Small delay for smooth transition
+          }
         }
         
         // Clear the live thinking state immediately to prevent double display
@@ -3428,19 +3420,24 @@ function TestChatComponent(props?: TestChatProps) {
                   : m
               ));
               
-              // Save messages after search completes
-              const updatedMessages = messages.map(m => 
-                m.id === msg.id 
-                  ? {
-                      ...m,
-                      content: result,
-                      isProcessed: true,
-                      isStreaming: false,
-                      webSources: sources
-                    } 
-                  : m
-              );
-              saveMessagesOnQueryComplete(updatedMessages);
+              // FAST SAVE: Save complete search message instantly
+              const currentSessionId = sessionIdRef.current || activeSessionId;
+              if (currentSessionId) {
+                const completeSearchMessage: LocalMessage = {
+                  role: 'search-ui',
+                  id: msg.id!,
+                  content: result,
+                  query: msg.query,
+                  timestamp: Date.now(),
+                  isProcessed: true,
+                  isStreaming: false,
+                  webSources: sources
+                };
+                
+                saveMessageInstantly(currentSessionId, completeSearchMessage).catch(error => {
+                  console.error('[Search Mode] Failed to instantly save complete search message:', error);
+                });
+              }
             }} 
           />
                       )}
