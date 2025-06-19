@@ -1862,36 +1862,42 @@ function TestChatComponent() {
 
   // Save individual message with UI state
   const saveMessageWithUIState = async (
-    message: LocalMessage, 
-    interactionType: 'user_query' | 'ai_response'
+    message: LocalMessage,
+    interactionType: 'user_query' | 'ai_response',
+    sessionIdOverride?: string
   ) => {
-    if (!activeSessionId || !user) return;
+    const sessionIdToUse = sessionIdOverride || activeSessionId;
+    if (!sessionIdToUse || !user) return;
 
     try {
       // Save message to database
-      await saveMessageToSupabase(activeSessionId, message);
-      
+      await saveMessageToSupabase(sessionIdToUse, message);
+
       // Capture and save UI state
       const uiState = captureCurrentUIState();
       await uiStateService.saveUIState(
-        activeSessionId,
+        sessionIdToUse,
         message.id || null,
         interactionType,
         uiState
       );
-      
-      console.log(`[UI State] Saved ${interactionType} with UI state:`, message.id);
+
+      console.log(`[UI State] Saved ${interactionType} for session ${sessionIdToUse}:`, message.id);
     } catch (error) {
       console.error(`[UI State] Error saving ${interactionType}:`, error);
     }
   };
 
-  const saveMessagesOnQueryComplete = async (currentMessages: LocalMessage[]) => {
-    if (!activeSessionId || !user || currentMessages.length === 0) return;
+  const saveMessagesOnQueryComplete = async (
+    currentMessages: LocalMessage[],
+    sessionIdOverride?: string
+  ) => {
+    const sessionIdToUse = sessionIdOverride || activeSessionId;
+    if (!sessionIdToUse || !user || currentMessages.length === 0) return;
     
     try {
       // Use optimized batch saving
-      await optimizedSupabaseService.saveSessionMessages(activeSessionId, currentMessages);
+      await optimizedSupabaseService.saveSessionMessages(sessionIdToUse, currentMessages);
       
       // Update session title with AI-generated title after first AI response
       const userMessages = currentMessages.filter(msg => msg.role === 'user');
@@ -1906,8 +1912,8 @@ function TestChatComponent() {
           // For performance, use simple title generation instead of AI
           const simpleTitle = firstUserMessage.content.split(' ').slice(0, 5).join(' ');
           await optimizedSupabaseService.updateSessionTitle(
-          activeSessionId, 
-            simpleTitle.length > 30 ? simpleTitle.substring(0, 30) + '...' : simpleTitle
+          sessionIdToUse!, 
+             simpleTitle.length > 30 ? simpleTitle.substring(0, 30) + '...' : simpleTitle
           );
           // Trigger sidebar refresh to show updated title
           setSidebarRefreshTrigger(prev => prev + 1);
@@ -2025,7 +2031,7 @@ function TestChatComponent() {
       setMessages(prev => [...prev, userMessage]);
       
       // Save user message immediately with UI state
-      await saveMessageWithUIState(userMessage, 'user_query');
+      await saveMessageWithUIState(userMessage, 'user_query', currentActiveSessionId);
 
       // Create a placeholder message for search results that will use the Search component
       const searchMessageId = uuidv4();
@@ -2093,7 +2099,7 @@ function TestChatComponent() {
       setMessages(prev => [...prev, userMessage]);
       
       // Save user message immediately with UI state
-      await saveMessageWithUIState(userMessage, 'user_query');
+      await saveMessageWithUIState(userMessage, 'user_query', currentActiveSessionId);
       setInput('');
       setIsLoading(true);
       setIsAiResponding(true);
@@ -2245,7 +2251,7 @@ function TestChatComponent() {
         
         // Save messages
         const updatedMessages = [...messages, userMessage, finalAiMessage];
-        await saveMessagesOnQueryComplete(updatedMessages);
+        await saveMessagesOnQueryComplete(updatedMessages, currentActiveSessionId);
 
       } catch (error) {
         console.error('Artifact streaming error:', error);
@@ -2334,7 +2340,7 @@ function TestChatComponent() {
     setMessages((prev) => [...prev, userMessageForDisplay]);
     
     // Save user message immediately with UI state
-    await saveMessageWithUIState(userMessageForDisplay, 'user_query');
+    await saveMessageWithUIState(userMessageForDisplay, 'user_query', currentActiveSessionId);
     
     setInput("");
     
@@ -2539,7 +2545,7 @@ function TestChatComponent() {
       setMessages((prev) => {
         const updatedMessages = [...prev, aiMsg];
         // Save messages to Supabase now that the structured query is complete
-        saveMessagesOnQueryComplete(updatedMessages);
+        saveMessagesOnQueryComplete(updatedMessages, currentActiveSessionId);
         return updatedMessages;
       });
       } else { 
@@ -2651,7 +2657,7 @@ function TestChatComponent() {
               );
               
               // Save messages to Supabase now that the chat query is complete
-              saveMessagesOnQueryComplete(updatedMessages);
+              saveMessagesOnQueryComplete(updatedMessages, currentActiveSessionId);
               
               return updatedMessages;
             });
@@ -2703,7 +2709,7 @@ function TestChatComponent() {
           },
         ];
         // Save messages to Supabase after abort
-        saveMessagesOnQueryComplete(updatedMessages);
+        saveMessagesOnQueryComplete(updatedMessages, currentActiveSessionId);
         return updatedMessages;
       });
       } else {
@@ -2721,7 +2727,7 @@ function TestChatComponent() {
           },
           ];
           // Save messages to Supabase after error
-          saveMessagesOnQueryComplete(updatedMessages);
+          saveMessagesOnQueryComplete(updatedMessages, currentActiveSessionId);
           return updatedMessages;
         });
       }
@@ -3398,7 +3404,7 @@ function TestChatComponent() {
                     } 
                   : m
               );
-              saveMessagesOnQueryComplete(updatedMessages);
+              saveMessagesOnQueryComplete(updatedMessages, currentActiveSessionId);
             }} 
           />
                       )}
