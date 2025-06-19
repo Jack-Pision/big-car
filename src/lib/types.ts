@@ -24,6 +24,11 @@ export interface Message {
   is_streaming?: boolean;
   content_type?: string;
   created_at?: string;
+  
+  // Reasoning-specific fields for proper storage and display
+  thinkingContent?: string; // Separate field for thinking process
+  mainContent?: string; // Main response content without think tags
+  
   // For backward compatibility with localStorage
   imageUrls?: string[];
   webSources?: any;

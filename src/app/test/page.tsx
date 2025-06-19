@@ -711,6 +711,10 @@ interface LocalMessage {
   query?: string; // Add this property for search-ui messages
   isSearchResult?: boolean; // Add this property for search result messages
   title?: string; // Add title for artifact preview cards
+  
+  // Reasoning-specific fields for proper storage and display
+  thinkingContent?: string; // Separate field for thinking process
+  mainContent?: string; // Main response content without think tags
 }
 
 // Helper to enforce Advance Search output structure
@@ -2538,18 +2542,18 @@ function TestChatComponent() {
             );
           });
           
-          // Then, after a brief delay, apply final processing WITH embedded think tags
-          // to preserve thinking content for "Thought" state after completion
+          // Then, after a brief delay, apply final processing WITH structured reasoning data
+          // to preserve thinking content separately for proper storage and display
           setTimeout(() => {
             setMessages((prev) => {
               const updatedMessages = prev.map(msg => 
                 msg.id === aiMessageId 
                   ? { 
                       ...msg, 
-                      content: finalThinkContent.trim().length > 0 
-                        ? `<think>${finalThinkContent}</think>${finalMainContent}` // Preserve thinking for permanent "Thought" state
-                        : finalMainContent, // No thinking content, just main content
+                      content: finalMainContent, // Main content without embedded tags
                       contentType: 'reasoning',
+                      thinkingContent: finalThinkContent.trim() || undefined, // Separate thinking field
+                      mainContent: finalMainContent, // Separate main content field
                       isProcessed: true,
                     }
                   : msg
@@ -3446,12 +3450,6 @@ function TestChatComponent() {
 
   // Add new renderer below default one
   const renderReasoningMessage = (msg: LocalMessage, i: number) => {
-    const { content: rawContent } = cleanAIResponse(msg.content);
-    const cleanContent = rawContent.replace(/<thinking-indicator.*?>\n<\/thinking-indicator>\n|<thinking-indicator.*?\/>/g, '');
-
-    const { processedContent, thinkBlocks } = processThinkTags(cleanContent);
-    const finalContent = makeCitationsClickable(processedContent, msg.webSources || []);
-
     return (
       <React.Fragment key={msg.id + '-reasoning-' + i}>
         <motion.div
@@ -3461,17 +3459,17 @@ function TestChatComponent() {
           className="w-full text-left flex flex-col items-start ai-response-text mb-4 relative"
           style={{ color: '#fff' }}
         >
-          {/* Live reasoning box */}
+          {/* Live reasoning box - only show during active streaming */}
           {currentReasoningMessageId === msg.id && liveReasoning && (
             <ThinkingButton content={liveReasoning} isLive={true} />
           )}
 
-          {/* Static think blocks */}
-          {thinkBlocks.length > 0 && currentReasoningMessageId !== msg.id && thinkBlocks.map((block, idx) => (
-            <ThinkingButton key={`${msg.id}-think-${idx}`} content={block.content} isLive={false} />
-          ))}
-
-          <ReasoningDisplay data={finalContent.replace(/<!-- think-block-\d+ -->/g, '')} />
+          {/* Use new structured ReasoningDisplay component */}
+          <ReasoningDisplay 
+            data={msg.content}
+            thinkingContent={msg.thinkingContent}
+            mainContent={msg.mainContent}
+          />
         </motion.div>
       </React.Fragment>
     );
