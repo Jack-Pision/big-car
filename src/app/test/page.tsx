@@ -1670,6 +1670,7 @@ function TestChatComponent(props?: TestChatProps) {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [sidebarRefreshTrigger, setSidebarRefreshTrigger] = useState(0);
   const [isArtifactMode, setIsArtifactMode] = useState(false);
+  const [pendingUrlUpdate, setPendingUrlUpdate] = useState<string | null>(null);
   const [artifactContent, setArtifactContent] = useState<ArtifactData | null>(null);
   const [isGeneratingArtifact, setIsGeneratingArtifact] = useState(false);
   const [artifactProgress, setArtifactProgress] = useState('');
@@ -1859,6 +1860,18 @@ function TestChatComponent(props?: TestChatProps) {
           setSidebarRefreshTrigger(prev => prev + 1);
         } catch (error) {
           console.error('Failed to update session title:', error);
+      }
+    }
+    
+    // Handle deferred URL update after AI response completes
+    if (pendingUrlUpdate) {
+      try {
+        // Use replaceState to avoid component rerender/remount
+        window.history.replaceState(null, '', pendingUrlUpdate);
+        setPendingUrlUpdate(null); // Clear the pending update
+        console.log('[URL Update] Deferred URL update applied:', pendingUrlUpdate);
+      } catch (error) {
+        console.error('Error updating URL:', error);
       }
     }
     } catch (error) {
@@ -2267,17 +2280,16 @@ function TestChatComponent(props?: TestChatProps) {
         setActiveSessionId(session.id);
         saveActiveSessionId(session.id);
         currentActiveSessionId = session.id;
-        // Don't clear messages during session creation to prevent race condition
-        
-        // Update URL without page reload
-        router.push(url, { scroll: false });
+        // Store URL for later update after AI response completes
+        setPendingUrlUpdate(url);
       } else {
         // Fallback to regular session creation
         const newSession = await optimizedSupabaseService.createNewSession(messageContent);
         setActiveSessionId(newSession.id);
         saveActiveSessionId(newSession.id);
         currentActiveSessionId = newSession.id;
-        // Don't clear messages during session creation to prevent race condition
+        // Store URL for later update after AI response completes
+        setPendingUrlUpdate(`/chat/${newSession.id}`);
       }
     }
 
