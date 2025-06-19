@@ -1641,8 +1641,8 @@ interface TestChatProps {
   initialSessionTitle?: string;
 }
 
-function TestChatComponent(props: TestChatProps = {}) {
-  const { initialSessionId, initialSessionTitle } = props;
+function TestChatComponent(props?: TestChatProps) {
+  const { initialSessionId, initialSessionTitle } = props || {};
   const router = useRouter();
   const { user, showSettingsModal } = useAuth();
   
@@ -1756,15 +1756,31 @@ function TestChatComponent(props: TestChatProps = {}) {
     }
   }, [isResizing, handleMouseMove, handleMouseUp]);
 
-  // Effect to load the active session (either from props or saved state)
+  // Effect to load the active session (from URL hash, props, or saved state)
   useEffect(() => {
     const loadActiveSession = async () => {
       // Check if user exists at the time of execution instead of depending on it
       if (!user) return;
       
       try {
-        // Use initialSessionId if provided, otherwise get saved session
-        const sessionIdToLoad = initialSessionId || await getActiveSessionId();
+        let sessionIdToLoad = initialSessionId;
+        
+        // Check for URL hash parameters (from dynamic routing redirect)
+        if (!sessionIdToLoad && typeof window !== 'undefined' && window.location.hash) {
+          const hashParams = new URLSearchParams(window.location.hash.substring(1));
+          const hashSessionId = hashParams.get('session');
+          if (hashSessionId) {
+            sessionIdToLoad = hashSessionId;
+            // Clear the hash after extracting the session ID
+            window.history.replaceState(null, '', window.location.pathname);
+          }
+        }
+        
+        // Fallback to saved session if no other source
+        if (!sessionIdToLoad) {
+          const savedSessionId = await getActiveSessionId();
+          sessionIdToLoad = savedSessionId ?? undefined;
+        }
         
         if (sessionIdToLoad) {
           // Load the specified or saved session
@@ -1782,10 +1798,8 @@ function TestChatComponent(props: TestChatProps = {}) {
           setShowHeading(false);
           setHasInteracted(true);
           
-          // Save as active session if it came from initialSessionId
-          if (initialSessionId) {
-            await saveActiveSessionId(initialSessionId);
-          }
+          // Save as active session
+          await saveActiveSessionId(sessionIdToLoad);
         } else {
           // Show welcome page for new users
           setShowHeading(true);
@@ -3853,14 +3867,10 @@ function TestChatComponent(props: TestChatProps = {}) {
   );
 }
 
-export default function TestChat(props: TestChatProps = {}) {
-  const { initialSessionId, initialSessionTitle } = props;
+export default function TestChat() {
   return (
     <AuthProvider>
-      <TestChatComponent 
-        initialSessionId={initialSessionId}
-        initialSessionTitle={initialSessionTitle}
-      />
+      <TestChatComponent />
     </AuthProvider>
   );
 } 
