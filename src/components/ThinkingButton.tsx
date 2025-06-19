@@ -4,9 +4,10 @@ import React, { useState, useEffect, useRef } from 'react';
 interface ThinkingButtonProps {
   content: string;
   isLive?: boolean;
+  mode?: 'reasoning' | 'default';
 }
 
-const ThinkingButton: React.FC<ThinkingButtonProps> = ({ content, isLive = false }) => {
+const ThinkingButton: React.FC<ThinkingButtonProps> = ({ content, isLive = false, mode = 'default' }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [duration, setDuration] = useState(0);
   const [startTime, setStartTime] = useState<number | null>(null);
@@ -117,6 +118,27 @@ const ThinkingButton: React.FC<ThinkingButtonProps> = ({ content, isLive = false
             <polyline points="6,9 12,15 18,9"></polyline>
           </svg>
         </div>
+        
+        {/* Collapsed content preview (only for Reasoning mode) */}
+        {!isExpanded && mode === 'reasoning' && (
+          <div 
+            className="px-4 pb-4 overflow-hidden"
+            style={{ height: '140px' }}
+          >
+            <div 
+              className="text-sm leading-relaxed whitespace-pre-wrap select-text"
+              style={{ 
+                color: '#FCFCFC',
+                overflow: 'hidden',
+                display: '-webkit-box',
+                WebkitLineClamp: 8,
+                WebkitBoxOrient: 'vertical'
+              }}
+            >
+              {content || 'Starting to think...'}
+            </div>
+          </div>
+        )}
         
         {/* Expanded content */}
         {isExpanded && (

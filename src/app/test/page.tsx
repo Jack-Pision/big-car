@@ -3700,12 +3700,12 @@ function TestChatComponent(props?: TestChatProps) {
         >
           {/* Live reasoning box */}
           {currentReasoningMessageId === msg.id && liveReasoning && (
-            <ThinkingButton content={liveReasoning} isLive={true} />
+            <ThinkingButton content={liveReasoning} isLive={true} mode="reasoning" />
           )}
 
           {/* Static think blocks */}
           {thinkBlocks.length > 0 && currentReasoningMessageId !== msg.id && thinkBlocks.map((block, idx) => (
-            <ThinkingButton key={`${msg.id}-think-${idx}`} content={block.content} isLive={false} />
+            <ThinkingButton key={`${msg.id}-think-${idx}`} content={block.content} isLive={false} mode="reasoning" />
           ))}
 
           <ReasoningDisplay data={finalContent.replace(/<!-- think-block-\d+ -->/g, '')} />
