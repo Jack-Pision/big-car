@@ -117,11 +117,9 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/80 backdrop-blur-md z-[10000] flex items-center justify-end p-6"
+          className="fixed inset-0 bg-[#161618] z-[10000] flex items-center justify-end p-6"
           onClick={handleClose}
         >
-          {/* Background Pattern */}
-          <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-blue-900/20 to-indigo-900/20" />
           
           <motion.div
             initial={{ opacity: 0, scale: 0.95, x: 50 }}
@@ -131,36 +129,33 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
             className="relative w-full max-w-sm"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Main Glass Container */}
-            <div className="relative bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 shadow-2xl overflow-hidden">
-              {/* Gradient Overlay */}
-              <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-black/5" />
+            {/* Main Container */}
+            <div className="relative bg-neutral-800 rounded-2xl border border-neutral-700 shadow-2xl overflow-hidden">
               
               {/* Close Button */}
               <button
                 onClick={handleClose}
-                className="absolute top-4 right-4 p-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 transition-all duration-200 z-10 group"
+                className="absolute top-4 right-4 p-1.5 rounded-full bg-neutral-700 hover:bg-neutral-600 border border-neutral-600 transition-all duration-200 z-10 group"
               >
-                <X size={16} className="text-white/80 group-hover:text-white" />
+                <X size={16} className="text-neutral-100 group-hover:text-white" />
               </button>
 
               <div className="relative p-6">
                 {/* Logo Section */}
                 <div className="flex items-center justify-center mb-6">
                   <div className="relative">
-                    <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full blur-lg opacity-30 animate-pulse" />
-                    <div className="relative bg-white/10 backdrop-blur-sm rounded-full p-2 border border-white/20">
-                      <Sparkles size={24} className="text-white" />
+                    <div className="relative bg-neutral-700 rounded-full p-2 border border-neutral-600">
+                      <Sparkles size={24} className="text-neutral-100" />
                     </div>
                   </div>
                 </div>
 
                 {/* Header */}
                 <div className="text-center mb-6">
-                  <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">
+                  <h2 className="text-2xl font-bold text-neutral-100 mb-2 tracking-tight">
                     {content.title}
                   </h2>
-                  <p className="text-white/70 text-xs leading-relaxed">
+                  <p className="text-neutral-400 text-xs leading-relaxed">
                     {content.subtitle}
                   </p>
                 </div>
@@ -169,18 +164,17 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
                 <form onSubmit={handleSubmit} className="space-y-4">
                   {mode === 'signup' && (
                     <div className="space-y-1.5">
-                      <label htmlFor="fullName" className="block text-xs font-medium text-white/90">
+                      <label htmlFor="fullName" className="block text-xs font-medium text-neutral-200">
                         Full Name
                       </label>
                       <div className="relative group">
-                        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-lg blur opacity-0 group-focus-within:opacity-100 transition-opacity duration-300" />
-                        <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/50 z-10" size={16} />
+                        <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 z-10" size={16} />
                         <input
                           id="fullName"
                           type="text"
                           value={fullName}
                           onChange={(e) => setFullName(e.target.value)}
-                          className="relative w-full pl-10 pr-3 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/30 transition-all duration-200 text-sm"
+                          className="relative w-full pl-10 pr-3 py-3 bg-neutral-700 border border-neutral-600 rounded-lg text-neutral-100 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-500 focus:border-neutral-500 transition-all duration-200 text-sm"
                           placeholder="Enter your full name"
                           required
                         />
@@ -189,18 +183,17 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
                   )}
 
                   <div className="space-y-1.5">
-                    <label htmlFor="email" className="block text-xs font-medium text-white/90">
+                    <label htmlFor="email" className="block text-xs font-medium text-neutral-200">
                       Email Address
                     </label>
                     <div className="relative group">
-                      <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-lg blur opacity-0 group-focus-within:opacity-100 transition-opacity duration-300" />
-                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/50 z-10" size={16} />
+                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 z-10" size={16} />
                       <input
                         id="email"
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="relative w-full pl-10 pr-3 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/30 transition-all duration-200 text-sm"
+                        className="relative w-full pl-10 pr-3 py-3 bg-neutral-700 border border-neutral-600 rounded-lg text-neutral-100 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-500 focus:border-neutral-500 transition-all duration-200 text-sm"
                         placeholder="Enter your email"
                         required
                       />
@@ -209,18 +202,17 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
 
                   {mode !== 'forgot' && (
                     <div className="space-y-1.5">
-                      <label htmlFor="password" className="block text-xs font-medium text-white/90">
+                      <label htmlFor="password" className="block text-xs font-medium text-neutral-200">
                         Password
                       </label>
                       <div className="relative group">
-                        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-lg blur opacity-0 group-focus-within:opacity-100 transition-opacity duration-300" />
-                        <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/50 z-10" size={16} />
+                        <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 z-10" size={16} />
                         <input
                           id="password"
                           type={showPassword ? 'text' : 'password'}
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
-                          className="relative w-full pl-10 pr-12 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/30 transition-all duration-200 text-sm"
+                          className="relative w-full pl-10 pr-12 py-3 bg-neutral-700 border border-neutral-600 rounded-lg text-neutral-100 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-500 focus:border-neutral-500 transition-all duration-200 text-sm"
                           placeholder="Enter your password"
                           required
                           minLength={6}
@@ -228,13 +220,13 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
                         <button
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/50 hover:text-white/80 transition-colors z-10"
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-neutral-200 transition-colors z-10"
                         >
                           {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                         </button>
                       </div>
                       {mode === 'signup' && (
-                        <p className="text-xs text-white/60 mt-1">
+                        <p className="text-xs text-neutral-400 mt-1">
                           Password must be at least 6 characters long
                         </p>
                       )}
@@ -247,7 +239,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
                       <button
                         type="button"
                         onClick={() => setMode('forgot')}
-                        className="text-xs text-white/70 hover:text-white transition-colors"
+                        className="text-xs text-neutral-400 hover:text-neutral-200 transition-colors"
                       >
                         Forgot your password?
                       </button>
@@ -279,12 +271,12 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
 
                 {/* Switch Mode */}
                 <div className="mt-6 text-center">
-                  <p className="text-xs text-white/70">
+                  <p className="text-xs text-neutral-400">
                     {content.switchText}{' '}
                     <button
                       type="button"
                       onClick={content.switchAction}
-                      className="text-white font-medium hover:text-white/80 transition-colors underline underline-offset-2"
+                      className="text-neutral-100 font-medium hover:text-neutral-200 transition-colors underline underline-offset-2"
                     >
                       {content.switchLink}
                     </button>
@@ -292,9 +284,9 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
                 </div>
 
                 {/* Marketing Footer */}
-                <div className="mt-6 pt-4 border-t border-white/10">
+                <div className="mt-6 pt-4 border-t border-neutral-700">
                   <div className="text-center">
-                    <p className="text-xs text-white/50 leading-relaxed">
+                    <p className="text-xs text-neutral-500 leading-relaxed">
                       Experience the next generation of AI-powered conversations
                     </p>
                   </div>
@@ -302,9 +294,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
               </div>
             </div>
 
-            {/* Decorative Elements */}
-            <div className="absolute -top-3 -left-3 w-16 h-16 bg-gradient-to-br from-blue-400/20 to-purple-400/20 rounded-full blur-xl animate-pulse" />
-            <div className="absolute -bottom-3 -right-3 w-20 h-20 bg-gradient-to-tl from-purple-400/20 to-pink-400/20 rounded-full blur-xl animate-pulse delay-1000" />
+
           </motion.div>
         </motion.div>
       )}
