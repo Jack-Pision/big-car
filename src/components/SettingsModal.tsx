@@ -71,6 +71,14 @@ export default function SettingsModal({ isOpen, onClose, user, onSignOut }: Sett
           >
             {/* Main Container */}
             <div className="relative bg-neutral-800 rounded-2xl border border-neutral-700 shadow-2xl overflow-hidden">
+              {/* Close Button */}
+              <button
+                onClick={onClose}
+                className="absolute top-4 right-4 p-2 rounded-full hover:bg-neutral-700 transition-colors z-10"
+              >
+                <X size={20} className="text-neutral-400 hover:text-neutral-200" />
+              </button>
+
               <div className="relative p-6">
                 {/* Logo Section */}
                 <div className="flex items-center justify-center mb-6">
