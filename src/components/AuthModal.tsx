@@ -3,7 +3,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { signIn, signUp, resetPassword } from '@/lib/auth';
-import { Eye, EyeOff, Mail, Lock, User, X, Sparkles } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User } from 'lucide-react';
+import Image from 'next/image';
 import toast from 'react-hot-toast';
 import BackgroundPattern from './BackgroundPattern';
 
@@ -135,20 +136,20 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
             {/* Main Container */}
             <div className="relative bg-neutral-800 rounded-2xl border border-neutral-700 shadow-2xl overflow-hidden">
               
-              {/* Close Button */}
-              <button
-                onClick={handleClose}
-                className="absolute top-4 right-4 p-1.5 rounded-full bg-neutral-700 hover:bg-neutral-600 border border-neutral-600 transition-all duration-200 z-10 group"
-              >
-                <X size={16} className="text-neutral-100 group-hover:text-white" />
-              </button>
+
 
               <div className="relative p-6">
                 {/* Logo Section */}
                 <div className="flex items-center justify-center mb-6">
                   <div className="relative">
-                    <div className="relative bg-neutral-700 rounded-full p-2 border border-neutral-600">
-                      <Sparkles size={24} className="text-neutral-100" />
+                    <div className="relative bg-neutral-700 rounded-full p-3 border border-neutral-600">
+                      <Image 
+                        src="/Logo.svg" 
+                        alt="Logo" 
+                        width={28} 
+                        height={28} 
+                        className="text-neutral-100" 
+                      />
                     </div>
                   </div>
                 </div>
