@@ -2185,6 +2185,16 @@ function TestChatComponent(props?: TestChatProps) {
         setHasInteracted(true);
         setImageWaitingForResponse(uploadedImageUrls[0] || '');
         
+        // INSTANT SAVE: Save user message immediately for vision mode
+        if (currentActiveSessionId) {
+          try {
+            await saveMessageInstantly(currentActiveSessionId, userMessage);
+            console.log('[Vision Mode] User message saved instantly');
+          } catch (error) {
+            console.error('[Vision Mode] Failed to instantly save user message:', error);
+          }
+        }
+        
         const newAbortController = new AbortController();
         setAbortController(newAbortController);
 
