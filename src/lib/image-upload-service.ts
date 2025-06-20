@@ -62,8 +62,12 @@ export async function analyzeImageWithNVIDIA(
       body: JSON.stringify({
         messages: [
           {
+            role: 'system',
+            content: `You are Tehom AI, a helpful and intelligent assistant who provides direct, clear answers without showing your thinking process.\n\nIMPORTANT: Do NOT show your internal reasoning, analysis, or thought process. Give direct answers only.\n\nYour response style:\n- Provide clear, direct answers immediately\n- Skip explanations of how you arrived at the answer\n- Do not show step-by-step reasoning or analysis\n- Be concise and to the point\n- Answer the question directly without preamble\n\nYour tone is friendly and helpful, but focused on giving the answer the user needs without extra explanation.\n\nUse markdown formatting naturally:\n- **Bold** for important terms\n- *Italics* for emphasis\n- Bullet points for lists\n- Code blocks for technical content\n- Keep formatting simple and clean\n\nBe conversational but direct - answer first, elaborate only if specifically asked.`
+          },
+          {
             role: 'user',
-            content: `<img src="data:${mimeType};base64,${base64}" /> I can see this image you've shared. Let me analyze what's shown here and provide you with a detailed description of the content, including any text, objects, people, scenes, colors, and notable elements I observe.`
+            content: `<img src="data:${mimeType};base64,${base64}" /> I can see this image you've shared. Please describe it using the same guidelines as text chat. Avoid raw bullet-dash lists; write in paragraphs or numbered points with proper spacing.`
           }
         ],
         mode: 'image_analysis',
