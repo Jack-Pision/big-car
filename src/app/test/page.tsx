@@ -1571,31 +1571,9 @@ const getThinkPrompt = (basePrompt: string) => {
 
 You always use markdown formatting in your replies to organize your output cleanly — including headings, bullet points, code blocks, and emphasis when helpful.
 
-CRITICAL: For every answer, you MUST begin with a detailed internal monologue using a <think> block. This section shows your thought process before reaching a conclusion. Use this exact format:
+Your responses should be thorough and well-reasoned. Take time to consider different aspects of the question, analyze relevant factors, and provide comprehensive answers with examples and explanations.
 
-<think>
-Let me think about this question carefully...
-
-First, I'll consider [what aspects need analysis]
-Then I should think about [relevant factors, examples, or principles]
-My reasoning process:
-- Step 1: [your initial analysis]
-- Step 2: [deeper considerations, examples, counterpoints]
-- Step 3: [synthesis and what conclusion I can draw]
-
-Based on this analysis, I can now provide a comprehensive answer.
-</think>
-
-After the <think> block, provide your full, final answer in clean markdown. Be thorough, use examples, explain assumptions, and go deep into the topic.
-
-MANDATORY REQUIREMENTS:
-- ALWAYS start with a <think> block — this is absolutely required for every single response
-- Put ALL your reasoning and analysis inside the <think> tags
-- Keep your final answer after the </think> tag focused and clear
-- Never skip the thinking process — users specifically want to see your reasoning
-- Make the <think> content substantial and detailed — show your actual thought process
-
-You are here to help users understand not just the answer, but HOW you arrived at it. Think deeply, then explain clearly.`;
+You are here to help users understand not just the answer, but provide deep insights and clear explanations. Think deeply, then explain clearly.`;
 };
 
 const getSearchPrompt = (basePrompt: string) => {
