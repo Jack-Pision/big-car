@@ -7,55 +7,85 @@ const BackgroundPattern: React.FC = () => {
   const centerY = 75;
   const radius = 35;
 
-  // Generate nodes densely distributed within circular boundary
+  // Generate strategic nodes positioned strictly within circle boundary
   const generateNodesInCircle = () => {
     const nodes = [];
     let id = 1;
-    const gridSize = 2.5; // Smaller grid for denser packing
 
-    // Generate nodes in a grid pattern, keep only those inside circle
-    for (let x = centerX - radius; x <= centerX + radius; x += gridSize) {
-      for (let y = centerY - radius; y <= centerY + radius; y += gridSize) {
-        const distanceFromCenter = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
-        
-        // Only include nodes inside the circle
-        if (distanceFromCenter <= radius - 1) {
-          // Add slight randomness for organic feel
-          const randomX = x + (Math.random() - 0.5) * 1.5;
-          const randomY = y + (Math.random() - 0.5) * 1.5;
-          
-          // Double check it's still in circle after randomness
-          const finalDistance = Math.sqrt(Math.pow(randomX - centerX, 2) + Math.pow(randomY - centerY, 2));
-          if (finalDistance <= radius - 1) {
-            nodes.push({ id: id++, x: randomX, y: randomY });
-          }
-        }
-      }
+    // Center node
+    nodes.push({ id: id++, x: centerX, y: centerY });
+
+    // Ring 1: Inner ring (6 nodes)
+    const innerRadius = radius * 0.3;
+    for (let i = 0; i < 6; i++) {
+      const angle = (i / 6) * 2 * Math.PI;
+      const x = centerX + Math.cos(angle) * innerRadius;
+      const y = centerY + Math.sin(angle) * innerRadius;
+      nodes.push({ id: id++, x, y });
     }
 
-    return nodes;
+    // Ring 2: Middle ring (10 nodes)
+    const middleRadius = radius * 0.6;
+    for (let i = 0; i < 10; i++) {
+      const angle = (i / 10) * 2 * Math.PI + Math.PI / 10; // Offset for better distribution
+      const x = centerX + Math.cos(angle) * middleRadius;
+      const y = centerY + Math.sin(angle) * middleRadius;
+      nodes.push({ id: id++, x, y });
+    }
+
+    // Ring 3: Outer ring (16 nodes) - ensuring they stay well within boundary
+    const outerRadius = radius * 0.85; // 85% of radius to ensure inside circle
+    for (let i = 0; i < 16; i++) {
+      const angle = (i / 16) * 2 * Math.PI;
+      const x = centerX + Math.cos(angle) * outerRadius;
+      const y = centerY + Math.sin(angle) * outerRadius;
+      nodes.push({ id: id++, x, y });
+    }
+
+    // Verify all nodes are within boundary
+    return nodes.filter(node => {
+      const distance = Math.sqrt(Math.pow(node.x - centerX, 2) + Math.pow(node.y - centerY, 2));
+      return distance <= radius - 2; // 2% safety margin
+    });
   };
 
   const nodes = generateNodesInCircle();
 
-  // Generate connections based on proximity (dense network)
+  // Generate strategic connections for full coverage with longer lines
   const generateConnections = () => {
     const connections = [];
-    const maxDistance = 6; // Connection distance
 
-    for (let i = 0; i < nodes.length; i++) {
-      for (let j = i + 1; j < nodes.length; j++) {
-        const node1 = nodes[i];
-        const node2 = nodes[j];
-        
-        const distance = Math.sqrt(
-          Math.pow(node1.x - node2.x, 2) + Math.pow(node1.y - node2.y, 2)
-        );
-        
-        // Connect nodes that are close enough
-        if (distance <= maxDistance) {
-          connections.push({ from: node1.id, to: node2.id });
-        }
+    // Connect center to inner ring
+    for (let i = 1; i <= 6; i++) {
+      connections.push({ from: 1, to: i + 1 });
+    }
+
+    // Connect inner ring to middle ring
+    for (let i = 0; i < 6; i++) {
+      const innerNodeId = i + 2;
+      const middleNode1 = 7 + (i * 2) % 10;
+      const middleNode2 = 7 + ((i * 2) + 1) % 10;
+      connections.push({ from: innerNodeId, to: middleNode1 });
+      connections.push({ from: innerNodeId, to: middleNode2 });
+    }
+
+    // Connect middle ring to outer ring
+    for (let i = 0; i < 10; i++) {
+      const middleNodeId = i + 7;
+      const outerNode1 = 17 + Math.floor((i * 1.6)) % 16;
+      const outerNode2 = 17 + Math.floor((i * 1.6) + 1) % 16;
+      connections.push({ from: middleNodeId, to: outerNode1 });
+      connections.push({ from: middleNodeId, to: outerNode2 });
+    }
+
+    // Connect some outer ring nodes to each other for mesh
+    for (let i = 0; i < 16; i++) {
+      const currentNode = 17 + i;
+      const nextNode = 17 + ((i + 1) % 16);
+      const skipNode = 17 + ((i + 3) % 16);
+      connections.push({ from: currentNode, to: nextNode });
+      if (i % 2 === 0) { // Every other node gets a longer connection
+        connections.push({ from: currentNode, to: skipNode });
       }
     }
 
@@ -70,7 +100,7 @@ const BackgroundPattern: React.FC = () => {
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
       <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-        {/* Planet circular boundary */}
+        {/* Planet circular boundary - appears first */}
         <motion.circle
           cx={`${centerX}%`}
           cy={`${centerY}%`}
@@ -78,14 +108,14 @@ const BackgroundPattern: React.FC = () => {
           fill="none"
           stroke="white"
           strokeWidth="1"
-          className="opacity-25"
+          className="opacity-30"
           initial={{ scale: 0, opacity: 0 }}
-          animate={{ scale: 1, opacity: 0.25 }}
-          transition={{ duration: 2, ease: "easeOut" }}
+          animate={{ scale: 1, opacity: 0.3 }}
+          transition={{ duration: 1.5, ease: "easeOut" }}
         />
 
-        {/* Connection Lines - Dense network */}
-        <g className="opacity-10">
+        {/* Connection Lines - appear after boundary */}
+        <g className="opacity-15">
           {connections.map((connection, index) => {
             const fromNode = getNode(connection.from);
             const toNode = getNode(connection.to);
@@ -100,12 +130,12 @@ const BackgroundPattern: React.FC = () => {
                 x2={`${toNode.x}%`}
                 y2={`${toNode.y}%`}
                 stroke="white"
-                strokeWidth="0.6"
+                strokeWidth="0.5"
                 initial={{ pathLength: 0, opacity: 0 }}
-                animate={{ pathLength: 1, opacity: 0.25 }}
+                animate={{ pathLength: 1, opacity: 0.3 }}
                 transition={{ 
-                  duration: 4, 
-                  delay: index * 0.005,
+                  duration: 2, 
+                  delay: 2 + index * 0.03,
                   ease: "easeInOut"
                 }}
               />
@@ -113,50 +143,48 @@ const BackgroundPattern: React.FC = () => {
           })}
         </g>
 
-        {/* Network Nodes - Dense distribution */}
+        {/* Network Nodes - appear after boundary, staggered animation */}
         <g>
           {nodes.map((node, index) => (
             <motion.circle
               key={`node-${node.id}`}
               cx={`${node.x}%`}
               cy={`${node.y}%`}
-              r="0.8"
+              r="1.2"
               fill="white"
               initial={{ scale: 0, opacity: 0 }}
               animate={{ 
-                scale: [0, 1.1, 1], 
-                opacity: [0, 0.7, 0.5] 
+                scale: [0, 1.3, 1], 
+                opacity: [0, 0.9, 0.7] 
               }}
               transition={{ 
-                duration: 2.5, 
-                delay: index * 0.01,
-                repeat: Infinity,
-                repeatDelay: 25,
+                duration: 1.5, 
+                delay: 1.8 + index * 0.05,
                 ease: "easeOut" 
               }}
             />
           ))}
         </g>
 
-        {/* Pulsing Network Hubs - Key nodes only */}
-        <g className="opacity-8">
-          {nodes.filter((_, index) => index % 20 === 0).map((node, index) => (
+        {/* Pulsing Network Hubs - only key nodes */}
+        <g className="opacity-10">
+          {[nodes[0], nodes[3], nodes[9], nodes[15]].filter(Boolean).map((node, index) => (
             <motion.circle
               key={`hub-${node.id}`}
               cx={`${node.x}%`}
               cy={`${node.y}%`}
-              r="15"
+              r="20"
               fill="none"
               stroke="white"
               strokeWidth="1"
               initial={{ scale: 0, opacity: 0 }}
               animate={{ 
-                scale: [1, 2, 1], 
-                opacity: [0, 0.12, 0] 
+                scale: [1, 2.2, 1], 
+                opacity: [0, 0.15, 0] 
               }}
               transition={{ 
-                duration: 12, 
-                delay: 5 + index * 4,
+                duration: 8, 
+                delay: 5 + index * 3,
                 repeat: Infinity,
                 ease: "easeInOut" 
               }}
@@ -164,9 +192,9 @@ const BackgroundPattern: React.FC = () => {
           ))}
         </g>
 
-        {/* Data Flow Animation - Clean pathways */}
-        <g className="opacity-15">
-          {connections.slice(0, 20).map((connection, index) => {
+        {/* Data Flow Animation - select key pathways */}
+        <g className="opacity-20">
+          {connections.slice(0, 8).map((connection, index) => {
             const fromNode = getNode(connection.from);
             const toNode = getNode(connection.to);
             
@@ -175,7 +203,7 @@ const BackgroundPattern: React.FC = () => {
             return (
               <motion.circle
                 key={`flow-${index}`}
-                r="0.6"
+                r="0.8"
                 fill="white"
                 initial={{ 
                   cx: `${fromNode.x}%`, 
@@ -185,13 +213,13 @@ const BackgroundPattern: React.FC = () => {
                 animate={{ 
                   cx: `${toNode.x}%`, 
                   cy: `${toNode.y}%`,
-                  opacity: [0, 0.5, 0] 
+                  opacity: [0, 0.6, 0] 
                 }}
                 transition={{ 
-                  duration: 6, 
-                  delay: 8 + index * 0.8,
+                  duration: 4, 
+                  delay: 6 + index * 1,
                   repeat: Infinity,
-                  repeatDelay: 20,
+                  repeatDelay: 12,
                   ease: "easeInOut" 
                 }}
               />
