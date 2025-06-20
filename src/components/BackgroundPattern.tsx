@@ -2,10 +2,10 @@ import React from 'react';
 import { motion } from 'framer-motion';
 
 const BackgroundPattern: React.FC = () => {
-  // Globe parameters
-  const centerX = 25;
-  const centerY = 75;
-  const radius = 35;
+  // Globe parameters - positioned as planet Earth in center-bottom
+  const centerX = 50; // Center horizontally
+  const centerY = 85; // Bottom area (85% down from top)
+  const radius = 25; // Smaller radius to fit better in bottom area
 
   // Generate strategic nodes positioned strictly within circle boundary
   const generateNodesInCircle = () => {
@@ -45,7 +45,7 @@ const BackgroundPattern: React.FC = () => {
     // Verify all nodes are within boundary
     return nodes.filter(node => {
       const distance = Math.sqrt(Math.pow(node.x - centerX, 2) + Math.pow(node.y - centerY, 2));
-      return distance <= radius - 2; // 2% safety margin
+      return distance <= radius - 1; // 1% safety margin
     });
   };
 
@@ -100,22 +100,8 @@ const BackgroundPattern: React.FC = () => {
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
       <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-        {/* Planet circular boundary - appears first */}
-        <motion.circle
-          cx={`${centerX}%`}
-          cy={`${centerY}%`}
-          r={`${radius}%`}
-          fill="none"
-          stroke="white"
-          strokeWidth="1"
-          className="opacity-30"
-          initial={{ scale: 0, opacity: 0 }}
-          animate={{ scale: 1, opacity: 0.3 }}
-          transition={{ duration: 1.5, ease: "easeOut" }}
-        />
-
-        {/* Connection Lines - appear after boundary */}
-        <g className="opacity-15">
+        {/* Connection Lines - subtle network connections */}
+        <g className="opacity-20">
           {connections.map((connection, index) => {
             const fromNode = getNode(connection.from);
             const toNode = getNode(connection.to);
@@ -130,12 +116,12 @@ const BackgroundPattern: React.FC = () => {
                 x2={`${toNode.x}%`}
                 y2={`${toNode.y}%`}
                 stroke="white"
-                strokeWidth="0.5"
+                strokeWidth="0.6"
                 initial={{ pathLength: 0, opacity: 0 }}
-                animate={{ pathLength: 1, opacity: 0.3 }}
+                animate={{ pathLength: 1, opacity: 0.4 }}
                 transition={{ 
-                  duration: 2, 
-                  delay: 2 + index * 0.03,
+                  duration: 2.5, 
+                  delay: 0.5 + index * 0.02,
                   ease: "easeInOut"
                 }}
               />
@@ -143,48 +129,48 @@ const BackgroundPattern: React.FC = () => {
           })}
         </g>
 
-        {/* Network Nodes - appear after boundary, staggered animation */}
+        {/* Network Nodes - bigger and more visible like planet cities */}
         <g>
           {nodes.map((node, index) => (
             <motion.circle
               key={`node-${node.id}`}
               cx={`${node.x}%`}
               cy={`${node.y}%`}
-              r="1.2"
+              r="2" // Bigger nodes
               fill="white"
               initial={{ scale: 0, opacity: 0 }}
               animate={{ 
-                scale: [0, 1.3, 1], 
-                opacity: [0, 0.9, 0.7] 
+                scale: [0, 1.2, 1], 
+                opacity: [0, 1, 0.8] // More visible
               }}
               transition={{ 
-                duration: 1.5, 
-                delay: 1.8 + index * 0.05,
+                duration: 1.8, 
+                delay: 0.3 + index * 0.08,
                 ease: "easeOut" 
               }}
             />
           ))}
         </g>
 
-        {/* Pulsing Network Hubs - only key nodes */}
-        <g className="opacity-10">
+        {/* Pulsing Network Hubs - key cities on planet */}
+        <g className="opacity-15">
           {[nodes[0], nodes[3], nodes[9], nodes[15]].filter(Boolean).map((node, index) => (
             <motion.circle
               key={`hub-${node.id}`}
               cx={`${node.x}%`}
               cy={`${node.y}%`}
-              r="20"
+              r="15"
               fill="none"
               stroke="white"
               strokeWidth="1"
               initial={{ scale: 0, opacity: 0 }}
               animate={{ 
-                scale: [1, 2.2, 1], 
-                opacity: [0, 0.15, 0] 
+                scale: [1, 1.8, 1], 
+                opacity: [0, 0.2, 0] 
               }}
               transition={{ 
-                duration: 8, 
-                delay: 5 + index * 3,
+                duration: 6, 
+                delay: 2 + index * 2,
                 repeat: Infinity,
                 ease: "easeInOut" 
               }}
@@ -192,9 +178,9 @@ const BackgroundPattern: React.FC = () => {
           ))}
         </g>
 
-        {/* Data Flow Animation - select key pathways */}
-        <g className="opacity-20">
-          {connections.slice(0, 8).map((connection, index) => {
+        {/* Data Flow Animation - planet communication signals */}
+        <g className="opacity-25">
+          {connections.slice(0, 6).map((connection, index) => {
             const fromNode = getNode(connection.from);
             const toNode = getNode(connection.to);
             
@@ -203,7 +189,7 @@ const BackgroundPattern: React.FC = () => {
             return (
               <motion.circle
                 key={`flow-${index}`}
-                r="0.8"
+                r="1"
                 fill="white"
                 initial={{ 
                   cx: `${fromNode.x}%`, 
@@ -213,13 +199,13 @@ const BackgroundPattern: React.FC = () => {
                 animate={{ 
                   cx: `${toNode.x}%`, 
                   cy: `${toNode.y}%`,
-                  opacity: [0, 0.6, 0] 
+                  opacity: [0, 0.7, 0] 
                 }}
                 transition={{ 
                   duration: 4, 
-                  delay: 6 + index * 1,
+                  delay: 3 + index * 1.5,
                   repeat: Infinity,
-                  repeatDelay: 12,
+                  repeatDelay: 8,
                   ease: "easeInOut" 
                 }}
               />
