@@ -52,7 +52,7 @@ import ThinkingButton from '@/components/ThinkingButton';
 import { ArtifactViewer } from '@/components/ArtifactViewer';
 import { shouldTriggerArtifact, getArtifactPrompt, artifactSchema, validateArtifactData, createFallbackArtifact, createArtifactFromRawContent, extractTitleFromContent, type ArtifactData } from '@/utils/artifact-utils';
 import ReasoningDisplay from '@/components/ReasoningDisplay';
-import { uploadAndAnalyzeImage, ImageUploadResult } from '@/lib/image-upload-service';
+import { uploadAndAnalyzeImage, uploadImageToSupabase, analyzeImageWithNVIDIA, ImageUploadResult } from '@/lib/image-upload-service';
 import toast from 'react-hot-toast';
 
 // Define a type that includes all possible query types (including the ones in SCHEMAS and 'conversation')
@@ -1736,6 +1736,7 @@ function TestChatComponent(props?: TestChatProps) {
   // Image upload state
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
+  const [uploadedImageUrls, setUploadedImageUrls] = useState<string[]>([]);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
 
 
@@ -2111,6 +2112,74 @@ function TestChatComponent(props?: TestChatProps) {
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
+    
+    // Handle image analysis if we have selected files
+    if (selectedFiles.length > 0) {
+      const file = selectedFiles[0];
+      setIsLoading(true);
+      setIsAiResponding(true);
+      
+      try {
+        // Analyze image with NVIDIA API
+        const analysisResult = await analyzeImageWithNVIDIA(file);
+        
+        if (analysisResult.success && analysisResult.analysis) {
+          // Ensure we have an active session
+          const currentActiveSessionId = await ensureActiveSession('Image uploaded and analyzed');
+          
+          // Add user message with image (no analysis text)
+          const userMessage: LocalMessage = {
+            role: 'user',
+            content: input.trim(), // Include any text the user typed
+            imageUrls: uploadedImageUrls, // Use Supabase URLs for persistence
+            id: uuidv4(),
+            timestamp: Date.now(),
+            isProcessed: true
+          };
+
+          // Add AI response message with natural analysis
+          const aiResponseMessage: LocalMessage = {
+            role: 'assistant',
+            content: analysisResult.analysis,
+            id: uuidv4(),
+            timestamp: Date.now() + 1,
+            isProcessed: true,
+            parentId: userMessage.id
+          };
+
+          // Add both messages to chat
+          const updatedMessages = [...messages, userMessage, aiResponseMessage];
+          setMessages(updatedMessages);
+          setShowHeading(false);
+          setHasInteracted(true);
+
+          // Save messages to session
+          await saveMessagesOnQueryCompleteWithSessionId(updatedMessages, currentActiveSessionId);
+
+          // Clear input and image previews
+          setInput('');
+          setSelectedFiles([]);
+          setImagePreviewUrls([]);
+          setUploadedImageUrls([]);
+          if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+          }
+
+          toast.success('Image analyzed successfully!');
+        } else {
+          toast.error(analysisResult.error || 'Failed to analyze image');
+        }
+      } catch (error) {
+        console.error('Error analyzing image:', error);
+        toast.error('Failed to analyze image');
+      } finally {
+        setIsLoading(false);
+        setIsAiResponding(false);
+      }
+      return;
+    }
+    
+    // Regular text handling (no images)
     if (!input.trim()) return;
 
     // First check if we're in search mode
@@ -2899,62 +2968,32 @@ function TestChatComponent(props?: TestChatProps) {
     setIsUploadingImage(true);
 
     try {
-      // Create preview URL
-      const previewUrl = URL.createObjectURL(file);
-      setImagePreviewUrls([previewUrl]);
+      // Add file to selected files immediately (shows loading state)
       setSelectedFiles([file]);
+      setImagePreviewUrls(['']); // Empty string shows loading state
 
-      // Upload and analyze image
-      const result: ImageUploadResult = await uploadAndAnalyzeImage(file);
+      // Upload to Supabase only
+      const uploadResult = await uploadImageToSupabase(file);
       
-      if (result.success && result.imageUrl && result.analysis) {
-        // Add user message with image (no analysis text)
-        const userMessage: LocalMessage = {
-          role: 'user',
-          content: '', // Just the image, no text
-          imageUrls: [result.imageUrl],
-          id: uuidv4(),
-          timestamp: Date.now(),
-          isProcessed: true
-        };
-
-        // Add AI response message with natural analysis
-        const aiResponseMessage: LocalMessage = {
-          role: 'assistant',
-          content: result.analysis,
-          id: uuidv4(),
-          timestamp: Date.now() + 1,
-          isProcessed: true,
-          parentId: userMessage.id // Link AI response to user image message
-        };
-
-        // Add both messages to chat
-        const updatedMessages = [...messages, userMessage, aiResponseMessage];
-        setMessages(updatedMessages);
-        setShowHeading(false);
-        setHasInteracted(true);
-
-        // Save messages to session
-        try {
-          const sessionId = await ensureActiveSession('Image uploaded and analyzed');
-          await saveMessagesOnQueryCompleteWithSessionId(updatedMessages, sessionId);
-        } catch (error) {
-          console.error('Error saving image analysis to session:', error);
-        }
-
-        // Clear the file input and previews
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
-        }
+      if (uploadResult.success && uploadResult.url) {
+        // Create preview URL and update state
+        const previewUrl = URL.createObjectURL(file);
+        setImagePreviewUrls([previewUrl]);
+        setUploadedImageUrls([uploadResult.url]); // Store Supabase URL
+        
+        toast.success('Image uploaded successfully! Click send to analyze.');
+      } else {
+        // Remove from selected files if upload failed
         setSelectedFiles([]);
         setImagePreviewUrls([]);
-
-        toast.success('Image analyzed successfully!');
-      } else {
-        toast.error(result.error || 'Failed to upload image');
+        setUploadedImageUrls([]);
+        toast.error(uploadResult.error || 'Failed to upload image');
       }
     } catch (error) {
       console.error('Error uploading image:', error);
+      setSelectedFiles([]);
+      setImagePreviewUrls([]);
+      setUploadedImageUrls([]);
       toast.error('Failed to upload image');
     } finally {
       setIsUploadingImage(false);
@@ -2966,9 +3005,12 @@ function TestChatComponent(props?: TestChatProps) {
     setImagePreviewUrls(prev => {
       const newUrls = prev.filter((_, i) => i !== index);
       // Revoke the URL to free memory
-      URL.revokeObjectURL(prev[index]);
+      if (prev[index]) {
+        URL.revokeObjectURL(prev[index]);
+      }
       return newUrls;
     });
+    setUploadedImageUrls(prev => prev.filter((_, i) => i !== index));
   };
 
   // Add function to handle Write label click
@@ -3848,29 +3890,7 @@ function TestChatComponent(props?: TestChatProps) {
             Seek and You'll find
           </h1>
 
-            {/* Image Preview */}
-            {imagePreviewUrls.length > 0 && (
-              <div className="w-full px-4 sm:px-6 md:px-8 mb-2">
-                <div className="bg-[#232323] border border-white/20 rounded-lg p-3 flex gap-2 flex-wrap">
-                  {imagePreviewUrls.map((url, index) => (
-                    <div key={index} className="relative">
-                      <img 
-                        src={url} 
-                        alt={`Preview ${index + 1}`} 
-                        className="w-16 h-16 object-cover rounded-md border border-gray-600"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeImagePreview(index)}
-                        className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+
 
             {/* Input form */}
             <form
@@ -3878,7 +3898,35 @@ function TestChatComponent(props?: TestChatProps) {
               style={{ boxShadow: '0 4px 32px 0 rgba(0,0,0,0.32)' }}
               onSubmit={handleSend}
             >
-
+              {/* Image Preview inside input box */}
+              {(selectedFiles.length > 0 || imagePreviewUrls.length > 0) && (
+                <div className="w-full px-2 py-2 border-b border-white/10">
+                  <div className="flex gap-2 flex-wrap">
+                    {selectedFiles.map((file, index) => (
+                      <div key={index} className="relative">
+                        {imagePreviewUrls[index] ? (
+                          <img 
+                            src={imagePreviewUrls[index]} 
+                            alt={`Preview ${index + 1}`} 
+                            className="w-20 h-20 object-cover rounded-lg border border-gray-600"
+                          />
+                        ) : (
+                          <div className="w-20 h-20 bg-gray-700 rounded-lg border border-gray-600 flex items-center justify-center">
+                            <div className="w-6 h-6 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => removeImagePreview(index)}
+                          className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Input area: textarea on top, actions below */}
               <div className="flex flex-col w-full gap-2 items-center">
