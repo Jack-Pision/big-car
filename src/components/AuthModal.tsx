@@ -23,6 +23,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
   const [fullName, setFullName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [mousePos, setMousePos] = useState({ x: 50, y: 50 });
 
 
   const resetForm = () => {
@@ -36,6 +37,14 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
   const handleClose = () => {
     resetForm();
     onClose();
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setMousePos({
+      x: ((e.clientX - rect.left) / rect.width) * 100,
+      y: ((e.clientY - rect.top) / rect.height) * 100
+    });
   };
 
 
@@ -124,10 +133,14 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
           exit={{ opacity: 0 }}
           className="fixed inset-0 bg-[#161618] z-[10000] flex items-center justify-end p-6"
           onClick={handleClose}
+          onMouseMove={handleMouseMove}
         >
-          {/* Dark Grid Background */}
+          {/* Interactive Dark Grid Background with Torch Light Effect */}
           <div className="absolute inset-0 pointer-events-none">
+            {/* Base gradient */}
             <div className="absolute inset-0 bg-gradient-to-br from-neutral-800/20 via-neutral-900/15 to-black/25"></div>
+            
+            {/* Grid pattern */}
             <div 
               className="absolute inset-0 opacity-30"
               style={{
@@ -138,17 +151,48 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
                 backgroundSize: '40px 40px'
               }}
             ></div>
+            
+            {/* Torch light effect */}
+            <div 
+              className="absolute inset-0 transition-all duration-300 ease-out"
+              style={{
+                background: `radial-gradient(600px circle at ${mousePos.x}% ${mousePos.y}%, 
+                  rgba(255, 255, 255, 0.15) 0%, 
+                  rgba(255, 255, 255, 0.08) 20%, 
+                  rgba(255, 255, 255, 0.03) 40%, 
+                  transparent 70%)`
+              }}
+            ></div>
+            
+            {/* Grid glow effect */}
+            <div 
+              className="absolute inset-0 transition-all duration-200 ease-out"
+              style={{
+                background: `radial-gradient(400px circle at ${mousePos.x}% ${mousePos.y}%, 
+                  rgba(255, 255, 255, 0.12) 0%, 
+                  rgba(255, 255, 255, 0.04) 30%, 
+                  transparent 60%)`,
+                backgroundImage: `
+                  linear-gradient(rgba(255, 255, 255, 0.15) 1px, transparent 1px),
+                  linear-gradient(90deg, rgba(255, 255, 255, 0.15) 1px, transparent 1px)
+                `,
+                backgroundSize: '40px 40px'
+              }}
+            ></div>
           </div>
 
-          {/* Typography Section */}
+          {/* Dynamic Typography Section */}
           <div className="absolute left-12 top-1/2 transform -translate-y-1/2 pointer-events-none z-10">
             <div className="space-y-2">
               <motion.h1 
                 initial={{ opacity: 0, x: -50 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 1, delay: 0.3 }}
-                className="text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-100 to-purple-200 leading-none tracking-tight"
-                style={{ fontFamily: 'Inter, sans-serif' }}
+                className="text-8xl font-light leading-none tracking-tight transition-all duration-300 ease-out"
+                style={{ 
+                  fontFamily: 'Inter, sans-serif',
+                  color: `rgba(248, 250, 252, ${0.9 - Math.abs(mousePos.x - 15) * 0.006 - Math.abs(mousePos.y - 35) * 0.004})`
+                }}
               >
                 Seek
               </motion.h1>
@@ -156,8 +200,11 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
                 initial={{ opacity: 0, x: -50 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 1, delay: 0.5 }}
-                className="text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-200 via-blue-100 to-white leading-none tracking-tight"
-                style={{ fontFamily: 'Inter, sans-serif' }}
+                className="text-8xl font-light leading-none tracking-tight transition-all duration-300 ease-out"
+                style={{ 
+                  fontFamily: 'Inter, sans-serif',
+                  color: `rgba(248, 250, 252, ${0.9 - Math.abs(mousePos.x - 15) * 0.006 - Math.abs(mousePos.y - 50) * 0.004})`
+                }}
               >
                 and You'll
               </motion.h2>
@@ -165,8 +212,11 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
                 initial={{ opacity: 0, x: -50 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 1, delay: 0.7 }}
-                className="text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-purple-100 to-blue-200 leading-none tracking-tight"
-                style={{ fontFamily: 'Inter, sans-serif' }}
+                className="text-8xl font-light leading-none tracking-tight transition-all duration-300 ease-out"
+                style={{ 
+                  fontFamily: 'Inter, sans-serif',
+                  color: `rgba(248, 250, 252, ${0.9 - Math.abs(mousePos.x - 15) * 0.006 - Math.abs(mousePos.y - 65) * 0.004})`
+                }}
               >
                 Find
               </motion.h3>
