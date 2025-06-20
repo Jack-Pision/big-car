@@ -1685,8 +1685,7 @@ function TestChatComponent(props?: TestChatProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isSearchMode, setIsSearchMode] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
-  const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
-  const [imageContexts, setImageContexts] = useState<ImageContext[]>([]);
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [inputBarHeight, setInputBarHeight] = useState(96);
   const [isAiResponding, setIsAiResponding] = useState(false);
@@ -1731,14 +1730,13 @@ function TestChatComponent(props?: TestChatProps) {
 
   // Additional missing state variables
   const [showHeading, setShowHeading] = useState(true);
-  const [selectedFilesForUpload, setSelectedFilesForUpload] = useState<File[]>([]);
-  const [imageCounter, setImageCounter] = useState(0);
+
 
   // Refs
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const inputBarRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const fileInputRef1 = useRef<HTMLInputElement>(null);
+
   const isInitialLoadRef = useRef(true);
   const sessionIdRef = useRef<string | null>(null); // Store session ID for immediate access
 
@@ -2261,14 +2259,14 @@ function TestChatComponent(props?: TestChatProps) {
         // Call NVIDIA API with artifact prompt and streaming enabled
         const artifactPrompt = getArtifactPrompt(input.trim());
         
-        const response = await fetch('/api/openrouter-chat', {
+        const response = await fetch('/api/nvidia', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            model: 'google/gemini-2.0-flash-exp:free',
             messages: [{ role: 'user', content: artifactPrompt }],
             temperature: 0.3,
             max_tokens: 8192,
+            mode: 'artifact',
             stream: true // Enable streaming for artifacts
           })
         });
@@ -2407,13 +2405,13 @@ function TestChatComponent(props?: TestChatProps) {
 
     // If we get here, we're in default chat mode
     let userMessageId = '';
-    let uploadedImageUrls: string[] = [];
+
 
     try {
     if (!input.trim() || isLoading || isAiResponding) return;
 
     // Ensure we have an active session using consolidated function
-    const currentActiveSessionId = await ensureActiveSession(input.trim() || (selectedFilesForUpload.length > 0 ? "Image Upload" : undefined));
+    const currentActiveSessionId = await ensureActiveSession(input.trim() || undefined);
 
     if (!hasInteracted) setHasInteracted(true);
       
@@ -2445,12 +2443,7 @@ function TestChatComponent(props?: TestChatProps) {
     // Ensure we're using the final ID from the message object
     userMessageId = userMessageForDisplay.id!;
 
-    if (selectedFilesForUpload.length > 0 && !input) {
-      userMessageForDisplay.content = "Image selected for analysis.";
-    }
-    if (selectedFilesForUpload.length > 0) {
-        (userMessageForDisplay as any).imageUrls = imagePreviewUrls || undefined;
-    }
+
     setMessages((prev) => [...prev, userMessageForDisplay]);
     setInput("");
     
@@ -2485,7 +2478,6 @@ function TestChatComponent(props?: TestChatProps) {
       id: upcomingAiMessageId,
       timestamp: Date.now(),
       parentId: userMessageId,
-      imageUrls: uploadedImageUrls.length > 0 ? uploadedImageUrls : undefined,
       webSources: [],
       contentType: activeButton === 'reasoning' ? 'reasoning' : 'conversation',
       isStreaming: true,
@@ -2505,40 +2497,7 @@ function TestChatComponent(props?: TestChatProps) {
       }
     }
     
-      if (selectedFilesForUpload.length > 0) {
-        const clientSideSupabase = createSupabaseClient();
-        if (!clientSideSupabase) throw new Error('Supabase client not available');
-        
-        // Fix the type error by explicitly typing the Promise.all result
-        const uploadedUrls: string[] = await Promise.all(
-          selectedFilesForUpload.map(async (file: File): Promise<string> => {
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${Math.random()}.${fileExt}`;
-            const filePath = `${fileName}`;
-            const { error: uploadError } = await clientSideSupabase.storage
-              .from('images2')
-              .upload(filePath, file);
-            if (uploadError) {
-              console.error('Supabase upload error for file:', file.name, uploadError);
-              throw new Error(`Failed to upload ${file.name}: ${uploadError.message}`);
-            }
-            const { data: urlData } = clientSideSupabase.storage
-              .from('images2')
-              .getPublicUrl(filePath);
-            if (!urlData.publicUrl) {
-              console.error('Failed to get public URL for file:', file.name);
-              throw new Error(`Failed to get public URL for ${file.name}`);
-            }
-            return urlData.publicUrl;
-          })
-        );
-        
-        uploadedImageUrls = uploadedUrls;
-        
-        if (uploadedImageUrls.length === 0 && selectedFilesForUpload.length > 0) {
-          throw new Error('Failed to get public URLs for any of the uploaded images.');
-        }
-      }
+
 
       const context = buildConversationContext(convertToConversationMessages(messages));
 
@@ -2576,26 +2535,13 @@ function TestChatComponent(props?: TestChatProps) {
         presence_penalty: 0.2,   // OPTIMIZATION 3: Decreased from 0.8
       };
       
-      if (uploadedImageUrls.length > 0) {
-        const lastUserMsgIndex = formattedMessages.length - 1;
-        if (formattedMessages[lastUserMsgIndex].role === 'user') {
-          formattedMessages[lastUserMsgIndex].imageUrls = uploadedImageUrls;
-        }
-        apiPayload.imageUrls = uploadedImageUrls;
-        const previousImageDescriptions = imageContexts.map(ctx => ctx.description);
-        apiPayload.previousImageDescriptions = previousImageDescriptions;
-        if (!userMessageForDisplay.content || userMessageForDisplay.content === "Image selected for analysis.") {
-             if (formattedMessages[lastUserMsgIndex]) {
-                formattedMessages[lastUserMsgIndex].content = "Describe these images.";
-             }
-        }
-      }
+
       
       // Check for cached AI response first (only for non-image requests)
       let res;
       let usedCache = false;
       
-      if (uploadedImageUrls.length === 0 && queryType === 'conversation') {
+      if (queryType === 'conversation') {
         // Try cache for text-only conversation requests
         const aiOptions = {
           messages: formattedMessages,
@@ -2643,8 +2589,8 @@ function TestChatComponent(props?: TestChatProps) {
           signal: newAbortController.signal,
         });
         
-        // Cache the response for future use (only for non-image, conversation requests)
-        if (uploadedImageUrls.length === 0 && queryType === 'conversation' && res.ok && activeButton !== 'reasoning') {
+        // Cache the response for future use (only for conversation requests)
+        if (queryType === 'conversation' && res.ok && activeButton !== 'reasoning') {
           try {
             // We'll cache after processing the response
           } catch (error) {
@@ -2659,7 +2605,7 @@ function TestChatComponent(props?: TestChatProps) {
       }
       
       // Handle JSON response for structured queries
-      if (uploadedImageUrls.length === 0 && queryType !== 'conversation') {
+      if (queryType !== 'conversation') {
         const jsonData = await res.json();
         const structuredData = jsonData.choices?.[0]?.message?.content || jsonData.choices?.[0]?.text || jsonData.content || '';
         let parsedData;
@@ -2813,7 +2759,6 @@ function TestChatComponent(props?: TestChatProps) {
                 parentId: userMessageId,
                 contentType: 'reasoning',
                 isProcessed: true,
-                imageUrls: uploadedImageUrls.length > 0 ? uploadedImageUrls : undefined,
               };
               
               // FAST SAVE - No delays, runs in background
@@ -2852,7 +2797,6 @@ function TestChatComponent(props?: TestChatProps) {
                 parentId: userMessageId,
                 contentType: 'conversation',
                 isProcessed: true,
-                imageUrls: uploadedImageUrls.length > 0 ? uploadedImageUrls : undefined,
               };
               
               // FAST SAVE - No delays, runs in background
@@ -2871,24 +2815,7 @@ function TestChatComponent(props?: TestChatProps) {
         }
         // Note: No need to clear live thinking for default chat since we don't set it
         
-        // Handle image context if needed
-        if (uploadedImageUrls.length > 0 && aiMessageId) {
-          const { mainContent: finalMainContent } = extractThinkContentDuringStream(contentBuffer);
-          const { content: cleanedContent } = cleanAIResponse(finalMainContent);
-          const descriptionSummary = cleanedContent.slice(0, 150) + (cleanedContent.length > 150 ? '...' : '');
-          const newImageCount = imageCounter + uploadedImageUrls.length;
-          setImageCounter(newImageCount);
-          const newImageContexts = uploadedImageUrls.map((url, index) => ({
-              order: imageCounter + index + 1,
-              description: descriptionSummary,
-              imageUrl: url,
-              timestamp: Date.now()
-          }));
-          setImageContexts(prev => {
-              const updated = [...prev, ...newImageContexts];
-              return updated.slice(-10);
-          });
-        }
+
       }
     } catch (err: any) {
       if (err.name === 'AbortError') {
@@ -2901,7 +2828,6 @@ function TestChatComponent(props?: TestChatProps) {
             id: uuidv4(),
             timestamp: Date.now(),
             parentId: userMessageId, 
-            imageUrls: uploadedImageUrls.length > 0 ? uploadedImageUrls : undefined,
             isProcessed: true // Mark as processed
           },
         ];
@@ -2925,7 +2851,6 @@ function TestChatComponent(props?: TestChatProps) {
             id: uuidv4(),
             timestamp: Date.now(),
             parentId: userMessageId, 
-            imageUrls: uploadedImageUrls.length > 0 ? uploadedImageUrls : undefined,
             isProcessed: true // Mark as processed
           },
           ];
@@ -2945,8 +2870,6 @@ function TestChatComponent(props?: TestChatProps) {
       setIsLoading(false);
       setAbortController(null);
     }
-    setImagePreviewUrls([]);
-    setSelectedFilesForUpload([]);
   }
 
   function handleStopAIResponse() {
@@ -2955,30 +2878,10 @@ function TestChatComponent(props?: TestChatProps) {
     }
   }
 
-  // Handler for the first plus button click
-  function handleFirstPlusClick() {
-    fileInputRef1.current?.click();
-  }
-
-  // Handler for the first plus button file upload
-  async function handleFirstFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      const newFiles = Array.from(files);
-      setSelectedFilesForUpload((prevFiles) => [...prevFiles, ...newFiles]);
-      
-      const newPreviewUrls = newFiles.map(file => URL.createObjectURL(file));
-      setImagePreviewUrls((prevUrls) => [...prevUrls, ...newPreviewUrls]);
-    }
-    // Clear the file input so the same file can be selected again if removed and re-added
-    if (e.target) {
-      e.target.value = '';
-    }
-  }
-
-  function removeImagePreview(indexToRemove: number) {
-    setImagePreviewUrls((prevUrls) => prevUrls.filter((_, index) => index !== indexToRemove));
-    setSelectedFilesForUpload((prevFiles) => prevFiles.filter((_, index) => index !== indexToRemove));
+  // Non-functional plus button placeholder
+  function handlePlusClick() {
+    // Placeholder function - no functionality
+    console.log('Plus button clicked - no functionality implemented');
   }
 
   // Add function to handle Write label click
@@ -3015,8 +2918,6 @@ function TestChatComponent(props?: TestChatProps) {
       
       setMessages(processedMessages);
       setInput('');
-      setImagePreviewUrls([]);
-      setSelectedFilesForUpload([]);
       setShowHeading(processedMessages.length === 0); // Show heading if the loaded session is empty
       setHasInteracted(true); // Assume interaction when a session is selected
       setSidebarOpen(false); // Close sidebar
@@ -3033,8 +2934,6 @@ function TestChatComponent(props?: TestChatProps) {
   const handleNewChatRequest = async () => {
     setSidebarOpen(false);
     setInput('');
-    setImagePreviewUrls([]);
-    setSelectedFilesForUpload([]);
     setShowHeading(true); // Show welcoming heading
     setHasInteracted(false); // Reset interaction state
     setActiveSessionId(null);
@@ -3868,23 +3767,7 @@ function TestChatComponent(props?: TestChatProps) {
               style={{ boxShadow: '0 4px 32px 0 rgba(0,0,0,0.32)' }}
               onSubmit={handleSend}
             >
-              {/* Image previews above textarea */}
-              {imagePreviewUrls.length > 0 && (
-                <div className="flex flex-row gap-2 mb-2 justify-start overflow-x-auto max-w-full">
-                  {imagePreviewUrls.map((url, idx) => (
-                    <div key={idx} className="relative flex-shrink-0">
-                      <img src={url} alt={`Preview ${idx + 1}`} className="w-16 h-16 object-cover rounded-lg" />
-                      <button
-                        type="button"
-                        className="absolute top-0 right-0 bg-black bg-opacity-60 text-white rounded-full p-1"
-                        onClick={() => removeImagePreview(idx)}
-                      >
-                        &times;
-                      </button>
-              </div>
-          ))}
-        </div>
-              )}
+
 
               {/* Input area: textarea on top, actions below */}
               <div className="flex flex-col w-full gap-2 items-center">
@@ -3998,7 +3881,7 @@ function TestChatComponent(props?: TestChatProps) {
                         height: "36px",
                         backgroundColor: '#161618'
                       }}
-                      onClick={handleFirstPlusClick}
+                      onClick={handlePlusClick}
                     >
                       <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                         <line x1="12" y1="5" x2="12" y2="19" />
@@ -4122,15 +4005,7 @@ function TestChatComponent(props?: TestChatProps) {
           />
         )}
 
-        {/* Hidden file input */}
-          <input
-            type="file"
-          ref={fileInputRef1}
-            style={{ display: 'none' }}
-          onChange={handleFirstFileChange}
-          accept="image/*"
-          multiple
-        />
+
 
         {/* Sidebar */}
         <Sidebar
