@@ -110,6 +110,16 @@ function cleanAIResponse(text: string): ProcessedResponse {
   };
 }
 
+// Add after cleanAIResponse definition
+function fixDenseMarkdown(text: string): string {
+  if (!text) return text;
+  // Ensure a newline before numbered items like "1." "2." etc. if not already at line start
+  let fixed = text.replace(/(\d+\.)\s*/g, '\n$1 ');
+  // Ensure a newline before dashes that appear like list markers but are glued
+  fixed = fixed.replace(/([^-])(-\s+)/g, '$1\n- ');
+  return fixed;
+}
+
 /**
  * Detects and handles potential JSON responses in conversation mode.
  * If the text appears to be JSON, it extracts and formats the content as plain text.
@@ -2257,15 +2267,15 @@ function TestChatComponent(props?: TestChatProps) {
         setMessages(prev =>
           prev.map(msg =>
             msg.id === aiMessageId
-              ? { ...msg, isStreaming: false, isProcessed: true }
-              : msg
+              ? { ...msg, content: postProcessAIChatResponse(fixDenseMarkdown(contentBuffer), true), isStreaming: false, isProcessed: true }
+               : msg
           )
         );
 
         if (currentActiveSessionId) {
           const completeMessage: LocalMessage = {
             role: "assistant",
-            content: contentBuffer,
+            content: postProcessAIChatResponse(fixDenseMarkdown(contentBuffer), true),
             id: aiMessageId,
             timestamp: Date.now(),
             parentId: userMessageId,
