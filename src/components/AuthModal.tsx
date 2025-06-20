@@ -121,6 +121,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
           className="fixed inset-0 bg-[#161618] z-[10000] flex items-center justify-end p-6"
           onClick={handleClose}
         >
+          <BackgroundPattern />
           
           <motion.div
             initial={{ opacity: 0, scale: 0.95, x: 50 }}
@@ -130,7 +131,6 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
             className="relative w-full max-w-sm"
             onClick={(e) => e.stopPropagation()}
           >
-            <BackgroundPattern />
 
             {/* Main Container */}
             <div className="relative bg-neutral-800 rounded-2xl border border-neutral-700 shadow-2xl overflow-hidden">
