@@ -1,217 +1,204 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 
 const BackgroundPattern: React.FC = () => {
-  // Globe parameters - positioned as planet Earth in center-bottom
-  const centerX = 50; // Center horizontally
-  const centerY = 90; // Bottom area (90% down from top)
-  const radius = 50; // Planet radius to span viewport width
-
-  // Generate strategic nodes positioned strictly within circle boundary
-  const generateNodesInCircle = () => {
+  // Generate globe nodes in concentric circles - larger globe (radius 200px)
+  const generateGlobeNodes = () => {
     const nodes = [];
-    let id = 1;
-
+    const centerX = 25; // 25% from left
+    const centerY = 75; // 75% from top (bottom area)
+    const baseRadius = 12; // Increased base radius for larger globe
+    
     // Center node
-    nodes.push({ id: id++, x: centerX, y: centerY });
-
-    // Ring 1: Inner ring (6 nodes)
-    const innerRadius = radius * 0.3;
+    nodes.push({ id: 0, x: centerX, y: centerY });
+    
+    // Inner ring - 6 nodes
     for (let i = 0; i < 6; i++) {
-      const angle = (i / 6) * 2 * Math.PI;
-      const x = centerX + Math.cos(angle) * innerRadius;
-      const y = centerY + Math.sin(angle) * innerRadius;
-      nodes.push({ id: id++, x, y });
+      const angle = (i * 60) * Math.PI / 180;
+      const x = centerX + Math.cos(angle) * baseRadius * 0.4;
+      const y = centerY + Math.sin(angle) * baseRadius * 0.4;
+      nodes.push({ id: i + 1, x, y });
     }
-
-    // Ring 2: Middle ring (10 nodes)
-    const middleRadius = radius * 0.6;
-    for (let i = 0; i < 10; i++) {
-      const angle = (i / 10) * 2 * Math.PI + Math.PI / 10; // Offset for better distribution
-      const x = centerX + Math.cos(angle) * middleRadius;
-      const y = centerY + Math.sin(angle) * middleRadius;
-      nodes.push({ id: id++, x, y });
+    
+    // Middle ring - 8 nodes
+    for (let i = 0; i < 8; i++) {
+      const angle = (i * 45) * Math.PI / 180;
+      const x = centerX + Math.cos(angle) * baseRadius * 0.7;
+      const y = centerY + Math.sin(angle) * baseRadius * 0.7;
+      nodes.push({ id: i + 7, x, y });
     }
-
-    // Ring 3: Outer ring (16 nodes) - full radius to fill viewport width
-    const outerRadius = radius; // full radius to fill viewport width
-    for (let i = 0; i < 16; i++) {
-      const angle = (i / 16) * 2 * Math.PI;
-      const x = centerX + Math.cos(angle) * outerRadius;
-      const y = centerY + Math.sin(angle) * outerRadius;
-      nodes.push({ id: id++, x, y });
+    
+    // Outer ring - 8 nodes (reduced from 10)
+    for (let i = 0; i < 8; i++) {
+      const angle = (i * 45 + 22.5) * Math.PI / 180; // Offset by 22.5 degrees
+      const x = centerX + Math.cos(angle) * baseRadius;
+      const y = centerY + Math.sin(angle) * baseRadius;
+      nodes.push({ id: i + 15, x, y });
     }
-
-    // Verify all nodes are within boundary
-    return nodes.filter(node => {
-      const distance = Math.sqrt(Math.pow(node.x - centerX, 2) + Math.pow(node.y - centerY, 2));
-      return distance <= radius; // full boundary
-    });
+    
+    return nodes;
   };
 
-  const nodes = generateNodesInCircle();
+  const nodes = generateGlobeNodes();
 
-  // Generate strategic connections for full coverage with longer lines
-  const generateConnections = () => {
-    const connections = [];
+  // Generate connections for globe structure - fewer connections
+  const connections = [
+    // Center to inner ring
+    [0, 1], [0, 2], [0, 3], [0, 4], [0, 5], [0, 6],
+    
+    // Inner ring connections (selective)
+    [1, 2], [3, 4], [5, 6],
+    
+    // Inner to middle ring
+    [1, 7], [2, 8], [3, 9], [4, 10], [5, 11], [6, 12], [1, 13], [4, 14],
+    
+    // Middle ring connections (selective)
+    [7, 8], [9, 10], [11, 12], [13, 14],
+    
+    // Middle to outer ring
+    [7, 15], [8, 16], [9, 17], [10, 18], [11, 19], [12, 20], [13, 21], [14, 22],
+    
+    // Outer ring connections (selective for clean look)
+    [15, 16], [17, 18], [19, 20], [21, 22],
+    
+    // Some cross connections for network feel
+    [2, 9], [4, 11], [6, 13], [8, 19], [10, 21]
+  ];
 
-    // Connect center to inner ring
-    for (let i = 1; i <= 6; i++) {
-      connections.push({ from: 1, to: i + 1 });
-    }
-
-    // Connect inner ring to middle ring
-    for (let i = 0; i < 6; i++) {
-      const innerNodeId = i + 2;
-      const middleNode1 = 7 + (i * 2) % 10;
-      const middleNode2 = 7 + ((i * 2) + 1) % 10;
-      connections.push({ from: innerNodeId, to: middleNode1 });
-      connections.push({ from: innerNodeId, to: middleNode2 });
-    }
-
-    // Connect middle ring to outer ring
-    for (let i = 0; i < 10; i++) {
-      const middleNodeId = i + 7;
-      const outerNode1 = 17 + Math.floor((i * 1.6)) % 16;
-      const outerNode2 = 17 + Math.floor((i * 1.6) + 1) % 16;
-      connections.push({ from: middleNodeId, to: outerNode1 });
-      connections.push({ from: middleNodeId, to: outerNode2 });
-    }
-
-    // Connect some outer ring nodes to each other for mesh
-    for (let i = 0; i < 16; i++) {
-      const currentNode = 17 + i;
-      const nextNode = 17 + ((i + 1) % 16);
-      const skipNode = 17 + ((i + 3) % 16);
-      connections.push({ from: currentNode, to: nextNode });
-      if (i % 2 === 0) { // Every other node gets a longer connection
-        connections.push({ from: currentNode, to: skipNode });
-      }
-    }
-
-    return connections;
-  };
-
-  const connections = generateConnections();
-
-  // Helper function to get node by id
-  const getNode = (id: number) => nodes.find(node => node.id === id);
+  // Hub nodes (key network points) - reduced count
+  const hubNodes = [0, 3, 7, 15];
 
   return (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden">
-      <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-        {/* Connection Lines - subtle network connections */}
-        <g className="opacity-20">
-          {connections.map((connection, index) => {
-            const fromNode = getNode(connection.from);
-            const toNode = getNode(connection.to);
-            
-            if (!fromNode || !toNode) return null;
-            
-            return (
-              <motion.line
-                key={`connection-${index}`}
-                x1={`${fromNode.x}%`}
-                y1={`${fromNode.y}%`}
-                x2={`${toNode.x}%`}
-                y2={`${toNode.y}%`}
+    <div className="fixed inset-0 pointer-events-none overflow-hidden">
+      <svg
+        className="w-full h-full"
+        viewBox="0 0 100 100"
+        preserveAspectRatio="xMidYMid slice"
+      >
+        <defs>
+          {/* Gradient for data flow particles */}
+          <linearGradient id="dataFlow" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="white" stopOpacity="0" />
+            <stop offset="50%" stopColor="white" stopOpacity="0.8" />
+            <stop offset="100%" stopColor="white" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+
+        {/* Connection lines */}
+        {connections.map(([start, end], index) => {
+          const startNode = nodes[start];
+          const endNode = nodes[end];
+          
+          return (
+            <g key={`connection-${index}`}>
+              {/* Base line */}
+              <line
+                x1={startNode.x}
+                y1={startNode.y}
+                x2={endNode.x}
+                y2={endNode.y}
                 stroke="white"
-                strokeWidth="1"
-                initial={{ pathLength: 0, opacity: 0 }}
-                animate={{ pathLength: 1, opacity: 0.4 }}
-                transition={{ 
-                  duration: 2.5, 
-                  delay: 0.5 + index * 0.02,
-                  ease: "easeInOut"
-                }}
+                strokeWidth="0.08"
+                opacity="0.15"
               />
-            );
-          })}
-        </g>
+              
+              {/* Animated line */}
+              <line
+                x1={startNode.x}
+                y1={startNode.y}
+                x2={endNode.x}
+                y2={endNode.y}
+                stroke="white"
+                strokeWidth="0.12"
+                opacity="0"
+                pathLength="1"
+              >
+                <animate
+                  attributeName="opacity"
+                  values="0;0.6;0"
+                  dur="4s"
+                  begin={`${index * 0.3}s`}
+                  repeatCount="indefinite"
+                />
+              </line>
+            </g>
+          );
+        })}
 
-        {/* Network Nodes - bigger and more visible like planet cities */}
-        <g>
-          {nodes.map((node, index) => (
-            <motion.circle
-              key={`node-${node.id}`}
-              cx={`${node.x}%`}
-              cy={`${node.y}%`}
-              r="4" // Slightly thicker nodes for visibility
-              fill="white"
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{ 
-                scale: [0, 1.2, 1], 
-                opacity: [0, 1, 0.8] // More visible
-              }}
-              transition={{ 
-                duration: 1.8, 
-                delay: 0.3 + index * 0.08,
-                ease: "easeOut" 
-              }}
+        {/* Data flow particles - reduced count */}
+        {Array.from({ length: 5 }, (_, i) => {
+          const connectionIndex = Math.floor(i * connections.length / 5);
+          const [start, end] = connections[connectionIndex];
+          const startNode = nodes[start];
+          const endNode = nodes[end];
+          
+          return (
+            <circle
+              key={`particle-${i}`}
+              r="0.15"
+              fill="url(#dataFlow)"
+              opacity="0.7"
+            >
+              <animateMotion
+                dur="3s"
+                begin={`${i * 0.6}s`}
+                repeatCount="indefinite"
+                path={`M ${startNode.x} ${startNode.y} L ${endNode.x} ${endNode.y}`}
+              />
+            </circle>
+          );
+        })}
+
+        {/* Network nodes */}
+        {nodes.map((node, index) => (
+          <circle
+            key={`node-${index}`}
+            cx={node.x}
+            cy={node.y}
+            r="0.8"
+            fill="white"
+            opacity="0.5"
+          >
+            <animate
+              attributeName="opacity"
+              values="0.5;0.8;0.5"
+              dur="3s"
+              begin={`${index * 0.2}s`}
+              repeatCount="indefinite"
             />
-          ))}
-        </g>
+          </circle>
+        ))}
 
-        {/* Pulsing Network Hubs - key cities on planet */}
-        <g className="opacity-15">
-          {[nodes[0], nodes[3], nodes[9], nodes[15]].filter(Boolean).map((node, index) => (
-            <motion.circle
-              key={`hub-${node.id}`}
-              cx={`${node.x}%`}
-              cy={`${node.y}%`}
-              r="15"
+        {/* Hub indicators - reduced count */}
+        {hubNodes.map((nodeIndex, i) => {
+          const node = nodes[nodeIndex];
+          return (
+            <circle
+              key={`hub-${i}`}
+              cx={node.x}
+              cy={node.y}
+              r="1.5"
               fill="none"
               stroke="white"
-              strokeWidth="1"
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{ 
-                scale: [1, 1.8, 1], 
-                opacity: [0, 0.2, 0] 
-              }}
-              transition={{ 
-                duration: 6, 
-                delay: 2 + index * 2,
-                repeat: Infinity,
-                ease: "easeInOut" 
-              }}
-            />
-          ))}
-        </g>
-
-        {/* Data Flow Animation - planet communication signals */}
-        <g className="opacity-25">
-          {connections.slice(0, 6).map((connection, index) => {
-            const fromNode = getNode(connection.from);
-            const toNode = getNode(connection.to);
-            
-            if (!fromNode || !toNode) return null;
-            
-            return (
-              <motion.circle
-                key={`flow-${index}`}
-                r="1"
-                fill="white"
-                initial={{ 
-                  cx: `${fromNode.x}%`, 
-                  cy: `${fromNode.y}%`,
-                  opacity: 0 
-                }}
-                animate={{ 
-                  cx: `${toNode.x}%`, 
-                  cy: `${toNode.y}%`,
-                  opacity: [0, 0.7, 0] 
-                }}
-                transition={{ 
-                  duration: 4, 
-                  delay: 3 + index * 1.5,
-                  repeat: Infinity,
-                  repeatDelay: 8,
-                  ease: "easeInOut" 
-                }}
+              strokeWidth="0.08"
+              opacity="0"
+            >
+              <animate
+                attributeName="opacity"
+                values="0;0.4;0"
+                dur="2s"
+                begin={`${i * 1}s`}
+                repeatCount="indefinite"
               />
-            );
-          })}
-        </g>
+              <animate
+                attributeName="r"
+                values="1.5;2.5;1.5"
+                dur="2s"
+                begin={`${i * 1}s`}
+                repeatCount="indefinite"
+              />
+            </circle>
+          );
+        })}
       </svg>
     </div>
   );
