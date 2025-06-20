@@ -818,126 +818,337 @@ textarea::-webkit-scrollbar-thumb,
   background-color: #6b7280;
 }
 
-/* Smoke/Vapor Flow Animation */
+/* Enhanced Smoke/Vapor Flow Animation */
 .galaxy-flow-1 {
-  width: 120%;
-  height: 120%;
+  width: 140%;
+  height: 140%;
   background: radial-gradient(
-    ellipse 80% 60% at 30% 40%,
+    ellipse 85% 65% at 32% 42%,
     transparent 0%,
-    rgba(248, 250, 252, 0.25) 20%,
-    rgba(241, 245, 249, 0.35) 35%,
-    rgba(255, 255, 255, 0.4) 50%,
-    rgba(248, 250, 252, 0.28) 65%,
-    rgba(241, 245, 249, 0.15) 80%,
+    rgba(248, 250, 252, 0.08) 12%,
+    rgba(241, 245, 249, 0.18) 22%,
+    rgba(255, 255, 255, 0.28) 32%,
+    rgba(248, 250, 252, 0.35) 42%,
+    rgba(255, 255, 255, 0.42) 52%,
+    rgba(248, 250, 252, 0.32) 62%,
+    rgba(241, 245, 249, 0.22) 72%,
+    rgba(248, 250, 252, 0.12) 82%,
+    rgba(241, 245, 249, 0.06) 92%,
     transparent 100%
   );
-  animation: smokeFlow1 18s ease-in-out infinite;
-  filter: blur(1px);
+  animation: smokeFlow1 20s cubic-bezier(0.4, 0.0, 0.6, 1) infinite;
+  filter: blur(2.5px);
+  will-change: transform, opacity;
+  contain: layout style paint;
   border-radius: 50%;
 }
 
 .galaxy-flow-2 {
-  width: 110%;
-  height: 110%;
+  width: 120%;
+  height: 120%;
   background: radial-gradient(
-    ellipse 70% 50% at 60% 30%,
+    ellipse 75% 55% at 58% 28%,
     transparent 0%,
-    rgba(241, 245, 249, 0.2) 25%,
-    rgba(248, 250, 252, 0.3) 40%,
-    rgba(255, 255, 255, 0.35) 55%,
-    rgba(248, 250, 252, 0.22) 70%,
-    rgba(241, 245, 249, 0.12) 85%,
+    rgba(241, 245, 249, 0.06) 15%,
+    rgba(248, 250, 252, 0.15) 25%,
+    rgba(255, 255, 255, 0.25) 35%,
+    rgba(248, 250, 252, 0.32) 45%,
+    rgba(255, 255, 255, 0.38) 55%,
+    rgba(248, 250, 252, 0.28) 65%,
+    rgba(241, 245, 249, 0.18) 75%,
+    rgba(248, 250, 252, 0.10) 85%,
+    rgba(241, 245, 249, 0.04) 95%,
     transparent 100%
   );
-  animation: smokeFlow2 22s ease-in-out infinite;
-  filter: blur(0.8px);
-  border-radius: 40%;
+  animation: smokeFlow2 24s cubic-bezier(0.25, 0.46, 0.45, 0.94) infinite;
+  filter: blur(2px);
+  will-change: transform, opacity;
+  contain: layout style paint;
+  border-radius: 45%;
 }
 
 .galaxy-flow-3 {
-  width: 100%;
-  height: 100%;
+  width: 110%;
+  height: 110%;
   background: radial-gradient(
-    ellipse 60% 40% at 70% 60%,
+    ellipse 68% 45% at 72% 58%,
     transparent 0%,
-    rgba(241, 245, 249, 0.18) 30%,
-    rgba(248, 250, 252, 0.25) 45%,
-    rgba(255, 255, 255, 0.3) 60%,
-    rgba(248, 250, 252, 0.18) 75%,
-    rgba(241, 245, 249, 0.1) 90%,
+    rgba(241, 245, 249, 0.05) 18%,
+    rgba(248, 250, 252, 0.12) 28%,
+    rgba(255, 255, 255, 0.22) 38%,
+    rgba(248, 250, 252, 0.28) 48%,
+    rgba(255, 255, 255, 0.32) 58%,
+    rgba(248, 250, 252, 0.24) 68%,
+    rgba(241, 245, 249, 0.15) 78%,
+    rgba(248, 250, 252, 0.08) 88%,
+    rgba(241, 245, 249, 0.03) 98%,
     transparent 100%
   );
-  animation: smokeFlow3 25s ease-in-out infinite;
-  filter: blur(1.2px);
-  border-radius: 60%;
+  animation: smokeFlow3 28s cubic-bezier(0.23, 1, 0.32, 1) infinite;
+  filter: blur(1.8px);
+  will-change: transform, opacity;
+  contain: layout style paint;
+  border-radius: 55%;
+}
+
+.galaxy-flow-4 {
+  width: 90%;
+  height: 90%;
+  background: radial-gradient(
+    ellipse 50% 35% at 45% 75%,
+    transparent 0%,
+    rgba(248, 250, 252, 0.04) 20%,
+    rgba(241, 245, 249, 0.10) 30%,
+    rgba(255, 255, 255, 0.18) 40%,
+    rgba(248, 250, 252, 0.24) 50%,
+    rgba(255, 255, 255, 0.28) 60%,
+    rgba(248, 250, 252, 0.20) 70%,
+    rgba(241, 245, 249, 0.12) 80%,
+    rgba(248, 250, 252, 0.06) 90%,
+    transparent 100%
+  );
+  animation: smokeFlow4 32s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
+  filter: blur(3px);
+  will-change: transform, opacity;
+  contain: layout style paint;
+  border-radius: 65%;
+}
+
+.galaxy-flow-5 {
+  width: 80%;
+  height: 80%;
+  background: radial-gradient(
+    ellipse 42% 32% at 85% 25%,
+    transparent 0%,
+    rgba(241, 245, 249, 0.03) 25%,
+    rgba(248, 250, 252, 0.08) 35%,
+    rgba(255, 255, 255, 0.15) 45%,
+    rgba(248, 250, 252, 0.20) 55%,
+    rgba(255, 255, 255, 0.24) 65%,
+    rgba(248, 250, 252, 0.16) 75%,
+    rgba(241, 245, 249, 0.08) 85%,
+    rgba(248, 250, 252, 0.03) 95%,
+    transparent 100%
+  );
+  animation: smokeFlow5 26s cubic-bezier(0.175, 0.885, 0.32, 1.275) infinite;
+  filter: blur(2.2px);
+  will-change: transform, opacity;
+  contain: layout style paint;
+  border-radius: 40%;
+}
+
+.galaxy-flow-6 {
+  width: 70%;
+  height: 70%;
+  background: radial-gradient(
+    ellipse 38% 28% at 18% 48%,
+    transparent 0%,
+    rgba(248, 250, 252, 0.025) 30%,
+    rgba(241, 245, 249, 0.06) 40%,
+    rgba(255, 255, 255, 0.12) 50%,
+    rgba(248, 250, 252, 0.16) 60%,
+    rgba(255, 255, 255, 0.20) 70%,
+    rgba(248, 250, 252, 0.12) 80%,
+    rgba(241, 245, 249, 0.06) 90%,
+    transparent 100%
+  );
+  animation: smokeFlow6 30s cubic-bezier(0.19, 1, 0.22, 1) infinite;
+  filter: blur(2.8px);
+  will-change: transform, opacity;
+  contain: layout style paint;
+  border-radius: 35%;
 }
 
 @keyframes smokeFlow1 {
   0% {
-    transform: translateX(-20%) translateY(10%) rotate(0deg) scaleX(1) scaleY(1);
-    opacity: 0.3;
+    transform: translateX(-35%) translateY(25%) rotate(0deg) scaleX(0.8) scaleY(1.1) skewX(5deg);
+    opacity: 0.42;
   }
-  25% {
-    transform: translateX(10%) translateY(-15%) rotate(45deg) scaleX(1.2) scaleY(0.8);
-    opacity: 0.6;
+  15% {
+    transform: translateX(20%) translateY(-30%) rotate(54deg) scaleX(1.2) scaleY(0.9) skewX(-8deg);
+    opacity: 0.68;
   }
-  50% {
-    transform: translateX(30%) translateY(5%) rotate(90deg) scaleX(0.9) scaleY(1.1);
-    opacity: 0.4;
+  30% {
+    transform: translateX(-25%) translateY(-20%) rotate(108deg) scaleX(0.95) scaleY(1.15) skewX(12deg);
+    opacity: 0.55;
+  }
+  45% {
+    transform: translateX(40%) translateY(15%) rotate(162deg) scaleX(1.08) scaleY(0.88) skewX(-6deg);
+    opacity: 0.72;
+  }
+  60% {
+    transform: translateX(-30%) translateY(35%) rotate(216deg) scaleX(0.85) scaleY(1.2) skewX(10deg);
+    opacity: 0.48;
   }
   75% {
-    transform: translateX(15%) translateY(20%) rotate(135deg) scaleX(1.1) scaleY(0.9);
-    opacity: 0.5;
+    transform: translateX(25%) translateY(-25%) rotate(270deg) scaleX(1.15) scaleY(0.82) skewX(-15deg);
+    opacity: 0.65;
+  }
+  90% {
+    transform: translateX(-40%) translateY(-10%) rotate(324deg) scaleX(0.92) scaleY(1.05) skewX(8deg);
+    opacity: 0.58;
   }
   100% {
-    transform: translateX(-20%) translateY(10%) rotate(180deg) scaleX(1) scaleY(1);
-    opacity: 0.3;
+    transform: translateX(-35%) translateY(25%) rotate(360deg) scaleX(0.8) scaleY(1.1) skewX(5deg);
+    opacity: 0.42;
   }
 }
 
 @keyframes smokeFlow2 {
   0% {
-    transform: translateX(20%) translateY(-10%) rotate(0deg) scaleX(0.8) scaleY(1.2);
-    opacity: 0.25;
+    transform: translateX(30%) translateY(-25%) rotate(22deg) scaleX(1.0) scaleY(0.9) skewY(3deg);
+    opacity: 0.38;
   }
-  30% {
-    transform: translateX(-5%) translateY(15%) rotate(-30deg) scaleX(1.1) scaleY(0.7);
-    opacity: 0.5;
+  18% {
+    transform: translateX(-40%) translateY(20%) rotate(86deg) scaleX(0.88) scaleY(1.25) skewY(-7deg);
+    opacity: 0.62;
   }
-  60% {
-    transform: translateX(-25%) translateY(-5%) rotate(-60deg) scaleX(0.9) scaleY(1.3);
-    opacity: 0.35;
+  36% {
+    transform: translateX(35%) translateY(40%) rotate(150deg) scaleX(1.22) scaleY(0.75) skewY(9deg);
+    opacity: 0.45;
+  }
+  54% {
+    transform: translateX(-20%) translateY(-35%) rotate(214deg) scaleX(0.92) scaleY(1.18) skewY(-5deg);
+    opacity: 0.71;
+  }
+  72% {
+    transform: translateX(45%) translateY(10%) rotate(278deg) scaleX(1.05) scaleY(0.85) skewY(11deg);
+    opacity: 0.52;
   }
   90% {
-    transform: translateX(10%) translateY(-20%) rotate(-90deg) scaleX(1.2) scaleY(0.8);
-    opacity: 0.4;
+    transform: translateX(-35%) translateY(-25%) rotate(342deg) scaleX(0.85) scaleY(1.3) skewY(-8deg);
+    opacity: 0.66;
   }
   100% {
-    transform: translateX(20%) translateY(-10%) rotate(-120deg) scaleX(0.8) scaleY(1.2);
-    opacity: 0.25;
+    transform: translateX(30%) translateY(-25%) rotate(382deg) scaleX(1.0) scaleY(0.9) skewY(3deg);
+    opacity: 0.38;
   }
 }
 
 @keyframes smokeFlow3 {
   0% {
-    transform: translateX(0%) translateY(15%) rotate(0deg) scaleX(1.1) scaleY(0.9);
-    opacity: 0.2;
-  }
-  20% {
-    transform: translateX(-15%) translateY(-5%) rotate(25deg) scaleX(0.7) scaleY(1.4);
+    transform: translateX(-30%) translateY(40%) rotate(15deg) scaleX(1.12) scaleY(0.85) skewX(-4deg) skewY(2deg);
     opacity: 0.45;
   }
-  40% {
-    transform: translateX(25%) translateY(10%) rotate(50deg) scaleX(1.3) scaleY(0.6);
-    opacity: 0.3;
+  12% {
+    transform: translateX(35%) translateY(-20%) rotate(69deg) scaleX(0.78) scaleY(1.35) skewX(9deg) skewY(-6deg);
+    opacity: 0.68;
   }
-  70% {
-    transform: translateX(-10%) translateY(-25%) rotate(75deg) scaleX(0.8) scaleY(1.2);
-    opacity: 0.4;
+  24% {
+    transform: translateX(-45%) translateY(-35%) rotate(123deg) scaleX(1.28) scaleY(0.72) skewX(-12deg) skewY(8deg);
+    opacity: 0.52;
+  }
+  36% {
+    transform: translateX(25%) translateY(30%) rotate(177deg) scaleX(0.94) scaleY(1.15) skewX(6deg) skewY(-4deg);
+    opacity: 0.75;
+  }
+  48% {
+    transform: translateX(40%) translateY(-40%) rotate(231deg) scaleX(1.18) scaleY(0.88) skewX(-10deg) skewY(7deg);
+    opacity: 0.48;
+  }
+  60% {
+    transform: translateX(-35%) translateY(25%) rotate(285deg) scaleX(0.82) scaleY(1.25) skewX(8deg) skewY(-5deg);
+    opacity: 0.69;
+  }
+  72% {
+    transform: translateX(30%) translateY(45%) rotate(339deg) scaleX(1.08) scaleY(0.75) skewX(-7deg) skewY(3deg);
+    opacity: 0.55;
+  }
+  84% {
+    transform: translateX(-40%) translateY(-15%) rotate(33deg) scaleX(0.96) scaleY(1.22) skewX(11deg) skewY(-8deg);
+    opacity: 0.71;
+  }
+  96% {
+    transform: translateX(35%) translateY(-30%) rotate(87deg) scaleX(1.2) scaleY(0.82) skewX(-6deg) skewY(5deg);
+    opacity: 0.42;
   }
   100% {
-    transform: translateX(0%) translateY(15%) rotate(100deg) scaleX(1.1) scaleY(0.9);
-    opacity: 0.2;
+    transform: translateX(-30%) translateY(40%) rotate(375deg) scaleX(1.12) scaleY(0.85) skewX(-4deg) skewY(2deg);
+    opacity: 0.45;
+  }
+}
+
+@keyframes smokeFlow4 {
+  0% {
+    transform: translateX(25%) translateY(-30%) rotate(8deg) scaleX(0.9) scaleY(1.08) skewX(7deg);
+    opacity: 0.35;
+  }
+  16% {
+    transform: translateX(-35%) translateY(35%) rotate(72deg) scaleX(1.15) scaleY(0.82) skewX(-11deg);
+    opacity: 0.58;
+  }
+  32% {
+    transform: translateX(42%) translateY(12%) rotate(136deg) scaleX(0.85) scaleY(1.28) skewX(14deg);
+    opacity: 0.48;
+  }
+  48% {
+    transform: translateX(-18%) translateY(-42%) rotate(200deg) scaleX(1.12) scaleY(0.88) skewX(-9deg);
+    opacity: 0.68;
+  }
+  64% {
+    transform: translateX(28%) translateY(28%) rotate(264deg) scaleX(0.93) scaleY(1.18) skewX(12deg);
+    opacity: 0.52;
+  }
+  80% {
+    transform: translateX(-42%) translateY(-12%) rotate(328deg) scaleX(1.22) scaleY(0.78) skewX(-8deg);
+    opacity: 0.63;
+  }
+  96% {
+    transform: translateX(32%) translateY(-35%) rotate(32deg) scaleX(0.88) scaleY(1.12) skewX(10deg);
+    opacity: 0.42;
+  }
+  100% {
+    transform: translateX(25%) translateY(-30%) rotate(368deg) scaleX(0.9) scaleY(1.08) skewX(7deg);
+    opacity: 0.35;
+  }
+}
+
+@keyframes smokeFlow5 {
+  0% {
+    transform: translateX(-25%) translateY(35%) rotate(18deg) scaleX(1.08) scaleY(0.92) skewY(4deg);
+    opacity: 0.32;
+  }
+  20% {
+    transform: translateX(40%) translateY(-18%) rotate(90deg) scaleX(0.82) scaleY(1.32) skewY(-8deg);
+    opacity: 0.55;
+  }
+  40% {
+    transform: translateX(-35%) translateY(-30%) rotate(162deg) scaleX(1.25) scaleY(0.78) skewY(10deg);
+    opacity: 0.45;
+  }
+  60% {
+    transform: translateX(18%) translateY(42%) rotate(234deg) scaleX(0.88) scaleY(1.18) skewY(-6deg);
+    opacity: 0.65;
+  }
+  80% {
+    transform: translateX(45%) translateY(-25%) rotate(306deg) scaleX(1.15) scaleY(0.85) skewY(9deg);
+    opacity: 0.47;
+  }
+  100% {
+    transform: translateX(-25%) translateY(35%) rotate(378deg) scaleX(1.08) scaleY(0.92) skewY(4deg);
+    opacity: 0.32;
+  }
+}
+
+@keyframes smokeFlow6 {
+  0% {
+    transform: translateX(18%) translateY(-40%) rotate(25deg) scaleX(0.85) scaleY(1.12) skewX(-6deg) skewY(3deg);
+    opacity: 0.28;
+  }
+  25% {
+    transform: translateX(-30%) translateY(25%) rotate(115deg) scaleX(1.18) scaleY(0.88) skewX(10deg) skewY(-7deg);
+    opacity: 0.51;
+  }
+  50% {
+    transform: translateX(35%) translateY(35%) rotate(205deg) scaleX(0.9) scaleY(1.25) skewX(-12deg) skewY(8deg);
+    opacity: 0.41;
+  }
+  75% {
+    transform: translateX(-40%) translateY(-22%) rotate(295deg) scaleX(1.12) scaleY(0.82) skewX(8deg) skewY(-5deg);
+    opacity: 0.61;
+  }
+  100% {
+    transform: translateX(18%) translateY(-40%) rotate(385deg) scaleX(0.85) scaleY(1.12) skewX(-6deg) skewY(3deg);
+    opacity: 0.28;
   }
 } 

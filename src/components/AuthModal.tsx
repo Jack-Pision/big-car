@@ -167,6 +167,39 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
             >
               <div className="galaxy-flow-3"></div>
             </div>
+            {/* Fourth smoke layer */}
+            <div 
+              className="absolute w-[140%] h-[140%] opacity-12 transition-transform duration-600 ease-out"
+              style={{
+                top: `${-25 + (mousePos.y * 0.04)}%`,
+                right: `${-25 + (mousePos.x * 0.015)}%`,
+                transform: `rotate(${-mousePos.x * 0.03}deg)`
+              }}
+            >
+              <div className="galaxy-flow-4"></div>
+            </div>
+            {/* Fifth smoke layer */}
+            <div 
+              className="absolute w-[120%] h-[120%] opacity-10 transition-transform duration-800 ease-out"
+              style={{
+                top: `${-20 + (mousePos.y * 0.035)}%`,
+                right: `${-20 + (mousePos.x * 0.012)}%`,
+                transform: `rotate(${mousePos.x * 0.025}deg)`
+              }}
+            >
+              <div className="galaxy-flow-5"></div>
+            </div>
+            {/* Sixth smoke layer */}
+            <div 
+              className="absolute w-[100%] h-[100%] opacity-8 transition-transform duration-900 ease-out"
+              style={{
+                top: `${-15 + (mousePos.y * 0.025)}%`,
+                right: `${-15 + (mousePos.x * 0.008)}%`,
+                transform: `rotate(${-mousePos.x * 0.02}deg)`
+              }}
+            >
+              <div className="galaxy-flow-6"></div>
+            </div>
           </div>
 
           {/* Typography Section */}
