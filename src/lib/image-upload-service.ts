@@ -67,7 +67,7 @@ export async function analyzeImageWithNVIDIA(
           },
           {
             role: 'user',
-            content: `<img src="data:${mimeType};base64,${base64}" /> I can see this image you've shared. Please describe it using the same guidelines as text chat. Avoid raw bullet-dash lists; write in paragraphs or numbered points with proper spacing.`
+            content: `<img src="data:${mimeType};base64,${base64}" /> I can see this image you've shared. Please describe it using the same guidelines as text chat. Use proper markdown and response in dynamic structure based on user input.`
           }
         ],
         mode: 'image_analysis',
