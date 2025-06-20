@@ -3746,7 +3746,7 @@ function TestChatComponent(props?: TestChatProps) {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.3, ease: 'easeOut' }}
                       className="w-full text-left flex flex-col items-start ai-response-text mb-4 relative"
-                      style={{ color: '#FCFCFC', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+                      style={{ color: '#FCFCFC', maxWidth: '100%', overflowWrap: 'break-word', wordBreak: 'break-word' }}
                     >
                       <div 
                         className="research-output"
