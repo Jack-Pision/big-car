@@ -4,8 +4,8 @@ import { motion } from 'framer-motion';
 const BackgroundPattern: React.FC = () => {
   // Globe parameters - positioned as planet Earth in center-bottom
   const centerX = 50; // Center horizontally
-  const centerY = 85; // Bottom area (85% down from top)
-  const radius = 25; // Smaller radius to fit better in bottom area
+  const centerY = 90; // Bottom area (90% down from top)
+  const radius = 50; // Planet radius to span viewport width
 
   // Generate strategic nodes positioned strictly within circle boundary
   const generateNodesInCircle = () => {
@@ -136,7 +136,7 @@ const BackgroundPattern: React.FC = () => {
               key={`node-${node.id}`}
               cx={`${node.x}%`}
               cy={`${node.y}%`}
-              r="2" // Bigger nodes
+              r="3" // Bigger nodes
               fill="white"
               initial={{ scale: 0, opacity: 0 }}
               animate={{ 
