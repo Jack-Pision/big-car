@@ -67,7 +67,6 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
         }
       } else if (mode === 'signin') {
         await signIn(email, password);
-        toast.success('Welcome back!');
         onAuthSuccess();
         handleClose();
       } else if (mode === 'forgot') {
@@ -105,7 +104,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
         };
       default:
         return {
-          title: 'Welcome back',
+          title: 'Sign In',
           subtitle: 'Sign in to continue your AI journey',
           buttonText: 'Sign In',
           switchText: "Don't have an account?",
