@@ -1,66 +1,183 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 
-const BackgroundPattern: React.FC = () => (
-  <div className="absolute inset-0 pointer-events-none overflow-hidden">
-    <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-      {/* Background Connection Lines - Layer 1 */}
-      <g className="opacity-20">
-        <motion.line x1="10%" y1="15%" x2="25%" y2="8%" stroke="white" strokeWidth="1" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 3, delay: 0.2 }} />
-        <motion.line x1="25%" y1="8%" x2="45%" y2="12%" stroke="white" strokeWidth="1" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 3, delay: 0.8 }} />
-        <motion.line x1="45%" y1="12%" x2="65%" y2="18%" stroke="white" strokeWidth="1" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 3, delay: 1.4 }} />
-        <motion.line x1="5%" y1="25%" x2="20%" y2="35%" stroke="white" strokeWidth="1" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 3, delay: 2 }} />
-        <motion.line x1="20%" y1="35%" x2="40%" y2="28%" stroke="white" strokeWidth="1" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 3, delay: 2.6 }} />
-        <motion.line x1="40%" y1="28%" x2="58%" y2="38%" stroke="white" strokeWidth="1" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 3, delay: 3.2 }} />
-        <motion.line x1="8%" y1="45%" x2="30%" y2="52%" stroke="white" strokeWidth="1" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 3, delay: 3.8 }} />
-        <motion.line x1="30%" y1="52%" x2="50%" y2="45%" stroke="white" strokeWidth="1" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 3, delay: 4.4 }} />
-        <motion.line x1="50%" y1="45%" x2="70%" y2="55%" stroke="white" strokeWidth="1" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 3, delay: 5 }} />
-        <motion.line x1="15%" y1="65%" x2="35%" y2="72%" stroke="white" strokeWidth="1" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 3, delay: 5.6 }} />
-        <motion.line x1="35%" y1="72%" x2="55%" y2="68%" stroke="white" strokeWidth="1" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 3, delay: 6.2 }} />
-        <motion.line x1="55%" y1="68%" x2="75%" y2="75%" stroke="white" strokeWidth="1" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 3, delay: 6.8 }} />
-        <motion.line x1="12%" y1="85%" x2="32%" y2="88%" stroke="white" strokeWidth="1" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 3, delay: 7.4 }} />
-        <motion.line x1="32%" y1="88%" x2="52%" y2="82%" stroke="white" strokeWidth="1" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 3, delay: 8 }} />
-      </g>
-      {/* Background Connection Lines - Layer 2 (Diagonal) */}
-      <g className="opacity-15">
-        <motion.line x1="15%" y1="20%" x2="35%" y2="45%" stroke="white" strokeWidth="1" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 4, delay: 1 }} />
-        <motion.line x1="35%" y1="45%" x2="55%" y2="70%" stroke="white" strokeWidth="1" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 4, delay: 2 }} />
-        <motion.line x1="25%" y1="15%" x2="45%" y2="40%" stroke="white" strokeWidth="1" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 4, delay: 3 }} />
-        <motion.line x1="45%" y1="40%" x2="65%" y2="65%" stroke="white" strokeWidth="1" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 4, delay: 4 }} />
-      </g>
-      {/* Background Dots - Main Network */}
-      <g>
-        <motion.circle cx="20%" cy="10%" r="2" fill="white" initial={{ scale: 0, opacity: 0 }} animate={{ scale: [0, 1.2, 1], opacity: [0, 1, 0.7] }} transition={{ duration: 2, delay: 0.5, repeat: Infinity, repeatDelay: 6 }} />
-        <motion.circle cx="40%" cy="30%" r="2.5" fill="white" initial={{ scale: 0, opacity: 0 }} animate={{ scale: [0, 1.2, 1], opacity: [0, 1, 0.6] }} transition={{ duration: 2, delay: 1, repeat: Infinity, repeatDelay: 6 }} />
-        <motion.circle cx="60%" cy="20%" r="1.8" fill="white" initial={{ scale: 0, opacity: 0 }} animate={{ scale: [0, 1.2, 1], opacity: [0, 1, 0.6] }} transition={{ duration: 2, delay: 1.5, repeat: Infinity, repeatDelay: 6 }} />
-        <motion.circle cx="80%" cy="40%" r="2" fill="white" initial={{ scale: 0, opacity: 0 }} animate={{ scale: [0, 1.2, 1], opacity: [0, 1, 0.5] }} transition={{ duration: 2, delay: 2, repeat: Infinity, repeatDelay: 6 }} />
-        <motion.circle cx="10%" cy="50%" r="1.5" fill="white" initial={{ scale: 0, opacity: 0 }} animate={{ scale: [0, 1.2, 1], opacity: [0, 1, 0.4] }} transition={{ duration: 2, delay: 2.5, repeat: Infinity, repeatDelay: 6 }} />
-        <motion.circle cx="30%" cy="60%" r="2.2" fill="white" initial={{ scale: 0, opacity: 0 }} animate={{ scale: [0, 1.2, 1], opacity: [0, 1, 0.6] }} transition={{ duration: 2, delay: 3, repeat: Infinity, repeatDelay: 6 }} />
-        <motion.circle cx="50%" cy="70%" r="2" fill="white" initial={{ scale: 0, opacity: 0 }} animate={{ scale: [0, 1.2, 1], opacity: [0, 1, 0.5] }} transition={{ duration: 2, delay: 3.5, repeat: Infinity, repeatDelay: 6 }} />
-        <motion.circle cx="70%" cy="80%" r="2.5" fill="white" initial={{ scale: 0, opacity: 0 }} animate={{ scale: [0, 1.2, 1], opacity: [0, 1, 0.7] }} transition={{ duration: 2, delay: 4, repeat: Infinity, repeatDelay: 6 }} />
-        <motion.circle cx="90%" cy="60%" r="1.8" fill="white" initial={{ scale: 0, opacity: 0 }} animate={{ scale: [0, 1.2, 1], opacity: [0, 1, 0.4] }} transition={{ duration: 2, delay: 4.5, repeat: Infinity, repeatDelay: 6 }} />
-        <motion.circle cx="50%" cy="90%" r="2.3" fill="white" initial={{ scale: 0, opacity: 0 }} animate={{ scale: [0, 1.2, 1], opacity: [0, 1, 0.8] }} transition={{ duration: 2, delay: 5, repeat: Infinity, repeatDelay: 6 }} />
-      </g>
-      {/* Additional Scattered Dots */}
-      <g>
-        <motion.circle cx="15%" cy="25%" r="1.3" fill="white" initial={{ scale: 0, opacity: 0 }} animate={{ scale: [0, 1, 1], opacity: [0, 0.4, 0.4] }} transition={{ duration: 1.5, delay: 1, repeat: Infinity, repeatDelay: 8 }} />
-        <motion.circle cx="35%" cy="15%" r="1.1" fill="white" initial={{ scale: 0, opacity: 0 }} animate={{ scale: [0, 1, 1], opacity: [0, 0.3, 0.3] }} transition={{ duration: 1.5, delay: 2, repeat: Infinity, repeatDelay: 8 }} />
-        <motion.circle cx="60%" cy="50%" r="1.5" fill="white" initial={{ scale: 0, opacity: 0 }} animate={{ scale: [0, 1, 1], opacity: [0, 0.5, 0.5] }} transition={{ duration: 1.5, delay: 3, repeat: Infinity, repeatDelay: 8 }} />
-        <motion.circle cx="25%" cy="75%" r="1.2" fill="white" initial={{ scale: 0, opacity: 0 }} animate={{ scale: [0, 1, 1], opacity: [0, 0.4, 0.4] }} transition={{ duration: 1.5, delay: 4, repeat: Infinity, repeatDelay: 8 }} />
-        <motion.circle cx="80%" cy="30%" r="1.4" fill="white" initial={{ scale: 0, opacity: 0 }} animate={{ scale: [0, 1, 1], opacity: [0, 0.3, 0.3] }} transition={{ duration: 1.5, delay: 5, repeat: Infinity, repeatDelay: 8 }} />
-        <motion.circle cx="45%" cy="85%" r="1.6" fill="white" initial={{ scale: 0, opacity: 0 }} animate={{ scale: [0, 1, 1], opacity: [0, 0.5, 0.5] }} transition={{ duration: 1.5, delay: 6, repeat: Infinity, repeatDelay: 8 }} />
-        <motion.circle cx="70%" cy="70%" r="1.3" fill="white" initial={{ scale: 0, opacity: 0 }} animate={{ scale: [0, 1, 1], opacity: [0, 0.4, 0.4] }} transition={{ duration: 1.5, delay: 7, repeat: Infinity, repeatDelay: 8 }} />
-        <motion.circle cx="20%" cy="90%" r="1.5" fill="white" initial={{ scale: 0, opacity: 0 }} animate={{ scale: [0, 1, 1], opacity: [0, 0.5, 0.5] }} transition={{ duration: 1.5, delay: 8, repeat: Infinity, repeatDelay: 8 }} />
-      </g>
-      {/* Pulsing Ring Indicators - Background */}
-      <g className="opacity-10">
-        <motion.circle cx="25%" cy="25%" r="15" fill="none" stroke="white" strokeWidth="1" initial={{ scale: 0, opacity: 0 }} animate={{ scale: [1, 2, 1], opacity: [0, 0.2, 0] }} transition={{ duration: 4, delay: 1, repeat: Infinity }} />
-        <motion.circle cx="50%" cy="50%" r="20" fill="none" stroke="white" strokeWidth="1" initial={{ scale: 0, opacity: 0 }} animate={{ scale: [1, 3, 1], opacity: [0, 0.15, 0] }} transition={{ duration: 5, delay: 2, repeat: Infinity }} />
-        <motion.circle cx="75%" cy="30%" r="12" fill="none" stroke="white" strokeWidth="1" initial={{ scale: 0, opacity: 0 }} animate={{ scale: [1, 2.2, 1], opacity: [0, 0.18, 0] }} transition={{ duration: 4.5, delay: 3, repeat: Infinity }} />
-        <motion.circle cx="60%" cy="70%" r="18" fill="none" stroke="white" strokeWidth="1" initial={{ scale: 0, opacity: 0 }} animate={{ scale: [1, 2.8, 1], opacity: [0, 0.2, 0] }} transition={{ duration: 4, delay: 4, repeat: Infinity }} />
-      </g>
-    </svg>
-  </div>
-);
+const BackgroundPattern: React.FC = () => {
+  // Define network nodes (dots) with specific positions
+  const nodes = [
+    { id: 1, x: 15, y: 20 },
+    { id: 2, x: 35, y: 15 },
+    { id: 3, x: 55, y: 25 },
+    { id: 4, x: 75, y: 18 },
+    { id: 5, x: 85, y: 35 },
+    { id: 6, x: 25, y: 40 },
+    { id: 7, x: 45, y: 35 },
+    { id: 8, x: 65, y: 45 },
+    { id: 9, x: 80, y: 55 },
+    { id: 10, x: 10, y: 60 },
+    { id: 11, x: 30, y: 65 },
+    { id: 12, x: 50, y: 60 },
+    { id: 13, x: 70, y: 70 },
+    { id: 14, x: 90, y: 75 },
+    { id: 15, x: 20, y: 85 },
+    { id: 16, x: 40, y: 80 },
+    { id: 17, x: 60, y: 85 },
+    { id: 18, x: 80, y: 90 },
+  ];
+
+  // Define connections between nodes (from nodeId to nodeId)
+  const connections = [
+    // Top cluster
+    { from: 1, to: 2 }, { from: 2, to: 3 }, { from: 3, to: 4 }, { from: 4, to: 5 },
+    { from: 1, to: 6 }, { from: 2, to: 7 }, { from: 3, to: 7 }, { from: 3, to: 8 },
+    { from: 4, to: 8 }, { from: 5, to: 8 }, { from: 5, to: 9 },
+    
+    // Middle connections
+    { from: 6, to: 7 }, { from: 7, to: 8 }, { from: 8, to: 9 },
+    { from: 6, to: 10 }, { from: 6, to: 11 }, { from: 7, to: 11 }, { from: 7, to: 12 },
+    { from: 8, to: 12 }, { from: 8, to: 13 }, { from: 9, to: 13 }, { from: 9, to: 14 },
+    
+    // Bottom cluster
+    { from: 10, to: 11 }, { from: 11, to: 12 }, { from: 12, to: 13 }, { from: 13, to: 14 },
+    { from: 10, to: 15 }, { from: 11, to: 15 }, { from: 11, to: 16 }, { from: 12, to: 16 },
+    { from: 12, to: 17 }, { from: 13, to: 17 }, { from: 13, to: 18 }, { from: 14, to: 18 },
+    
+    // Bottom connections
+    { from: 15, to: 16 }, { from: 16, to: 17 }, { from: 17, to: 18 },
+    
+    // Cross connections for more density
+    { from: 1, to: 7 }, { from: 2, to: 8 }, { from: 3, to: 9 },
+    { from: 6, to: 12 }, { from: 7, to: 13 }, { from: 8, to: 14 },
+    { from: 10, to: 16 }, { from: 11, to: 17 }, { from: 12, to: 18 },
+  ];
+
+  // Helper function to get node by id
+  const getNode = (id: number) => nodes.find(node => node.id === id);
+
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden">
+      <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+        {/* Connection Lines */}
+        <g className="opacity-30">
+          {connections.map((connection, index) => {
+            const fromNode = getNode(connection.from);
+            const toNode = getNode(connection.to);
+            
+            if (!fromNode || !toNode) return null;
+            
+            return (
+              <motion.line
+                key={`connection-${index}`}
+                x1={`${fromNode.x}%`}
+                y1={`${fromNode.y}%`}
+                x2={`${toNode.x}%`}
+                y2={`${toNode.y}%`}
+                stroke="white"
+                strokeWidth="1"
+                initial={{ pathLength: 0, opacity: 0 }}
+                animate={{ pathLength: 1, opacity: 0.6 }}
+                transition={{ 
+                  duration: 2, 
+                  delay: index * 0.1,
+                  ease: "easeInOut"
+                }}
+              />
+            );
+          })}
+        </g>
+
+        {/* Network Nodes */}
+        <g>
+          {nodes.map((node, index) => (
+            <motion.circle
+              key={`node-${node.id}`}
+              cx={`${node.x}%`}
+              cy={`${node.y}%`}
+              r="3"
+              fill="white"
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ 
+                scale: [0, 1.3, 1], 
+                opacity: [0, 1, 0.8] 
+              }}
+              transition={{ 
+                duration: 1.5, 
+                delay: index * 0.15,
+                repeat: Infinity,
+                repeatDelay: 8,
+                ease: "easeOut" 
+              }}
+            />
+          ))}
+        </g>
+
+        {/* Pulsing Network Hubs (key nodes) */}
+        <g className="opacity-20">
+          {[7, 12, 8, 11].map((nodeId, index) => {
+            const node = getNode(nodeId);
+            if (!node) return null;
+            
+            return (
+              <motion.circle
+                key={`hub-${nodeId}`}
+                cx={`${node.x}%`}
+                cy={`${node.y}%`}
+                r="12"
+                fill="none"
+                stroke="white"
+                strokeWidth="1"
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ 
+                  scale: [1, 2.5, 1], 
+                  opacity: [0, 0.3, 0] 
+                }}
+                transition={{ 
+                  duration: 4, 
+                  delay: 2 + index * 1.5,
+                  repeat: Infinity,
+                  ease: "easeInOut" 
+                }}
+              />
+            );
+          })}
+        </g>
+
+        {/* Data Flow Animation */}
+        <g className="opacity-40">
+          {connections.slice(0, 8).map((connection, index) => {
+            const fromNode = getNode(connection.from);
+            const toNode = getNode(connection.to);
+            
+            if (!fromNode || !toNode) return null;
+            
+            return (
+              <motion.circle
+                key={`flow-${index}`}
+                r="2"
+                fill="white"
+                initial={{ 
+                  cx: `${fromNode.x}%`, 
+                  cy: `${fromNode.y}%`,
+                  opacity: 0 
+                }}
+                animate={{ 
+                  cx: `${toNode.x}%`, 
+                  cy: `${toNode.y}%`,
+                  opacity: [0, 1, 0] 
+                }}
+                transition={{ 
+                  duration: 3, 
+                  delay: 3 + index * 0.5,
+                  repeat: Infinity,
+                  repeatDelay: 6,
+                  ease: "easeInOut" 
+                }}
+              />
+            );
+          })}
+        </g>
+      </svg>
+    </div>
+  );
+};
 
 export default BackgroundPattern; 
