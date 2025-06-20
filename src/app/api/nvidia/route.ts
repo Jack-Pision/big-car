@@ -235,16 +235,9 @@ async function fetchNvidiaText(messages: any[], options: any = {}) {
     // Remove response_format for DeepSeek R1 to avoid compatibility issues
     // DeepSeek R1 doesn't properly support response_format and will return streaming anyway
     // We'll parse JSON from the streaming content instead
-    
-    // Add chat_template_kwargs to control thinking behavior based on mode
-    // Default chat: thinking: false (no reasoning shown)
-    // Reasoning mode: thinking: true (automatic thinking tags generated)
-    chat_template_kwargs: {
-      thinking: options.mode === 'reasoning' ? true : false
-    }
   };
   
-  console.log(`[NVIDIA API] Making request - Mode: ${options.mode || 'default'}, Artifact: ${isArtifact}, Stream: ${payload.stream}, Max Tokens: ${payload.max_tokens}, Thinking: ${payload.chat_template_kwargs.thinking}`);
+  console.log(`[NVIDIA API] Making request - Mode: ${options.mode || 'default'}, Artifact: ${isArtifact}, Stream: ${payload.stream}, Max Tokens: ${payload.max_tokens}, API Key: ${options.mode === 'reasoning' ? 'NVIDIA_API_KEY' : 'NVIDIA_API_KEY2'}`);
   
   try {
     // Using fetchWithTimeout with increased timeout for NVIDIA API call
