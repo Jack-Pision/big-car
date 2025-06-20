@@ -134,40 +134,78 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
         >
           <BackgroundPattern />
           
-          {/* Interactive Smoke/Vapor Flow Animation */}
+          {/* Interactive Smoke/Vapor Flow Animation - 6 Layers */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            {/* Primary smoke wisp */}
+            {/* Layer 1 - Primary smoke wisp */}
             <div 
-              className="absolute w-[200%] h-[200%] opacity-30 transition-transform duration-300 ease-out"
+              className="absolute w-[220%] h-[220%] opacity-8 transition-all duration-200 ease-out"
               style={{
-                top: `${-50 + (mousePos.y * 0.1)}%`,
-                right: `${-50 + (mousePos.x * 0.05)}%`,
-                transform: `rotate(${mousePos.x * 0.1}deg)`
+                top: `${-60 + (mousePos.y * 0.12)}%`,
+                right: `${-60 + (mousePos.x * 0.08)}%`,
+                transform: `rotate(${mousePos.x * 0.15}deg) scale(${1 + mousePos.x * 0.001})`
               }}
             >
               <div className="galaxy-flow-1"></div>
             </div>
-            {/* Secondary smoke wisp */}
+            
+            {/* Layer 2 - Secondary smoke wisp */}
             <div 
-              className="absolute w-[180%] h-[180%] opacity-20 transition-transform duration-500 ease-out"
+              className="absolute w-[200%] h-[200%] opacity-6 transition-all duration-350 ease-out"
               style={{
-                top: `${-40 + (mousePos.y * 0.08)}%`,
-                right: `${-40 + (mousePos.x * 0.03)}%`,
-                transform: `rotate(${-mousePos.x * 0.08}deg)`
+                top: `${-50 + (mousePos.y * 0.1)}%`,
+                right: `${-50 + (mousePos.x * 0.06)}%`,
+                transform: `rotate(${-mousePos.x * 0.12}deg) scale(${1 + mousePos.y * 0.001})`
               }}
             >
               <div className="galaxy-flow-2"></div>
             </div>
-            {/* Tertiary smoke wisp */}
+            
+            {/* Layer 3 - Tertiary smoke wisp */}
             <div 
-              className="absolute w-[160%] h-[160%] opacity-15 transition-transform duration-700 ease-out"
+              className="absolute w-[180%] h-[180%] opacity-5 transition-all duration-500 ease-out"
               style={{
-                top: `${-30 + (mousePos.y * 0.06)}%`,
-                right: `${-30 + (mousePos.x * 0.02)}%`,
-                transform: `rotate(${mousePos.x * 0.05}deg)`
+                top: `${-40 + (mousePos.y * 0.08)}%`,
+                right: `${-40 + (mousePos.x * 0.04)}%`,
+                transform: `rotate(${mousePos.x * 0.08}deg) scale(${1 - mousePos.x * 0.0008})`
               }}
             >
               <div className="galaxy-flow-3"></div>
+            </div>
+            
+            {/* Layer 4 - Quaternary smoke wisp */}
+            <div 
+              className="absolute w-[160%] h-[160%] opacity-4 transition-all duration-650 ease-out"
+              style={{
+                top: `${-30 + (mousePos.y * 0.06)}%`,
+                right: `${-30 + (mousePos.x * 0.03)}%`,
+                transform: `rotate(${-mousePos.x * 0.06}deg) scale(${1 + mousePos.y * 0.0008})`
+              }}
+            >
+              <div className="galaxy-flow-4"></div>
+            </div>
+            
+            {/* Layer 5 - Quinary smoke wisp */}
+            <div 
+              className="absolute w-[140%] h-[140%] opacity-3 transition-all duration-800 ease-out"
+              style={{
+                top: `${-20 + (mousePos.y * 0.04)}%`,
+                right: `${-20 + (mousePos.x * 0.02)}%`,
+                transform: `rotate(${mousePos.x * 0.04}deg) scale(${1 - mousePos.y * 0.0006})`
+              }}
+            >
+              <div className="galaxy-flow-5"></div>
+            </div>
+            
+            {/* Layer 6 - Senary smoke wisp */}
+            <div 
+              className="absolute w-[120%] h-[120%] opacity-2 transition-all duration-1000 ease-out"
+              style={{
+                top: `${-10 + (mousePos.y * 0.02)}%`,
+                right: `${-10 + (mousePos.x * 0.01)}%`,
+                transform: `rotate(${-mousePos.x * 0.02}deg) scale(${1 + mousePos.x * 0.0004})`
+              }}
+            >
+              <div className="galaxy-flow-6"></div>
             </div>
           </div>
 
