@@ -60,7 +60,7 @@ export async function analyzeImageWithNVIDIA(file: File): Promise<{ success: boo
         messages: [
           {
             role: 'user',
-            content: `<img src="data:${mimeType};base64,${base64}" /> Please analyze this image and provide a detailed description of what you see. Include any text, objects, people, scenes, colors, and other notable elements.`
+            content: `<img src="data:${mimeType};base64,${base64}" /> I can see this image you've shared. Let me analyze what's shown here and provide you with a detailed description of the content, including any text, objects, people, scenes, colors, and notable elements I observe.`
           }
         ],
         mode: 'image_analysis',

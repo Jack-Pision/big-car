@@ -2908,19 +2908,39 @@ function TestChatComponent(props?: TestChatProps) {
       const result: ImageUploadResult = await uploadAndAnalyzeImage(file);
       
       if (result.success && result.imageUrl && result.analysis) {
-        // Add image message to chat
-        const imageMessage: LocalMessage = {
+        // Add user message with image (no analysis text)
+        const userMessage: LocalMessage = {
           role: 'user',
-          content: `[Image uploaded: ${file.name}]\n\n${result.analysis}`,
+          content: '', // Just the image, no text
           imageUrls: [result.imageUrl],
           id: uuidv4(),
           timestamp: Date.now(),
           isProcessed: true
         };
 
-        setMessages(prev => [...prev, imageMessage]);
+        // Add AI response message with natural analysis
+        const aiResponseMessage: LocalMessage = {
+          role: 'assistant',
+          content: result.analysis,
+          id: uuidv4(),
+          timestamp: Date.now() + 1,
+          isProcessed: true,
+          parentId: userMessage.id // Link AI response to user image message
+        };
+
+        // Add both messages to chat
+        const updatedMessages = [...messages, userMessage, aiResponseMessage];
+        setMessages(updatedMessages);
         setShowHeading(false);
         setHasInteracted(true);
+
+        // Save messages to session
+        try {
+          const sessionId = await ensureActiveSession('Image uploaded and analyzed');
+          await saveMessagesOnQueryCompleteWithSessionId(updatedMessages, sessionId);
+        } catch (error) {
+          console.error('Error saving image analysis to session:', error);
+        }
 
         // Clear the file input and previews
         if (fileInputRef.current) {
@@ -2929,7 +2949,7 @@ function TestChatComponent(props?: TestChatProps) {
         setSelectedFiles([]);
         setImagePreviewUrls([]);
 
-        toast.success('Image uploaded and analyzed successfully!');
+        toast.success('Image analyzed successfully!');
       } else {
         toast.error(result.error || 'Failed to upload image');
       }
