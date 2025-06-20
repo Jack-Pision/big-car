@@ -54,6 +54,7 @@ import { shouldTriggerArtifact, getArtifactPrompt, artifactSchema, validateArtif
 import ReasoningDisplay from '@/components/ReasoningDisplay';
 import { uploadAndAnalyzeImage, uploadImageToSupabase, analyzeImageWithNVIDIA, ImageUploadResult } from '@/lib/image-upload-service';
 import toast from 'react-hot-toast';
+import { marked } from 'marked';
 
 // Define a type that includes all possible query types (including the ones in SCHEMAS and 'conversation')
 type QueryType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversation' | 'reasoning';
@@ -3747,9 +3748,15 @@ function TestChatComponent(props?: TestChatProps) {
                       className="w-full text-left flex flex-col items-start ai-response-text mb-4 relative"
                       style={{ color: '#FCFCFC', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
                     >
-                      <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="research-output">
-                        {cleanContent}
-                      </ReactMarkdown>
+                      <div 
+                        className="research-output"
+                        style={{ color: '#FCFCFC' }}
+                                                 dangerouslySetInnerHTML={{ 
+                           __html: marked.parse(cleanContent, { 
+                             breaks: true 
+                           }) 
+                         }} 
+                      />
                     </motion.div>
                   );
                 }
@@ -4326,3 +4333,4 @@ export default function TestChat() {
       <TestChatComponent />
     </AuthProvider>
   ); 
+}
