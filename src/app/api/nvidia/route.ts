@@ -25,7 +25,7 @@ function getModelForMode(mode: string): string {
     case 'reasoning':
       return 'deepseek-ai/deepseek-r1'; // Reasoning model with thinking capability
     case 'image_analysis':
-      return 'mistralai/mistral-small-3.1-24b-instruct-2503'; // Mistral model for image analysis
+      return 'mistralai/mistral-small-3_1-24b-instruct-2503'; // Visual model for image analysis (note the underscores)
     case 'chat':
     case 'default':
       return 'mistralai/mistral-small-3.1-24b-instruct-2503'; // Direct response model for default chat
