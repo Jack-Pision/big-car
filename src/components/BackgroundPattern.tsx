@@ -33,8 +33,8 @@ const BackgroundPattern: React.FC = () => {
       nodes.push({ id: id++, x, y });
     }
 
-    // Ring 3: Outer ring (16 nodes) - ensuring they stay well within boundary
-    const outerRadius = radius * 0.85; // 85% of radius to ensure inside circle
+    // Ring 3: Outer ring (16 nodes) - full radius to fill viewport width
+    const outerRadius = radius; // full radius to fill viewport width
     for (let i = 0; i < 16; i++) {
       const angle = (i / 16) * 2 * Math.PI;
       const x = centerX + Math.cos(angle) * outerRadius;
@@ -45,7 +45,7 @@ const BackgroundPattern: React.FC = () => {
     // Verify all nodes are within boundary
     return nodes.filter(node => {
       const distance = Math.sqrt(Math.pow(node.x - centerX, 2) + Math.pow(node.y - centerY, 2));
-      return distance <= radius - 1; // 1% safety margin
+      return distance <= radius; // full boundary
     });
   };
 
@@ -136,7 +136,7 @@ const BackgroundPattern: React.FC = () => {
               key={`node-${node.id}`}
               cx={`${node.x}%`}
               cy={`${node.y}%`}
-              r="3" // Bigger nodes
+              r="4" // Slightly thicker nodes for visibility
               fill="white"
               initial={{ scale: 0, opacity: 0 }}
               animate={{ 
