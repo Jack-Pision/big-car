@@ -188,25 +188,25 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
                 initial={{ opacity: 0, x: -50 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 1, delay: 0.3 }}
-                className="text-5xl font-light leading-tight tracking-wide transition-all duration-300 ease-out"
+                className="text-6xl font-light leading-tight tracking-wide transition-all duration-300 ease-out text-left"
                 style={{ 
                   fontFamily: 'Inter, sans-serif',
-                  color: `rgba(248, 250, 252, ${Math.max(0.65, 0.95 - Math.abs(mousePos.x - 15) * 0.003 - Math.abs(mousePos.y - 40) * 0.002)})`
+                  color: `rgba(248, 250, 252, ${Math.max(0.65, 0.95 - Math.abs(mousePos.x - 15) * 0.003 - Math.abs(mousePos.y - 45) * 0.002)})`
                 }}
               >
-                Let the seeker burn with purpose,
+                Purpose fuels
               </motion.h1>
               <motion.h2 
                 initial={{ opacity: 0, x: -50 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 1, delay: 0.5 }}
-                className="text-5xl font-light leading-tight tracking-wide transition-all duration-300 ease-out"
+                className="text-6xl font-light leading-tight tracking-wide transition-all duration-300 ease-out text-left"
                 style={{ 
                   fontFamily: 'Inter, sans-serif',
-                  color: `rgba(248, 250, 252, ${Math.max(0.65, 0.95 - Math.abs(mousePos.x - 15) * 0.003 - Math.abs(mousePos.y - 55) * 0.002)})`
+                  color: `rgba(248, 250, 252, ${Math.max(0.65, 0.95 - Math.abs(mousePos.x - 15) * 0.003 - Math.abs(mousePos.y - 60) * 0.002)})`
                 }}
               >
-                for knowledge reveals itself only to the flame that does not falter.
+                the flame of knowledge
               </motion.h2>
             </div>
           </div>
