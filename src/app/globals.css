@@ -825,11 +825,11 @@ textarea::-webkit-scrollbar-thumb,
   background: radial-gradient(
     ellipse 80% 60% at 30% 40%,
     transparent 0%,
-    rgba(30, 58, 138, 0.15) 20%,
-    rgba(59, 130, 246, 0.25) 35%,
-    rgba(147, 197, 253, 0.3) 50%,
-    rgba(219, 234, 254, 0.2) 65%,
-    rgba(255, 255, 255, 0.1) 80%,
+    rgba(248, 250, 252, 0.25) 20%,
+    rgba(241, 245, 249, 0.35) 35%,
+    rgba(255, 255, 255, 0.4) 50%,
+    rgba(248, 250, 252, 0.28) 65%,
+    rgba(241, 245, 249, 0.15) 80%,
     transparent 100%
   );
   animation: smokeFlow1 18s ease-in-out infinite;
@@ -843,11 +843,11 @@ textarea::-webkit-scrollbar-thumb,
   background: radial-gradient(
     ellipse 70% 50% at 60% 30%,
     transparent 0%,
-    rgba(37, 99, 235, 0.12) 25%,
-    rgba(96, 165, 250, 0.2) 40%,
-    rgba(186, 230, 253, 0.25) 55%,
-    rgba(241, 245, 249, 0.15) 70%,
-    rgba(255, 255, 255, 0.08) 85%,
+    rgba(241, 245, 249, 0.2) 25%,
+    rgba(248, 250, 252, 0.3) 40%,
+    rgba(255, 255, 255, 0.35) 55%,
+    rgba(248, 250, 252, 0.22) 70%,
+    rgba(241, 245, 249, 0.12) 85%,
     transparent 100%
   );
   animation: smokeFlow2 22s ease-in-out infinite;
@@ -861,11 +861,11 @@ textarea::-webkit-scrollbar-thumb,
   background: radial-gradient(
     ellipse 60% 40% at 70% 60%,
     transparent 0%,
-    rgba(29, 78, 216, 0.1) 30%,
-    rgba(125, 211, 252, 0.18) 45%,
-    rgba(224, 242, 254, 0.22) 60%,
-    rgba(248, 250, 252, 0.12) 75%,
-    rgba(255, 255, 255, 0.06) 90%,
+    rgba(241, 245, 249, 0.18) 30%,
+    rgba(248, 250, 252, 0.25) 45%,
+    rgba(255, 255, 255, 0.3) 60%,
+    rgba(248, 250, 252, 0.18) 75%,
+    rgba(241, 245, 249, 0.1) 90%,
     transparent 100%
   );
   animation: smokeFlow3 25s ease-in-out infinite;
