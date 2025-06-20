@@ -2,60 +2,60 @@ import React from 'react';
 import { motion } from 'framer-motion';
 
 const BackgroundPattern: React.FC = () => {
-  // Define network nodes with better proportions and consistent spacing
+  // Define network nodes with full viewport coverage (0% to 100%)
   const nodes = [
-    // Top row - more balanced horizontal spread
-    { id: 1, x: 12, y: 12 },
-    { id: 2, x: 28, y: 8 },
-    { id: 3, x: 45, y: 10 },
-    { id: 4, x: 62, y: 8 },
-    { id: 5, x: 78, y: 12 },
-    { id: 6, x: 88, y: 18 },
+    // Top row - full width coverage
+    { id: 1, x: 0, y: 0 },
+    { id: 2, x: 20, y: 2 },
+    { id: 3, x: 40, y: 0 },
+    { id: 4, x: 60, y: 2 },
+    { id: 5, x: 80, y: 0 },
+    { id: 6, x: 100, y: 3 },
     
     // Second row
-    { id: 7, x: 8, y: 25 },
-    { id: 8, x: 22, y: 22 },
-    { id: 9, x: 38, y: 25 },
-    { id: 10, x: 55, y: 23 },
-    { id: 11, x: 72, y: 25 },
-    { id: 12, x: 85, y: 28 },
+    { id: 7, x: 2, y: 15 },
+    { id: 8, x: 18, y: 17 },
+    { id: 9, x: 35, y: 15 },
+    { id: 10, x: 52, y: 17 },
+    { id: 11, x: 68, y: 15 },
+    { id: 12, x: 85, y: 17 },
     
     // Third row
-    { id: 13, x: 15, y: 38 },
-    { id: 14, x: 32, y: 35 },
-    { id: 15, x: 48, y: 38 },
-    { id: 16, x: 65, y: 35 },
-    { id: 17, x: 80, y: 38 },
-    { id: 18, x: 92, y: 42 },
+    { id: 13, x: 8, y: 30 },
+    { id: 14, x: 25, y: 32 },
+    { id: 15, x: 42, y: 30 },
+    { id: 16, x: 58, y: 32 },
+    { id: 17, x: 75, y: 30 },
+    { id: 18, x: 98, y: 33 },
     
     // Fourth row
-    { id: 19, x: 5, y: 52 },
-    { id: 20, x: 25, y: 48 },
-    { id: 21, x: 42, y: 52 },
-    { id: 22, x: 58, y: 48 },
-    { id: 23, x: 75, y: 52 },
-    { id: 24, x: 88, y: 55 },
+    { id: 19, x: 0, y: 45 },
+    { id: 20, x: 22, y: 47 },
+    { id: 21, x: 38, y: 45 },
+    { id: 22, x: 55, y: 47 },
+    { id: 23, x: 72, y: 45 },
+    { id: 24, x: 88, y: 48 },
     
     // Fifth row
-    { id: 25, x: 12, y: 65 },
-    { id: 26, x: 35, y: 62 },
-    { id: 27, x: 52, y: 65 },
-    { id: 28, x: 68, y: 62 },
-    { id: 29, x: 82, y: 65 },
+    { id: 25, x: 12, y: 60 },
+    { id: 26, x: 28, y: 62 },
+    { id: 27, x: 45, y: 60 },
+    { id: 28, x: 62, y: 62 },
+    { id: 29, x: 78, y: 60 },
     
     // Sixth row
-    { id: 30, x: 8, y: 78 },
-    { id: 31, x: 28, y: 75 },
-    { id: 32, x: 45, y: 78 },
-    { id: 33, x: 62, y: 75 },
-    { id: 34, x: 78, y: 78 },
-    { id: 35, x: 90, y: 82 },
+    { id: 30, x: 5, y: 75 },
+    { id: 31, x: 25, y: 77 },
+    { id: 32, x: 42, y: 75 },
+    { id: 33, x: 58, y: 77 },
+    { id: 34, x: 75, y: 75 },
+    { id: 35, x: 95, y: 78 },
     
-    // Bottom row
-    { id: 36, x: 15, y: 88 },
-    { id: 37, x: 38, y: 92 },
-    { id: 38, x: 58, y: 88 },
-    { id: 39, x: 75, y: 92 },
+    // Bottom row - full width coverage
+    { id: 36, x: 2, y: 90 },
+    { id: 37, x: 32, y: 97 },
+    { id: 38, x: 50, y: 100 },
+    { id: 39, x: 68, y: 97 },
   ];
 
   // Define connections with better triangulation and consistent gaps
