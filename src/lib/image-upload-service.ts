@@ -46,6 +46,7 @@ export async function uploadImageToSupabase(file: File): Promise<{ success: bool
 // Analyze image using NVIDIA API with Mistral model
 export async function analyzeImageWithNVIDIA(
   file: File, 
+  userMessage: string,
   options: { stream?: boolean } = {}
 ): Promise<{ success: boolean; analysis?: string; error?: string; stream?: ReadableStream | null }> {
   try {
@@ -67,7 +68,7 @@ export async function analyzeImageWithNVIDIA(
           },
           {
             role: 'user',
-            content: `<img src="data:${mimeType};base64,${base64}" /> I can see this image you've shared. Please describe it using the same guidelines as text chat. Use proper markdown and response in dynamic structure based on user input.`
+            content: `<img src="data:${mimeType};base64,${base64}" />\n\n${userMessage}`
           }
         ],
         mode: 'image_analysis',
@@ -102,7 +103,7 @@ export async function analyzeImageWithNVIDIA(
 }
 
 // Complete image upload and analysis workflow
-export async function uploadAndAnalyzeImage(file: File): Promise<ImageUploadResult> {
+export async function uploadAndAnalyzeImage(file: File, userMessage: string): Promise<ImageUploadResult> {
   try {
     // Validate file type
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
@@ -123,7 +124,7 @@ export async function uploadAndAnalyzeImage(file: File): Promise<ImageUploadResu
     }
 
     // Analyze image
-    const analysisResult = await analyzeImageWithNVIDIA(file);
+    const analysisResult = await analyzeImageWithNVIDIA(file, userMessage);
     if (!analysisResult.success) {
       // Return partial success - image uploaded but analysis failed
       return { 

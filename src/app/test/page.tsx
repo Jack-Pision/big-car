@@ -2219,7 +2219,7 @@ function TestChatComponent(props?: TestChatProps) {
           await saveMessageInstantly(currentActiveSessionId, placeholderAiMessage);
         }
         
-        const analysisResult = await analyzeImageWithNVIDIA(file, { stream: true });
+        const analysisResult = await analyzeImageWithNVIDIA(file, input.trim(), { stream: true });
 
         if (!analysisResult.success || !analysisResult.stream) {
           throw new Error(analysisResult.error || 'Failed to start analysis stream');
