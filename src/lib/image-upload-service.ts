@@ -44,8 +44,13 @@ export async function uploadImageToSupabase(file: File): Promise<{ success: bool
 }
 
 // Analyze image using NVIDIA API with Mistral model
-export async function analyzeImageWithNVIDIA(imageUrl: string): Promise<{ success: boolean; analysis?: string; error?: string }> {
+export async function analyzeImageWithNVIDIA(file: File): Promise<{ success: boolean; analysis?: string; error?: string }> {
   try {
+    // Convert file to base64
+    const arrayBuffer = await file.arrayBuffer();
+    const base64 = Buffer.from(arrayBuffer).toString('base64');
+    const mimeType = file.type;
+
     const response = await fetch('/api/nvidia', {
       method: 'POST',
       headers: {
@@ -55,18 +60,7 @@ export async function analyzeImageWithNVIDIA(imageUrl: string): Promise<{ succes
         messages: [
           {
             role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: 'Please analyze this image and provide a detailed description of what you see. Include any text, objects, people, scenes, colors, and other notable elements.'
-              },
-              {
-                type: 'image_url',
-                image_url: {
-                  url: imageUrl
-                }
-              }
-            ]
+            content: `<img src="data:${mimeType};base64,${base64}" /> Please analyze this image and provide a detailed description of what you see. Include any text, objects, people, scenes, colors, and other notable elements.`
           }
         ],
         mode: 'image_analysis',
@@ -118,7 +112,7 @@ export async function uploadAndAnalyzeImage(file: File): Promise<ImageUploadResu
     }
 
     // Analyze image
-    const analysisResult = await analyzeImageWithNVIDIA(uploadResult.url);
+    const analysisResult = await analyzeImageWithNVIDIA(file);
     if (!analysisResult.success) {
       // Return partial success - image uploaded but analysis failed
       return { 
