@@ -17,6 +17,19 @@ function getApiKeyForMode(mode: string): string {
   }
 }
 
+// Function to select the appropriate model based on mode
+function getModelForMode(mode: string): string {
+  switch (mode) {
+    case 'reasoning':
+      return 'deepseek-ai/deepseek-r1'; // Reasoning model with thinking capability
+    case 'chat':
+    case 'default':
+      return 'mistralai/mistral-small-3.1-24b-instruct-2503'; // Direct response model for default chat
+    default:
+      return 'mistralai/mistral-small-3.1-24b-instruct-2503'; // Fallback to direct response model
+  }
+}
+
 // Update the fetchWithTimeout function to optimize timeout handling
 async function fetchWithTimeout(resource: string, options: any = {}, timeout = 45000) { // Increased to 45 seconds for artifact generation
   const controller = new AbortController();
@@ -224,7 +237,7 @@ async function fetchNvidiaText(messages: any[], options: any = {}) {
   
   // If not in cache or expired, make the API call
   const payload = {
-    model: 'deepseek-ai/deepseek-r1',
+    model: getModelForMode(options.mode || 'default'),
     messages: enhancedMessages,
     temperature: options.temperature || 0.6,
     top_p: options.top_p || 0.95,
@@ -237,7 +250,7 @@ async function fetchNvidiaText(messages: any[], options: any = {}) {
     // We'll parse JSON from the streaming content instead
   };
   
-  console.log(`[NVIDIA API] Making request - Mode: ${options.mode || 'default'}, Artifact: ${isArtifact}, Stream: ${payload.stream}, Max Tokens: ${payload.max_tokens}, API Key: ${options.mode === 'reasoning' ? 'NVIDIA_API_KEY' : 'NVIDIA_API_KEY2'}`);
+  console.log(`[NVIDIA API] Making request - Mode: ${options.mode || 'default'}, Model: ${payload.model}, Artifact: ${isArtifact}, Stream: ${payload.stream}, Max Tokens: ${payload.max_tokens}, API Key: ${options.mode === 'reasoning' ? 'NVIDIA_API_KEY' : 'NVIDIA_API_KEY2'}`);
   
   try {
     // Using fetchWithTimeout with increased timeout for NVIDIA API call
