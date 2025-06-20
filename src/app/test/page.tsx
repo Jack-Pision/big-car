@@ -2170,14 +2170,14 @@ function TestChatComponent(props?: TestChatProps) {
           isProcessed: true
         };
 
-        // Add user message to chat immediately
         setMessages(prev => [...prev, userMessage]);
         setShowHeading(false);
         setHasInteracted(true);
-        
-        // Set the image waiting state for shining effect
         setImageWaitingForResponse(uploadedImageUrls[0] || '');
         
+        const newAbortController = new AbortController();
+        setAbortController(newAbortController);
+
         // Clear input and image previews
         setInput('');
         setSelectedFiles([]);
@@ -2190,42 +2190,103 @@ function TestChatComponent(props?: TestChatProps) {
         // 2. Start AI processing (set loading states)
         setIsLoading(true);
         setIsAiResponding(true);
-
-        // 3. Analyze image with NVIDIA API
-        const analysisResult = await analyzeImageWithNVIDIA(file);
         
-        // 4. Stop shining effect when AI response starts
-        setImageWaitingForResponse(null);
-        
-        if (analysisResult.success && analysisResult.analysis) {
-          // Add AI response message with natural analysis
-          const aiResponseMessage: LocalMessage = {
-            role: 'assistant',
-            content: analysisResult.analysis,
-            id: uuidv4(),
-            timestamp: Date.now() + 1,
-            isProcessed: true,
-            parentId: userMessageId
-          };
+        // 3. Create placeholder for streaming AI response
+        const aiMessageId = uuidv4();
+        const placeholderAiMessage: LocalMessage = {
+          role: "assistant",
+          content: '',
+          id: aiMessageId,
+          timestamp: Date.now(),
+          parentId: userMessageId,
+          contentType: 'conversation',
+          isStreaming: true,
+          isProcessed: false
+        };
 
-          // Add AI response to chat
-          setMessages(prev => [...prev, aiResponseMessage]);
-
-          // Save both messages to session
-          const updatedMessages = [...messages, userMessage, aiResponseMessage];
-          await saveMessagesOnQueryCompleteWithSessionId(updatedMessages, currentActiveSessionId);
-
-          toast.success('Image analyzed successfully!');
-        } else {
-          toast.error(analysisResult.error || 'Failed to analyze image');
+        setMessages((prev) => [...prev, placeholderAiMessage]);
+        if (currentActiveSessionId) {
+          await saveMessageInstantly(currentActiveSessionId, placeholderAiMessage);
         }
-      } catch (error) {
-        console.error('Error analyzing image:', error);
-        toast.error('Failed to analyze image');
-        setImageWaitingForResponse(null); // Stop shining on error
+        
+        const analysisResult = await analyzeImageWithNVIDIA(file, { stream: true });
+
+        if (!analysisResult.success || !analysisResult.stream) {
+          throw new Error(analysisResult.error || 'Failed to start analysis stream');
+        }
+        
+        const reader = analysisResult.stream.getReader();
+        const decoder = new TextDecoder();
+        let contentBuffer = '';
+        let firstChunkReceived = false;
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\\n');
+
+          for (const line of lines) {
+            if (line.startsWith('data:')) {
+              const data = line.replace('data:', '').trim();
+              if (data === '[DONE]') continue;
+              try {
+                const parsed = JSON.parse(data);
+                const delta = parsed.choices?.[0]?.delta?.content || '';
+                
+                if (delta) {
+                  if (!firstChunkReceived) {
+                    firstChunkReceived = true;
+                    setImageWaitingForResponse(null);
+                  }
+                  contentBuffer += delta;
+                  setMessages(prev =>
+                    prev.map(msg =>
+                      msg.id === aiMessageId
+                        ? { ...msg, content: contentBuffer }
+                        : msg
+                    )
+                  );
+                }
+              } catch (e) { /* Ignore parse errors on incomplete chunks */ }
+            }
+          }
+        }
+        
+        setMessages(prev =>
+          prev.map(msg =>
+            msg.id === aiMessageId
+              ? { ...msg, isStreaming: false, isProcessed: true }
+              : msg
+          )
+        );
+
+        if (currentActiveSessionId) {
+          const completeMessage: LocalMessage = {
+            role: "assistant",
+            content: contentBuffer,
+            id: aiMessageId,
+            timestamp: Date.now(),
+            parentId: userMessageId,
+            contentType: 'conversation',
+            isProcessed: true,
+          };
+          await saveMessageInstantly(currentActiveSessionId, completeMessage);
+        }
+        
+      } catch (error: any) {
+        if (error.name === 'AbortError') {
+          console.log('Image analysis aborted by user.');
+        } else {
+          console.error('Error analyzing image:', error);
+          toast.error('Failed to analyze image: ' + error.message);
+        }
+        setImageWaitingForResponse(null);
       } finally {
         setIsLoading(false);
         setIsAiResponding(false);
+        setAbortController(null);
       }
       return;
     }

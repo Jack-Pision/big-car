@@ -44,7 +44,10 @@ export async function uploadImageToSupabase(file: File): Promise<{ success: bool
 }
 
 // Analyze image using NVIDIA API with Mistral model
-export async function analyzeImageWithNVIDIA(file: File): Promise<{ success: boolean; analysis?: string; error?: string }> {
+export async function analyzeImageWithNVIDIA(
+  file: File, 
+  options: { stream?: boolean } = {}
+): Promise<{ success: boolean; analysis?: string; error?: string; stream?: ReadableStream | null }> {
   try {
     // Convert file to base64
     const arrayBuffer = await file.arrayBuffer();
@@ -66,7 +69,7 @@ export async function analyzeImageWithNVIDIA(file: File): Promise<{ success: boo
         mode: 'image_analysis',
         temperature: 0.3,
         max_tokens: 1000,
-        stream: false
+        stream: true
       })
     });
 
@@ -74,6 +77,10 @@ export async function analyzeImageWithNVIDIA(file: File): Promise<{ success: boo
       const errorText = await response.text();
       console.error('NVIDIA API error:', errorText);
       return { success: false, error: `API request failed: ${response.status}` };
+    }
+
+    if (options.stream) {
+      return { success: true, stream: response.body };
     }
 
     const data = await response.json();
