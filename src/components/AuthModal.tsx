@@ -23,6 +23,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
   const [fullName, setFullName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
   const resetForm = () => {
     setEmail('');
@@ -35,6 +36,14 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
   const handleClose = () => {
     resetForm();
     onClose();
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setMousePos({
+      x: ((e.clientX - rect.left) / rect.width) * 100,
+      y: ((e.clientY - rect.top) / rect.height) * 100
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -121,21 +130,43 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
           exit={{ opacity: 0 }}
           className="fixed inset-0 bg-[#161618] z-[10000] flex items-center justify-end p-6"
           onClick={handleClose}
+          onMouseMove={handleMouseMove}
         >
           <BackgroundPattern />
           
-          {/* Galaxy Light Flow Animation */}
+          {/* Interactive Smoke/Vapor Flow Animation */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            {/* Primary flowing gradient */}
-            <div className="absolute top-0 right-0 w-[200%] h-[200%] opacity-30">
+            {/* Primary smoke wisp */}
+            <div 
+              className="absolute w-[200%] h-[200%] opacity-30 transition-transform duration-300 ease-out"
+              style={{
+                top: `${-50 + (mousePos.y * 0.1)}%`,
+                right: `${-50 + (mousePos.x * 0.05)}%`,
+                transform: `rotate(${mousePos.x * 0.1}deg)`
+              }}
+            >
               <div className="galaxy-flow-1"></div>
             </div>
-            {/* Secondary flowing gradient */}
-            <div className="absolute top-0 right-0 w-[180%] h-[180%] opacity-20">
+            {/* Secondary smoke wisp */}
+            <div 
+              className="absolute w-[180%] h-[180%] opacity-20 transition-transform duration-500 ease-out"
+              style={{
+                top: `${-40 + (mousePos.y * 0.08)}%`,
+                right: `${-40 + (mousePos.x * 0.03)}%`,
+                transform: `rotate(${-mousePos.x * 0.08}deg)`
+              }}
+            >
               <div className="galaxy-flow-2"></div>
             </div>
-            {/* Tertiary flowing gradient */}
-            <div className="absolute top-0 right-0 w-[160%] h-[160%] opacity-15">
+            {/* Tertiary smoke wisp */}
+            <div 
+              className="absolute w-[160%] h-[160%] opacity-15 transition-transform duration-700 ease-out"
+              style={{
+                top: `${-30 + (mousePos.y * 0.06)}%`,
+                right: `${-30 + (mousePos.x * 0.02)}%`,
+                transform: `rotate(${mousePos.x * 0.05}deg)`
+              }}
+            >
               <div className="galaxy-flow-3"></div>
             </div>
           </div>
