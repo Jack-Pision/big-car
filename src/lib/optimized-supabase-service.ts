@@ -471,18 +471,43 @@ export class OptimizedSupabaseService {
 
       console.log('[Optimized Service] Saving active session ID:', sessionId);
 
-      const { error } = await supabase
+      // First check if user preferences record exists
+      const { data: existingPrefs, error: checkError } = await supabase
         .from('user_preferences')
-        .upsert({
-          user_id: user.id,
-          active_session_id: sessionId
-        }, {
-          onConflict: 'user_id'
-        });
-
-      if (error) {
-        console.error('Error saving active session ID:', error);
-        return;
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+        
+      if (checkError && checkError.code !== 'PGRST116') {
+        console.error('Error checking user preferences:', checkError);
+      }
+      
+      // If no record exists, create one with the active session ID
+      if (!existingPrefs) {
+        console.log('[Optimized Service] Creating new user preferences record with active session ID');
+        const { error: insertError } = await supabase
+          .from('user_preferences')
+          .insert({
+            user_id: user.id,
+            active_session_id: sessionId,
+            preferences: {}
+          });
+          
+        if (insertError) {
+          console.error('Error creating user preferences record:', insertError);
+          return;
+        }
+      } else {
+        // Update existing record
+        const { error: updateError } = await supabase
+          .from('user_preferences')
+          .update({ active_session_id: sessionId })
+          .eq('user_id', user.id);
+          
+        if (updateError) {
+          console.error('Error updating active session ID:', updateError);
+          return;
+        }
       }
 
       // Update cache after successful save
@@ -518,10 +543,37 @@ export class OptimizedSupabaseService {
 
       if (error) {
         if (error.code === 'PGRST116') {
-          // No preferences found, cache null and return null
-          smartCache.set(cacheKey, null, 5 * 60 * 1000);
-          return null;
+          // No preferences found for new user - create a new preferences record
+          console.log('[Optimized Service] No preferences found for new user, creating initial record');
+          
+          try {
+            const { data: newPrefs, error: insertError } = await supabase
+              .from('user_preferences')
+              .insert({
+                user_id: user.id,
+                active_session_id: null,
+                preferences: {}
+              })
+              .select()
+              .single();
+              
+            if (insertError) {
+              console.error('Error creating initial user preferences:', insertError);
+            } else {
+              console.log('[Optimized Service] Created initial preferences record for new user');
+            }
+            
+            // Cache null and return null since there's no active session yet
+            smartCache.set(cacheKey, null, 5 * 60 * 1000);
+            return null;
+          } catch (createError) {
+            console.error('Failed to create initial preferences:', createError);
+            // Continue login flow even if preferences creation fails
+            smartCache.set(cacheKey, null, 5 * 60 * 1000);
+            return null;
+          }
         }
+        
         console.error('Error getting active session ID:', error);
         return null;
       }
