@@ -1151,4 +1151,35 @@ textarea::-webkit-scrollbar-thumb,
     transform: translateX(18%) translateY(-40%) rotate(385deg) scaleX(0.85) scaleY(1.12) skewX(-6deg) skewY(3deg);
     opacity: 0.28;
   }
+}
+
+/* Futuristic Brain Animation */
+.brain-container {
+  transform-origin: center;
+  transition: all 0.3s ease;
+}
+
+.slow-rotation {
+  animation: brainRotate 30s linear infinite;
+}
+
+.fast-rotation {
+  animation: brainRotate 5s linear infinite;
+}
+
+.futuristic-brain {
+  filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.3));
+}
+
+.brain-container:hover .futuristic-brain {
+  filter: drop-shadow(0 0 15px rgba(59, 130, 246, 0.5));
+}
+
+@keyframes brainRotate {
+  from {
+    transform: rotateY(0deg) rotateX(10deg);
+  }
+  to {
+    transform: rotateY(360deg) rotateX(10deg);
+  }
 } 

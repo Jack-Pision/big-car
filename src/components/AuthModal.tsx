@@ -23,6 +23,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
   const [fullName, setFullName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isMouseDown, setIsMouseDown] = useState(false);
 
 
   const resetForm = () => {
@@ -140,6 +141,86 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
                 backgroundSize: '40px 40px'
               }}
             ></div>
+          </div>
+
+          {/* Futuristic Brain Visualization */}
+          <div className="absolute left-12 top-1/2 transform -translate-y-1/2 pointer-events-auto z-10">
+            <div 
+              className={`brain-container ${isMouseDown ? 'fast-rotation' : 'slow-rotation'}`}
+              onMouseDown={() => setIsMouseDown(true)}
+              onMouseUp={() => setIsMouseDown(false)}
+              onMouseLeave={() => setIsMouseDown(false)}
+              style={{ cursor: 'pointer' }}
+            >
+              <svg
+                width="300"
+                height="300"
+                viewBox="0 0 300 300"
+                className="futuristic-brain"
+              >
+                {/* Brain nodes and connections */}
+                <defs>
+                  <filter id="glow">
+                    <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                    <feMerge> 
+                      <feMergeNode in="coloredBlur"/>
+                      <feMergeNode in="SourceGraphic"/>
+                    </feMerge>
+                  </filter>
+                </defs>
+                
+                {/* Neural connections */}
+                <g className="connections" opacity="0.6">
+                  <line x1="150" y1="50" x2="120" y2="80" stroke="#3b82f6" strokeWidth="1" />
+                  <line x1="150" y1="50" x2="180" y2="80" stroke="#3b82f6" strokeWidth="1" />
+                  <line x1="120" y1="80" x2="100" y2="120" stroke="#3b82f6" strokeWidth="1" />
+                  <line x1="180" y1="80" x2="200" y2="120" stroke="#3b82f6" strokeWidth="1" />
+                  <line x1="100" y1="120" x2="80" y2="160" stroke="#3b82f6" strokeWidth="1" />
+                  <line x1="200" y1="120" x2="220" y2="160" stroke="#3b82f6" strokeWidth="1" />
+                  <line x1="120" y1="80" x2="180" y2="80" stroke="#3b82f6" strokeWidth="1" />
+                  <line x1="100" y1="120" x2="200" y2="120" stroke="#3b82f6" strokeWidth="1" />
+                  <line x1="80" y1="160" x2="220" y2="160" stroke="#3b82f6" strokeWidth="1" />
+                  <line x1="150" y1="50" x2="150" y2="100" stroke="#3b82f6" strokeWidth="1" />
+                  <line x1="150" y1="100" x2="150" y2="150" stroke="#3b82f6" strokeWidth="1" />
+                  <line x1="150" y1="150" x2="150" y2="200" stroke="#3b82f6" strokeWidth="1" />
+                  <line x1="120" y1="200" x2="180" y2="200" stroke="#3b82f6" strokeWidth="1" />
+                  <line x1="100" y1="180" x2="200" y2="180" stroke="#3b82f6" strokeWidth="1" />
+                  <line x1="90" y1="140" x2="210" y2="140" stroke="#3b82f6" strokeWidth="1" />
+                  <line x1="110" y1="100" x2="190" y2="100" stroke="#3b82f6" strokeWidth="1" />
+                </g>
+                
+                {/* Brain nodes */}
+                <g className="nodes">
+                  {/* Top layer */}
+                  <circle cx="150" cy="50" r="4" fill="#3b82f6" filter="url(#glow)" />
+                  <circle cx="120" cy="80" r="3" fill="#60a5fa" filter="url(#glow)" />
+                  <circle cx="180" cy="80" r="3" fill="#60a5fa" filter="url(#glow)" />
+                  
+                  {/* Mid layer */}
+                  <circle cx="100" cy="120" r="4" fill="#3b82f6" filter="url(#glow)" />
+                  <circle cx="150" cy="100" r="5" fill="#1d4ed8" filter="url(#glow)" />
+                  <circle cx="200" cy="120" r="4" fill="#3b82f6" filter="url(#glow)" />
+                  <circle cx="110" cy="100" r="2" fill="#93c5fd" filter="url(#glow)" />
+                  <circle cx="190" cy="100" r="2" fill="#93c5fd" filter="url(#glow)" />
+                  
+                  {/* Lower mid layer */}
+                  <circle cx="80" cy="160" r="3" fill="#60a5fa" filter="url(#glow)" />
+                  <circle cx="150" cy="150" r="5" fill="#1d4ed8" filter="url(#glow)" />
+                  <circle cx="220" cy="160" r="3" fill="#60a5fa" filter="url(#glow)" />
+                  <circle cx="90" cy="140" r="2" fill="#93c5fd" filter="url(#glow)" />
+                  <circle cx="210" cy="140" r="2" fill="#93c5fd" filter="url(#glow)" />
+                  <circle cx="130" cy="130" r="3" fill="#3b82f6" filter="url(#glow)" />
+                  <circle cx="170" cy="130" r="3" fill="#3b82f6" filter="url(#glow)" />
+                  
+                  {/* Bottom layer */}
+                  <circle cx="100" cy="180" r="3" fill="#60a5fa" filter="url(#glow)" />
+                  <circle cx="150" cy="200" r="4" fill="#3b82f6" filter="url(#glow)" />
+                  <circle cx="200" cy="180" r="3" fill="#60a5fa" filter="url(#glow)" />
+                  <circle cx="120" cy="200" r="2" fill="#93c5fd" filter="url(#glow)" />
+                  <circle cx="180" cy="200" r="2" fill="#93c5fd" filter="url(#glow)" />
+                </g>
+              </svg>
+            </div>
           </div>
           
           <motion.div
