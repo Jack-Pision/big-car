@@ -3716,6 +3716,22 @@ function TestChatComponent(props?: TestChatProps) {
                   .trim();
                 const isStoppedMsg = cleanContent.trim() === '[Response stopped by user]';
                 
+                // Early rendering for streaming content to avoid markdown parse errors
+                if (msg.isStreaming) {
+                  return (
+                    <motion.div
+                      key={msg.id + '-stream-' + i}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, ease: 'easeOut' }}
+                      className="w-full text-left flex flex-col items-start mb-4"
+                      style={{ color: '#FCFCFC', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+                    >
+                      {msg.content}
+                    </motion.div>
+                  );
+                }
+
                 // For default chat, skip think processing entirely
                 const finalContent = makeCitationsClickable(cleanContent, msg.webSources || []);
                 
