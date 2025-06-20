@@ -6,7 +6,7 @@ import { signIn, signUp, resetPassword } from '@/lib/auth';
 import { Eye, EyeOff, Mail, Lock, User } from 'lucide-react';
 import Image from 'next/image';
 import toast from 'react-hot-toast';
-import BackgroundPattern from './BackgroundPattern';
+
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -132,8 +132,6 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
           onClick={handleClose}
           onMouseMove={handleMouseMove}
         >
-          <BackgroundPattern />
-          
           {/* Interactive Smoke/Vapor Flow Animation */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
             {/* Primary smoke wisp */}
