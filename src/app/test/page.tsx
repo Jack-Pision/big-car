@@ -686,6 +686,43 @@ const GlobalStyles = () => (
       color: #ffffff;
       border-color: #374151;
     }
+
+    /* Metallic shining effect for images waiting for AI response */
+    @keyframes metallicShine {
+      0% {
+        background-position: -200% 0;
+      }
+      100% {
+        background-position: 200% 0;
+      }
+    }
+    
+    .image-metallic-shine {
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .image-metallic-shine::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.2) 20%,
+        rgba(255, 255, 255, 0.5) 50%,
+        rgba(255, 255, 255, 0.2) 80%,
+        transparent 100%
+      );
+      background-size: 200% 100%;
+      animation: metallicShine 2s infinite;
+      border-radius: inherit;
+      pointer-events: none;
+      z-index: 1;
+    }
   `}</style>
 );
 
@@ -1738,6 +1775,7 @@ function TestChatComponent(props?: TestChatProps) {
   const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
   const [uploadedImageUrls, setUploadedImageUrls] = useState<string[]>([]);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [imageWaitingForResponse, setImageWaitingForResponse] = useState<string | null>(null);
 
 
   // Refs
@@ -2116,27 +2154,50 @@ function TestChatComponent(props?: TestChatProps) {
     // Handle image analysis if we have selected files
     if (selectedFiles.length > 0) {
       const file = selectedFiles[0];
-      setIsLoading(true);
-      setIsAiResponding(true);
       
       try {
-        // Analyze image with NVIDIA API
+        // Ensure we have an active session
+        const currentActiveSessionId = await ensureActiveSession('Image uploaded and analyzed');
+        
+        // 1. IMMEDIATELY show user message with image (with shining effect)
+        const userMessageId = uuidv4();
+        const userMessage: LocalMessage = {
+          role: 'user',
+          content: input.trim(), // Include any text the user typed
+          imageUrls: uploadedImageUrls, // Use Supabase URLs for persistence
+          id: userMessageId,
+          timestamp: Date.now(),
+          isProcessed: true
+        };
+
+        // Add user message to chat immediately
+        setMessages(prev => [...prev, userMessage]);
+        setShowHeading(false);
+        setHasInteracted(true);
+        
+        // Set the image waiting state for shining effect
+        setImageWaitingForResponse(uploadedImageUrls[0] || '');
+        
+        // Clear input and image previews
+        setInput('');
+        setSelectedFiles([]);
+        setImagePreviewUrls([]);
+        setUploadedImageUrls([]);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+
+        // 2. Start AI processing (set loading states)
+        setIsLoading(true);
+        setIsAiResponding(true);
+
+        // 3. Analyze image with NVIDIA API
         const analysisResult = await analyzeImageWithNVIDIA(file);
         
+        // 4. Stop shining effect when AI response starts
+        setImageWaitingForResponse(null);
+        
         if (analysisResult.success && analysisResult.analysis) {
-          // Ensure we have an active session
-          const currentActiveSessionId = await ensureActiveSession('Image uploaded and analyzed');
-          
-          // Add user message with image (no analysis text)
-          const userMessage: LocalMessage = {
-            role: 'user',
-            content: input.trim(), // Include any text the user typed
-            imageUrls: uploadedImageUrls, // Use Supabase URLs for persistence
-            id: uuidv4(),
-            timestamp: Date.now(),
-            isProcessed: true
-          };
-
           // Add AI response message with natural analysis
           const aiResponseMessage: LocalMessage = {
             role: 'assistant',
@@ -2144,26 +2205,15 @@ function TestChatComponent(props?: TestChatProps) {
             id: uuidv4(),
             timestamp: Date.now() + 1,
             isProcessed: true,
-            parentId: userMessage.id
+            parentId: userMessageId
           };
 
-          // Add both messages to chat
+          // Add AI response to chat
+          setMessages(prev => [...prev, aiResponseMessage]);
+
+          // Save both messages to session
           const updatedMessages = [...messages, userMessage, aiResponseMessage];
-          setMessages(updatedMessages);
-          setShowHeading(false);
-          setHasInteracted(true);
-
-          // Save messages to session
           await saveMessagesOnQueryCompleteWithSessionId(updatedMessages, currentActiveSessionId);
-
-          // Clear input and image previews
-          setInput('');
-          setSelectedFiles([]);
-          setImagePreviewUrls([]);
-          setUploadedImageUrls([]);
-          if (fileInputRef.current) {
-            fileInputRef.current.value = '';
-          }
 
           toast.success('Image analyzed successfully!');
         } else {
@@ -2172,6 +2222,7 @@ function TestChatComponent(props?: TestChatProps) {
       } catch (error) {
         console.error('Error analyzing image:', error);
         toast.error('Failed to analyze image');
+        setImageWaitingForResponse(null); // Stop shining on error
       } finally {
         setIsLoading(false);
         setIsAiResponding(false);
@@ -3900,7 +3951,7 @@ function TestChatComponent(props?: TestChatProps) {
             >
               {/* Image Preview inside input box */}
               {(selectedFiles.length > 0 || imagePreviewUrls.length > 0) && (
-                <div className="w-full px-2 py-2 border-b border-white/10">
+                <div className="w-full px-2 py-2">
                   <div className="flex gap-2 flex-wrap">
                     {selectedFiles.map((file, index) => (
                       <div key={index} className="relative">
@@ -3908,11 +3959,11 @@ function TestChatComponent(props?: TestChatProps) {
                           <img 
                             src={imagePreviewUrls[index]} 
                             alt={`Preview ${index + 1}`} 
-                            className="w-20 h-20 object-cover rounded-lg border border-gray-600"
+                            className="w-16 h-16 object-cover rounded-lg border border-gray-600"
                           />
                         ) : (
-                          <div className="w-20 h-20 bg-gray-700 rounded-lg border border-gray-600 flex items-center justify-center">
-                            <div className="w-6 h-6 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                          <div className="w-16 h-16 bg-gray-700 rounded-lg border border-gray-600 flex items-center justify-center">
+                            <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
                           </div>
                         )}
                         <button
@@ -4121,7 +4172,9 @@ function TestChatComponent(props?: TestChatProps) {
                         key={index} 
                         src={url} 
                         alt={`Preview ${index + 1}`} 
-                        className="max-w-xs max-h-64 rounded-md mb-2" 
+                        className={`max-w-xs max-h-64 rounded-md mb-2 ${
+                          imageWaitingForResponse === url ? 'image-metallic-shine' : ''
+                        }`}
                       />
                     ))}
                     
