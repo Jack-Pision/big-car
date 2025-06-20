@@ -45,10 +45,19 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
           toast.error('Please enter your full name');
           return;
         }
-        await signUp(email, password, fullName);
-        toast.success('Account created! Please check your email for verification.');
-        setMode('signin');
-        resetForm();
+        const response = await signUp(email, password, fullName);
+        
+        // If we have a session, the user is already confirmed (email confirmation is disabled)
+        if (response?.session) {
+          toast.success('Account created successfully!');
+          onAuthSuccess();
+          handleClose();
+        } else {
+          // Email confirmation is enabled, show message to check email
+          toast.success('Account created! Please check your email for verification.');
+          setMode('signin');
+          resetForm();
+        }
       } else if (mode === 'signin') {
         await signIn(email, password);
         toast.success('Welcome back!');
