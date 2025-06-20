@@ -3744,10 +3744,12 @@ function TestChatComponent(props?: TestChatProps) {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.3, ease: 'easeOut' }}
-                      className="w-full text-left flex flex-col items-start mb-4"
+                      className="w-full text-left flex flex-col items-start ai-response-text mb-4 relative"
                       style={{ color: '#FCFCFC', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
                     >
-                      {msg.content}
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="research-output">
+                        {cleanContent}
+                      </ReactMarkdown>
                     </motion.div>
                   );
                 }
@@ -3781,94 +3783,29 @@ function TestChatComponent(props?: TestChatProps) {
                         <div className="w-full max-w-full overflow-hidden">
                           {/* For default chat, no thinking buttons - just show content directly */}
                           {finalContent.trim().length > 0 && (
-                            <ReactMarkdown 
-                              remarkPlugins={[remarkGfm]} 
-                              rehypePlugins={[rehypeRaw]} 
+                            <ReactMarkdown
+                              remarkPlugins={[remarkGfm]}
+                              rehypePlugins={[rehypeRaw]}
                               className="research-output"
                               components={{
-                                // Enhanced components for professional research output
-                                h1: ({children}) => (
-                                  <h1 className="text-3xl font-bold mb-6 mt-8 border-b border-cyan-500/30 pb-3" style={{ color: '#FCFCFC' }}>
-                                    {children}
-                                  </h1>
-                                ),
-                                h2: ({children}) => (
-                                  <h2 className="text-2xl font-semibold text-cyan-400 mb-4 mt-8 flex items-center gap-2">
-                                    {children}
-                                  </h2>
-                                ),
-                                h3: ({children}) => (
-                                  <h3 className="text-xl font-semibold mb-3 mt-6" style={{ color: '#FCFCFC' }}>
-                                    {children}
-                                  </h3>
-                                ),
-                                p: ({children}) => (
-                                  <p className="leading-relaxed mb-4 text-sm" style={{ color: '#FCFCFC' }}>
-                                    {children}
-                                  </p>
-                                ),
-                                ul: ({children}) => (
-                                  <ul className="space-y-2 mb-4 ml-4">
-                                    {children}
-                                  </ul>
-                                ),
-                                li: ({children}) => (
-                                  <li className="flex items-start gap-2" style={{ color: '#FCFCFC' }}>
-                                    <span className="text-cyan-400 mt-1.5 text-xs">●</span>
-                                    <span className="flex-1">{children}</span>
-                                  </li>
-                                ),
-                                ol: ({children}) => (
-                                  <ol className="space-y-2 mb-4 ml-4 list-decimal list-inside">
-                                    {children}
-                                  </ol>
-                                ),
-                                strong: ({children}) => (
-                                  <strong className="font-semibold" style={{ color: '#FCFCFC' }}>
-                                    {children}
-                                  </strong>
-                                ),
-                                table: ({children}) => (
-                                  <div className="overflow-x-auto mb-6 max-w-full">
-                                    <table className="w-full border-collapse border border-gray-600 rounded-lg" style={{tableLayout: 'fixed', maxWidth: '100%'}}>
-                                      {children}
-                                    </table>
-                                  </div>
-                                ),
-                                thead: ({children}) => (
-                                  <thead className="bg-gray-800">
-                                    {children}
-                                  </thead>
-                                ),
-                                th: ({children}) => (
-                                  <th className="border border-gray-600 px-4 py-3 text-left text-cyan-400 font-semibold" style={{wordWrap: 'break-word', overflowWrap: 'break-word'}}>
-                                    {children}
-                                  </th>
-                                ),
-                                td: ({children}) => (
-                                  <td className="border border-gray-600 px-4 py-3" style={{wordWrap: 'break-word', overflowWrap: 'break-word', color: '#FCFCFC'}}>
-                                    {children}
-                                  </td>
-                                ),
-                                blockquote: ({children}) => (
-                                  <blockquote className="border-l-4 border-cyan-500 pl-4 py-2 rounded-r-lg mb-4 italic" style={{background: 'transparent', color: '#FCFCFC'}}>
-                                    {children}
-                                  </blockquote>
-                                ),
-                                code: ({children, className}) => {
+                                h1: ({ children }) => (<h1 className="text-3xl font-bold mb-6 mt-8 border-b border-cyan-500/30 pb-3" style={{ color: '#FCFCFC' }}>{children}</h1>),
+                                h2: ({ children }) => (<h2 className="text-2xl font-semibold text-cyan-400 mb-4 mt-8 flex items-center gap-2">{children}</h2>),
+                                h3: ({ children }) => (<h3 className="text-xl font-semibold mb-3 mt-6" style={{ color: '#FCFCFC' }}>{children}</h3>),
+                                p: ({ children }) => (<p className="leading-relaxed mb-4 text-sm" style={{ color: '#FCFCFC' }}>{children}</p>),
+                                ul: ({ children }) => (<ul className="space-y-2 mb-4 ml-4">{children}</ul>),
+                                li: ({ children }) => (<li className="flex items-start gap-2" style={{ color: '#FCFCFC' }}><span className="text-cyan-400 mt-1.5 text-xs">●</span><span className="flex-1">{children}</span></li>),
+                                ol: ({ children }) => (<ol className="space-y-2 mb-4 ml-4 list-decimal list-inside">{children}</ol>),
+                                strong: ({ children }) => (<strong className="font-semibold" style={{ color: '#FCFCFC' }}>{children}</strong>),
+                                table: ({ children }) => (<div className="overflow-x-auto mb-6 max-w-full"><table className="w-full border-collapse border border-gray-600 rounded-lg" style={{ tableLayout: 'fixed', maxWidth: '100%' }}>{children}</table></div>),
+                                thead: ({ children }) => <thead className="bg-gray-800">{children}</thead>,
+                                th: ({ children }) => (<th className="border border-gray-600 px-4 py-3 text-left text-cyan-400 font-semibold" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>{children}</th>),
+                                td: ({ children }) => (<td className="border border-gray-600 px-4 py-3" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', color: '#FCFCFC' }}>{children}</td>),
+                                blockquote: ({ children }) => (<blockquote className="border-l-4 border-cyan-500 pl-4 py-2 rounded-r-lg mb-4 italic" style={{ background: 'transparent', color: '#FCFCFC' }}>{children}</blockquote>),
+                                code: ({ children, className }) => {
                                   const isInline = !className;
-                                  if (isInline) {
-                                    return (
-                                      <code className="text-cyan-400 px-2 py-1 rounded text-xs font-mono" style={{background: 'rgba(55, 65, 81, 0.5)'}}>
-                                        {children}
-                                      </code>
-                                    );
-                                  }
-                                  return (
-                                    <code className="block p-4 rounded-lg overflow-x-auto text-xs font-mono mb-4" style={{background: 'rgba(17, 24, 39, 0.8)', color: '#FCFCFC'}}>
-                                      {children}
-                                    </code>
-                                  );
+                                  return isInline
+                                    ? (<code className="text-cyan-400 px-2 py-1 rounded text-xs font-mono" style={{ background: 'rgba(55, 65, 81, 0.5)' }}>{children}</code>)
+                                    : (<code className="block p-4 rounded-lg overflow-x-auto text-xs font-mono mb-4" style={{ background: 'rgba(17, 24, 39, 0.8)', color: '#FCFCFC' }}>{children}</code>);
                                 }
                               }}
                             >
@@ -4388,5 +4325,4 @@ export default function TestChat() {
     <AuthProvider>
       <TestChatComponent />
     </AuthProvider>
-  );
-} 
+  ); 
