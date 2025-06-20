@@ -124,6 +124,55 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
         >
           <BackgroundPattern />
           
+          {/* Galaxy Light Flow Animation */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            {/* Primary flowing gradient */}
+            <div className="absolute top-0 right-0 w-[200%] h-[200%] opacity-30">
+              <div className="galaxy-flow-1"></div>
+            </div>
+            {/* Secondary flowing gradient */}
+            <div className="absolute top-0 right-0 w-[180%] h-[180%] opacity-20">
+              <div className="galaxy-flow-2"></div>
+            </div>
+            {/* Tertiary flowing gradient */}
+            <div className="absolute top-0 right-0 w-[160%] h-[160%] opacity-15">
+              <div className="galaxy-flow-3"></div>
+            </div>
+          </div>
+
+          {/* Typography Section */}
+          <div className="absolute left-12 top-1/2 transform -translate-y-1/2 pointer-events-none z-10">
+            <div className="space-y-2">
+              <motion.h1 
+                initial={{ opacity: 0, x: -50 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 1, delay: 0.3 }}
+                className="text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-100 to-purple-200 leading-none tracking-tight"
+                style={{ fontFamily: 'Inter, sans-serif' }}
+              >
+                Seek
+              </motion.h1>
+              <motion.h2 
+                initial={{ opacity: 0, x: -50 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 1, delay: 0.5 }}
+                className="text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-200 via-blue-100 to-white leading-none tracking-tight"
+                style={{ fontFamily: 'Inter, sans-serif' }}
+              >
+                and You'll
+              </motion.h2>
+              <motion.h3 
+                initial={{ opacity: 0, x: -50 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 1, delay: 0.7 }}
+                className="text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-purple-100 to-blue-200 leading-none tracking-tight"
+                style={{ fontFamily: 'Inter, sans-serif' }}
+              >
+                Find
+              </motion.h3>
+            </div>
+          </div>
+          
           <motion.div
             initial={{ opacity: 0, scale: 0.95, x: 50 }}
             animate={{ opacity: 1, scale: 1, x: 0 }}
