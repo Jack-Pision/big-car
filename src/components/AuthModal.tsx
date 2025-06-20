@@ -23,7 +23,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
   const [fullName, setFullName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
 
   const resetForm = () => {
     setEmail('');
@@ -38,13 +38,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
     onClose();
   };
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    setMousePos({
-      x: ((e.clientX - rect.left) / rect.width) * 100,
-      y: ((e.clientY - rect.top) / rect.height) * 100
-    });
-  };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -130,76 +124,20 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
           exit={{ opacity: 0 }}
           className="fixed inset-0 bg-[#161618] z-[10000] flex items-center justify-end p-6"
           onClick={handleClose}
-          onMouseMove={handleMouseMove}
         >
-          {/* Interactive Smoke/Vapor Flow Animation */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            {/* Primary smoke wisp */}
+          {/* Dark Grid Background */}
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute inset-0 bg-gradient-to-br from-neutral-800/20 via-neutral-900/15 to-black/25"></div>
             <div 
-              className="absolute w-[200%] h-[200%] opacity-30 transition-transform duration-300 ease-out"
+              className="absolute inset-0 opacity-30"
               style={{
-                top: `${-50 + (mousePos.y * 0.1)}%`,
-                right: `${-50 + (mousePos.x * 0.05)}%`,
-                transform: `rotate(${mousePos.x * 0.1}deg)`
+                backgroundImage: `
+                  linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+                  linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px)
+                `,
+                backgroundSize: '40px 40px'
               }}
-            >
-              <div className="galaxy-flow-1"></div>
-            </div>
-            {/* Secondary smoke wisp */}
-            <div 
-              className="absolute w-[180%] h-[180%] opacity-20 transition-transform duration-500 ease-out"
-              style={{
-                top: `${-40 + (mousePos.y * 0.08)}%`,
-                right: `${-40 + (mousePos.x * 0.03)}%`,
-                transform: `rotate(${-mousePos.x * 0.08}deg)`
-              }}
-            >
-              <div className="galaxy-flow-2"></div>
-            </div>
-            {/* Tertiary smoke wisp */}
-            <div 
-              className="absolute w-[160%] h-[160%] opacity-15 transition-transform duration-700 ease-out"
-              style={{
-                top: `${-30 + (mousePos.y * 0.06)}%`,
-                right: `${-30 + (mousePos.x * 0.02)}%`,
-                transform: `rotate(${mousePos.x * 0.05}deg)`
-              }}
-            >
-              <div className="galaxy-flow-3"></div>
-            </div>
-            {/* Fourth smoke layer */}
-            <div 
-              className="absolute w-[140%] h-[140%] opacity-12 transition-transform duration-600 ease-out"
-              style={{
-                top: `${-25 + (mousePos.y * 0.04)}%`,
-                right: `${-25 + (mousePos.x * 0.015)}%`,
-                transform: `rotate(${-mousePos.x * 0.03}deg)`
-              }}
-            >
-              <div className="galaxy-flow-4"></div>
-            </div>
-            {/* Fifth smoke layer */}
-            <div 
-              className="absolute w-[120%] h-[120%] opacity-10 transition-transform duration-800 ease-out"
-              style={{
-                top: `${-20 + (mousePos.y * 0.035)}%`,
-                right: `${-20 + (mousePos.x * 0.012)}%`,
-                transform: `rotate(${mousePos.x * 0.025}deg)`
-              }}
-            >
-              <div className="galaxy-flow-5"></div>
-            </div>
-            {/* Sixth smoke layer */}
-            <div 
-              className="absolute w-[100%] h-[100%] opacity-8 transition-transform duration-900 ease-out"
-              style={{
-                top: `${-15 + (mousePos.y * 0.025)}%`,
-                right: `${-15 + (mousePos.x * 0.008)}%`,
-                transform: `rotate(${-mousePos.x * 0.02}deg)`
-              }}
-            >
-              <div className="galaxy-flow-6"></div>
-            </div>
+            ></div>
           </div>
 
           {/* Typography Section */}
