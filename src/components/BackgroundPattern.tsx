@@ -116,7 +116,7 @@ const BackgroundPattern: React.FC = () => {
                 x2={`${toNode.x}%`}
                 y2={`${toNode.y}%`}
                 stroke="white"
-                strokeWidth="0.6"
+                strokeWidth="1"
                 initial={{ pathLength: 0, opacity: 0 }}
                 animate={{ pathLength: 1, opacity: 0.4 }}
                 transition={{ 
