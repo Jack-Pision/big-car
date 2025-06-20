@@ -141,17 +141,13 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
               <div className="relative p-6">
                 {/* Logo Section */}
                 <div className="flex items-center justify-center mb-6">
-                  <div className="relative">
-                    <div className="relative bg-neutral-700 rounded-full p-3 border border-neutral-600">
-                      <Image 
-                        src="/Logo.svg" 
-                        alt="Logo" 
-                        width={28} 
-                        height={28} 
-                        className="text-neutral-100" 
-                      />
-                    </div>
-                  </div>
+                  <Image 
+                    src="/Logo.svg" 
+                    alt="Logo" 
+                    width={48} 
+                    height={48} 
+                    className="text-neutral-100" 
+                  />
                 </div>
 
                 {/* Header */}
