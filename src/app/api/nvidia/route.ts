@@ -9,6 +9,8 @@ function getApiKeyForMode(mode: string): string {
   switch (mode) {
     case 'reasoning':
       return TEXT_API_KEY; // Use original key for reasoning mode
+    case 'image_analysis':
+      return TEXT_API_KEY2; // Use second key for image analysis
     case 'chat':
     case 'default':
       return TEXT_API_KEY2; // Use new key for default chat mode
@@ -22,6 +24,8 @@ function getModelForMode(mode: string): string {
   switch (mode) {
     case 'reasoning':
       return 'deepseek-ai/deepseek-r1'; // Reasoning model with thinking capability
+    case 'image_analysis':
+      return 'mistralai/mistral-small-3.1-24b-instruct-2503'; // Mistral model for image analysis
     case 'chat':
     case 'default':
       return 'mistralai/mistral-small-3.1-24b-instruct-2503'; // Direct response model for default chat

@@ -52,6 +52,8 @@ import ThinkingButton from '@/components/ThinkingButton';
 import { ArtifactViewer } from '@/components/ArtifactViewer';
 import { shouldTriggerArtifact, getArtifactPrompt, artifactSchema, validateArtifactData, createFallbackArtifact, createArtifactFromRawContent, extractTitleFromContent, type ArtifactData } from '@/utils/artifact-utils';
 import ReasoningDisplay from '@/components/ReasoningDisplay';
+import { uploadAndAnalyzeImage, ImageUploadResult } from '@/lib/image-upload-service';
+import toast from 'react-hot-toast';
 
 // Define a type that includes all possible query types (including the ones in SCHEMAS and 'conversation')
 type QueryType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversation' | 'reasoning';
@@ -1730,12 +1732,18 @@ function TestChatComponent(props?: TestChatProps) {
 
   // Additional missing state variables
   const [showHeading, setShowHeading] = useState(true);
+  
+  // Image upload state
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
 
   // Refs
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const inputBarRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isInitialLoadRef = useRef(true);
   const sessionIdRef = useRef<string | null>(null); // Store session ID for immediate access
@@ -2878,11 +2886,70 @@ function TestChatComponent(props?: TestChatProps) {
     }
   }
 
-  // Non-functional plus button placeholder
+  // Image upload functionality
   function handlePlusClick() {
-    // Placeholder function - no functionality
-    console.log('Plus button clicked - no functionality implemented');
+    fileInputRef.current?.click();
   }
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    const file = files[0];
+    setIsUploadingImage(true);
+
+    try {
+      // Create preview URL
+      const previewUrl = URL.createObjectURL(file);
+      setImagePreviewUrls([previewUrl]);
+      setSelectedFiles([file]);
+
+      // Upload and analyze image
+      const result: ImageUploadResult = await uploadAndAnalyzeImage(file);
+      
+      if (result.success && result.imageUrl && result.analysis) {
+        // Add image message to chat
+        const imageMessage: LocalMessage = {
+          role: 'user',
+          content: `[Image uploaded: ${file.name}]\n\n${result.analysis}`,
+          imageUrls: [result.imageUrl],
+          id: uuidv4(),
+          timestamp: Date.now(),
+          isProcessed: true
+        };
+
+        setMessages(prev => [...prev, imageMessage]);
+        setShowHeading(false);
+        setHasInteracted(true);
+
+        // Clear the file input and previews
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+        setSelectedFiles([]);
+        setImagePreviewUrls([]);
+
+        toast.success('Image uploaded and analyzed successfully!');
+      } else {
+        toast.error(result.error || 'Failed to upload image');
+      }
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      toast.error('Failed to upload image');
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  const removeImagePreview = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+    setImagePreviewUrls(prev => {
+      const newUrls = prev.filter((_, i) => i !== index);
+      // Revoke the URL to free memory
+      URL.revokeObjectURL(prev[index]);
+      return newUrls;
+    });
+  };
 
   // Add function to handle Write label click
   const handleWriteClick = () => {
@@ -3761,6 +3828,30 @@ function TestChatComponent(props?: TestChatProps) {
             Seek and You'll find
           </h1>
 
+            {/* Image Preview */}
+            {imagePreviewUrls.length > 0 && (
+              <div className="w-full px-4 sm:px-6 md:px-8 mb-2">
+                <div className="bg-[#232323] border border-white/20 rounded-lg p-3 flex gap-2 flex-wrap">
+                  {imagePreviewUrls.map((url, index) => (
+                    <div key={index} className="relative">
+                      <img 
+                        src={url} 
+                        alt={`Preview ${index + 1}`} 
+                        className="w-16 h-16 object-cover rounded-md border border-gray-600"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeImagePreview(index)}
+                        className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Input form */}
             <form
               className="flex flex-col gap-2 rounded-2xl shadow-lg py-2 w-full px-4 pl-4 sm:px-6 md:px-8 lg:pl-4 lg:pr-0 mb-3 bg-[#232323] border border-white/20"
@@ -3882,12 +3973,26 @@ function TestChatComponent(props?: TestChatProps) {
                         backgroundColor: '#161618'
                       }}
                       onClick={handlePlusClick}
+                      disabled={isUploadingImage}
                     >
-                      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                        <line x1="12" y1="5" x2="12" y2="19" />
-                        <line x1="5" y1="12" x2="19" y2="12" />
-                      </svg>
+                      {isUploadingImage ? (
+                        <div className="w-4 h-4 border-2 border-gray-300 border-t-transparent rounded-full animate-spin"></div>
+                      ) : (
+                        <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                          <line x1="12" y1="5" x2="12" y2="19" />
+                          <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                      )}
                     </button>
+                    
+                    {/* Hidden file input */}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/gif,image/webp"
+                      onChange={handleFileChange}
+                      style={{ display: 'none' }}
+                    />
 
                     {/* Send/Stop button */}
             <button
