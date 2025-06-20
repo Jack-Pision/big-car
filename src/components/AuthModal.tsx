@@ -157,9 +157,9 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
               className="absolute inset-0 transition-all duration-300 ease-out"
               style={{
                 background: `radial-gradient(600px circle at ${mousePos.x}% ${mousePos.y}%, 
-                  rgba(255, 255, 255, 0.15) 0%, 
-                  rgba(255, 255, 255, 0.08) 20%, 
-                  rgba(255, 255, 255, 0.03) 40%, 
+                  rgba(255, 255, 255, 0.08) 0%, 
+                  rgba(255, 255, 255, 0.04) 20%, 
+                  rgba(255, 255, 255, 0.02) 40%, 
                   transparent 70%)`
               }}
             ></div>
@@ -169,12 +169,12 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
               className="absolute inset-0 transition-all duration-200 ease-out"
               style={{
                 background: `radial-gradient(400px circle at ${mousePos.x}% ${mousePos.y}%, 
-                  rgba(255, 255, 255, 0.12) 0%, 
-                  rgba(255, 255, 255, 0.04) 30%, 
+                  rgba(255, 255, 255, 0.06) 0%, 
+                  rgba(255, 255, 255, 0.02) 30%, 
                   transparent 60%)`,
                 backgroundImage: `
-                  linear-gradient(rgba(255, 255, 255, 0.15) 1px, transparent 1px),
-                  linear-gradient(90deg, rgba(255, 255, 255, 0.15) 1px, transparent 1px)
+                  linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+                  linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px)
                 `,
                 backgroundSize: '40px 40px'
               }}
@@ -191,7 +191,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
                 className="text-8xl font-light leading-none tracking-tight transition-all duration-300 ease-out"
                 style={{ 
                   fontFamily: 'Inter, sans-serif',
-                  color: `rgba(248, 250, 252, ${0.9 - Math.abs(mousePos.x - 15) * 0.006 - Math.abs(mousePos.y - 35) * 0.004})`
+                  color: `rgba(248, 250, 252, ${Math.max(0.65, 0.95 - Math.abs(mousePos.x - 15) * 0.003 - Math.abs(mousePos.y - 35) * 0.002)})`
                 }}
               >
                 Seek
@@ -203,7 +203,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
                 className="text-8xl font-light leading-none tracking-tight transition-all duration-300 ease-out"
                 style={{ 
                   fontFamily: 'Inter, sans-serif',
-                  color: `rgba(248, 250, 252, ${0.9 - Math.abs(mousePos.x - 15) * 0.006 - Math.abs(mousePos.y - 50) * 0.004})`
+                  color: `rgba(248, 250, 252, ${Math.max(0.65, 0.95 - Math.abs(mousePos.x - 15) * 0.003 - Math.abs(mousePos.y - 50) * 0.002)})`
                 }}
               >
                 and You'll
@@ -215,7 +215,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
                 className="text-8xl font-light leading-none tracking-tight transition-all duration-300 ease-out"
                 style={{ 
                   fontFamily: 'Inter, sans-serif',
-                  color: `rgba(248, 250, 252, ${0.9 - Math.abs(mousePos.x - 15) * 0.006 - Math.abs(mousePos.y - 65) * 0.004})`
+                  color: `rgba(248, 250, 252, ${Math.max(0.65, 0.95 - Math.abs(mousePos.x - 15) * 0.003 - Math.abs(mousePos.y - 65) * 0.002)})`
                 }}
               >
                 Find
