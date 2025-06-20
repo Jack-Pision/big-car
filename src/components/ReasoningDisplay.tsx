@@ -30,7 +30,7 @@ const ReasoningDisplay: React.FC<ReasoningDisplayProps> = ({ data }) => {
   }
   content = unescapeString(content);
   return (
-    <div className="prose dark:prose-invert max-w-none">
+    <div className="research-output">
       <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
         {content}
       </ReactMarkdown>
