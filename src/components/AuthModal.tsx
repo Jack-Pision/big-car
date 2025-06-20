@@ -129,6 +129,211 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
             className="relative w-full max-w-sm"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Animated Connectivity Pattern - Left Side */}
+            <div className="absolute -left-24 top-8 bottom-8 w-20 pointer-events-none">
+              {/* Animated Dots and Lines */}
+              <svg className="w-full h-full" viewBox="0 0 80 400" xmlns="http://www.w3.org/2000/svg">
+                {/* Connection Lines */}
+                <g className="opacity-40">
+                  <motion.line
+                    x1="20" y1="50" x2="60" y2="100"
+                    stroke="white"
+                    strokeWidth="1"
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: 0.4 }}
+                    transition={{ duration: 2, delay: 0.5, ease: "easeInOut" }}
+                  />
+                  <motion.line
+                    x1="60" y1="100" x2="30" y2="160"
+                    stroke="white"
+                    strokeWidth="1"
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: 0.4 }}
+                    transition={{ duration: 2, delay: 1, ease: "easeInOut" }}
+                  />
+                  <motion.line
+                    x1="30" y1="160" x2="65" y2="220"
+                    stroke="white"
+                    strokeWidth="1"
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: 0.4 }}
+                    transition={{ duration: 2, delay: 1.5, ease: "easeInOut" }}
+                  />
+                  <motion.line
+                    x1="65" y1="220" x2="25" y2="280"
+                    stroke="white"
+                    strokeWidth="1"
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: 0.4 }}
+                    transition={{ duration: 2, delay: 2, ease: "easeInOut" }}
+                  />
+                  <motion.line
+                    x1="25" y1="280" x2="55" y2="340"
+                    stroke="white"
+                    strokeWidth="1"
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: 0.4 }}
+                    transition={{ duration: 2, delay: 2.5, ease: "easeInOut" }}
+                  />
+                </g>
+                
+                {/* Animated Dots */}
+                <g>
+                  <motion.circle
+                    cx="20" cy="50" r="3"
+                    fill="white"
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ 
+                      scale: [0, 1.2, 1], 
+                      opacity: [0, 1, 0.8],
+                    }}
+                    transition={{ 
+                      duration: 1.5, 
+                      delay: 0.3,
+                      repeat: Infinity,
+                      repeatDelay: 4,
+                      ease: "easeOut" 
+                    }}
+                  />
+                  <motion.circle
+                    cx="60" cy="100" r="2.5"
+                    fill="white"
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ 
+                      scale: [0, 1.2, 1], 
+                      opacity: [0, 1, 0.6],
+                    }}
+                    transition={{ 
+                      duration: 1.5, 
+                      delay: 0.8,
+                      repeat: Infinity,
+                      repeatDelay: 4,
+                      ease: "easeOut" 
+                    }}
+                  />
+                  <motion.circle
+                    cx="30" cy="160" r="3.5"
+                    fill="white"
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ 
+                      scale: [0, 1.2, 1], 
+                      opacity: [0, 1, 0.7],
+                    }}
+                    transition={{ 
+                      duration: 1.5, 
+                      delay: 1.3,
+                      repeat: Infinity,
+                      repeatDelay: 4,
+                      ease: "easeOut" 
+                    }}
+                  />
+                  <motion.circle
+                    cx="65" cy="220" r="2"
+                    fill="white"
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ 
+                      scale: [0, 1.2, 1], 
+                      opacity: [0, 1, 0.5],
+                    }}
+                    transition={{ 
+                      duration: 1.5, 
+                      delay: 1.8,
+                      repeat: Infinity,
+                      repeatDelay: 4,
+                      ease: "easeOut" 
+                    }}
+                  />
+                  <motion.circle
+                    cx="25" cy="280" r="3"
+                    fill="white"
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ 
+                      scale: [0, 1.2, 1], 
+                      opacity: [0, 1, 0.6],
+                    }}
+                    transition={{ 
+                      duration: 1.5, 
+                      delay: 2.3,
+                      repeat: Infinity,
+                      repeatDelay: 4,
+                      ease: "easeOut" 
+                    }}
+                  />
+                  <motion.circle
+                    cx="55" cy="340" r="2.5"
+                    fill="white"
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ 
+                      scale: [0, 1.2, 1], 
+                      opacity: [0, 1, 0.7],
+                    }}
+                    transition={{ 
+                      duration: 1.5, 
+                      delay: 2.8,
+                      repeat: Infinity,
+                      repeatDelay: 4,
+                      ease: "easeOut" 
+                    }}
+                  />
+                </g>
+                
+                {/* Pulsing Connection Indicators */}
+                <g className="opacity-20">
+                  <motion.circle
+                    cx="20" cy="50" r="8"
+                    fill="none"
+                    stroke="white"
+                    strokeWidth="1"
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ 
+                      scale: [1, 2, 1], 
+                      opacity: [0, 0.3, 0],
+                    }}
+                    transition={{ 
+                      duration: 3, 
+                      delay: 1,
+                      repeat: Infinity,
+                      ease: "easeInOut" 
+                    }}
+                  />
+                  <motion.circle
+                    cx="30" cy="160" r="10"
+                    fill="none"
+                    stroke="white"
+                    strokeWidth="1"
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ 
+                      scale: [1, 2.5, 1], 
+                      opacity: [0, 0.2, 0],
+                    }}
+                    transition={{ 
+                      duration: 4, 
+                      delay: 2,
+                      repeat: Infinity,
+                      ease: "easeInOut" 
+                    }}
+                  />
+                  <motion.circle
+                    cx="55" cy="340" r="6"
+                    fill="none"
+                    stroke="white"
+                    strokeWidth="1"
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ 
+                      scale: [1, 1.8, 1], 
+                      opacity: [0, 0.4, 0],
+                    }}
+                    transition={{ 
+                      duration: 2.5, 
+                      delay: 3.5,
+                      repeat: Infinity,
+                      ease: "easeInOut" 
+                    }}
+                  />
+                </g>
+              </svg>
+            </div>
+
             {/* Main Container */}
             <div className="relative bg-neutral-800 rounded-2xl border border-neutral-700 shadow-2xl overflow-hidden">
               
