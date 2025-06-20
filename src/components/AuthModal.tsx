@@ -182,44 +182,32 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
           </div>
 
           {/* Dynamic Typography Section */}
-          <div className="absolute left-12 top-1/2 transform -translate-y-1/2 pointer-events-none z-10">
-            <div className="space-y-2">
+          <div className="absolute left-12 top-1/2 transform -translate-y-1/2 pointer-events-none z-10 max-w-2xl">
+            <div className="space-y-3">
               <motion.h1 
                 initial={{ opacity: 0, x: -50 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 1, delay: 0.3 }}
-                className="text-8xl font-light leading-none tracking-tight transition-all duration-300 ease-out"
+                className="text-5xl font-light leading-tight tracking-wide transition-all duration-300 ease-out"
                 style={{ 
                   fontFamily: 'Inter, sans-serif',
-                  color: `rgba(248, 250, 252, ${Math.max(0.65, 0.95 - Math.abs(mousePos.x - 15) * 0.003 - Math.abs(mousePos.y - 35) * 0.002)})`
+                  color: `rgba(248, 250, 252, ${Math.max(0.65, 0.95 - Math.abs(mousePos.x - 15) * 0.003 - Math.abs(mousePos.y - 40) * 0.002)})`
                 }}
               >
-                Seek
+                Let the seeker burn with purpose,
               </motion.h1>
               <motion.h2 
                 initial={{ opacity: 0, x: -50 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 1, delay: 0.5 }}
-                className="text-8xl font-light leading-none tracking-tight transition-all duration-300 ease-out"
+                className="text-5xl font-light leading-tight tracking-wide transition-all duration-300 ease-out"
                 style={{ 
                   fontFamily: 'Inter, sans-serif',
-                  color: `rgba(248, 250, 252, ${Math.max(0.65, 0.95 - Math.abs(mousePos.x - 15) * 0.003 - Math.abs(mousePos.y - 50) * 0.002)})`
+                  color: `rgba(248, 250, 252, ${Math.max(0.65, 0.95 - Math.abs(mousePos.x - 15) * 0.003 - Math.abs(mousePos.y - 55) * 0.002)})`
                 }}
               >
-                and You'll
+                for knowledge reveals itself only to the flame that does not falter.
               </motion.h2>
-              <motion.h3 
-                initial={{ opacity: 0, x: -50 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 1, delay: 0.7 }}
-                className="text-8xl font-light leading-none tracking-tight transition-all duration-300 ease-out"
-                style={{ 
-                  fontFamily: 'Inter, sans-serif',
-                  color: `rgba(248, 250, 252, ${Math.max(0.65, 0.95 - Math.abs(mousePos.x - 15) * 0.003 - Math.abs(mousePos.y - 65) * 0.002)})`
-                }}
-              >
-                Find
-              </motion.h3>
             </div>
           </div>
           
