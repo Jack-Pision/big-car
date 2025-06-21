@@ -2136,19 +2136,7 @@ function TestChatComponent(props?: TestChatProps) {
     }
   };
 
-  // Helper to show the image in chat
-  const showImageMsg = (content: string, imgSrc: string) => {
-    setMessages((prev) => [
-      ...prev,
-      { 
-        role: "user" as const, 
-        content: `${content} <img src=\"${imgSrc}\" />`,
-        id: uuidv4(),
-        timestamp: Date.now(),
-        isProcessed: true // Mark as processed
-      },
-    ]);
-  };
+  // Helper function removed - vision mode now uses unified rendering pipeline
 
   // Auto-resize textarea
   useLayoutEffect(() => {
