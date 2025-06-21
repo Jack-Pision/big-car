@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import OpenAI from 'openai';
 
 const TEXT_API_KEY = process.env.NVIDIA_API_KEY || '';
 const TEXT_API_KEY2 = process.env.NVIDIA_API_KEY2 || '';
@@ -26,7 +27,7 @@ function getModelForMode(mode: string): string {
     case 'reasoning':
       return 'deepseek-ai/deepseek-r1'; // Reasoning model with thinking capability
     case 'image_analysis':
-      return 'mistralai/mistral-small-3.1-24b-instruct-2503'; // Mistral model for image analysis
+      return 'nvidia/llama-3.1-nemotron-nano-vl-8b-v1'; // Updated NVIDIA vision model
     case 'chat':
     case 'default':
       return 'qwen/qwen3-235b-a22b'; // Qwen model for default chat
@@ -133,8 +134,6 @@ IMPORTANT INSTRUCTIONS:
     }
   ];
 }
-
-
 
 // Update the fetchNvidiaText function to use caching and handle timeouts better
 async function fetchNvidiaText(messages: any[], options: any = {}) {
@@ -291,6 +290,71 @@ async function fetchNvidiaText(messages: any[], options: any = {}) {
   }
 }
 
+// New function to handle vision mode with OpenAI SDK approach
+async function fetchNvidiaVision(messages: any[], options: any = {}) {
+  const client = new OpenAI({
+    apiKey: getApiKeyForMode('image_analysis'),
+    baseURL: 'https://integrate.api.nvidia.com/v1',
+  });
+
+  try {
+    console.log(`[NVIDIA Vision] Making request - Model: nvidia/llama-3.1-nemotron-nano-vl-8b-v1, Stream: true`);
+    
+    const completion = await client.chat.completions.create({
+      model: "nvidia/llama-3.1-nemotron-nano-vl-8b-v1",
+      messages: messages,
+      temperature: options.temperature || 1.00,
+      top_p: options.top_p || 0.01,
+      max_tokens: options.max_tokens || 1024,
+      stream: true,
+    });
+
+    // Create a ReadableStream to match the expected return format
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          for await (const chunk of completion) {
+            if (chunk.choices[0]?.delta?.content) {
+              const content = chunk.choices[0].delta.content;
+              const sseData = `data: ${JSON.stringify({
+                choices: [{
+                  delta: {
+                    content: content
+                  }
+                }]
+              })}\n\n`;
+              controller.enqueue(new TextEncoder().encode(sseData));
+            }
+          }
+          controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
+          controller.close();
+        } catch (error) {
+          console.error('Error in vision streaming:', error);
+          controller.error(error);
+        }
+      }
+    });
+
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      },
+    });
+
+  } catch (error: any) {
+    console.error('Error in fetchNvidiaVision:', error);
+    return new Response(JSON.stringify({
+      error: 'Vision API Error',
+      details: error.message
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+}
+
 export async function POST(req: NextRequest) {
   // Validate required API keys at runtime
   if (!TEXT_API_KEY && !TEXT_API_KEY2 && !TEXT_API_KEY3) {
@@ -374,8 +438,13 @@ export async function POST(req: NextRequest) {
       // Note: response_format is intentionally removed for DeepSeek R1 compatibility
     };
       
-    // Make the API call with optimized messages and parameters
-    return fetchNvidiaText(optimizedMessages, modelParams);
+    // Route to appropriate function based on mode
+    if (mode === 'image_analysis') {
+      return fetchNvidiaVision(optimizedMessages, modelParams);
+    } else {
+      // Make the API call with optimized messages and parameters for other modes
+      return fetchNvidiaText(optimizedMessages, modelParams);
+    }
   } catch (err: any) {
     console.error('Error in NVIDIA API route:', err);
     const isTimeout = err.message.includes('timed out');

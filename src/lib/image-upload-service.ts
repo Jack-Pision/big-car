@@ -86,12 +86,24 @@ export async function analyzeImageWithNVIDIA(
           },
           {
             role: 'user',
-            content: `<img src="data:${mimeType};base64,${base64}" />\n\n${userMessage}`
+            content: [
+              {
+                type: 'text',
+                text: userMessage
+              },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: `data:${mimeType};base64,${base64}`
+                }
+              }
+            ]
           }
         ],
         mode: 'image_analysis',
-        temperature: 0.3,
-        max_tokens: 8139,
+        temperature: 1.00,
+        top_p: 0.01,
+        max_tokens: 1024,
         stream: true
       })
     });
