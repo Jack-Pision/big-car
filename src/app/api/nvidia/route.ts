@@ -160,8 +160,9 @@ async function fetchNvidiaText(messages: any[], options: any = {}) {
   const isArtifact = isArtifactRequest(messages);
   
   // If not in cache or expired, make the API call
+  const selectedModel = getModelForMode(options.mode || 'default');
   const payload = {
-    model: getModelForMode(options.mode || 'default'),
+    model: selectedModel,
     messages: enhancedMessages,
     temperature: options.temperature || 0.6,
     top_p: options.top_p || 0.95,
@@ -169,6 +170,11 @@ async function fetchNvidiaText(messages: any[], options: any = {}) {
     presence_penalty: options.presence_penalty || 0.8,
     frequency_penalty: options.frequency_penalty || 0.5,
     stream: options.stream !== undefined ? options.stream : true,
+    // Add Qwen3 specific parameters for multilingual support
+    ...(selectedModel === 'qwen/qwen3-235b-a22b' && {
+      enable_thinking: false, // Disable thinking mode for default chat
+      language: 'auto', // Auto-detect input language for proper multilingual response
+    }),
     // Remove response_format for DeepSeek R1 to avoid compatibility issues
     // DeepSeek R1 doesn't properly support response_format and will return streaming anyway
     // We'll parse JSON from the streaming content instead
@@ -182,7 +188,8 @@ async function fetchNvidiaText(messages: any[], options: any = {}) {
       method: 'POST',
       headers: {
       'Authorization': `Bearer ${getApiKeyForMode(options.mode || 'default')}`,
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json; charset=utf-8',
+        'Accept': 'text/event-stream; charset=utf-8',
       },
       body: JSON.stringify(payload),
     }, isArtifact ? 45000 : 25000); // 45-second timeout for artifacts, 25-second for regular chats

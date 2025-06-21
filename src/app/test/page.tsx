@@ -2547,7 +2547,7 @@ function TestChatComponent(props?: TestChatProps) {
             const { done, value } = await reader.read();
             if (done) break;
 
-            const chunk = new TextDecoder().decode(value);
+            const chunk = new TextDecoder('utf-8', { fatal: false, ignoreBOM: true }).decode(value, { stream: true });
             const lines = chunk.split('\n');
 
             for (const line of lines) {
@@ -2903,7 +2903,7 @@ function TestChatComponent(props?: TestChatProps) {
           throw new Error('No response body available for streaming');
         }
 
-        const decoder = new TextDecoder();
+        const decoder = new TextDecoder('utf-8', { fatal: false, ignoreBOM: true });
         let buffer = '';
         let done = false;
         let contentBuffer = ''; // Buffer to accumulate content

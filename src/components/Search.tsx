@@ -366,14 +366,14 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
       }
       
       let result = '';
-      const decoder = new TextDecoder();
+      const decoder = new TextDecoder('utf-8', { fatal: false, ignoreBOM: true });
       
       try {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
           
-          const chunk = decoder.decode(value);
+          const chunk = decoder.decode(value, { stream: true });
           const lines = chunk.split('\n');
           
           for (const line of lines) {
@@ -1012,14 +1012,14 @@ REPORT REQUIREMENTS:
         }
         
         let finalOutput = '';
-        const decoder = new TextDecoder();
+        const decoder = new TextDecoder('utf-8', { fatal: false, ignoreBOM: true });
         
         try {
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
             
-            const chunk = decoder.decode(value);
+            const chunk = decoder.decode(value, { stream: true });
             const lines = chunk.split('\n');
             
             for (const line of lines) {
