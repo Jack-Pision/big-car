@@ -1,7 +1,10 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
 import rehypeRaw from 'rehype-raw';
+import 'katex/dist/katex.min.css';
 
 interface ReasoningDisplayProps {
   data: string | any;
@@ -31,7 +34,7 @@ const ReasoningDisplay: React.FC<ReasoningDisplayProps> = ({ data }) => {
   content = unescapeString(content);
   return (
     <div className="research-output">
-      <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
+      <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex]}>
         {content}
       </ReactMarkdown>
     </div>
