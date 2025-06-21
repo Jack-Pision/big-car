@@ -72,6 +72,7 @@ export async function analyzeImageWithNVIDIA(
             - Key insights or analysis points
             - Relevant context or explanations
             - Actionable information when applicable
+            - Whenever you include a mathematical expression, wrap it in inline \$ ... \$ (or \\( ... \\)) delimiters, and use \$\$ ... \$\$ (or \\[ ... \\]) for display equations so they render correctly.
             
             Always maintain a conversational yet informative tone while ensuring your response is visually appealing and easy to read.`
           },
