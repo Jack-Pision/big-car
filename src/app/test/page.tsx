@@ -2267,7 +2267,11 @@ function TestChatComponent(props?: TestChatProps) {
           await saveMessageInstantly(currentActiveSessionId, placeholderAiMessage);
         }
         
-        const analysisResult = await analyzeImageWithNVIDIA(file, input.trim(), { stream: true });
+        // Build prior context (user & assistant messages only) to give Vision model conversation continuity
+        const priorContext = messages.filter(m => m.role === 'user' || m.role === 'assistant')
+          .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }));
+
+        const analysisResult = await analyzeImageWithNVIDIA(file, input.trim(), priorContext, { stream: true });
 
         if (!analysisResult.success || !analysisResult.stream) {
           throw new Error(analysisResult.error || 'Failed to start analysis stream');

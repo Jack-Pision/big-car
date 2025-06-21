@@ -47,6 +47,7 @@ export async function uploadImageToSupabase(file: File): Promise<{ success: bool
 export async function analyzeImageWithNVIDIA(
   file: File, 
   userMessage: string,
+  previousMessages: { role: 'user' | 'assistant'; content: string }[] = [],
   options: { stream?: boolean } = {}
 ): Promise<{ success: boolean; analysis?: string; error?: string; stream?: ReadableStream | null }> {
   try {
@@ -76,6 +77,8 @@ export async function analyzeImageWithNVIDIA(
             
             Always maintain a conversational yet informative tone while ensuring your response is visually appealing and easy to read.`
           },
+          // Include any prior context messages
+          ...previousMessages.map(msg => ({ role: msg.role, content: msg.content })),
           {
             role: 'user',
             content: [
