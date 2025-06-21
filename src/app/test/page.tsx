@@ -3827,7 +3827,7 @@ function TestChatComponent(props?: TestChatProps) {
                               className="research-output"
                               components={{
                                 h1: ({ children }) => (<h1 className="text-3xl font-bold mb-6 mt-8 border-b border-cyan-500/30 pb-3" style={{ color: '#FCFCFC' }}>{children}</h1>),
-                                h2: ({ children }) => (<h2 className="text-2xl font-semibold text-cyan-400 mb-4 mt-8 flex items-center gap-2">{children}</h2>),
+                                h2: ({ children }) => (<h2 className="text-2xl font-semibold mb-4 mt-8 flex items-center gap-2" style={{ color: '#FCFCFC' }}>{children}</h2>),
                                 h3: ({ children }) => (<h3 className="text-xl font-semibold mb-3 mt-6" style={{ color: '#FCFCFC' }}>{children}</h3>),
                                 p: ({ children }) => (<p className="leading-relaxed mb-4 text-sm" style={{ color: '#FCFCFC' }}>{children}</p>),
                                 ul: ({ children }) => (<ul className="space-y-2 mb-4 ml-4">{children}</ul>),
@@ -3836,13 +3836,13 @@ function TestChatComponent(props?: TestChatProps) {
                                 strong: ({ children }) => (<strong className="font-semibold" style={{ color: '#FCFCFC' }}>{children}</strong>),
                                 table: ({ children }) => (<div className="overflow-x-auto mb-6 max-w-full"><table className="w-full border-collapse border border-gray-600 rounded-lg" style={{ tableLayout: 'fixed', maxWidth: '100%' }}>{children}</table></div>),
                                 thead: ({ children }) => <thead className="bg-gray-800">{children}</thead>,
-                                th: ({ children }) => (<th className="border border-gray-600 px-4 py-3 text-left text-cyan-400 font-semibold" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>{children}</th>),
+                                th: ({ children }) => (<th className="border border-gray-600 px-4 py-3 text-left font-semibold" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', color: '#FCFCFC' }}>{children}</th>),
                                 td: ({ children }) => (<td className="border border-gray-600 px-4 py-3" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', color: '#FCFCFC' }}>{children}</td>),
                                 blockquote: ({ children }) => (<blockquote className="border-l-4 border-cyan-500 pl-4 py-2 rounded-r-lg mb-4 italic" style={{ background: 'transparent', color: '#FCFCFC' }}>{children}</blockquote>),
                                 code: ({ children, className }) => {
                                   const isInline = !className;
                                   return isInline
-                                    ? (<code className="text-cyan-400 px-2 py-1 rounded text-xs font-mono" style={{ background: 'rgba(55, 65, 81, 0.5)' }}>{children}</code>)
+                                    ? (<code className="px-2 py-1 rounded text-xs font-mono" style={{ background: 'rgba(55, 65, 81, 0.5)', color: '#FCFCFC' }}>{children}</code>)
                                     : (<code className="block p-4 rounded-lg overflow-x-auto text-xs font-mono mb-4" style={{ background: 'rgba(17, 24, 39, 0.8)', color: '#FCFCFC' }}>{children}</code>);
                                 }
                               }}

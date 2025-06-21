@@ -508,7 +508,8 @@ textarea::-webkit-scrollbar-thumb,
 }
 
 .research-output h2 {
-  @apply text-2xl font-semibold text-cyan-400 mb-4 mt-8 flex items-center gap-2;
+  @apply text-2xl font-semibold mb-4 mt-8 flex items-center gap-2;
+  color: #FCFCFC !important;
 }
 
 .research-output h3 {
@@ -553,10 +554,11 @@ textarea::-webkit-scrollbar-thumb,
 }
 
 .research-output th {
-  @apply border border-gray-600 px-4 py-3 text-left text-cyan-400 font-semibold;
+  @apply border border-gray-600 px-4 py-3 text-left font-semibold;
   background: transparent !important;
   word-wrap: break-word;
   overflow-wrap: break-word;
+  color: #FCFCFC !important;
 }
 
 .research-output td {
@@ -574,8 +576,9 @@ textarea::-webkit-scrollbar-thumb,
 }
 
 .research-output code {
-  @apply text-cyan-400 px-2 py-1 rounded text-xs font-mono;
+  @apply px-2 py-1 rounded text-xs font-mono;
   background: rgba(55, 65, 81, 0.5) !important;
+  color: #FCFCFC !important;
 }
 
 .research-output pre {
