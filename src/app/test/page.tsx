@@ -54,7 +54,6 @@ import { shouldTriggerArtifact, getArtifactPrompt, artifactSchema, validateArtif
 import ReasoningDisplay from '@/components/ReasoningDisplay';
 import { uploadAndAnalyzeImage, uploadImageToSupabase, analyzeImageWithNVIDIA, ImageUploadResult } from '@/lib/image-upload-service';
 import toast from 'react-hot-toast';
-import { marked } from 'marked';
 
 // Define a type that includes all possible query types (including the ones in SCHEMAS and 'conversation')
 type QueryType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversation' | 'reasoning';
@@ -119,6 +118,56 @@ function fixDenseMarkdown(text: string): string {
   // Ensure a newline before dashes that appear like list markers but are glued
   fixed = fixed.replace(/([^-])(-\s+)/g, '$1\n- ');
   return fixed;
+}
+
+/**
+ * Smart buffering for streaming content - prevents incomplete markdown from causing layout issues
+ * Industry standard approach: only render complete markdown elements during streaming
+ */
+function smartBufferStreamingContent(content: string): string {
+  if (!content) return content;
+  
+  const lines = content.split('\n');
+  let bufferedContent = '';
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const isLastLine = i === lines.length - 1;
+    
+    // If it's the last line and potentially incomplete, check for incomplete markdown
+    if (isLastLine && isIncompleteMarkdown(line)) {
+      // Don't render incomplete last line to prevent layout issues
+      break;
+    }
+    
+    bufferedContent += line + (i < lines.length - 1 ? '\n' : '');
+  }
+  
+  return bufferedContent;
+}
+
+/**
+ * Checks if a line contains incomplete markdown that could cause layout issues
+ */
+function isIncompleteMarkdown(line: string): boolean {
+  if (!line.trim()) return false;
+  
+  // Check for incomplete bold/italic: odd number of ** or *
+  const boldCount = (line.match(/\*\*/g) || []).length;
+  const italicCount = (line.match(/(?<!\*)\*(?!\*)/g) || []).length;
+  if (boldCount % 2 !== 0 || italicCount % 2 !== 0) return true;
+  
+  // Check for incomplete list items: "1. **item" or "- **item" without closing
+  if (/^(\d+\.|\-)\s+\*\*[^*]*$/.test(line.trim())) return true;
+  
+  // Check for incomplete code blocks: single ``` without closing
+  const codeBlockCount = (line.match(/```/g) || []).length;
+  if (codeBlockCount % 2 !== 0) return true;
+  
+  // Check for incomplete headers: # at start but potentially cut off
+  if (/^#+\s*$/.test(line.trim())) return true;
+  
+  return false;
 }
 
 /**
@@ -3737,45 +3786,27 @@ function TestChatComponent(props?: TestChatProps) {
                   .trim();
                 const isStoppedMsg = cleanContent.trim() === '[Response stopped by user]';
                 
-                // Early rendering for streaming content to avoid markdown parse errors
-                if (msg.isStreaming) {
-                  return (
-                    <motion.div
-                      key={msg.id + '-stream-' + i}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, ease: 'easeOut' }}
-                      className="w-full text-left flex flex-col items-start ai-response-text mb-4 relative"
-                      style={{ color: '#FCFCFC', maxWidth: '100%', overflowWrap: 'break-word', wordBreak: 'break-word' }}
-                    >
-                      <div 
-                        className="research-output"
-                        style={{ color: '#FCFCFC' }}
-                                                 dangerouslySetInnerHTML={{ 
-                           __html: marked.parse(cleanContent, { 
-                             breaks: true 
-                           }) 
-                         }} 
-                      />
-                    </motion.div>
-                  );
-                }
-
-                // For default chat, skip think processing entirely
-                const finalContent = makeCitationsClickable(cleanContent, msg.webSources || []);
+                // Industry standard approach: Single ReactMarkdown renderer with smart buffering
+                // Apply smart buffering for streaming content to prevent layout issues
+                const processedContent = msg.isStreaming 
+                  ? smartBufferStreamingContent(cleanContent)
+                  : cleanContent;
+                
+                // Apply citations to processed content
+                const finalContent = makeCitationsClickable(processedContent, msg.webSources || []);
                 
                 if (showPulsingDot && i === messages.length -1 ) setShowPulsingDot(false);
                 
                 return (
                   <React.Fragment key={msg.id + '-fragment-' + i}>
-                    {/* Main AI response content */}
+                    {/* Main AI response content - Industry Standard Single Renderer */}
                     <motion.div
-                      key={msg.id + '-text-' + i}
+                      key={msg.id + '-unified-' + i}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.3, ease: "easeOut" }}
                       className="w-full text-left flex flex-col items-start ai-response-text mb-4 relative"
-                      style={{ color: '#FCFCFC', maxWidth: '100%', overflowWrap: 'break-word' }}
+                      style={{ color: '#FCFCFC', maxWidth: '100%', overflowWrap: 'break-word', wordBreak: 'break-word' }}
                     >
                       {msg.webSources && msg.webSources.length > 0 && (
                         <>
@@ -3788,7 +3819,7 @@ function TestChatComponent(props?: TestChatProps) {
                         <span className="text-xs text-white italic font-light mb-2">[Response stopped by user]</span>
                       ) : (
                         <div className="w-full max-w-full overflow-hidden">
-                          {/* For default chat, no thinking buttons - just show content directly */}
+                          {/* Single ReactMarkdown renderer for both streaming and final states */}
                           {finalContent.trim().length > 0 && (
                             <ReactMarkdown 
                               remarkPlugins={[remarkGfm]} 
