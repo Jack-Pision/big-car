@@ -1156,4 +1156,26 @@ textarea::-webkit-scrollbar-thumb,
   }
 }
 
- 
+/* Ensure all lists and list items inherit the new 14px base font size */
+.markdown-body ul, 
+.markdown-body ol,
+.research-output ul,
+.research-output ol,
+.search-result-output ul,
+.search-result-output ol,
+.prose ul,
+.prose ol {
+  font-size: 14px; /* Explicit 14px for all lists */
+}
+
+.markdown-body li,
+.research-output li,
+.search-result-output li,
+.prose li {
+  font-size: inherit; /* Inherit from parent list */
+}
+
+/* Header styles with consistent spacing */
+.markdown-body h1, .markdown-body h2, .markdown-body h3, .markdown-body h4, .markdown-body h5, .markdown-body h6 {
+  margin-top: 1.5em;
+} 
