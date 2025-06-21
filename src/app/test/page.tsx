@@ -2154,14 +2154,7 @@ function TestChatComponent(props?: TestChatProps) {
     }
   }, [input]);
 
-  // Auto-scroll to bottom on new message
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages]);
-
-  // Auto-scroll during live reasoning streaming
+  // Auto-scroll during live reasoning streaming (Think box only)
   useEffect(() => {
     if (scrollRef.current && liveReasoning) {
       scrollRef.current.scrollTo({
