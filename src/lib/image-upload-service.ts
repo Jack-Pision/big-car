@@ -74,7 +74,7 @@ export async function analyzeImageWithNVIDIA(
         ],
         mode: 'image_analysis',
         temperature: 0.3,
-        max_tokens: 1000,
+        max_tokens: 8139,
         stream: true
       })
     });

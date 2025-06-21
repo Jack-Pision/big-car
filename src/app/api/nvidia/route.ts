@@ -28,9 +28,9 @@ function getModelForMode(mode: string): string {
       return 'mistralai/mistral-small-3.1-24b-instruct-2503'; // Mistral model for image analysis
     case 'chat':
     case 'default':
-      return 'mistralai/mistral-small-3.1-24b-instruct-2503'; // Direct response model for default chat
+      return 'qwen3-235b-a22b'; // Qwen model for default chat
     default:
-      return 'mistralai/mistral-small-3.1-24b-instruct-2503'; // Fallback to direct response model
+      return 'qwen3-235b-a22b'; // Fallback to Qwen model
   }
 }
 
@@ -67,7 +67,7 @@ function generateCacheKey(messages: any[], options: any = {}): string {
   return JSON.stringify({
     messages: simplifiedMessages,
     temperature: options.temperature || 0.6,
-    max_tokens: options.max_tokens || 1000
+    max_tokens: options.max_tokens || 8139
   });
 }
 
@@ -164,7 +164,7 @@ async function fetchNvidiaText(messages: any[], options: any = {}) {
     messages: enhancedMessages,
     temperature: options.temperature || 0.6,
     top_p: options.top_p || 0.95,
-    max_tokens: options.max_tokens || (isArtifact ? 8192 : 1000), // Increased tokens for artifacts
+    max_tokens: options.max_tokens || (isArtifact ? 8192 : 8139), // Increased tokens for default chat and artifacts
     presence_penalty: options.presence_penalty || 0.8,
     frequency_penalty: options.frequency_penalty || 0.5,
     stream: options.stream !== undefined ? options.stream : true,
