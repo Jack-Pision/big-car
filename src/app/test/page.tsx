@@ -1867,17 +1867,15 @@ function TestChatComponent(props?: TestChatProps) {
   const inputPosition = isChatEmpty && !hasInteracted && !activeSessionId ? "center" : "bottom";
 
   // Smart buffering effect - reset buffers when new streaming starts
-  const hasStreamingMessage = useMemo(() => 
-    messages.some(msg => msg.isStreaming), 
+  const streamingMessageIds = useMemo(() => 
+    messages.filter(msg => msg.isStreaming).map(msg => msg.id).join(','), 
     [messages]
   );
 
   useEffect(() => {
-    if (hasStreamingMessage) {
-      // Reset display buffer for new streaming message
-      setDisplayBuffer('');
-    }
-  }, [hasStreamingMessage]);
+    // Reset display buffer when streaming message changes (new message starts streaming)
+    setDisplayBuffer('');
+  }, [streamingMessageIds]);
 
   // Mouse event handlers for resizable divider
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -2815,6 +2813,7 @@ function TestChatComponent(props?: TestChatProps) {
         top_p: 0.9,
         frequency_penalty: 0.2,  // OPTIMIZATION 3: Decreased from 0.5 
         presence_penalty: 0.2,   // OPTIMIZATION 3: Decreased from 0.8
+        stream: true             // Enable streaming for real-time responses
       };
       
 
@@ -3814,16 +3813,25 @@ function TestChatComponent(props?: TestChatProps) {
                   // cleanContent is the full content up to this point, not incremental
                   const currentContent = cleanContent;
                   
+                  // Create a unique key for this message's buffer
+                  const messageBufferKey = `buffer-${msg.id}`;
+                  
                   // Only update display if we have complete markdown elements or significant content change
                   let contentToDisplay = displayBuffer;
-                  if (isCompleteMarkdownElement(currentContent) || 
+                  
+                  // Always show content for the current streaming message, with smart buffering
+                  if (currentContent.length === 0) {
+                    // Empty content - show loading state
+                    contentToDisplay = '';
+                  } else if (isCompleteMarkdownElement(currentContent) || 
                       currentContent.includes('\n\n') || 
                       currentContent.length - displayBuffer.length > 50 ||
-                      currentContent.length < displayBuffer.length) { // Handle content reset
+                      currentContent !== displayBuffer) { // Content changed
                     setDisplayBuffer(currentContent);
                     contentToDisplay = currentContent;
                   } else {
-                    contentToDisplay = displayBuffer || currentContent; // Fallback to current if no display buffer
+                    // Use current content if buffer is empty or outdated
+                    contentToDisplay = displayBuffer || currentContent;
                   }
                   
                   return (
