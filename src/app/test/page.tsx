@@ -2300,13 +2300,13 @@ function TestChatComponent(props?: TestChatProps) {
                   }
                   contentBuffer += delta;
                   
-                  // Use same advanced streaming pipeline as default chat
+                  // Store raw contentBuffer like default chat - let renderDefaultChatMessage handle smart buffering
                   setMessages(prev =>
                     prev.map(msg =>
                       msg.id === aiMessageId
                         ? { 
                             ...msg, 
-                            content: smartBufferStreamingContent(contentBuffer),
+                            content: contentBuffer,
                             isStreaming: true,
                             contentType: 'conversation'
                           }
