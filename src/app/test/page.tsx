@@ -3431,63 +3431,51 @@ function TestChatComponent(props?: TestChatProps) {
 
   // Function to handle copying content to clipboard
   const handleCopy = (content: string | any) => {
-    try {
-      // For structured content that might be an object, ensure it's a string
-      let textToCopy = '';
-      
-      if (typeof content === 'object') {
-        // If it's an object, format it as JSON
-        textToCopy = JSON.stringify(content, null, 2);
-      } else if (typeof content === 'string') {
-        // If it's a string, use it directly
-        textToCopy = content;
-      } else {
-        // For any other type, convert to string
-        textToCopy = String(content);
-      }
-      
-      navigator.clipboard.writeText(textToCopy)
-        .then(() => {
-          console.log('Content copied to clipboard');
-          // Create a temporary element for the toast notification
-          const toast = document.createElement('div');
-          toast.textContent = 'Copied to clipboard!';
-          toast.style.position = 'fixed';
-          toast.style.bottom = '20px';
-          toast.style.left = '50%';
-          toast.style.transform = 'translateX(-50%)';
-          toast.style.backgroundColor = '#22c55e';
-          toast.style.color = '#fff';
-          toast.style.padding = '8px 16px';
-          toast.style.borderRadius = '4px';
-          toast.style.zIndex = '9999';
-          toast.style.opacity = '0';
-          toast.style.transition = 'opacity 0.3s ease';
-          
-          document.body.appendChild(toast);
-          
-          // Animate in
-          setTimeout(() => {
-            toast.style.opacity = '1';
-          }, 10);
-          
-          // Remove after 2 seconds
-          setTimeout(() => {
-            toast.style.opacity = '0';
-            setTimeout(() => {
-              document.body.removeChild(toast);
-            }, 300);
-          }, 2000);
-        })
-        .catch(err => {
-          console.error('Failed to copy content to clipboard', err);
-          alert('Failed to copy content. Please try again.');
-        });
-    } catch (error) {
-      console.error('Error preparing content for clipboard:', error);
-      alert('Failed to prepare content for copying. Please try again.');
-    }
+    // Check if content is an object (for structured data), and stringify it
+    const textToCopy = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
+    
+    // Remove <thinking> tags before copying
+    const cleanedText = textToCopy.replace(/<\/?think>/g, '').replace(/<thinking-indicator.*?>\n<\/thinking-indicator>\n|<thinking-indicator.*?\/>/g, '').trim();
+
+    navigator.clipboard.writeText(cleanedText).then(() => {
+      toast.success('Copied to clipboard', {
+        duration: 2000,
+        position: 'bottom-center',
+        style: {
+          background: '#333',
+          color: '#fff',
+        },
+      });
+    }).catch(err => {
+      console.error('Failed to copy: ', err);
+      toast.error('Failed to copy', {
+        duration: 2000,
+        position: 'bottom-center',
+        style: {
+          background: '#333',
+          color: '#fff',
+        },
+      });
+    });
   };
+
+  const TypingIndicator = () => (
+    <motion.div
+      key="typing-indicator"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="flex items-center space-x-2"
+      style={{ minHeight: '2.5rem' }} // This prevents the layout jump
+    >
+      <Bot size={20} className="text-white" />
+      <div className="flex items-center space-x-1.5">
+          <span className="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '0s' }}></span>
+          <span className="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></span>
+          <span className="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></span>
+      </div>
+    </motion.div>
+  );
 
   // Hide the Deep Research view when research completes and AI responds
   useEffect(() => {
@@ -3796,6 +3784,7 @@ function TestChatComponent(props?: TestChatProps) {
                 const finalContent = makeCitationsClickable(processedContent, msg.webSources || []);
                 
                 if (showPulsingDot && i === messages.length -1 ) setShowPulsingDot(false);
+                const showTypingIndicator = msg.role === 'assistant' && finalContent.trim().length === 0 && !msg.isProcessed;
                 
                 return (
                   <React.Fragment key={msg.id + '-fragment-' + i}>
@@ -3818,37 +3807,41 @@ function TestChatComponent(props?: TestChatProps) {
                       {isStoppedMsg ? (
                         <span className="text-xs text-white italic font-light mb-2">[Response stopped by user]</span>
                       ) : (
-                        <div className="w-full max-w-full overflow-hidden">
+                        <div className="w-full max-w-full overflow-hidden" style={{ minHeight: showTypingIndicator ? '2.5rem' : 'auto' }}>
                           {/* Single ReactMarkdown renderer for both streaming and final states */}
-                          {finalContent.trim().length > 0 && (
-                            <ReactMarkdown 
-                              remarkPlugins={[remarkGfm]} 
-                              rehypePlugins={[rehypeRaw]} 
-                              className="research-output"
-                              components={{
-                                h1: ({ children }) => (<h1 className="text-3xl font-bold mb-6 mt-8 border-b border-cyan-500/30 pb-3" style={{ color: '#FCFCFC' }}>{children}</h1>),
-                                h2: ({ children }) => (<h2 className="text-2xl font-semibold mb-4 mt-8 flex items-center gap-2" style={{ color: '#FCFCFC' }}>{children}</h2>),
-                                h3: ({ children }) => (<h3 className="text-xl font-semibold mb-3 mt-6" style={{ color: '#FCFCFC' }}>{children}</h3>),
-                                p: ({ children }) => (<p className="leading-relaxed mb-4 text-sm" style={{ color: '#FCFCFC' }}>{children}</p>),
-                                ul: ({ children }) => (<ul className="space-y-2 mb-4 ml-4">{children}</ul>),
-                                li: ({ children }) => (<li className="flex items-start gap-2" style={{ color: '#FCFCFC' }}><span className="text-cyan-400 mt-1.5 text-xs">●</span><span className="flex-1">{children}</span></li>),
-                                ol: ({ children }) => (<ol className="space-y-2 mb-4 ml-4 list-decimal list-inside">{children}</ol>),
-                                strong: ({ children }) => (<strong className="font-semibold" style={{ color: '#FCFCFC' }}>{children}</strong>),
-                                table: ({ children }) => (<div className="overflow-x-auto mb-6 max-w-full"><table className="w-full border-collapse border border-gray-600 rounded-lg" style={{ tableLayout: 'fixed', maxWidth: '100%' }}>{children}</table></div>),
-                                thead: ({ children }) => <thead className="bg-gray-800">{children}</thead>,
-                                th: ({ children }) => (<th className="border border-gray-600 px-4 py-3 text-left font-semibold" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', color: '#FCFCFC' }}>{children}</th>),
-                                td: ({ children }) => (<td className="border border-gray-600 px-4 py-3" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', color: '#FCFCFC' }}>{children}</td>),
-                                blockquote: ({ children }) => (<blockquote className="border-l-4 border-cyan-500 pl-4 py-2 rounded-r-lg mb-4 italic" style={{ background: 'transparent', color: '#FCFCFC' }}>{children}</blockquote>),
-                                code: ({ children, className }) => {
-                                  const isInline = !className;
-                                  return isInline
-                                    ? (<code className="px-2 py-1 rounded text-xs font-mono" style={{ background: 'rgba(55, 65, 81, 0.5)', color: '#FCFCFC' }}>{children}</code>)
-                                    : (<code className="block p-4 rounded-lg overflow-x-auto text-xs font-mono mb-4" style={{ background: 'rgba(17, 24, 39, 0.8)', color: '#FCFCFC' }}>{children}</code>);
-                                }
-                              }}
-                            >
-                              {finalContent}
-                            </ReactMarkdown>
+                          {showTypingIndicator ? (
+                            <TypingIndicator />
+                          ) : (
+                            finalContent.trim().length > 0 && (
+                              <ReactMarkdown 
+                                remarkPlugins={[remarkGfm]} 
+                                rehypePlugins={[rehypeRaw]} 
+                                className="research-output"
+                                components={{
+                                  h1: ({ children }) => (<h1 className="text-3xl font-bold mb-6 mt-8 border-b border-cyan-500/30 pb-3" style={{ color: '#FCFCFC' }}>{children}</h1>),
+                                  h2: ({ children }) => (<h2 className="text-2xl font-semibold mb-4 mt-8 flex items-center gap-2" style={{ color: '#FCFCFC' }}>{children}</h2>),
+                                  h3: ({ children }) => (<h3 className="text-xl font-semibold mb-3 mt-6" style={{ color: '#FCFCFC' }}>{children}</h3>),
+                                  p: ({ children }) => (<p className="leading-relaxed mb-4 text-sm" style={{ color: '#FCFCFC' }}>{children}</p>),
+                                  ul: ({ children }) => (<ul className="space-y-2 mb-4 ml-4">{children}</ul>),
+                                  li: ({ children }) => (<li className="flex items-start gap-2" style={{ color: '#FCFCFC' }}><span className="text-cyan-400 mt-1.5 text-xs">●</span><span className="flex-1">{children}</span></li>),
+                                  ol: ({ children }) => (<ol className="space-y-2 mb-4 ml-4 list-decimal list-inside">{children}</ol>),
+                                  strong: ({ children }) => (<strong className="font-semibold" style={{ color: '#FCFCFC' }}>{children}</strong>),
+                                  table: ({ children }) => (<div className="overflow-x-auto mb-6 max-w-full"><table className="w-full border-collapse border border-gray-600 rounded-lg" style={{ tableLayout: 'fixed', maxWidth: '100%' }}>{children}</table></div>),
+                                  thead: ({ children }) => <thead className="bg-gray-800">{children}</thead>,
+                                  th: ({ children }) => (<th className="border border-gray-600 px-4 py-3 text-left font-semibold" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', color: '#FCFCFC' }}>{children}</th>),
+                                  td: ({ children }) => (<td className="border border-gray-600 px-4 py-3" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', color: '#FCFCFC' }}>{children}</td>),
+                                  blockquote: ({ children }) => (<blockquote className="border-l-4 border-cyan-500 pl-4 py-2 rounded-r-lg mb-4 italic" style={{ background: 'transparent', color: '#FCFCFC' }}>{children}</blockquote>),
+                                  code: ({ children, className }) => {
+                                    const isInline = !className;
+                                    return isInline
+                                      ? (<code className="px-2 py-1 rounded text-xs font-mono" style={{ background: 'rgba(55, 65, 81, 0.5)', color: '#FCFCFC' }}>{children}</code>)
+                                      : (<code className="block p-4 rounded-lg overflow-x-auto text-xs font-mono mb-4" style={{ background: 'rgba(17, 24, 39, 0.8)', color: '#FCFCFC' }}>{children}</code>);
+                                  }
+                                }}
+                              >
+                                {finalContent}
+                              </ReactMarkdown>
+                            )
                           )}
                         </div>
                       )}
