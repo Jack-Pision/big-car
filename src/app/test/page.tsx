@@ -2257,7 +2257,7 @@ function TestChatComponent(props?: TestChatProps) {
           id: aiMessageId,
           timestamp: Date.now(),
           parentId: userMessageId,
-          contentType: 'conversation',
+          contentType: 'conversation', // Explicitly mark as conversation for consistent rendering
           isStreaming: true,
           isProcessed: false
         };
@@ -2308,7 +2308,7 @@ function TestChatComponent(props?: TestChatProps) {
                             ...msg, 
                             content: contentBuffer,
                             isStreaming: true,
-                            contentType: 'conversation'
+                            contentType: 'conversation' // Ensure Vision Mode uses conversation content type
                           }
                         : msg
                     )
@@ -2330,7 +2330,7 @@ function TestChatComponent(props?: TestChatProps) {
                   content: cleanedContent,
                   isStreaming: false, 
                   isProcessed: true,
-                  contentType: 'conversation'
+                  contentType: 'conversation' // Maintain conversation content type for Vision Mode
                 }
                : msg
           )
@@ -2343,7 +2343,7 @@ function TestChatComponent(props?: TestChatProps) {
             id: aiMessageId,
             timestamp: Date.now(),
             parentId: userMessageId,
-            contentType: 'conversation',
+            contentType: 'conversation', // Consistent content type for Vision Mode
             isProcessed: true,
           };
           await saveMessageInstantly(currentActiveSessionId, completeMessage);
@@ -3330,6 +3330,12 @@ function TestChatComponent(props?: TestChatProps) {
     if (msg.contentType === 'artifact' && msg.isStreaming && !msg.isProcessed) {
       const title = msg.title || 'Generated Document';
       return renderArtifactPreviewCard(title, true, artifactProgress);
+    }
+
+    // Check for Vision Mode messages (messages with imageUrls)
+    if (msg.imageUrls && msg.imageUrls.length > 0) {
+      // Route Vision Mode messages through renderDefaultChatMessage for consistent rendering
+      return renderDefaultChatMessage(msg, messages.findIndex(m => m.id === msg.id));
     }
 
     if (msg.contentType && msg.structuredContent) {
