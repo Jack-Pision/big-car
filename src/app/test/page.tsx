@@ -53,6 +53,7 @@ import { ArtifactViewer } from '@/components/ArtifactViewer';
 import { shouldTriggerArtifact, getArtifactPrompt, artifactSchema, validateArtifactData, createFallbackArtifact, createArtifactFromRawContent, extractTitleFromContent, type ArtifactData } from '@/utils/artifact-utils';
 import { uploadAndAnalyzeImage, uploadImageToSupabase, analyzeImageWithNVIDIA, ImageUploadResult } from '@/lib/image-upload-service';
 import toast from 'react-hot-toast';
+import ReasoningDisplay from '@/components/ReasoningDisplay';
 
 // Define a type that includes all possible query types (including the ones in SCHEMAS and 'conversation')
 type QueryType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversation' | 'reasoning';
