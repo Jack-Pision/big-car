@@ -3826,10 +3826,10 @@ function TestChatComponent(props?: TestChatProps) {
                                   li: ({ children }) => (<li className="flex items-start gap-2" style={{ color: '#FCFCFC' }}><span className="text-cyan-400 mt-1.5 text-xs">●</span><span className="flex-1">{children}</span></li>),
                                   ol: ({ children }) => (<ol className="space-y-2 mb-4 ml-4 list-decimal list-inside">{children}</ol>),
                                   strong: ({ children }) => (<strong className="font-semibold" style={{ color: '#FCFCFC' }}>{children}</strong>),
-                                  table: ({ children }) => (<div className="overflow-x-auto mb-6 max-w-full"><table className="w-full border-collapse border border-gray-600 rounded-lg" style={{ tableLayout: 'fixed', maxWidth: '100%' }}>{children}</table></div>),
-                                  thead: ({ children }) => <thead className="bg-gray-800">{children}</thead>,
-                                  th: ({ children }) => (<th className="border border-gray-600 px-4 py-3 text-left font-semibold" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', color: '#FCFCFC' }}>{children}</th>),
-                                  td: ({ children }) => (<td className="border border-gray-600 px-4 py-3" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', color: '#FCFCFC' }}>{children}</td>),
+                                  table: ({ children }) => (<div className="overflow-x-auto mb-6 max-w-full scrollbar-thin"><table className="border-collapse" style={{ tableLayout: 'auto', width: 'auto' }}>{children}</table></div>),
+                                  thead: ({ children }) => <thead className="">{children}</thead>,
+                                  th: ({ children }) => (<th className="px-4 py-3 text-left font-semibold border-b-2 border-gray-600" style={{ fontSize: '14px', color: '#FCFCFC' }}>{children}</th>),
+                                  td: ({ children }) => (<td className="px-4 py-3 border-b border-gray-700" style={{ fontSize: '14px', color: '#FCFCFC' }}>{children}</td>),
                                   blockquote: ({ children }) => (<blockquote className="border-l-4 border-cyan-500 pl-4 py-2 rounded-r-lg mb-4 italic" style={{ background: 'transparent', color: '#FCFCFC' }}>{children}</blockquote>),
                                   code: ({ children, className }) => {
                                     const isInline = !className;
