@@ -29,9 +29,9 @@ function getModelForMode(mode: string): string {
       return 'mistralai/mistral-small-3.1-24b-instruct-2503'; // Mistral model for image analysis
     case 'chat':
     case 'default':
-      return 'alibaba/qwen3-235b-a22b-instruct'; // Qwen model for default chat
+      return 'qwen/qwen3-235b-a22b'; // Qwen model for default chat
     default:
-      return 'alibaba/qwen3-235b-a22b-instruct'; // Fallback to Qwen model
+      return 'qwen/qwen3-235b-a22b'; // Fallback to Qwen model
   }
 }
 
