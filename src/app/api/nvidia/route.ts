@@ -313,19 +313,48 @@ async function fetchNvidiaVision(messages: any[], options: any = {}) {
     const stream = new ReadableStream({
       async start(controller) {
         try {
+          let accumulatedText = '';
+          
           for await (const chunk of completion) {
             if (chunk.choices[0]?.delta?.content) {
               const content = chunk.choices[0].delta.content;
+              accumulatedText += content;
+              
+              // Format the response to match the structure expected by the default chat renderer
+              // This ensures Vision Mode responses get the same markdown processing
               const sseData = `data: ${JSON.stringify({
                 choices: [{
                   delta: {
                     content: content
-                  }
-                }]
+                  },
+                  message: {
+                    content: content
+                  },
+                  index: 0
+                }],
+                id: "vision-" + Date.now(),
+                model: "nvidia/llama-3.1-nemotron-nano-vl-8b-v1",
+                object: "chat.completion.chunk"
               })}\n\n`;
+              
               controller.enqueue(new TextEncoder().encode(sseData));
             }
           }
+          
+          // Send a final chunk with complete content to ensure proper rendering
+          const finalData = `data: ${JSON.stringify({
+            choices: [{
+              delta: { content: "" },
+              message: { content: accumulatedText },
+              index: 0,
+              finish_reason: "stop"
+            }],
+            id: "vision-final-" + Date.now(),
+            model: "nvidia/llama-3.1-nemotron-nano-vl-8b-v1",
+            object: "chat.completion.chunk"
+          })}\n\n`;
+          
+          controller.enqueue(new TextEncoder().encode(finalData));
           controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
           controller.close();
         } catch (error) {
