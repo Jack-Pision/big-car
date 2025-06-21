@@ -2274,7 +2274,7 @@ function TestChatComponent(props?: TestChatProps) {
         }
         
         const reader = analysisResult.stream.getReader();
-        const decoder = new TextDecoder('utf-8', { stream: true });
+        const decoder = new TextDecoder('utf-8');
         let contentBuffer = '';
         let firstChunkReceived = false;
 
