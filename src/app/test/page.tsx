@@ -3981,7 +3981,10 @@ function TestChatComponent(props?: TestChatProps) {
             />
           )}
 
-          {renderDefaultChatMessage({ ...msg, content: finalContent.replace(/<!-- think-block-\d+ -->/g, '') }, i)}
+          {/* Render the final answer only after we have non-empty content to avoid flicker during stream */}
+          {finalContent.trim().length > 0 &&
+            renderDefaultChatMessage({ ...msg, content: finalContent.replace(/<!-- think-block-\\d+ -->/g, '') }, i)
+          }
         </motion.div>
       </React.Fragment>
     );
