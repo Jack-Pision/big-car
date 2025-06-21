@@ -1,5 +1,11 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import rehypeRaw from 'rehype-raw';
+import 'katex/dist/katex.min.css';
 
 interface ThinkingButtonProps {
   content: string;
@@ -127,10 +133,15 @@ const ThinkingButton: React.FC<ThinkingButtonProps> = ({ content, isLive = false
             }}
           >
             <div 
-              className="text-sm leading-relaxed whitespace-pre-wrap select-text"
+              className="text-sm leading-relaxed select-text research-output"
               style={{ color: '#FCFCFC' }}
             >
-              {content || 'Starting to think...'}
+              <ReactMarkdown 
+                remarkPlugins={[remarkGfm, remarkMath]} 
+                rehypePlugins={[rehypeRaw, rehypeKatex]}
+              >
+                {content || 'Starting to think...'}
+              </ReactMarkdown>
             </div>
           </div>
         )}
@@ -144,8 +155,13 @@ const ThinkingButton: React.FC<ThinkingButtonProps> = ({ content, isLive = false
               scrollBehavior: isLive ? 'smooth' : 'auto'
             }}
           >
-            <div className="text-sm leading-relaxed whitespace-pre-wrap select-text" style={{ color: '#FCFCFC' }}>
-              {content || 'Starting to think...'}
+            <div className="text-sm leading-relaxed select-text research-output" style={{ color: '#FCFCFC' }}>
+              <ReactMarkdown 
+                remarkPlugins={[remarkGfm, remarkMath]} 
+                rehypePlugins={[rehypeRaw, rehypeKatex]}
+              >
+                {content || 'Starting to think...'}
+              </ReactMarkdown>
             </div>
           </div>
         )}
