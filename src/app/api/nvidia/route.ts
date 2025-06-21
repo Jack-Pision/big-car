@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 
 const TEXT_API_KEY = process.env.NVIDIA_API_KEY || '';
 const TEXT_API_KEY2 = process.env.NVIDIA_API_KEY2 || '';
+const TEXT_API_KEY3 = process.env.NVIDIA_API_KEY3 || '';
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || '';
 
 // Function to select the appropriate API key based on mode
@@ -13,7 +14,7 @@ function getApiKeyForMode(mode: string): string {
       return TEXT_API_KEY2; // Use second key for image analysis
     case 'chat':
     case 'default':
-      return TEXT_API_KEY2; // Use new key for default chat mode
+      return TEXT_API_KEY3; // Use third key for default chat mode
     default:
       return TEXT_API_KEY; // Fallback to original key
   }
@@ -173,7 +174,7 @@ async function fetchNvidiaText(messages: any[], options: any = {}) {
     // We'll parse JSON from the streaming content instead
   };
   
-  console.log(`[NVIDIA API] Making request - Mode: ${options.mode || 'default'}, Model: ${payload.model}, Artifact: ${isArtifact}, Stream: ${payload.stream}, Max Tokens: ${payload.max_tokens}, API Key: ${options.mode === 'reasoning' ? 'NVIDIA_API_KEY' : 'NVIDIA_API_KEY2'}`);
+  console.log(`[NVIDIA API] Making request - Mode: ${options.mode || 'default'}, Model: ${payload.model}, Artifact: ${isArtifact}, Stream: ${payload.stream}, Max Tokens: ${payload.max_tokens}, API Key: ${options.mode === 'reasoning' ? 'NVIDIA_API_KEY' : options.mode === 'image_analysis' ? 'NVIDIA_API_KEY2' : 'NVIDIA_API_KEY3'}`);
   
   try {
     // Using fetchWithTimeout with increased timeout for NVIDIA API call
@@ -285,10 +286,10 @@ async function fetchNvidiaText(messages: any[], options: any = {}) {
 
 export async function POST(req: NextRequest) {
   // Validate required API keys at runtime
-  if (!TEXT_API_KEY && !TEXT_API_KEY2) {
+  if (!TEXT_API_KEY && !TEXT_API_KEY2 && !TEXT_API_KEY3) {
     return new Response(JSON.stringify({
       error: 'Configuration Error',
-      details: 'Neither NVIDIA_API_KEY nor NVIDIA_API_KEY2 are configured'
+      details: 'None of the NVIDIA API keys (NVIDIA_API_KEY, NVIDIA_API_KEY2, NVIDIA_API_KEY3) are configured'
     }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
@@ -335,7 +336,7 @@ export async function POST(req: NextRequest) {
     const requiredApiKey = getApiKeyForMode(mode);
     
     if (!requiredApiKey) {
-      const keyName = mode === 'reasoning' ? 'NVIDIA_API_KEY' : 'NVIDIA_API_KEY2';
+      const keyName = mode === 'reasoning' ? 'NVIDIA_API_KEY' : mode === 'image_analysis' ? 'NVIDIA_API_KEY2' : 'NVIDIA_API_KEY3';
       return new Response(JSON.stringify({
         error: 'Configuration Error',
         details: `${keyName} is required for ${mode} mode but is not configured`
