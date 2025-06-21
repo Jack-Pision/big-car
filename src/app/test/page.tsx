@@ -2970,7 +2970,8 @@ function TestChatComponent(props?: TestChatProps) {
                           setLiveReasoning(thinkContent);
                           setCurrentReasoningMessageId(aiMessageId);
                         }
-                      } else {
+                      }
+                    } else {
                       // For default chat, use content directly without think processing
                       if (aiMessageId) {
                         setMessages((prev) => {
