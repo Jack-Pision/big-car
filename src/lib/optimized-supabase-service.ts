@@ -488,7 +488,7 @@ export class OptimizedSupabaseService {
         const { error: insertError } = await supabase
           .from('user_preferences')
           .insert({
-            user_id: user.id,
+          user_id: user.id,
             active_session_id: sessionId,
             preferences: {}
           });
@@ -503,7 +503,7 @@ export class OptimizedSupabaseService {
           .from('user_preferences')
           .update({ active_session_id: sessionId })
           .eq('user_id', user.id);
-          
+
         if (updateError) {
           console.error('Error updating active session ID:', updateError);
           return;
@@ -570,7 +570,7 @@ export class OptimizedSupabaseService {
             console.error('Failed to create initial preferences:', createError);
             // Continue login flow even if preferences creation fails
             smartCache.set(cacheKey, null, 5 * 60 * 1000);
-            return null;
+          return null;
           }
         }
         

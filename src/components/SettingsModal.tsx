@@ -71,13 +71,13 @@ export default function SettingsModal({ isOpen, onClose, user, onSignOut }: Sett
           >
             {/* Main Container */}
             <div className="relative bg-neutral-800 rounded-2xl border border-neutral-700 shadow-2xl overflow-hidden">
-              {/* Close Button */}
-              <button
-                onClick={onClose}
+            {/* Close Button */}
+            <button
+              onClick={onClose}
                 className="absolute top-4 right-4 p-2 rounded-full hover:bg-neutral-700 transition-colors z-10"
-              >
+            >
                 <X size={20} className="text-neutral-400 hover:text-neutral-200" />
-              </button>
+            </button>
 
               <div className="relative p-6">
                 {/* Logo Section */}
@@ -94,62 +94,62 @@ export default function SettingsModal({ isOpen, onClose, user, onSignOut }: Sett
                 {/* Header */}
                 <div className="text-center mb-6">
                   <h2 className="text-2xl font-bold text-neutral-100 mb-2 tracking-tight">
-                    Account Settings
-                  </h2>
+                  Account Settings
+                </h2>
                   <p className="text-neutral-400 text-xs leading-relaxed">
-                    Manage your Tehom AI account
-                  </p>
-                </div>
+                  Manage your Tehom AI account
+                </p>
+              </div>
 
-                {/* User Info */}
-                {user && (
+              {/* User Info */}
+              {user && (
                   <div className="bg-neutral-700 rounded-lg p-4 mb-6">
-                    <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3">
                       <User size={20} className="text-neutral-400" />
-                      <div>
+                    <div>
                         <p className="font-medium text-neutral-100">
-                          {user.user_metadata?.full_name || 'User'}
-                        </p>
+                        {user.user_metadata?.full_name || 'User'}
+                      </p>
                         <p className="text-sm text-neutral-400">{user.email}</p>
-                      </div>
                     </div>
                   </div>
-                )}
+                </div>
+              )}
 
-                {/* Settings Options */}
+              {/* Settings Options */}
                 <div className="space-y-2 mb-6">
                   <button className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-neutral-700 transition-colors text-left">
                     <Shield size={20} className="text-neutral-400" />
-                    <div>
+                  <div>
                       <p className="font-medium text-neutral-100">Privacy & Security</p>
                       <p className="text-sm text-neutral-400">Manage your privacy settings</p>
-                    </div>
-                  </button>
+                  </div>
+                </button>
 
                   <button className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-neutral-700 transition-colors text-left">
                     <HelpCircle size={20} className="text-neutral-400" />
-                    <div>
+                  <div>
                       <p className="font-medium text-neutral-100">Help & Support</p>
                       <p className="text-sm text-neutral-400">Get help and contact support</p>
-                    </div>
-                  </button>
-                </div>
-
-                {/* Sign Out Button */}
-                <button
-                  onClick={handleSignOut}
-                  disabled={isLoading}
-                  className="w-full flex items-center justify-center gap-3 p-3 rounded-lg bg-red-600/20 hover:bg-red-600/30 transition-colors text-red-400 font-medium disabled:opacity-50 disabled:cursor-not-allowed border border-red-600/30"
-                >
-                  {isLoading ? (
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-400"></div>
-                  ) : (
-                    <LogOut size={20} />
-                  )}
-                  {isLoading ? 'Signing out...' : 'Sign Out'}
+                  </div>
                 </button>
+              </div>
 
-                {/* App Info */}
+              {/* Sign Out Button */}
+              <button
+                onClick={handleSignOut}
+                disabled={isLoading}
+                  className="w-full flex items-center justify-center gap-3 p-3 rounded-lg bg-red-600/20 hover:bg-red-600/30 transition-colors text-red-400 font-medium disabled:opacity-50 disabled:cursor-not-allowed border border-red-600/30"
+              >
+                {isLoading ? (
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-400"></div>
+                ) : (
+                  <LogOut size={20} />
+                )}
+                {isLoading ? 'Signing out...' : 'Sign Out'}
+              </button>
+
+              {/* App Info */}
                 <div className="mt-6 pt-4 border-t border-neutral-700 text-center">
                   <Image 
                     src="/Logo.svg" 
@@ -159,8 +159,8 @@ export default function SettingsModal({ isOpen, onClose, user, onSignOut }: Sett
                     className="mx-auto mb-2" 
                   />
                   <p className="text-xs text-neutral-500">
-                    Tehom AI • Version 1.0.0
-                  </p>
+                  Tehom AI • Version 1.0.0
+                </p>
                 </div>
               </div>
             </div>

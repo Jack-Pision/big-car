@@ -61,9 +61,9 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
           handleClose();
         } else {
           // Email confirmation is enabled, show message to check email
-          toast.success('Account created! Please check your email for verification.');
-          setMode('signin');
-          resetForm();
+        toast.success('Account created! Please check your email for verification.');
+        setMode('signin');
+        resetForm();
         }
       } else if (mode === 'signin') {
         await signIn(email, password);
@@ -167,139 +167,139 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
                     height={48} 
                     className="text-neutral-100" 
                   />
-                </div>
+              </div>
 
-                {/* Header */}
+              {/* Header */}
                 <div className="text-center mb-6">
                   <h2 className="text-2xl font-bold text-neutral-100 mb-2 tracking-tight">
-                    {content.title}
-                  </h2>
+                  {content.title}
+                </h2>
                   <p className="text-neutral-400 text-xs leading-relaxed">
-                    {content.subtitle}
-                  </p>
-                </div>
+                  {content.subtitle}
+                </p>
+              </div>
 
-                {/* Form */}
+              {/* Form */}
                 <form onSubmit={handleSubmit} className="space-y-4">
-                  {mode === 'signup' && (
+                {mode === 'signup' && (
                     <div className="space-y-1.5">
                       <label htmlFor="fullName" className="block text-xs font-medium text-neutral-200">
-                        Full Name
-                      </label>
+                      Full Name
+                    </label>
                       <div className="relative group">
                         <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 z-10" size={16} />
-                        <input
-                          id="fullName"
-                          type="text"
-                          value={fullName}
-                          onChange={(e) => setFullName(e.target.value)}
-                          className="relative w-full pl-10 pr-3 py-3 bg-neutral-700 border border-neutral-600 rounded-lg text-neutral-100 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-500 focus:border-neutral-500 transition-all duration-200 text-sm"
-                          placeholder="Enter your full name"
-                          required
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="space-y-1.5">
-                    <label htmlFor="email" className="block text-xs font-medium text-neutral-200">
-                      Email Address
-                    </label>
-                    <div className="relative group">
-                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 z-10" size={16} />
                       <input
-                        id="email"
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="relative w-full pl-10 pr-3 py-3 bg-neutral-700 border border-neutral-600 rounded-lg text-neutral-100 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-500 focus:border-neutral-500 transition-all duration-200 text-sm"
-                        placeholder="Enter your email"
+                        id="fullName"
+                        type="text"
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                          className="relative w-full pl-10 pr-3 py-3 bg-neutral-700 border border-neutral-600 rounded-lg text-neutral-100 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-500 focus:border-neutral-500 transition-all duration-200 text-sm"
+                        placeholder="Enter your full name"
                         required
                       />
                     </div>
                   </div>
+                )}
 
-                  {mode !== 'forgot' && (
+                  <div className="space-y-1.5">
+                    <label htmlFor="email" className="block text-xs font-medium text-neutral-200">
+                    Email Address
+                  </label>
+                    <div className="relative group">
+                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 z-10" size={16} />
+                    <input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                        className="relative w-full pl-10 pr-3 py-3 bg-neutral-700 border border-neutral-600 rounded-lg text-neutral-100 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-500 focus:border-neutral-500 transition-all duration-200 text-sm"
+                      placeholder="Enter your email"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {mode !== 'forgot' && (
                     <div className="space-y-1.5">
                       <label htmlFor="password" className="block text-xs font-medium text-neutral-200">
-                        Password
-                      </label>
+                      Password
+                    </label>
                       <div className="relative group">
                         <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 z-10" size={16} />
-                        <input
-                          id="password"
-                          type={showPassword ? 'text' : 'password'}
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
+                      <input
+                        id="password"
+                        type={showPassword ? 'text' : 'password'}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
                           className="relative w-full pl-10 pr-12 py-3 bg-neutral-700 border border-neutral-600 rounded-lg text-neutral-100 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-500 focus:border-neutral-500 transition-all duration-200 text-sm"
-                          placeholder="Enter your password"
-                          required
-                          minLength={6}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-neutral-200 transition-colors z-10"
-                        >
-                          {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                        </button>
-                      </div>
-                      {mode === 'signup' && (
-                        <p className="text-xs text-neutral-400 mt-1">
-                          Password must be at least 6 characters long
-                        </p>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Forgot Password Link */}
-                  {mode === 'signin' && (
-                    <div className="text-right">
+                        placeholder="Enter your password"
+                        required
+                        minLength={6}
+                      />
                       <button
                         type="button"
-                        onClick={() => setMode('forgot')}
-                        className="text-xs text-neutral-400 hover:text-neutral-200 transition-colors"
+                        onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-neutral-200 transition-colors z-10"
                       >
-                        Forgot your password?
+                          {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
                     </div>
-                  )}
+                    {mode === 'signup' && (
+                        <p className="text-xs text-neutral-400 mt-1">
+                        Password must be at least 6 characters long
+                      </p>
+                    )}
+                  </div>
+                )}
 
-                  {/* Submit Button */}
-                  <div className="pt-2">
+                {/* Forgot Password Link */}
+                {mode === 'signin' && (
+                  <div className="text-right">
                     <button
-                      type="submit"
-                      disabled={isLoading}
-                      className="relative w-full group overflow-hidden"
+                      type="button"
+                      onClick={() => setMode('forgot')}
+                        className="text-xs text-neutral-400 hover:text-neutral-200 transition-colors"
                     >
+                      Forgot your password?
+                    </button>
+                  </div>
+                )}
+
+                {/* Submit Button */}
+                  <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                      className="relative w-full group overflow-hidden"
+                >
                       <div className="absolute inset-0 bg-gradient-to-r from-white to-gray-50 rounded-lg" />
                       <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                       <div className="relative py-3 px-4 text-gray-900 font-semibold text-sm tracking-wide transition-all duration-200 group-hover:text-gray-800 group-disabled:opacity-50">
-                        {isLoading ? (
-                          <div className="flex items-center justify-center">
+                  {isLoading ? (
+                    <div className="flex items-center justify-center">
                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900 mr-2"></div>
-                            Loading...
-                          </div>
-                        ) : (
-                          content.buttonText
-                        )}
+                      Loading...
+                    </div>
+                  ) : (
+                    content.buttonText
+                  )}
                       </div>
-                    </button>
+                </button>
                   </div>
-                </form>
+              </form>
 
-                {/* Switch Mode */}
-                <div className="mt-6 text-center">
+              {/* Switch Mode */}
+              <div className="mt-6 text-center">
                   <p className="text-xs text-neutral-400">
-                    {content.switchText}{' '}
-                    <button
-                      type="button"
-                      onClick={content.switchAction}
+                  {content.switchText}{' '}
+                  <button
+                    type="button"
+                    onClick={content.switchAction}
                       className="text-neutral-100 font-medium hover:text-neutral-200 transition-colors underline underline-offset-2"
-                    >
-                      {content.switchLink}
-                    </button>
-                  </p>
+                  >
+                    {content.switchLink}
+                  </button>
+                </p>
                 </div>
 
                 {/* Marketing Footer */}

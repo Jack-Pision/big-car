@@ -1,5 +1,5 @@
 ﻿"use client";
-import React, { useState, useRef, useLayoutEffect, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useRef, useLayoutEffect, useEffect, useCallback } from "react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -55,7 +55,6 @@ import ReasoningDisplay from '@/components/ReasoningDisplay';
 import { uploadAndAnalyzeImage, uploadImageToSupabase, analyzeImageWithNVIDIA, ImageUploadResult } from '@/lib/image-upload-service';
 import toast from 'react-hot-toast';
 import { marked } from 'marked';
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 // Define a type that includes all possible query types (including the ones in SCHEMAS and 'conversation')
 type QueryType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversation' | 'reasoning';
@@ -1782,9 +1781,6 @@ function TestChatComponent(props?: TestChatProps) {
   // Additional missing state variables
   const [showHeading, setShowHeading] = useState(true);
   
-  // Smart buffering for markdown streaming
-  const [displayBuffer, setDisplayBuffer] = useState('');
-  
   // Image upload state
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
@@ -1802,61 +1798,6 @@ function TestChatComponent(props?: TestChatProps) {
   const isInitialLoadRef = useRef(true);
   const sessionIdRef = useRef<string | null>(null); // Store session ID for immediate access
 
-  // Smart buffering for markdown streaming
-  const isCompleteMarkdownElement = (text: string): boolean => {
-    // Check if we have complete markdown elements
-    const lines = text.split('\n');
-    const lastLine = lines[lines.length - 1];
-    
-    // If text ends with incomplete bold/italic syntax
-    const incompleteFormatting = /\*[^*]*$|_[^_]*$|\*\*[^*]*\*?$|__[^_]*_?$/.test(text);
-    if (incompleteFormatting) return false;
-    
-    // If we're in the middle of a code block
-    const codeBlockMatches = text.match(/```/g);
-    if (codeBlockMatches && codeBlockMatches.length % 2 !== 0) return false;
-    
-    // If we're in the middle of a list item
-    if (lastLine.match(/^\s*[-*+]\s*$/) || lastLine.match(/^\s*\d+\.\s*$/)) return false;
-    
-    // If we're in the middle of a heading
-    if (lastLine.match(/^#+\s*$/)) return false;
-    
-    // If we're in the middle of a table
-    if (lastLine.includes('|') && !lastLine.trim().endsWith('|')) return false;
-    
-    // If we're in the middle of a blockquote
-    if (lastLine.match(/^>\s*$/)) return false;
-    
-    return true;
-  };
-
-  // Debounce rapid database saves to prevent 409 conflicts
-  const saveQueue = useRef(new Map<string, NodeJS.Timeout>());
-
-  const debouncedSaveMessage = useCallback((sessionId: string, message: LocalMessage, delay: number = 100) => {
-    const key = `${sessionId}-${message.id}`;
-    
-    // Clear existing timeout for this message
-    if (saveQueue.current.has(key)) {
-      clearTimeout(saveQueue.current.get(key)!);
-    }
-    
-    // Set new timeout
-    const timeoutId = setTimeout(async () => {
-      try {
-        await saveMessageInstantly(sessionId, message);
-        console.log('[Debounced Save] Message saved:', message.id);
-      } catch (error) {
-        console.error('[Debounced Save] Failed to save message:', error);
-      } finally {
-        saveQueue.current.delete(key);
-      }
-    }, delay);
-    
-    saveQueue.current.set(key, timeoutId);
-  }, []);
-
   // Constants
   const BASE_HEIGHT = 48;
   const MAX_HEIGHT = BASE_HEIGHT * 3;
@@ -1865,17 +1806,6 @@ function TestChatComponent(props?: TestChatProps) {
   // Computed values
   const isChatEmpty = messages.length === 0;
   const inputPosition = isChatEmpty && !hasInteracted && !activeSessionId ? "center" : "bottom";
-
-  // Smart buffering effect - reset buffers when new streaming starts
-  const streamingMessageIds = useMemo(() => 
-    messages.filter(msg => msg.isStreaming).map(msg => msg.id).join(','), 
-    [messages]
-  );
-
-  useEffect(() => {
-    // Reset display buffer when streaming message changes (new message starts streaming)
-    setDisplayBuffer('');
-  }, [streamingMessageIds]);
 
   // Mouse event handlers for resizable divider
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -1937,7 +1867,7 @@ function TestChatComponent(props?: TestChatProps) {
       // Mark that initial load is complete after this run
       isInitialLoadRef.current = false;
       
-              try {
+      try {
         let sessionIdToLoad = initialSessionId;
         
         // ENHANCED URL SESSION DETECTION: Check multiple sources for session ID
@@ -1961,10 +1891,10 @@ function TestChatComponent(props?: TestChatProps) {
           
           // 3. Check URL hash parameters (fallback for legacy URLs)
           if (!sessionIdToLoad && window.location.hash) {
-            const hashParams = new URLSearchParams(window.location.hash.substring(1));
-            const hashSessionId = hashParams.get('session');
-            if (hashSessionId) {
-              sessionIdToLoad = hashSessionId;
+          const hashParams = new URLSearchParams(window.location.hash.substring(1));
+          const hashSessionId = hashParams.get('session');
+          if (hashSessionId) {
+            sessionIdToLoad = hashSessionId;
               console.log('[Session Load] Found session in URL hash:', sessionIdToLoad);
               // Convert hash to proper URL format for better persistence
               const newUrl = `/chat/${hashSessionId}`;
@@ -2003,7 +1933,7 @@ function TestChatComponent(props?: TestChatProps) {
           // ONLY set messages if we're not in the middle of an active conversation
           // This prevents overwriting messages during first message flow
           if (!isAiResponding && !isLoading) {
-            setMessages(processedMessages);
+          setMessages(processedMessages);
             setShowHeading(processedMessages.length === 0);
             setHasInteracted(processedMessages.length > 0);
           }
@@ -2396,11 +2326,11 @@ function TestChatComponent(props?: TestChatProps) {
       // Add user message to chat and save instantly
       const userMessageId = uuidv4();
       const userMessage: LocalMessage = { 
-        role: 'user',
-        id: userMessageId,
-        content: input,
-        timestamp: Date.now(),
-        isProcessed: true
+          role: 'user',
+          id: userMessageId,
+          content: input,
+          timestamp: Date.now(),
+          isProcessed: true
       };
       
       setMessages(prev => [...prev, userMessage]);
@@ -2813,7 +2743,6 @@ function TestChatComponent(props?: TestChatProps) {
         top_p: 0.9,
         frequency_penalty: 0.2,  // OPTIMIZATION 3: Decreased from 0.5 
         presence_penalty: 0.2,   // OPTIMIZATION 3: Decreased from 0.8
-        stream: true             // Enable streaming for real-time responses
       };
       
 
@@ -2957,26 +2886,26 @@ function TestChatComponent(props?: TestChatProps) {
                     // Only extract think content for reasoning mode
                     if (activeButton === 'reasoning') {
                       // Separate thinking and main content in real-time for reasoning mode
-                      const { thinkContent, mainContent } = extractThinkContentDuringStream(contentBuffer);
-                      
-                      // Update the existing placeholder AI message with content
-                      if (aiMessageId) {
-                        setMessages((prev) => {
-                          return prev.map(msg => 
-                            msg.id === aiMessageId 
-                              ? { ...msg, content: mainContent, isStreaming: true }
-                              : msg
-                          );
-                        });
-                        hasCreatedMessage = true; // Mark as created after first update
-                      }
-                      
-                      // Update live thinking display - this goes directly to think box
-                      if (thinkContent && thinkContent.trim().length > 0) {
+                    const { thinkContent, mainContent } = extractThinkContentDuringStream(contentBuffer);
+                    
+                    // Update the existing placeholder AI message with content
+                    if (aiMessageId) {
+                      setMessages((prev) => {
+                        return prev.map(msg => 
+                          msg.id === aiMessageId 
+                            ? { ...msg, content: mainContent, isStreaming: true }
+                            : msg
+                        );
+                      });
+                      hasCreatedMessage = true; // Mark as created after first update
+                    }
+                    
+                    // Update live thinking display - this goes directly to think box
+                    if (thinkContent && thinkContent.trim().length > 0) {
                         setLiveReasoning(thinkContent);
                         setCurrentReasoningMessageId(aiMessageId);
                       }
-                    } else {
+                      } else {
                       // For default chat, use content directly without think processing
                       if (aiMessageId) {
                         setMessages((prev) => {
@@ -3005,25 +2934,25 @@ function TestChatComponent(props?: TestChatProps) {
         if (aiMessageId) {
           if (activeButton === 'reasoning') {
             // For reasoning mode, extract and embed think content
-            const { thinkContent: finalThinkContent, mainContent: finalMainContent } = extractThinkContentDuringStream(contentBuffer);
-            
+          const { thinkContent: finalThinkContent, mainContent: finalMainContent } = extractThinkContentDuringStream(contentBuffer);
+          
             // 1. Update UI immediately (no delays)
-            setMessages((prev) => {
-              return prev.map(msg => 
-                msg.id === aiMessageId 
-                  ? { 
-                      ...msg, 
+          setMessages((prev) => {
+            return prev.map(msg => 
+              msg.id === aiMessageId 
+                ? { 
+                    ...msg, 
                       isStreaming: false,
                       content: finalThinkContent.trim().length > 0 
                         ? `<think>${finalThinkContent}</think>${finalMainContent}` 
                         : finalMainContent,
                       contentType: 'reasoning',
                       isProcessed: true,
-                    }
-                  : msg
-              );
-            });
-
+                  }
+                : msg
+            );
+          });
+          
             // 2. Save final content instantly in background (no setTimeout delays)
             const currentSessionId = sessionIdRef.current;
             if (currentSessionId && aiMessageId) {
@@ -3660,7 +3589,7 @@ function TestChatComponent(props?: TestChatProps) {
                     )}
                   </h3>
                                       <div className="flex items-center gap-4 text-xs text-gray-400">
-                      <span>Essay</span>
+                    <span>Essay</span>
                     {msg.isStreaming ? (
                       <span>Streaming...</span>
                     ) : (
@@ -3779,18 +3708,18 @@ function TestChatComponent(props?: TestChatProps) {
                 const completeSearchMessage: LocalMessage = {
                   role: 'search-ui',
                   id: msg.id!,
-                  content: result,
+                      content: result,
                   query: msg.query,
                   timestamp: Date.now(),
-                  isProcessed: true,
-                  isStreaming: false,
-                  webSources: sources
+                      isProcessed: true,
+                      isStreaming: false,
+                      webSources: sources
                 };
                 
                 saveMessageInstantly(currentSessionId, completeSearchMessage).catch(error => {
                   console.error('[Search Mode] Failed to instantly save complete search message:', error);
                 });
-              }
+                    } 
             }} 
           />
                       )}
@@ -3808,32 +3737,8 @@ function TestChatComponent(props?: TestChatProps) {
                   .trim();
                 const isStoppedMsg = cleanContent.trim() === '[Response stopped by user]';
                 
-                // Smart buffering for streaming content
+                // Early rendering for streaming content to avoid markdown parse errors
                 if (msg.isStreaming) {
-                  // cleanContent is the full content up to this point, not incremental
-                  const currentContent = cleanContent;
-                  
-                  // Create a unique key for this message's buffer
-                  const messageBufferKey = `buffer-${msg.id}`;
-                  
-                  // Only update display if we have complete markdown elements or significant content change
-                  let contentToDisplay = displayBuffer;
-                  
-                  // Always show content for the current streaming message, with smart buffering
-                  if (currentContent.length === 0) {
-                    // Empty content - show loading state
-                    contentToDisplay = '';
-                  } else if (isCompleteMarkdownElement(currentContent) || 
-                      currentContent.includes('\n\n') || 
-                      currentContent.length - displayBuffer.length > 50 ||
-                      currentContent !== displayBuffer) { // Content changed
-                    setDisplayBuffer(currentContent);
-                    contentToDisplay = currentContent;
-                  } else {
-                    // Use current content if buffer is empty or outdated
-                    contentToDisplay = displayBuffer || currentContent;
-                  }
-                  
                   return (
                     <motion.div
                       key={msg.id + '-stream-' + i}
@@ -3843,36 +3748,15 @@ function TestChatComponent(props?: TestChatProps) {
                       className="w-full text-left flex flex-col items-start ai-response-text mb-4 relative"
                       style={{ color: '#FCFCFC', maxWidth: '100%', overflowWrap: 'break-word', wordBreak: 'break-word' }}
                     >
-                      <div className="w-full max-w-full overflow-hidden">
-                        <ReactMarkdown
-                          remarkPlugins={[remarkGfm]}
-                          rehypePlugins={[rehypeRaw]}
-                          className="research-output"
-                          components={{
-                            h1: ({ children }) => (<h1 className="text-3xl font-bold mb-6 mt-8 border-b border-cyan-500/30 pb-3" style={{ color: '#FCFCFC' }}>{children}</h1>),
-                            h2: ({ children }) => (<h2 className="text-2xl font-semibold text-cyan-400 mb-4 mt-8 flex items-center gap-2">{children}</h2>),
-                            h3: ({ children }) => (<h3 className="text-xl font-semibold mb-3 mt-6" style={{ color: '#FCFCFC' }}>{children}</h3>),
-                            p: ({ children }) => (<p className="leading-relaxed mb-4 text-sm" style={{ color: '#FCFCFC' }}>{children}</p>),
-                            ul: ({ children }) => (<ul className="space-y-2 mb-4 ml-4">{children}</ul>),
-                            li: ({ children }) => (<li className="flex items-start gap-2" style={{ color: '#FCFCFC' }}><span className="text-cyan-400 mt-1.5 text-xs">●</span><span className="flex-1">{children}</span></li>),
-                            ol: ({ children }) => (<ol className="space-y-2 mb-4 ml-4 list-decimal list-inside">{children}</ol>),
-                            strong: ({ children }) => (<strong className="font-semibold" style={{ color: '#FCFCFC' }}>{children}</strong>),
-                            table: ({ children }) => (<div className="overflow-x-auto mb-6 max-w-full"><table className="w-full border-collapse border border-gray-600 rounded-lg" style={{ tableLayout: 'fixed', maxWidth: '100%' }}>{children}</table></div>),
-                            thead: ({ children }) => <thead className="bg-gray-800">{children}</thead>,
-                            th: ({ children }) => (<th className="border border-gray-600 px-4 py-3 text-left text-cyan-400 font-semibold" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>{children}</th>),
-                            td: ({ children }) => (<td className="border border-gray-600 px-4 py-3" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', color: '#FCFCFC' }}>{children}</td>),
-                            blockquote: ({ children }) => (<blockquote className="border-l-4 border-cyan-500 pl-4 py-2 rounded-r-lg mb-4 italic" style={{ background: 'transparent', color: '#FCFCFC' }}>{children}</blockquote>),
-                            code: ({ children, className }) => {
-                              const isInline = !className;
-                              return isInline
-                                ? (<code className="text-cyan-400 px-2 py-1 rounded text-xs font-mono" style={{ background: 'rgba(55, 65, 81, 0.5)' }}>{children}</code>)
-                                : (<code className="block p-4 rounded-lg overflow-x-auto text-xs font-mono mb-4" style={{ background: 'rgba(17, 24, 39, 0.8)', color: '#FCFCFC' }}>{children}</code>);
-                            }
-                          }}
-                        >
-                          {contentToDisplay}
-                        </ReactMarkdown>
-                      </div>
+                      <div 
+                        className="research-output"
+                        style={{ color: '#FCFCFC' }}
+                                                 dangerouslySetInnerHTML={{ 
+                           __html: marked.parse(cleanContent, { 
+                             breaks: true 
+                           }) 
+                         }} 
+                      />
                     </motion.div>
                   );
                 }
@@ -3906,9 +3790,9 @@ function TestChatComponent(props?: TestChatProps) {
                         <div className="w-full max-w-full overflow-hidden">
                           {/* For default chat, no thinking buttons - just show content directly */}
                           {finalContent.trim().length > 0 && (
-                            <ReactMarkdown
-                              remarkPlugins={[remarkGfm]}
-                              rehypePlugins={[rehypeRaw]}
+                            <ReactMarkdown 
+                              remarkPlugins={[remarkGfm]} 
+                              rehypePlugins={[rehypeRaw]} 
                               className="research-output"
                               components={{
                                 h1: ({ children }) => (<h1 className="text-3xl font-bold mb-6 mt-8 border-b border-cyan-500/30 pb-3" style={{ color: '#FCFCFC' }}>{children}</h1>),
@@ -4035,7 +3919,7 @@ function TestChatComponent(props?: TestChatProps) {
     
     const finalContent = makeCitationsClickable(finalAnswerContent, msg.webSources || []);
 
-    return (
+                return (
       <React.Fragment key={msg.id + '-reasoning-' + i}>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -4123,17 +4007,17 @@ function TestChatComponent(props?: TestChatProps) {
                             <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
                           </div>
                         )}
-                        <button
-                          type="button"
+                      <button
+                        type="button"
                           onClick={() => removeImagePreview(index)}
                           className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
-                        >
+                      >
                           ×
-                        </button>
-                      </div>
-                    ))}
+                      </button>
+              </div>
+          ))}
                   </div>
-                </div>
+        </div>
               )}
 
               {/* Input area: textarea on top, actions below */}
@@ -4235,7 +4119,7 @@ function TestChatComponent(props?: TestChatProps) {
                         />
                       </svg>
                     </button>
-                  </div>
+              </div>
 
                   {/* Right group: Plus, Send */}
                   <div className="flex flex-row gap-2 items-center ml-auto pr-4">
@@ -4254,12 +4138,12 @@ function TestChatComponent(props?: TestChatProps) {
                       {isUploadingImage ? (
                         <div className="w-4 h-4 border-2 border-gray-300 border-t-transparent rounded-full animate-spin"></div>
                       ) : (
-                        <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                          <line x1="12" y1="5" x2="12" y2="19" />
-                          <line x1="5" y1="12" x2="19" y2="12" />
-                        </svg>
+                      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
                       )}
-                    </button>
+            </button>
                     
                     {/* Hidden file input */}
                     <input
@@ -4448,5 +4332,5 @@ export default function TestChat() {
     <AuthProvider>
       <TestChatComponent />
     </AuthProvider>
-  ); 
-}
+  );
+} 
