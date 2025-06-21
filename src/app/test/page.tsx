@@ -2274,7 +2274,7 @@ function TestChatComponent(props?: TestChatProps) {
         }
         
         const reader = analysisResult.stream.getReader();
-        const decoder = new TextDecoder();
+        const decoder = new TextDecoder('utf-8', { stream: true });
         let contentBuffer = '';
         let firstChunkReceived = false;
 
@@ -2299,10 +2299,17 @@ function TestChatComponent(props?: TestChatProps) {
                     setImageWaitingForResponse(null);
                   }
                   contentBuffer += delta;
+                  
+                  // Use same advanced streaming pipeline as default chat
                   setMessages(prev =>
                     prev.map(msg =>
                       msg.id === aiMessageId
-                        ? { ...msg, content: contentBuffer }
+                        ? { 
+                            ...msg, 
+                            content: smartBufferStreamingContent(contentBuffer),
+                            isStreaming: true,
+                            contentType: 'conversation'
+                          }
                         : msg
                     )
                   );
@@ -2312,10 +2319,19 @@ function TestChatComponent(props?: TestChatProps) {
           }
         }
         
+        // Use same final processing as default chat
+        const cleanedContent = contentBuffer.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+        
         setMessages(prev =>
           prev.map(msg =>
             msg.id === aiMessageId
-              ? { ...msg, content: postProcessAIChatResponse(fixDenseMarkdown(contentBuffer), true), isStreaming: false, isProcessed: true }
+              ? { 
+                  ...msg, 
+                  content: cleanedContent,
+                  isStreaming: false, 
+                  isProcessed: true,
+                  contentType: 'conversation'
+                }
                : msg
           )
         );
@@ -2323,7 +2339,7 @@ function TestChatComponent(props?: TestChatProps) {
         if (currentActiveSessionId) {
           const completeMessage: LocalMessage = {
             role: "assistant",
-            content: postProcessAIChatResponse(fixDenseMarkdown(contentBuffer), true),
+            content: cleanedContent,
             id: aiMessageId,
             timestamp: Date.now(),
             parentId: userMessageId,
