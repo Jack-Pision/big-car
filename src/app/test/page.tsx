@@ -2282,6 +2282,10 @@ function TestChatComponent(props?: TestChatProps) {
         let contentBuffer = '';
         let firstChunkReceived = false;
 
+        // Inside handleSend, before the streaming while-loop begins (after declaring contentBuffer etc.)
+        // Add throttle variable to limit liveReasoning state updates
+        let lastLiveReasoningUpdate = 0;
+
         while (true) {
           const { value, done } = await reader.read();
           if (done) break;
@@ -2917,6 +2921,7 @@ function TestChatComponent(props?: TestChatProps) {
         let contentBuffer = ''; // Buffer to accumulate content
         let hasCreatedMessage = false; // Flag to track if we've created the AI message
         let aiMessageId: string | null = upcomingAiMessageId; // Use the pre-created message ID
+        let lastLiveReasoningUpdate = 0; // Throttle variable to reduce frequent state updates for live reasoning content
         
         // We'll create the AI message when we first get content
 
@@ -2959,9 +2964,12 @@ function TestChatComponent(props?: TestChatProps) {
                     
                     // Update live thinking display - this goes directly to think box
                     if (thinkContent && thinkContent.trim().length > 0) {
-                        setLiveReasoning(thinkContent);
-                        setCurrentReasoningMessageId(aiMessageId);
-                      }
+                        const now = Date.now();
+                        if (now - lastLiveReasoningUpdate > 120) { // throttle to ~8 updates/sec
+                          lastLiveReasoningUpdate = now;
+                          setLiveReasoning(thinkContent);
+                          setCurrentReasoningMessageId(aiMessageId);
+                        }
                       } else {
                       // For default chat, use content directly without think processing
                       if (aiMessageId) {
@@ -3981,8 +3989,8 @@ function TestChatComponent(props?: TestChatProps) {
             />
           )}
 
-          {/* Render the final answer only after we have non-empty content to avoid flicker during stream */}
-          {finalContent.trim().length > 0 &&
+          {/* Render the final answer only after streaming has finished to avoid flicker during stream */}
+          {!msg.isStreaming && finalContent.trim().length > 0 &&
             renderDefaultChatMessage({ ...msg, content: finalContent.replace(/<!-- think-block-\\d+ -->/g, '') }, i)
           }
         </motion.div>
