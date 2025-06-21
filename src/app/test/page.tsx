@@ -51,7 +51,6 @@ import { filterAIThinking } from '../../utils/content-filter';
 import ThinkingButton from '@/components/ThinkingButton';
 import { ArtifactViewer } from '@/components/ArtifactViewer';
 import { shouldTriggerArtifact, getArtifactPrompt, artifactSchema, validateArtifactData, createFallbackArtifact, createArtifactFromRawContent, extractTitleFromContent, type ArtifactData } from '@/utils/artifact-utils';
-import ReasoningDisplay from '@/components/ReasoningDisplay';
 import { uploadAndAnalyzeImage, uploadImageToSupabase, analyzeImageWithNVIDIA, ImageUploadResult } from '@/lib/image-upload-service';
 import toast from 'react-hot-toast';
 
@@ -3981,7 +3980,7 @@ function TestChatComponent(props?: TestChatProps) {
             />
           )}
 
-          <ReasoningDisplay data={finalContent.replace(/<!-- think-block-\d+ -->/g, '')} />
+          {renderDefaultChatMessage({ ...msg, content: finalContent.replace(/<!-- think-block-\d+ -->/g, '') }, i)}
         </motion.div>
       </React.Fragment>
     );
