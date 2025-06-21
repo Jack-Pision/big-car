@@ -1,5 +1,5 @@
 ﻿"use client";
-import React, { useState, useRef, useLayoutEffect, useEffect, useCallback } from "react";
+import React, { useState, useRef, useLayoutEffect, useEffect, useCallback, useMemo } from "react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -1831,6 +1831,32 @@ function TestChatComponent(props?: TestChatProps) {
     return true;
   };
 
+  // Debounce rapid database saves to prevent 409 conflicts
+  const saveQueue = useRef(new Map<string, NodeJS.Timeout>());
+
+  const debouncedSaveMessage = useCallback((sessionId: string, message: LocalMessage, delay: number = 100) => {
+    const key = `${sessionId}-${message.id}`;
+    
+    // Clear existing timeout for this message
+    if (saveQueue.current.has(key)) {
+      clearTimeout(saveQueue.current.get(key)!);
+    }
+    
+    // Set new timeout
+    const timeoutId = setTimeout(async () => {
+      try {
+        await saveMessageInstantly(sessionId, message);
+        console.log('[Debounced Save] Message saved:', message.id);
+      } catch (error) {
+        console.error('[Debounced Save] Failed to save message:', error);
+      } finally {
+        saveQueue.current.delete(key);
+      }
+    }, delay);
+    
+    saveQueue.current.set(key, timeoutId);
+  }, []);
+
   // Constants
   const BASE_HEIGHT = 48;
   const MAX_HEIGHT = BASE_HEIGHT * 3;
@@ -1841,13 +1867,17 @@ function TestChatComponent(props?: TestChatProps) {
   const inputPosition = isChatEmpty && !hasInteracted && !activeSessionId ? "center" : "bottom";
 
   // Smart buffering effect - reset buffers when new streaming starts
+  const hasStreamingMessage = useMemo(() => 
+    messages.some(msg => msg.isStreaming), 
+    [messages]
+  );
+
   useEffect(() => {
-    const streamingMessage = messages.find(msg => msg.isStreaming);
-    if (streamingMessage) {
+    if (hasStreamingMessage) {
       // Reset display buffer for new streaming message
       setDisplayBuffer('');
     }
-  }, [messages.map(m => m.isStreaming).join(',')]);
+  }, [hasStreamingMessage]);
 
   // Mouse event handlers for resizable divider
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
