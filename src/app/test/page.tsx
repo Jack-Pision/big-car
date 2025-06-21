@@ -55,6 +55,7 @@ import ReasoningDisplay from '@/components/ReasoningDisplay';
 import { uploadAndAnalyzeImage, uploadImageToSupabase, analyzeImageWithNVIDIA, ImageUploadResult } from '@/lib/image-upload-service';
 import toast from 'react-hot-toast';
 import { marked } from 'marked';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 // Define a type that includes all possible query types (including the ones in SCHEMAS and 'conversation')
 type QueryType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversation' | 'reasoning';
@@ -1781,6 +1782,9 @@ function TestChatComponent(props?: TestChatProps) {
   // Additional missing state variables
   const [showHeading, setShowHeading] = useState(true);
   
+  // Smart buffering for markdown streaming
+  const [displayBuffer, setDisplayBuffer] = useState('');
+  
   // Image upload state
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
@@ -1798,6 +1802,35 @@ function TestChatComponent(props?: TestChatProps) {
   const isInitialLoadRef = useRef(true);
   const sessionIdRef = useRef<string | null>(null); // Store session ID for immediate access
 
+  // Smart buffering for markdown streaming
+  const isCompleteMarkdownElement = (text: string): boolean => {
+    // Check if we have complete markdown elements
+    const lines = text.split('\n');
+    const lastLine = lines[lines.length - 1];
+    
+    // If text ends with incomplete bold/italic syntax
+    const incompleteFormatting = /\*[^*]*$|_[^_]*$|\*\*[^*]*\*?$|__[^_]*_?$/.test(text);
+    if (incompleteFormatting) return false;
+    
+    // If we're in the middle of a code block
+    const codeBlockMatches = text.match(/```/g);
+    if (codeBlockMatches && codeBlockMatches.length % 2 !== 0) return false;
+    
+    // If we're in the middle of a list item
+    if (lastLine.match(/^\s*[-*+]\s*$/) || lastLine.match(/^\s*\d+\.\s*$/)) return false;
+    
+    // If we're in the middle of a heading
+    if (lastLine.match(/^#+\s*$/)) return false;
+    
+    // If we're in the middle of a table
+    if (lastLine.includes('|') && !lastLine.trim().endsWith('|')) return false;
+    
+    // If we're in the middle of a blockquote
+    if (lastLine.match(/^>\s*$/)) return false;
+    
+    return true;
+  };
+
   // Constants
   const BASE_HEIGHT = 48;
   const MAX_HEIGHT = BASE_HEIGHT * 3;
@@ -1806,6 +1839,15 @@ function TestChatComponent(props?: TestChatProps) {
   // Computed values
   const isChatEmpty = messages.length === 0;
   const inputPosition = isChatEmpty && !hasInteracted && !activeSessionId ? "center" : "bottom";
+
+  // Smart buffering effect - reset buffers when new streaming starts
+  useEffect(() => {
+    const streamingMessage = messages.find(msg => msg.isStreaming);
+    if (streamingMessage) {
+      // Reset display buffer for new streaming message
+      setDisplayBuffer('');
+    }
+  }, [messages.map(m => m.isStreaming).join(',')]);
 
   // Mouse event handlers for resizable divider
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -3737,8 +3779,23 @@ function TestChatComponent(props?: TestChatProps) {
                   .trim();
                 const isStoppedMsg = cleanContent.trim() === '[Response stopped by user]';
                 
-                // Early rendering for streaming content to avoid markdown parse errors
+                // Smart buffering for streaming content
                 if (msg.isStreaming) {
+                  // cleanContent is the full content up to this point, not incremental
+                  const currentContent = cleanContent;
+                  
+                  // Only update display if we have complete markdown elements or significant content change
+                  let contentToDisplay = displayBuffer;
+                  if (isCompleteMarkdownElement(currentContent) || 
+                      currentContent.includes('\n\n') || 
+                      currentContent.length - displayBuffer.length > 50 ||
+                      currentContent.length < displayBuffer.length) { // Handle content reset
+                    setDisplayBuffer(currentContent);
+                    contentToDisplay = currentContent;
+                  } else {
+                    contentToDisplay = displayBuffer || currentContent; // Fallback to current if no display buffer
+                  }
+                  
                   return (
                     <motion.div
                       key={msg.id + '-stream-' + i}
@@ -3748,15 +3805,36 @@ function TestChatComponent(props?: TestChatProps) {
                       className="w-full text-left flex flex-col items-start ai-response-text mb-4 relative"
                       style={{ color: '#FCFCFC', maxWidth: '100%', overflowWrap: 'break-word', wordBreak: 'break-word' }}
                     >
-                      <div 
-                        className="research-output"
-                        style={{ color: '#FCFCFC' }}
-                                                 dangerouslySetInnerHTML={{ 
-                           __html: marked.parse(cleanContent, { 
-                             breaks: true 
-                           }) 
-                         }} 
-                      />
+                      <div className="w-full max-w-full overflow-hidden">
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          rehypePlugins={[rehypeRaw]}
+                          className="research-output"
+                          components={{
+                            h1: ({ children }) => (<h1 className="text-3xl font-bold mb-6 mt-8 border-b border-cyan-500/30 pb-3" style={{ color: '#FCFCFC' }}>{children}</h1>),
+                            h2: ({ children }) => (<h2 className="text-2xl font-semibold text-cyan-400 mb-4 mt-8 flex items-center gap-2">{children}</h2>),
+                            h3: ({ children }) => (<h3 className="text-xl font-semibold mb-3 mt-6" style={{ color: '#FCFCFC' }}>{children}</h3>),
+                            p: ({ children }) => (<p className="leading-relaxed mb-4 text-sm" style={{ color: '#FCFCFC' }}>{children}</p>),
+                            ul: ({ children }) => (<ul className="space-y-2 mb-4 ml-4">{children}</ul>),
+                            li: ({ children }) => (<li className="flex items-start gap-2" style={{ color: '#FCFCFC' }}><span className="text-cyan-400 mt-1.5 text-xs">●</span><span className="flex-1">{children}</span></li>),
+                            ol: ({ children }) => (<ol className="space-y-2 mb-4 ml-4 list-decimal list-inside">{children}</ol>),
+                            strong: ({ children }) => (<strong className="font-semibold" style={{ color: '#FCFCFC' }}>{children}</strong>),
+                            table: ({ children }) => (<div className="overflow-x-auto mb-6 max-w-full"><table className="w-full border-collapse border border-gray-600 rounded-lg" style={{ tableLayout: 'fixed', maxWidth: '100%' }}>{children}</table></div>),
+                            thead: ({ children }) => <thead className="bg-gray-800">{children}</thead>,
+                            th: ({ children }) => (<th className="border border-gray-600 px-4 py-3 text-left text-cyan-400 font-semibold" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>{children}</th>),
+                            td: ({ children }) => (<td className="border border-gray-600 px-4 py-3" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', color: '#FCFCFC' }}>{children}</td>),
+                            blockquote: ({ children }) => (<blockquote className="border-l-4 border-cyan-500 pl-4 py-2 rounded-r-lg mb-4 italic" style={{ background: 'transparent', color: '#FCFCFC' }}>{children}</blockquote>),
+                            code: ({ children, className }) => {
+                              const isInline = !className;
+                              return isInline
+                                ? (<code className="text-cyan-400 px-2 py-1 rounded text-xs font-mono" style={{ background: 'rgba(55, 65, 81, 0.5)' }}>{children}</code>)
+                                : (<code className="block p-4 rounded-lg overflow-x-auto text-xs font-mono mb-4" style={{ background: 'rgba(17, 24, 39, 0.8)', color: '#FCFCFC' }}>{children}</code>);
+                            }
+                          }}
+                        >
+                          {contentToDisplay}
+                        </ReactMarkdown>
+                      </div>
                     </motion.div>
                   );
                 }
