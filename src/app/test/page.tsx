@@ -3814,8 +3814,8 @@ function TestChatComponent(props?: TestChatProps) {
                           ) : (
                             finalContent.trim().length > 0 && (
                               <ReactMarkdown 
-                                remarkPlugins={[remarkGfm]} 
-                                rehypePlugins={[rehypeRaw]} 
+                                remarkPlugins={[remarkGfm, remarkMath]} 
+                                rehypePlugins={[rehypeRaw, rehypeKatex]} 
                                 className="research-output"
                                 components={{
                                   h1: ({ children }) => (<h1 className="text-3xl font-bold mb-6 mt-8 border-b border-cyan-500/30 pb-3" style={{ color: '#FCFCFC' }}>{children}</h1>),
