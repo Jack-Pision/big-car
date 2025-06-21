@@ -3983,9 +3983,14 @@ function TestChatComponent(props?: TestChatProps) {
             />
           )}
 
-          {/* Render the final answer only after streaming has finished to avoid flicker during stream */}
-          {!msg.isStreaming && finalContent.trim().length > 0 &&
-            renderDefaultChatMessage({ ...msg, content: finalContent.replace(/<!-- think-block-\\d+ -->/g, '') }, i)
+          {/* Render the final answer as it streams, using smart buffering to avoid incomplete markdown */}
+          {finalContent.trim().length > 0 &&
+            renderDefaultChatMessage({
+              ...msg,
+              content: msg.isStreaming
+                ? smartBufferStreamingContent(finalContent.replace(/<!-- think-block-\\d+ -->/g, ''))
+                : finalContent.replace(/<!-- think-block-\\d+ -->/g, '')
+            }, i)
           }
         </motion.div>
       </React.Fragment>
