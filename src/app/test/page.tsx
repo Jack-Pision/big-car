@@ -3360,18 +3360,18 @@ function TestChatComponent(props?: TestChatProps) {
           return <ReasoningDisplay data={msg.structuredContent as string} />;
         default:
           if (typeof msg.structuredContent === 'string') {
-            return <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="prose dark:prose-invert max-w-none">{msg.structuredContent}</ReactMarkdown>;
+            return <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex]} className="prose dark:prose-invert max-w-none">{msg.structuredContent}</ReactMarkdown>;
           }
-          return <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="prose dark:prose-invert max-w-none">{`Unsupported structured content: ${JSON.stringify(msg.structuredContent)}`}</ReactMarkdown>;
+          return <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex]} className="prose dark:prose-invert max-w-none">{`Unsupported structured content: ${JSON.stringify(msg.structuredContent)}`}</ReactMarkdown>;
       }
     } else if (msg.content) {
       const isDefaultChat = (msg.contentType === 'conversation' || msg.contentType === 'reasoning' || (msg.role === 'assistant' && !msg.contentType));
       if (isDefaultChat) {
-        // Display content using standard ReactMarkdown - think tags are handled separately by processThinkTags
+        // Display content using standard ReactMarkdown with math rendering support
         return (
           <ReactMarkdown 
-            remarkPlugins={[remarkGfm]} 
-            rehypePlugins={[rehypeRaw]} 
+            remarkPlugins={[remarkGfm, remarkMath]} 
+            rehypePlugins={[rehypeRaw, rehypeKatex]} 
             className="prose dark:prose-invert max-w-none default-chat-markdown"
           >
             {msg.content}
@@ -3398,7 +3398,7 @@ function TestChatComponent(props?: TestChatProps) {
           return <pre className="bg-neutral-900 text-white rounded p-4 overflow-x-auto"><code>{JSON.stringify(parsed, null, 2)}</code></pre>;
         } catch (e) {}
       }
-        return <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="prose dark:prose-invert max-w-none">{msg.content}</ReactMarkdown>;
+        return <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex]} className="prose dark:prose-invert max-w-none">{msg.content}</ReactMarkdown>;
     }
     return null;
   };
