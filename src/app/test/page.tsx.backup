@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import React, { useState, useRef, useLayoutEffect, useEffect, useCallback } from "react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -373,11 +373,11 @@ function postProcessAIChatResponse(text: string, isDefaultChat: boolean): string
     // 3. Fix cases where * is used for lists but might be confused with emphasis
     processedText = processedText.replace(/^(\s*)\*(?!\s)([^*]+)$/gm, '$1* $2');
     
-    // Remove circled numbers/letters and custom symbols (e.g., ?????)
-    processedText = processedText.replace(/[???????????????????????????????????????]/g, '');
+    // Remove circled numbers/letters and custom symbols (e.g., ⓵ⓇⓉⓐⓢ)
+    processedText = processedText.replace(/[⓵⓶⓷⓸⓹⓺⓻⓼⓽⓾ⓇⓉⓐⓢⓑⓒⓓⓔⓕⓖⓗⓘⓙⓚⓛⓜⓝⓞⓟⓠⓡⓢⓣⓤⓥⓦⓧⓨⓩ]/g, '');
     
-    // Collapse repeated numbers/dashes (e.g., 20K�20K�20K�50K => 20K�50K)
-    processedText = processedText.replace(/(\b\d+[KkMm]\b[�-])(?:\1)+/g, '$1');
+    // Collapse repeated numbers/dashes (e.g., 20K–20K–20K–50K => 20K–50K)
+    processedText = processedText.replace(/(\b\d+[KkMm]\b[–-])(?:\1)+/g, '$1');
     // Remove accidental number/letter repetition at the start of lines (e.g., 2 2 Solution: => 2 Solution:)
     processedText = processedText.replace(/^(\d+)\s+\1\s+/gm, '$1 ');
     // Remove accidental dash repetition (e.g., - - - Item => - Item)
@@ -1668,7 +1668,7 @@ Be conversational but direct - answer first, elaborate only if specifically aske
 const getThinkPrompt = (basePrompt: string) => {
   return `You are Tehom AI, an advanced assistant built for deep reasoning, clarity, and thoughtful analysis. You always aim to think before answering and explain complex ideas in a natural, human-like tone.
 
-You always use markdown formatting in your replies to organize your output cleanly � including headings, bullet points, code blocks, and emphasis when helpful.
+You always use markdown formatting in your replies to organize your output cleanly — including headings, bullet points, code blocks, and emphasis when helpful.
 
 Your responses should be thorough and well-reasoned. Take time to consider different aspects of the question, analyze relevant factors, and provide comprehensive answers with examples and explanations.
 
@@ -3360,7 +3360,7 @@ function TestChatComponent(props?: TestChatProps) {
           return renderArtifactPreviewCard(
             artifactData.title || 'Generated Document', 
             false, 
-            `${artifactData.metadata?.wordCount || 0} words � ${artifactData.metadata?.estimatedReadTime || '2 minutes'}`
+            `${artifactData.metadata?.wordCount || 0} words • ${artifactData.metadata?.estimatedReadTime || '2 minutes'}`
           );
         case 'reasoning':
           return <ReasoningDisplay data={msg.structuredContent as string} />;
@@ -3839,7 +3839,7 @@ function TestChatComponent(props?: TestChatProps) {
                                   h3: ({ children }) => (<h3 className="text-xl font-semibold mb-3 mt-6" style={{ color: '#FCFCFC' }}>{children}</h3>),
                                   p: ({ children }) => (<p className="leading-relaxed mb-4 text-sm" style={{ color: '#FCFCFC' }}>{children}</p>),
                                   ul: ({ children }) => (<ul className="space-y-2 mb-4 ml-4">{children}</ul>),
-                                  li: ({ children }) => (<li className="flex items-start gap-2" style={{ color: '#FCFCFC' }}><span className="text-cyan-400 mt-1.5 text-xs">?</span><span className="flex-1">{children}</span></li>),
+                                  li: ({ children }) => (<li className="flex items-start gap-2" style={{ color: '#FCFCFC' }}><span className="text-cyan-400 mt-1.5 text-xs">●</span><span className="flex-1">{children}</span></li>),
                                   ol: ({ children }) => (<ol className="space-y-2 mb-4 ml-4 list-decimal list-inside">{children}</ol>),
                                   strong: ({ children }) => (<strong className="font-semibold" style={{ color: '#FCFCFC' }}>{children}</strong>),
                                   table: ({ children }) => (<div className="overflow-x-auto mb-6 max-w-full scrollbar-thin"><table className="border-collapse" style={{ tableLayout: 'auto', width: 'auto' }}>{children}</table></div>),
@@ -3991,20 +3991,9 @@ function TestChatComponent(props?: TestChatProps) {
         className="flex-1 overflow-y-auto w-full flex flex-col items-center justify-center relative px-4 sm:px-4 md:px-8 lg:px-0 pt-8"
           style={{ paddingBottom: `${isChatEmpty && !hasInteracted ? 0 : inputBarHeight + EXTRA_GAP}px` }}
       >
-          {/* Mobile: Separate heading (centered) and input (bottom) */}
-          {/* Desktop: Combined wrapper with current behavior */}
-          
-          {/* Mobile-only: Centered heading */}
-          <div className={`md:hidden fixed left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 w-full max-w-3xl flex flex-col items-center justify-center z-40 transition-opacity duration-500 ${inputPosition === "center" ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
-            <h1 className="text-2xl sm:text-3xl font-normal text-gray-200 text-center whitespace-nowrap">
-              Seek and You'll find
-            </h1>
-          </div>
-
-          {/* Mobile-only: Bottom input */}
-          <div className="md:hidden fixed left-1/2 -translate-x-1/2 bottom-0 translate-y-0 w-full max-w-3xl flex flex-col items-center justify-center z-50 px-4 pb-4">
+          {/* Centered wrapper for heading and input */}
         <div
-            className={`hidden md:flex fixed left-1/2 -translate-x-1/2 w-full max-w-3xl flex-col items-center justify-center z-50 transition-all duration-500 ease-in-out ${
+            className={`fixed left-1/2 -translate-x-1/2 w-full max-w-3xl flex flex-col items-center justify-center z-50 transition-all duration-500 ease-in-out ${
               inputPosition === "center" ? "top-1/2 -translate-y-1/2" : "bottom-0 translate-y-0"
           }`}
         >
@@ -4043,7 +4032,7 @@ function TestChatComponent(props?: TestChatProps) {
                           onClick={() => removeImagePreview(index)}
                           className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
                       >
-                          �
+                          ×
                       </button>
               </div>
           ))}
