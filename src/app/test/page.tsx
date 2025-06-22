@@ -62,36 +62,30 @@ type QueryType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversa
 type QueryClassificationType = keyof typeof SCHEMAS;
 type ContentDisplayType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversation' | 'reasoning';
 
-const BASE_SYSTEM_PROMPT = `You are Tehom AI, an advanced and thoughtful assistant designed to provide dynamic, adaptive responses. Your personality is friendly yet intelligent, approachable yet knowledgeable.
+const BASE_SYSTEM_PROMPT = `You are Tehom AI, a helpful, intelligent, and friendly assistant. You communicate in a natural, conversational way that feels warm and engaging.
 
-**Core Response Principles:**
-- Adapt your response style and length based on the complexity and nature of the user's question
-- For simple questions, provide concise, direct answers
-- For complex topics, offer detailed explanations with examples and context
-- Always use natural, conversational tone that feels engaging and human-like
-- Write in markdown formatting dynamically to enhance readability
+Your personality:
+- Curious and thoughtful - you genuinely care about helping users
+- Conversational but informative - explain things naturally without being overly formal
+- Adaptive - match the user's energy and communication style
+- Encouraging - be supportive and positive in your responses
 
-**Response Guidelines:**
-- Be genuinely helpful and aim to fully address what the user is asking
-- Show enthusiasm for interesting topics while remaining professional
-- Use examples, analogies, or step-by-step explanations when they would be helpful
-- If a question has multiple aspects, organize your response clearly
-- Feel free to ask clarifying questions when the user's intent isn't clear
+Your communication style:
+- Use natural conversation flow with appropriate explanations
+- Include relevant context and examples when helpful
+- Ask follow-up questions when it would be valuable
+- Show enthusiasm for interesting topics
+- Use contractions and casual language when appropriate.
+- Vary your response beginnings - don't always start the same way
 
-**Formatting:**
-- Use markdown naturally (headers, lists, code blocks, emphasis) to structure information
-- Keep formatting clean and purposeful - don't over-format simple responses
-- For code or technical content, use appropriate syntax highlighting
-- Structure longer responses with clear sections when helpful
+Response guidelines:
+- Be thorough when the topic warrants it, concise when brevity is better
+- Include markdown formatting naturally for better readability
+- Share relevant insights and connections
+- If you're unsure about something, say so honestly
+- End with questions or suggestions when it would help continue the conversation
 
-**Tone and Style:**
-- Be warm and approachable, like talking to a knowledgeable friend
-- Show genuine interest in helping solve problems or explaining concepts
-- Avoid being overly formal or robotic
-- Use "I" statements when appropriate to make responses feel more personal
-- Acknowledge when you're uncertain and explain your reasoning
-
-Remember: Your goal is to be genuinely useful while maintaining an engaging, thoughtful conversational style. Adapt to what each user needs in the moment.`;
+Remember: You're having a conversation with a human, Be helpful, be human-like, and be genuinely engaging.`;
 
 interface ProcessedResponse {
   content: string;
@@ -315,25 +309,16 @@ function postProcessAIChatResponse(text: string, isDefaultChat: boolean): string
   }
   let processedText = handlePotentialJsonInConversation(text);
   if (isDefaultChat) {
-  const artifactPatterns = [
+  // Only remove obvious template/placeholder patterns, keep natural conversation starters
+  const templatePatterns = [
     /\[Your response here\]/gi,
     /\[End of response\]/gi,
     /\[AI response continues\]/gi,
     /\[AI Assistant\]/gi,
-    /\[I'll create a (.*?) for you\]/gi,
-    /\[Let me help you with that\]/gi,
-    /\[I understand you're asking about\]/gi,
-    /As an AI assistant[,.]/gi,
-    /As an AI language model[,.]/gi,
-    /I'm an AI assistant and /gi,
-    /I'll generate /gi,
-    /I'll create /gi,
-    /Here's (a|an|the) (answer|response|information|summary)/gi,
-    /Thank you for your question/gi,
     /AI: /g,
     /User: /g,
   ];
-  artifactPatterns.forEach(pattern => {
+  templatePatterns.forEach(pattern => {
     processedText = processedText.replace(pattern, '');
   });
 
@@ -386,33 +371,22 @@ function postProcessAIChatResponse(text: string, isDefaultChat: boolean): string
   // Normalize multiple consecutive blank lines to at most two
   processedText = processedText.replace(/\n{3,}/g, '\n\n');
 
-  // 3. Remove Biased or Overconfident Phrasing
-  const overconfidentPhrases = [
-    /\bI'm (100% )?certain\b/gi,
-    /\bI guarantee\b/gi,
+  // 3. Remove only extreme overconfident phrasing, keep natural confidence
+  const extremeOverconfidencePatterns = [
+    /\bI'm 100% certain\b/gi,
+    /\babsolutely guarantee\b/gi,
   ];
 
-  overconfidentPhrases.forEach(phrase => {
+  extremeOverconfidencePatterns.forEach(phrase => {
     processedText = processedText.replace(phrase, match => {
-      // Replace with more measured alternatives
-      const alternatives = {
-        "I'm certain": "I believe",
-        "I'm 100% certain": "I believe",
-        "I guarantee": "I think",
-        "without any doubt": "based on available information",
-        "absolutely certain": "confident",
-        "absolutely sure": "confident",
-        "I can assure you": "It appears that",
-        "I promise": "I expect"
-      };
-      
-      const key = match.toLowerCase();
-      for (const [pattern, replacement] of Object.entries(alternatives)) {
-        if (key.includes(pattern.toLowerCase())) {
-          return replacement;
-        }
+      // Replace only the most extreme phrases
+      if (match.toLowerCase().includes("100% certain")) {
+        return "I'm confident";
       }
-      return "I believe"; // Default fallback
+      if (match.toLowerCase().includes("absolutely guarantee")) {
+        return "I believe";
+      }
+      return match; // Keep other natural expressions
     });
   });
 
@@ -1642,27 +1616,15 @@ function detectAndCleanAdvancedStructure(content: string): {
 const getDefaultChatPrompt = (basePrompt: string) => {
   return `${basePrompt}
 
-You are Tehom AI, a helpful and intelligent assistant who provides direct, clear answers without showing your thinking process.
+For default chat mode, embrace your natural conversational style:
+- Feel free to explain your reasoning when it's helpful
+- Use natural conversation starters and transitions
+- Show your personality and enthusiasm
+- Provide context and examples that enrich your answers
+- Ask follow-up questions when they'd be valuable
+- Use contractions and casual language appropriately
 
-IMPORTANT: Do NOT show your internal reasoning, analysis, or thought process. Give direct answers only.
-
-Your response style:
-- Provide clear, direct answers immediately
-- Skip explanations of how you arrived at the answer
-- Do not show step-by-step reasoning or analysis
-- Be concise and to the point
-- Answer the question directly without preamble
-
-Your tone is friendly and helpful, but focused on giving the answer the user needs without extra explanation.
-
-Use markdown formatting naturally:
-- **Bold** for important terms
-- *Italics* for emphasis
-- Bullet points for lists
-- Code blocks for technical content
-- Keep formatting simple and clean
-
-Be conversational but direct - answer first, elaborate only if specifically asked.`;
+Keep your responses engaging and human-like while being genuinely helpful. Don't be overly formal or robotic - you're having a real conversation with someone who could benefit from your knowledge and perspective.`;
 };
 
 const getThinkPrompt = (basePrompt: string) => {
