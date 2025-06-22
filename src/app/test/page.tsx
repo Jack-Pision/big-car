@@ -3267,7 +3267,7 @@ function TestChatComponent(props?: TestChatProps) {
   // Enhanced artifact preview card component (Claude-like)
   const renderArtifactPreviewCard = (title: string, isStreaming: boolean, progress: string) => (
     <div 
-      className="rounded-2xl p-4 cursor-pointer transition-all duration-300 ease-in-out shadow-lg"
+      className="rounded-2xl p-3 cursor-pointer transition-all duration-300 ease-in-out shadow-lg"
       style={{ 
         backgroundColor: '#1a1a1a',
         borderColor: '#333333',
@@ -3280,7 +3280,7 @@ function TestChatComponent(props?: TestChatProps) {
         }
       }}
     >
-      <div className="flex items-center gap-3 mb-3">
+      <div className="flex items-center gap-3">
         <div className="p-2 bg-cyan-500/20 rounded-lg flex-shrink-0">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
@@ -3289,7 +3289,7 @@ function TestChatComponent(props?: TestChatProps) {
           </svg>
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-lg truncate" style={{ color: '#FCFCFC' }}>{title}</h3>
+          <h3 className="text-lg truncate" style={{ color: '#FCFCFC' }}>{title}</h3>
           <div className="flex items-center gap-4 text-xs text-gray-400 mt-1">
             <span>Document</span>
             {isStreaming && (
@@ -3301,37 +3301,6 @@ function TestChatComponent(props?: TestChatProps) {
           </div>
         </div>
       </div>
-      
-      {progress && (
-        <div className="text-xs mb-3 rounded p-2" style={{ 
-          color: '#FCFCFC',
-          backgroundColor: 'rgba(51, 51, 51, 0.5)'
-        }}>
-          {progress}
-        </div>
-      )}
-      
-      {isStreaming ? (
-        <div className="bg-cyan-500 px-4 py-2 rounded-lg font-medium text-center" style={{ color: '#FCFCFC' }}>
-          <div className="flex items-center justify-center gap-2">
-            <div className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: '#FCFCFC', borderTopColor: 'transparent' }}></div>
-            <span>Creating artifact...</span>
-          </div>
-        </div>
-      ) : (
-        <div className="px-4 py-2 rounded-lg font-medium text-center transition-all duration-200 hover:opacity-80" style={{ 
-          backgroundColor: '#333333',
-          color: '#FCFCFC'
-        }}>
-          <div className="flex items-center justify-center gap-2">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-              <circle cx="12" cy="12" r="3"></circle>
-            </svg>
-            <span>View in Artifact Viewer</span>
-          </div>
-        </div>
-      )}
     </div>
   );
 
