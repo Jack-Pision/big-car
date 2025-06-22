@@ -4517,7 +4517,7 @@ function TestChatComponent(props?: TestChatProps) {
       </div>
 
           {/* Conversation and other UI below */}
-          <div className="w-full max-w-3xl mx-auto flex flex-col gap-4 items-center justify-center z-10 pt-12 pb-4">
+          <div className={`w-full max-w-3xl mx-auto flex flex-col gap-4 items-center justify-center z-10 pt-12 pb-4 ${isArtifactMode ? 'px-4 sm:px-6' : ''}`}>
             {messages.map((msg, i) => {
               // Assistant responses: artifacts first, then search results, then default chat
               if (msg.role === 'assistant') {
