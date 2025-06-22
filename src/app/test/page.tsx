@@ -4299,9 +4299,16 @@ function TestChatComponent(props?: TestChatProps) {
 
           {/* Desktop: Combined wrapper with current behavior */}
           <div
-            className={`hidden md:flex fixed left-1/2 -translate-x-1/2 w-full max-w-3xl flex-col items-center justify-center z-50 transition-all duration-500 ease-in-out ${
-              inputPosition === "center" ? "top-1/2 -translate-y-1/2" : "bottom-0 translate-y-0"
+            className={`hidden md:flex fixed flex-col items-center z-50 transition-all duration-500 ease-in-out ${
+              inputPosition === "center" ? "top-1/2" : "bottom-0"
             }`}
+            style={{
+              left: isArtifactMode ? '0' : '50%',
+              width: isArtifactMode ? `${leftPaneWidth}%` : '100%',
+              transform: isArtifactMode
+                ? (inputPosition === 'center' ? 'translateY(-50%)' : 'translateY(0)')
+                : (inputPosition === 'center' ? 'translate(-50%, -50%)' : 'translateX(-50%)'),
+            }}
           >
             {/* Heading with fade animation - show on desktop when centered */}
             <h1 className={`text-2xl sm:text-3xl md:text-4xl lg:text-[3.2rem] font-normal text-gray-200 text-center mb-3 md:mb-6 transition-opacity duration-500 whitespace-nowrap ${inputPosition === "center" ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
