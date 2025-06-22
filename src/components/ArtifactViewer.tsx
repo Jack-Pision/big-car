@@ -75,21 +75,8 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({ artifact, onClos
   return (
     <div className="h-full bg-[#161618] flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-700 bg-[#1a1a1c] flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-cyan-500/20 rounded-lg">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-              <line x1="9" y1="9" x2="15" y2="9"></line>
-              <line x1="9" y1="13" x2="15" y2="13"></line>
-            </svg>
-          </div>
-          <div>
-            <h2 className="text-lg font-semibold text-gray-100">{artifactData.title}</h2>
-          </div>
-        </div>
-        
-        {/* Version selector & actions */}
+      <div className="flex items-center justify-end p-4 border-b border-gray-800 bg-[#1a1a1c] flex-shrink-0">
+        {/* Actions only */}
         <div className="flex items-center gap-2">
           {/* Version selector (only if multiple versions are provided) */}
           {versions && versions.length > 1 && (
