@@ -3839,7 +3839,7 @@ function TestChatComponent(props?: TestChatProps) {
                                   h3: ({ children }) => (<h3 className="text-xl font-semibold mb-3 mt-6" style={{ color: '#FCFCFC' }}>{children}</h3>),
                                   p: ({ children }) => (<p className="leading-relaxed mb-4 text-sm" style={{ color: '#FCFCFC' }}>{children}</p>),
                                   ul: ({ children }) => (<ul className="space-y-2 mb-4 ml-4">{children}</ul>),
-                                  li: ({ children }) => (<li className="flex items-start gap-2" style={{ color: '#FCFCFC' }}><span className="text-cyan-400 mt-1.5 text-xs">?</span><span className="flex-1">{children}</span></li>),
+                                  li: ({ children }) => (<li className="flex items-start gap-2" style={{ color: '#FCFCFC' }}><span className="text-cyan-400 mt-1.5 text-xs">●</span><span className="flex-1">{children}</span></li>),
                                   ol: ({ children }) => (<ol className="space-y-2 mb-4 ml-4 list-decimal list-inside">{children}</ol>),
                                   strong: ({ children }) => (<strong className="font-semibold" style={{ color: '#FCFCFC' }}>{children}</strong>),
                                   table: ({ children }) => (<div className="overflow-x-auto mb-6 max-w-full scrollbar-thin"><table className="border-collapse" style={{ tableLayout: 'auto', width: 'auto' }}>{children}</table></div>),
