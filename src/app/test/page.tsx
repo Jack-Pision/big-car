@@ -50,7 +50,7 @@ import { Message as ConversationMessage } from "@/utils/conversation-context";
 import { filterAIThinking } from '../../utils/content-filter';
 import ThinkingButton from '@/components/ThinkingButton';
 import { ArtifactViewer } from '@/components/ArtifactViewer';
-import { getArtifactPrompt, artifactSchema, validateArtifactData, createFallbackArtifact, createArtifactFromRawContent, extractTitleFromContent, type ArtifactData } from '@/utils/artifact-utils';
+import { shouldTriggerArtifact, getArtifactPrompt, artifactSchema, validateArtifactData, createFallbackArtifact, createArtifactFromRawContent, extractTitleFromContent, type ArtifactData } from '@/utils/artifact-utils';
 import { uploadAndAnalyzeImage, uploadImageToSupabase, analyzeImageWithNVIDIA, ImageUploadResult } from '@/lib/image-upload-service';
 import toast from 'react-hot-toast';
 import ReasoningDisplay from '@/components/ReasoningDisplay';
@@ -62,7 +62,30 @@ type QueryType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversa
 type QueryClassificationType = keyof typeof SCHEMAS;
 type ContentDisplayType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversation' | 'reasoning';
 
-const BASE_SYSTEM_PROMPT = `You are Tehom AI, a helpful, intelligent, and friendly assistant. Speak naturally, with warmth and clarity — like a curious, thoughtful guide. Be conversational, informative, and adapt to the user's tone. Always use markdown for output. Use examples, structure responses clearly, and keep a human touch. Ask follow-up questions, share useful insights, and stay positive. Be concise or detailed as needed. If unsure, be honest. Your goal is to make the user feel understood, supported, and genuinely engaged.`;
+const BASE_SYSTEM_PROMPT = `You are Tehom AI, a helpful, intelligent, and friendly assistant. You communicate in a natural, conversational way that feels warm and engaging.
+
+Your personality:
+- Curious and thoughtful - you genuinely care about helping users
+- Conversational but informative - explain things naturally without being overly formal
+- Adaptive - match the user's energy and communication style
+- Encouraging - be supportive and positive in your responses
+
+Your communication style:
+- Use natural conversation flow with appropriate explanations
+- Include relevant context and examples when helpful
+- Ask follow-up questions when it would be valuable
+- Show enthusiasm for interesting topics
+- Use contractions and casual language when appropriate.
+- Vary your response beginnings - don't always start the same way
+
+Response guidelines:
+- Be thorough when the topic warrants it, concise when brevity is better
+- Include markdown formatting naturally for better readability
+- Share relevant insights and connections
+- If you're unsure about something, say so honestly
+- End with questions or suggestions when it would help continue the conversation
+
+Remember: You're having a conversation with a human, Be helpful, be human-like, and be genuinely engaging.`;
 
 interface ProcessedResponse {
   content: string;
@@ -286,16 +309,25 @@ function postProcessAIChatResponse(text: string, isDefaultChat: boolean): string
   }
   let processedText = handlePotentialJsonInConversation(text);
   if (isDefaultChat) {
-  // Only remove obvious template/placeholder patterns, keep natural conversation starters
-  const templatePatterns = [
+  const artifactPatterns = [
     /\[Your response here\]/gi,
     /\[End of response\]/gi,
     /\[AI response continues\]/gi,
     /\[AI Assistant\]/gi,
+    /\[I'll create a (.*?) for you\]/gi,
+    /\[Let me help you with that\]/gi,
+    /\[I understand you're asking about\]/gi,
+    /As an AI assistant[,.]/gi,
+    /As an AI language model[,.]/gi,
+    /I'm an AI assistant and /gi,
+    /I'll generate /gi,
+    /I'll create /gi,
+    /Here's (a|an|the) (answer|response|information|summary)/gi,
+    /Thank you for your question/gi,
     /AI: /g,
     /User: /g,
   ];
-  templatePatterns.forEach(pattern => {
+  artifactPatterns.forEach(pattern => {
     processedText = processedText.replace(pattern, '');
   });
 
@@ -348,22 +380,33 @@ function postProcessAIChatResponse(text: string, isDefaultChat: boolean): string
   // Normalize multiple consecutive blank lines to at most two
   processedText = processedText.replace(/\n{3,}/g, '\n\n');
 
-  // 3. Remove only extreme overconfident phrasing, keep natural confidence
-  const extremeOverconfidencePatterns = [
-    /\bI'm 100% certain\b/gi,
-    /\babsolutely guarantee\b/gi,
+  // 3. Remove Biased or Overconfident Phrasing
+  const overconfidentPhrases = [
+    /\bI'm (100% )?certain\b/gi,
+    /\bI guarantee\b/gi,
   ];
 
-  extremeOverconfidencePatterns.forEach(phrase => {
+  overconfidentPhrases.forEach(phrase => {
     processedText = processedText.replace(phrase, match => {
-      // Replace only the most extreme phrases
-      if (match.toLowerCase().includes("100% certain")) {
-        return "I'm confident";
+      // Replace with more measured alternatives
+      const alternatives = {
+        "I'm certain": "I believe",
+        "I'm 100% certain": "I believe",
+        "I guarantee": "I think",
+        "without any doubt": "based on available information",
+        "absolutely certain": "confident",
+        "absolutely sure": "confident",
+        "I can assure you": "It appears that",
+        "I promise": "I expect"
+      };
+      
+      const key = match.toLowerCase();
+      for (const [pattern, replacement] of Object.entries(alternatives)) {
+        if (key.includes(pattern.toLowerCase())) {
+          return replacement;
+        }
       }
-      if (match.toLowerCase().includes("absolutely guarantee")) {
-        return "I believe";
-      }
-      return match; // Keep other natural expressions
+      return "I believe"; // Default fallback
     });
   });
 
@@ -1593,15 +1636,27 @@ function detectAndCleanAdvancedStructure(content: string): {
 const getDefaultChatPrompt = (basePrompt: string) => {
   return `${basePrompt}
 
-For default chat mode, embrace your natural conversational style:
-- Feel free to explain your reasoning when it's helpful
-- Use natural conversation starters and transitions
-- Show your personality and enthusiasm
-- Provide context and examples that enrich your answers
-- Ask follow-up questions when they'd be valuable
-- Use contractions and casual language appropriately
+You are Tehom AI, a helpful and intelligent assistant who provides direct, clear answers without showing your thinking process.
 
-Keep your responses engaging and human-like while being genuinely helpful. Don't be overly formal or robotic - you're having a real conversation with someone who could benefit from your knowledge and perspective.`;
+IMPORTANT: Do NOT show your internal reasoning, analysis, or thought process. Give direct answers only.
+
+Your response style:
+- Provide clear, direct answers immediately
+- Skip explanations of how you arrived at the answer
+- Do not show step-by-step reasoning or analysis
+- Be concise and to the point
+- Answer the question directly without preamble
+
+Your tone is friendly and helpful, but focused on giving the answer the user needs without extra explanation.
+
+Use markdown formatting naturally:
+- **Bold** for important terms
+- *Italics* for emphasis
+- Bullet points for lists
+- Code blocks for technical content
+- Keep formatting simple and clean
+
+Be conversational but direct - answer first, elaborate only if specifically asked.`;
 };
 
 const getThinkPrompt = (basePrompt: string) => {
@@ -2368,7 +2423,7 @@ function TestChatComponent(props?: TestChatProps) {
     }
 
     // Check if we're in artifact mode
-    if (activeButton === 'artifact') {
+    if (activeButton === 'artifact' || shouldTriggerArtifact(input.trim())) {
       // Ensure we have an active session using consolidated function
       const currentActiveSessionId = await ensureActiveSession(input.trim());
 
@@ -2613,13 +2668,16 @@ function TestChatComponent(props?: TestChatProps) {
     try {
     if (!input.trim() || isLoading || isAiResponding) return;
 
-    if (!hasInteracted) setHasInteracted(true);
-    setIsAiResponding(true);
-    setIsLoading(true);
-    if (showHeading) setShowHeading(false);
+    // Ensure we have an active session using consolidated function
+    const currentActiveSessionId = await ensureActiveSession(input.trim() || undefined);
 
-    // Start session management in background - don't block UI
-    const sessionPromise = ensureActiveSession(input.trim() || undefined);
+    if (!hasInteracted) setHasInteracted(true);
+      
+
+
+    setIsAiResponding(true);
+      setIsLoading(true);
+    if (showHeading) setShowHeading(false);
 
     // Always use conversation type for default chat instead of classifying
     const queryType = "conversation";
@@ -2647,14 +2705,15 @@ function TestChatComponent(props?: TestChatProps) {
     setMessages((prev) => [...prev, userMessageForDisplay]);
     setInput("");
     
-    // BACKGROUND SAVE: Save user message without blocking
-    sessionPromise.then(sessionId => {
-      saveMessageInstantly(sessionId, userMessageForDisplay).then(() => {
+    // INSTANT SAVE: Save user message immediately to prevent loss during race conditions
+    if (currentActiveSessionId) {
+      try {
+        await saveMessageInstantly(currentActiveSessionId, userMessageForDisplay);
         console.log('[Default Chat] User message saved instantly');
-      }).catch(error => {
+      } catch (error) {
         console.error('[Default Chat] Failed to instantly save user message:', error);
-      });
-    });
+      }
+    }
     
     // Clear any previous thinking state - each query gets fresh state
     setCurrentThinkingMessageId(null);
@@ -2683,17 +2742,18 @@ function TestChatComponent(props?: TestChatProps) {
       isProcessed: false
     };
     
-    // Add placeholder AI message immediately and save in background
+    // Add placeholder AI message immediately and save
     setMessages((prev) => [...prev, placeholderAiMessage]);
     
-    // BACKGROUND SAVE: Save AI placeholder message without blocking
-    sessionPromise.then(sessionId => {
-      saveMessageInstantly(sessionId, placeholderAiMessage).then(() => {
+    // INSTANT SAVE: Save AI placeholder message immediately
+    if (currentActiveSessionId) {
+      try {
+        await saveMessageInstantly(currentActiveSessionId, placeholderAiMessage);
         console.log('[Default Chat] AI placeholder message saved instantly');
-      }).catch(error => {
+      } catch (error) {
         console.error('[Default Chat] Failed to instantly save AI placeholder message:', error);
-      });
-    });
+      }
+    }
     
 
 
@@ -2724,15 +2784,13 @@ function TestChatComponent(props?: TestChatProps) {
         true
       );
 
-      const isReasoningMode = activeButton === 'reasoning';
-
       const apiPayload: any = {
         messages: formattedMessages,
-        temperature: isReasoningMode ? 0.7 : 0.7, // Both modes use 0.7 now
-        max_tokens: isReasoningMode ? 15000 : 6000,
-        top_p: isReasoningMode ? 0.9 : 0.5,
-        frequency_penalty: isReasoningMode ? 0.2 : 0.1,
-        presence_penalty: isReasoningMode ? 0.2 : 0.1,
+        temperature: 0.7,        // OPTIMIZATION 3: Increased from 0.6 for faster initial responses
+        max_tokens: activeButton === 'reasoning' ? 15000 : 4096, // 15,000 tokens for Think mode, 4096 for default chat
+        top_p: 0.9,
+        frequency_penalty: 0.2,  // OPTIMIZATION 3: Decreased from 0.5 
+        presence_penalty: 0.2,   // OPTIMIZATION 3: Decreased from 0.8
       };
       
 
@@ -2830,11 +2888,11 @@ function TestChatComponent(props?: TestChatProps) {
       setMessages((prev) => {
         const updatedMessages = [...prev, aiMsg];
         // INSTANT SAVE: Save structured query response immediately
-        sessionPromise.then(sessionId => {
-          saveMessageInstantly(sessionId, aiMsg).catch(error => {
+        if (currentActiveSessionId) {
+          saveMessageInstantly(currentActiveSessionId, aiMsg).catch(error => {
             console.error('[Structured Query] Failed to instantly save AI message:', error);
           });
-        });
+        }
         return updatedMessages;
       });
       } else { 
@@ -2896,11 +2954,11 @@ function TestChatComponent(props?: TestChatProps) {
                         const now = Date.now();
                         if (now - lastLiveReasoningUpdate > 120) { // throttle to ~8 updates/sec
                           lastLiveReasoningUpdate = now;
-                          setLiveReasoning(thinkContent);
-                          setCurrentReasoningMessageId(aiMessageId);
+                        setLiveReasoning(thinkContent);
+                        setCurrentReasoningMessageId(aiMessageId);
                         }
                       }
-                    } else {
+                      } else {
                       // For default chat, use content directly without think processing
                       if (aiMessageId) {
                         setMessages((prev) => {
@@ -3726,8 +3784,9 @@ function TestChatComponent(props?: TestChatProps) {
                   .trim();
                 const isStoppedMsg = cleanContent.trim() === '[Response stopped by user]';
                 
-                // HYBRID APPROACH: Apply smart buffering only for non-conversation content types
-                const processedContent = msg.isStreaming && msg.contentType !== 'conversation'
+                // Industry standard approach: Single ReactMarkdown renderer with smart buffering
+                // Apply smart buffering for streaming content to prevent layout issues
+                const processedContent = msg.isStreaming 
                   ? smartBufferStreamingContent(cleanContent)
                   : cleanContent;
                 
@@ -3764,11 +3823,11 @@ function TestChatComponent(props?: TestChatProps) {
                             <TypingIndicator />
                           ) : (
                             finalContent.trim().length > 0 && (
-                              <ReactMarkdown 
+                            <ReactMarkdown 
                                 remarkPlugins={[remarkGfm, remarkMath]} 
                                 rehypePlugins={[rehypeRaw, rehypeKatex]} 
-                                className="research-output"
-                                components={{
+                              className="research-output"
+                              components={{
                                   h1: ({ children }) => (<h1 className="text-xl md:text-3xl font-bold mb-6 mt-8 border-b border-cyan-500/30 pb-3" style={{ color: '#FCFCFC' }}>{children}</h1>),
                                   h2: ({ children }) => (<h2 className="text-lg md:text-2xl font-semibold mb-4 mt-8 flex items-center gap-2" style={{ color: '#FCFCFC' }}>{children}</h2>),
                                   h3: ({ children }) => (<h3 className="text-base md:text-xl font-semibold mb-3 mt-6" style={{ color: '#FCFCFC' }}>{children}</h3>),
@@ -3783,7 +3842,7 @@ function TestChatComponent(props?: TestChatProps) {
                                   td: ({ children }) => (<td className="px-3 md:px-4 py-2 md:py-3 border-b border-gray-700 text-xs md:text-sm" style={{ color: '#FCFCFC' }}>{children}</td>),
                                   blockquote: ({ children }) => (<blockquote className="border-l-4 border-cyan-500 pl-4 py-2 rounded-r-lg mb-4 italic" style={{ background: 'transparent', color: '#FCFCFC' }}>{children}</blockquote>),
                                   code: ({ children, className }) => {
-                                    const isInline = !className;
+                                  const isInline = !className;
                                     return isInline
                                       ? (<code className="px-2 py-1 rounded text-xs font-mono" style={{ background: 'rgba(55, 65, 81, 0.5)', color: '#FCFCFC' }}>{children}</code>)
                                       : (<code className="block p-4 rounded-lg overflow-x-auto text-xs font-mono mb-4" style={{ background: 'rgba(17, 24, 39, 0.8)', color: '#FCFCFC' }}>{children}</code>);
@@ -3791,7 +3850,7 @@ function TestChatComponent(props?: TestChatProps) {
                                 }}
                               >
                                 {finalContent}
-                              </ReactMarkdown>
+                            </ReactMarkdown>
                             )
                           )}
                         </div>
@@ -3866,7 +3925,7 @@ function TestChatComponent(props?: TestChatProps) {
     const mainMarkdownContent = cleanContent.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
     const finalContent = makeCitationsClickable(mainMarkdownContent, msg.webSources || []);
 
-    return (
+                return (
       <React.Fragment key={msg.id + '-reasoning-' + i}>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -3932,8 +3991,8 @@ function TestChatComponent(props?: TestChatProps) {
           {/* Mobile-only: Centered heading */}
           <div className={`md:hidden fixed left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 w-full max-w-3xl flex flex-col items-center justify-center z-40 transition-opacity duration-500 ${inputPosition === "center" ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
             <h1 className="text-2xl sm:text-3xl font-normal text-gray-200 text-center whitespace-nowrap">
-              Seek and You'll find
-            </h1>
+            Seek and You'll find
+          </h1>
           </div>
 
           {/* Mobile-only: Bottom input */}
@@ -3961,27 +4020,27 @@ function TestChatComponent(props?: TestChatProps) {
                             <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
                           </div>
                         )}
-                        <button
-                          type="button"
+                      <button
+                        type="button"
                           onClick={() => removeImagePreview(index)}
                           className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
-                        >
+                      >
                           ×
-                        </button>
-                      </div>
-                    ))}
+                      </button>
+              </div>
+          ))}
                   </div>
-                </div>
+        </div>
               )}
 
               {/* Input area: textarea on top, actions below */}
               <div className="flex flex-col w-full gap-2 items-center">
                 {/* Textarea row */}
                 <div className="w-full">
-                  <textarea
-                    ref={textareaRef}
-                    value={input}
-                    onChange={e => setInput(e.target.value)}
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={e => setInput(e.target.value)}
                     onKeyDown={e => {
                       if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.altKey) {
                         e.preventDefault();
@@ -3990,8 +4049,8 @@ function TestChatComponent(props?: TestChatProps) {
                     }}
                     className="w-full border-none outline-none bg-transparent px-2 py-1 text-gray-200 text-sm placeholder-gray-500 resize-none overflow-auto self-center rounded-lg"
                     placeholder="Ask anything..."
-                    disabled={isLoading}
-                    rows={1}
+            disabled={isLoading}
+            rows={1}
                     style={{ maxHeight: '96px', minHeight: '40px', lineHeight: '1.5' }}
                   />
                 </div>
@@ -4079,7 +4138,7 @@ function TestChatComponent(props?: TestChatProps) {
                   </div>
 
                   {/* Right group: Plus, Send */}
-                  <div className="flex flex-row gap-2 items-center ml-auto">
+                  <div className="flex flex-row gap-2 items-center ml-auto pr-4">
                     {/* Plus button */}
                     <button 
                       type="button" 
@@ -4287,7 +4346,7 @@ function TestChatComponent(props?: TestChatProps) {
                         <path d="M15.7 15.7c4.52-4.54 6.54-9.87 4.5-11.9-2.03-2.04-7.36-.02-11.9 4.5-4.52 4.54-6.54 9.87-4.5 11.9 2.03 2.04 7.36.02 11.9-4.5z"/>
                       </svg>
                     </button>
-                  </div>
+              </div>
 
                   {/* Right group: Plus, Send */}
                   <div className="flex flex-row gap-2 items-center ml-auto pr-4">
@@ -4306,12 +4365,12 @@ function TestChatComponent(props?: TestChatProps) {
                       {isUploadingImage ? (
                         <div className="w-4 h-4 border-2 border-gray-300 border-t-transparent rounded-full animate-spin"></div>
                       ) : (
-                        <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                          <line x1="12" y1="5" x2="12" y2="19" />
-                          <line x1="5" y1="12" x2="19" y2="12" />
-                        </svg>
+                      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
                       )}
-                    </button>
+            </button>
                     
                     {/* Hidden file input */}
                     <input
@@ -4323,7 +4382,7 @@ function TestChatComponent(props?: TestChatProps) {
                     />
 
                     {/* Send/Stop button */}
-                    <button
+            <button
                       type={isAiResponding ? "button" : "submit"}
                       className="rounded-full bg-gray-200 hover:bg-white transition flex items-center justify-center flex-shrink-0"
                       style={{ width: "36px", height: "36px", pointerEvents: isLoading && !isAiResponding ? 'none' : 'auto' }}
@@ -4334,18 +4393,18 @@ function TestChatComponent(props?: TestChatProps) {
                       {isAiResponding ? (
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                           <rect x="7" y="7" width="10" height="10" rx="2" fill="#374151" />
-                        </svg>
+              </svg>
                       ) : (
                         <svg width="16" height="16" fill="none" stroke="#374151" strokeWidth="2.5" viewBox="0 0 24 24">
                           <path d="M12 19V5M5 12l7-7 7 7" />
                         </svg>
                       )}
-                    </button>
+            </button>
                   </div>
                 </div>
-              </div>
-            </form>
           </div>
+        </form>
+      </div>
 
           {/* Conversation and other UI below */}
           <div className="w-full max-w-3xl mx-auto flex flex-col gap-4 items-center justify-center z-10 pt-12 pb-4">
