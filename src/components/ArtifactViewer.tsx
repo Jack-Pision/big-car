@@ -129,8 +129,8 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({ artifact, onClos
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent p-6">
-        <div className="max-w-none">
+      <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent px-8 py-6 lg:px-16 xl:px-24">
+        <div className="max-w-4xl mx-auto">
           {!artifactData.content ? (
             // Show streaming state when content is empty
             <div className="flex flex-col items-center justify-center h-64">
