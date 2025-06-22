@@ -3514,46 +3514,35 @@ function TestChatComponent(props?: TestChatProps) {
         {msg.structuredContent ? (
           <>
             {/* Completed Artifact with Preview Card */}
-            <div className="w-full rounded-2xl border shadow-lg p-6 mb-2" style={{ backgroundColor: '#1a1a1a', borderColor: '#333333' }}>
-              <div className="flex items-center gap-3 mb-3">
-                <div className="p-2 bg-blue-600 rounded-lg">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <div 
+              className="w-full rounded-2xl border shadow-lg p-3 mb-2 cursor-pointer transition-all duration-300 ease-in-out" 
+              style={{ backgroundColor: '#1a1a1a', borderColor: '#333333' }}
+              onClick={() => {
+                // Clean the structured content before passing to artifact viewer
+                const cleanedArtifact = {
+                  ...msg.structuredContent,
+                  content: cleanArtifactContent(msg.structuredContent.content)
+                };
+                setArtifactContent(cleanedArtifact);
+                setIsArtifactMode(true);
+              }}
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-cyan-500/20 rounded-lg flex-shrink-0">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
                     <line x1="9" y1="9" x2="15" y2="9"></line>
                     <line x1="9" y1="13" x2="15" y2="13"></line>
                   </svg>
-              </div>
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-white">{msg.structuredContent.title}</h3>
-                  <div className="flex items-center gap-4 text-xs text-gray-400">
-                    <span className="capitalize">{msg.structuredContent.type}</span>
-                    <span>{msg.structuredContent.metadata.wordCount} words</span>
-                    <span>{msg.structuredContent.metadata.estimatedReadTime}</span>
-        </div>
                 </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-lg truncate" style={{ color: '#FCFCFC' }}>{msg.structuredContent.title}</h3>
+                  <div className="flex items-center gap-4 text-xs text-gray-400 mt-1">
+                    <span>Document</span>
+                  </div>
                 </div>
-
-              <p className="text-gray-300 text-xs mb-4">{cleanContent}</p>
-              
-                    <button
-                onClick={() => {
-                  // Clean the structured content before passing to artifact viewer
-                  const cleanedArtifact = {
-                    ...msg.structuredContent,
-                    content: cleanArtifactContent(msg.structuredContent.content)
-                  };
-                  setArtifactContent(cleanedArtifact);
-                  setIsArtifactMode(true);
-                }}
-                className="w-full bg-white hover:bg-gray-100 text-gray-900 px-4 py-2 rounded-2xl shadow-lg transition-colors flex items-center justify-center gap-2"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                  <circle cx="12" cy="12" r="3"></circle>
-                      </svg>
-                View in Artifact Viewer
-                    </button>
               </div>
+            </div>
 
             {/* Action buttons for completed artifact */}
             {msg.isProcessed && (
@@ -3628,66 +3617,51 @@ function TestChatComponent(props?: TestChatProps) {
         ) : (
           <>
             {/* Streaming Artifact - show clean content in artifact viewer style */}
-            <div className="w-full rounded-2xl border shadow-lg p-6 mb-2" style={{ backgroundColor: '#1a1a1a', borderColor: '#333333' }}>
-              <div className="flex items-center gap-3 mb-3">
-                <div className="p-2 bg-blue-600 rounded-lg">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <div 
+              className="w-full rounded-2xl border shadow-lg p-3 mb-2 cursor-pointer transition-all duration-300 ease-in-out" 
+              style={{ backgroundColor: '#1a1a1a', borderColor: '#333333' }}
+              onClick={() => {
+                // For streaming artifacts, create temporary structured content with cleaned content
+                const tempArtifact = {
+                  title: msg.title || "Generated Content",
+                  type: "document" as const,
+                  content: cleanContent,
+                  metadata: {
+                    wordCount: cleanContent.split(' ').length,
+                    estimatedReadTime: `${Math.ceil(cleanContent.split(' ').length / 200)} min read`,
+                    category: "", // placeholder category
+                    tags: [] // placeholder tags
+                  }
+                };
+                setArtifactContent(tempArtifact);
+                setIsArtifactMode(true);
+              }}
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-cyan-500/20 rounded-lg flex-shrink-0">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
                     <line x1="9" y1="9" x2="15" y2="9"></line>
                     <line x1="9" y1="13" x2="15" y2="13"></line>
-                        </svg>
+                  </svg>
                 </div>
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-white">
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-lg truncate" style={{ color: '#FCFCFC' }}>
                     {msg.title || "Generating Artifact..."}
                     {msg.isStreaming && (
-                      <span className="inline-block ml-2 w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
+                      <span className="inline-block ml-2 w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></span>
                     )}
                   </h3>
-                                      <div className="flex items-center gap-4 text-xs text-gray-400">
-                    <span>Essay</span>
-                    {msg.isStreaming ? (
-                      <span>Streaming...</span>
-                    ) : (
-                      <span>Ready</span>
+                  <div className="flex items-center gap-4 text-xs text-gray-400 mt-1">
+                    <span>Document</span>
+                    {msg.isStreaming && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-cyan-400">Writing...</span>
+                      </div>
                     )}
                   </div>
                 </div>
-          </div>
-              
-              {/* Streaming artifact content preview - cleaned of thinking tags */}
-              <div className="text-gray-300 text-xs mb-4 max-h-32 overflow-hidden">
-                <ReactMarkdown className="prose prose-sm prose-invert">
-                  {cleanContent.slice(0, 200) + (cleanContent.length > 200 ? "..." : "")}
-                </ReactMarkdown>
-      </div>
-
-              <button
-                onClick={() => {
-                  // For streaming artifacts, create temporary structured content with cleaned content
-                  const tempArtifact = {
-                    title: msg.title || "Generated Content",
-                    type: "document" as const,
-                    content: cleanContent,
-                    metadata: {
-                      wordCount: cleanContent.split(' ').length,
-                      estimatedReadTime: `${Math.ceil(cleanContent.split(' ').length / 200)} min read`,
-                      category: "", // placeholder category
-                      tags: [] // placeholder tags
-                    }
-                  };
-                  setArtifactContent(tempArtifact);
-                  setIsArtifactMode(true);
-                }}
-                className="w-full bg-white hover:bg-gray-100 text-gray-900 px-4 py-2 rounded-2xl shadow-lg transition-colors flex items-center justify-center gap-2"
-                disabled={!cleanContent || cleanContent.trim().length === 0}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                  <circle cx="12" cy="12" r="3"></circle>
-                </svg>
-                View in Artifact Viewer
-              </button>
+              </div>
             </div>
             
             {/* Action buttons for streaming artifact */}
