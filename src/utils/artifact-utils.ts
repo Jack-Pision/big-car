@@ -43,42 +43,6 @@ export const artifactSchema = {
   "required": ["type", "title", "content", "metadata"]
 };
 
-// Detection patterns for automatic artifact triggering
-export const shouldTriggerArtifact = (query: string): boolean => {
-  const artifactTriggers = [
-    // Document creation
-    /create.*?(document|guide|report|manual|handbook|specification)/i,
-    /write.*?(article|essay|proposal|plan|strategy|documentation)/i,
-    /generate.*?(documentation|specification|outline|framework)/i,
-    /draft.*?(letter|email|memo|brief|proposal)/i,
-    
-    // Structured content
-    /make.*?(list|checklist|template|framework|guide)/i,
-    /design.*?(workflow|process|procedure|system)/i,
-    /build.*?(curriculum|course|training|program)/i,
-    /develop.*?(strategy|plan|roadmap|methodology)/i,
-    
-    // Analysis & research
-    /analyze.*?(market|competitor|trend|data|situation)/i,
-    /research.*?(topic|subject|industry|market)/i,
-    /compare.*?(options|solutions|approaches|alternatives)/i,
-    /study.*?(case|analysis|research|investigation)/i,
-    
-    // Planning documents
-    /plan.*?(project|business|marketing|strategy|implementation)/i,
-    /prepare.*?(presentation|report|summary|overview)/i,
-    /compile.*?(report|summary|analysis|documentation)/i,
-    
-    // Comprehensive content
-    /comprehensive.*?(guide|analysis|overview|study)/i,
-    /detailed.*?(explanation|breakdown|analysis|guide)/i,
-    /complete.*?(guide|manual|documentation|overview)/i,
-    /thorough.*?(analysis|review|examination|study)/i
-  ];
-  
-  return artifactTriggers.some(pattern => pattern.test(query));
-};
-
 // Generate the prompt for artifact creation (Raw Output Method)
 export const getArtifactPrompt = (userQuery: string): string => {
   return `You are a professional document creation assistant. Write a comprehensive, well-structured document using markdown formatting. IMPORTANT: Do not wrap the entire document in triple back-ticks (\`\`\`); output plain Markdown with headings, lists, emphasis, etc., but no code fences around the whole document.
