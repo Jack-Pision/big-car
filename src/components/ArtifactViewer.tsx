@@ -73,66 +73,63 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({ artifact, onClos
   };
 
   return (
-    <div className="h-full bg-[#161618] flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-end p-4 border-b border-gray-800 bg-[#1a1a1c] flex-shrink-0">
-        {/* Actions only */}
-        <div className="flex items-center gap-2">
-          {/* Version selector (only if multiple versions are provided) */}
-          {versions && versions.length > 1 && (
-            <select
-              value={selectedVersionIndex}
-              onChange={(e) => setSelectedVersionIndex(Number(e.target.value))}
-              className="bg-gray-800 text-gray-300 border border-gray-600 rounded px-2 py-1 text-xs mr-2 focus:outline-none"
-              title="Select version"
-            >
-              {versions.map((_, idx) => (
-                <option key={idx} value={idx}>{`v${idx + 1}`}</option>
-              ))}
-            </select>
-          )}
-
-          {/* Copy content */}
-          <button
-            onClick={handleCopy}
-            className="p-2 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded-lg transition-colors"
-            title="Copy content"
+    <div className="h-full bg-[#161618] flex flex-col relative">
+      {/* Floating Action Buttons */}
+      <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+        {/* Version selector (only if multiple versions are provided) */}
+        {versions && versions.length > 1 && (
+          <select
+            value={selectedVersionIndex}
+            onChange={(e) => setSelectedVersionIndex(Number(e.target.value))}
+            className="bg-gray-800/80 text-gray-300 border border-gray-600 rounded px-2 py-1 text-xs focus:outline-none backdrop-blur-sm"
+            title="Select version"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-            </svg>
-          </button>
+            {versions.map((_, idx) => (
+              <option key={idx} value={idx}>{`v${idx + 1}`}</option>
+            ))}
+          </select>
+        )}
 
-          {/* Download markdown */}
-          <button
-            onClick={handleDownload}
-            className="p-2 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded-lg transition-colors"
-            title="Download as Markdown"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="7,10 12,15 17,10"></polyline>
-              <line x1="12" y1="15" x2="12" y2="3"></line>
-            </svg>
-          </button>
+        {/* Copy content */}
+        <button
+          onClick={handleCopy}
+          className="p-2 bg-gray-800/80 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded-lg transition-colors backdrop-blur-sm"
+          title="Copy content"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+        </button>
 
-          {/* Close viewer */}
-          <button
-            onClick={onClose}
-            className="p-2 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded-lg transition-colors"
-            title="Close"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
-        </div>
+        {/* Download markdown */}
+        <button
+          onClick={handleDownload}
+          className="p-2 bg-gray-800/80 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded-lg transition-colors backdrop-blur-sm"
+          title="Download as Markdown"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7,10 12,15 17,10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+        </button>
+
+        {/* Close viewer */}
+        <button
+          onClick={onClose}
+          className="p-2 bg-gray-800/80 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded-lg transition-colors backdrop-blur-sm"
+          title="Close"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent p-6">
         <div className="max-w-none">
           {!artifactData.content ? (
             // Show streaming state when content is empty
