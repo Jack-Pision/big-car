@@ -3577,17 +3577,16 @@ function TestChatComponent(props?: TestChatProps) {
 
             {/* Action buttons for completed artifact */}
             {msg.isProcessed && (
-              <div className="w-full flex justify-start gap-2 mt-2">
+              <div className="w-full flex justify-start gap-2 mt-2 relative z-50">
                     <button 
                   onClick={() => handleCopy(cleanArtifactContent(msg.structuredContent.content))}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
+                  className="flex items-center justify-center w-8 h-8 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
                   aria-label="Copy artifact content"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                     <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
               </svg>
-                  <span className="text-xs">Copy</span>
             </button>
 
             <button
@@ -3603,7 +3602,7 @@ function TestChatComponent(props?: TestChatProps) {
                     document.body.removeChild(a);
                     URL.revokeObjectURL(url);
                   }}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
+                  className="flex items-center justify-center w-8 h-8 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
                   aria-label="Download artifact"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -3611,7 +3610,37 @@ function TestChatComponent(props?: TestChatProps) {
                     <polyline points="7,10 12,15 17,10"></polyline>
                     <line x1="12" y1="15" x2="12" y2="3"></line>
               </svg>
-                  <span className="text-xs">Download</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    try {
+                      // Find the corresponding user message
+                      const userMsgIndex = messages.findIndex(m => m.id === msg.parentId);
+                      let userMsg = userMsgIndex >= 0 ? messages[userMsgIndex] : 
+                                  messages.find(m => m.role === 'user' && m.timestamp && m.timestamp < (msg.timestamp || Infinity));
+                      
+                      // If we still don't have a user message, use the last one as fallback
+                      if (!userMsg) {
+                        userMsg = [...messages].reverse().find(m => m.role === 'user');
+                      }
+                      
+                      if (userMsg) {
+                        handleRetry(userMsg.content);
+                      } else {
+                        console.error('Could not find a user message to retry');
+                      }
+                    } catch (error) {
+                      console.error('Error handling retry button click:', error);
+                    }
+                  }}
+                  className="flex items-center justify-center w-8 h-8 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
+                  aria-label="Retry artifact generation"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                    <path d="M3 3v5h5"></path>
+                  </svg>
                 </button>
               </div>
             )}
@@ -3683,17 +3712,47 @@ function TestChatComponent(props?: TestChatProps) {
             
             {/* Action buttons for streaming artifact */}
             {cleanContent && cleanContent.trim().length > 0 && (
-                        <div className="w-full flex justify-start gap-2 mt-2">
+                        <div className="w-full flex justify-start gap-2 mt-2 relative z-50">
                           <button
                   onClick={() => handleCopy(cleanContent)}
-                            className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
+                            className="flex items-center justify-center w-8 h-8 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
                   aria-label="Copy artifact content"
                           >
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
                             </svg>
-                            <span className="text-xs">Copy</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              try {
+                                // Find the corresponding user message
+                                const userMsgIndex = messages.findIndex(m => m.id === msg.parentId);
+                                let userMsg = userMsgIndex >= 0 ? messages[userMsgIndex] : 
+                                            messages.find(m => m.role === 'user' && m.timestamp && m.timestamp < (msg.timestamp || Infinity));
+                                
+                                // If we still don't have a user message, use the last one as fallback
+                                if (!userMsg) {
+                                  userMsg = [...messages].reverse().find(m => m.role === 'user');
+                                }
+                                
+                                if (userMsg) {
+                                  handleRetry(userMsg.content);
+                                } else {
+                                  console.error('Could not find a user message to retry');
+                                }
+                              } catch (error) {
+                                console.error('Error handling retry button click:', error);
+                              }
+                            }}
+                            className="flex items-center justify-center w-8 h-8 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
+                            aria-label="Retry artifact generation"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                              <path d="M3 3v5h5"></path>
+                            </svg>
                           </button>
                         </div>
             )}
@@ -3729,6 +3788,51 @@ function TestChatComponent(props?: TestChatProps) {
                           <WebSourcesCarousel sources={msg.webSources} />
                 </div>
               )}
+            </div>
+            
+            {/* Action buttons for search results */}
+            <div className="w-full flex justify-start gap-2 mt-2 relative z-50">
+              <button
+                onClick={() => handleCopy(msg.content)}
+                className="flex items-center justify-center w-8 h-8 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
+                aria-label="Copy search results"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+              </button>
+              
+              <button
+                onClick={() => {
+                  try {
+                    // Find the corresponding user message
+                    const userMsgIndex = messages.findIndex(m => m.id === msg.parentId);
+                    let userMsg = userMsgIndex >= 0 ? messages[userMsgIndex] : 
+                                messages.find(m => m.role === 'user' && m.timestamp && m.timestamp < (msg.timestamp || Infinity));
+                    
+                    // If we still don't have a user message, use the last one as fallback
+                    if (!userMsg) {
+                      userMsg = [...messages].reverse().find(m => m.role === 'user');
+                    }
+                    
+                    if (userMsg) {
+                      handleRetry(userMsg.content);
+                    } else {
+                      console.error('Could not find a user message to retry');
+                    }
+                  } catch (error) {
+                    console.error('Error handling retry button click:', error);
+                  }
+                }}
+                className="flex items-center justify-center w-8 h-8 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
+                aria-label="Retry search"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                  <path d="M3 3v5h5"></path>
+                </svg>
+              </button>
             </div>
           </>
         ) : (
@@ -3858,17 +3962,16 @@ function TestChatComponent(props?: TestChatProps) {
                   
                       {/* Action buttons for text content */}
                       {msg.isProcessed && !isStoppedMsg && (
-                        <div className="w-full flex justify-start gap-2 mt-2">
+                        <div className="w-full flex justify-start gap-2 mt-2 relative z-50">
                           <button
                             onClick={() => handleCopy(finalContent)}
-                            className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
+                            className="flex items-center justify-center w-8 h-8 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
                             aria-label="Copy response"
                           >
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
                             </svg>
-                            <span className="text-xs">Copy</span>
                           </button>
                           
                           <button
@@ -3893,14 +3996,13 @@ function TestChatComponent(props?: TestChatProps) {
                                 console.error('Error handling retry button click:', error);
                               }
                             }}
-                            className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
+                            className="flex items-center justify-center w-8 h-8 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
                             aria-label="Retry with different response"
                           >
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
                               <path d="M3 3v5h5"></path>
                             </svg>
-                            <span className="text-xs">Retry</span>
                           </button>
                         </div>
                       )}
