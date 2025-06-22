@@ -3920,46 +3920,18 @@ function TestChatComponent(props?: TestChatProps) {
     const { content: rawContent } = cleanAIResponse(msg.content);
     const cleanContent = rawContent.replace(/<thinking-indicator.*?>\n<\/thinking-indicator>\n|<thinking-indicator.*?\/>/g, '');
 
+    // Extract and show thinking content in the Think box if present
     const { processedContent, thinkBlocks } = processThinkTags(cleanContent);
-    
-    // Always ensure we have thinking content to display in Think mode
     let thinkingContentToShow = '';
-    let finalAnswerContent = processedContent;
-    
     if (thinkBlocks.length > 0) {
-      // Use extracted think blocks if available
       thinkingContentToShow = thinkBlocks[0].content;
-    } else {
-      // If no think tags, extract reasoning from the content
-      if (isReasoningContent(processedContent)) {
-        // Extract reasoning content and final answer
-        const extractedAnswer = extractFinalAnswer(processedContent);
-        if (extractedAnswer && extractedAnswer !== processedContent) {
-          // We found a final answer, so the rest is reasoning
-          thinkingContentToShow = processedContent.replace(extractedAnswer, '').trim();
-          finalAnswerContent = extractedAnswer;
-        } else {
-          // Treat first part as reasoning, last part as answer
-          const paragraphs = processedContent.split('\n\n');
-          if (paragraphs.length > 1) {
-            thinkingContentToShow = paragraphs.slice(0, -1).join('\n\n');
-            finalAnswerContent = paragraphs[paragraphs.length - 1];
-          } else {
-            // If single paragraph, show it as thinking content with a generic final answer
-            thinkingContentToShow = processedContent;
-            finalAnswerContent = "Based on my analysis above, I've provided my reasoning and conclusions.";
-          }
-        }
-      } else {
-        // If content doesn't seem like reasoning, create a generic thinking message
-        thinkingContentToShow = "Let me analyze this question and provide a thoughtful response.";
-        finalAnswerContent = processedContent;
-      }
     }
-    
-    const finalContent = makeCitationsClickable(finalAnswerContent, msg.webSources || []);
 
-                return (
+    // Remove all <think>...</think> tags for the main output
+    const mainMarkdownContent = cleanContent.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+    const finalContent = makeCitationsClickable(mainMarkdownContent, msg.webSources || []);
+
+    return (
       <React.Fragment key={msg.id + '-reasoning-' + i}>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -3983,7 +3955,7 @@ function TestChatComponent(props?: TestChatProps) {
             />
           )}
 
-          {/* Render the final answer as it streams, using smart buffering to avoid incomplete markdown */}
+          {/* Render the full markdown output as the final answer */}
           {finalContent.trim().length > 0 &&
             renderDefaultChatMessage({
               ...msg,
