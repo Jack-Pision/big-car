@@ -85,8 +85,8 @@ export default function SettingsModal({ isOpen, onClose, user, onSignOut }: Sett
                   <Image 
                     src="/Logo.svg" 
                     alt="Logo" 
-                    width={48} 
-                    height={48} 
+                    width={90} 
+                    height={90} 
                     className="text-neutral-100" 
                   />
                 </div>
@@ -154,8 +154,8 @@ export default function SettingsModal({ isOpen, onClose, user, onSignOut }: Sett
                   <Image 
                     src="/Logo.svg" 
                     alt="Tehom AI" 
-                    width={32} 
-                    height={32} 
+                    width={90} 
+                    height={90} 
                     className="mx-auto mb-2" 
                   />
                   <p className="text-xs text-neutral-500">

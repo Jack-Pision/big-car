@@ -163,8 +163,8 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
                   <Image 
                     src="/Logo.svg" 
                     alt="Logo" 
-                    width={48} 
-                    height={48} 
+                    width={90} 
+                    height={90} 
                     className="text-neutral-100" 
                   />
               </div>
