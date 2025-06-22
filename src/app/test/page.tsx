@@ -2613,16 +2613,13 @@ function TestChatComponent(props?: TestChatProps) {
     try {
     if (!input.trim() || isLoading || isAiResponding) return;
 
-    // Ensure we have an active session using consolidated function
-    const currentActiveSessionId = await ensureActiveSession(input.trim() || undefined);
-
     if (!hasInteracted) setHasInteracted(true);
-      
-
-
     setIsAiResponding(true);
-      setIsLoading(true);
+    setIsLoading(true);
     if (showHeading) setShowHeading(false);
+
+    // Start session management in background - don't block UI
+    const sessionPromise = ensureActiveSession(input.trim() || undefined);
 
     // Always use conversation type for default chat instead of classifying
     const queryType = "conversation";
@@ -2650,15 +2647,14 @@ function TestChatComponent(props?: TestChatProps) {
     setMessages((prev) => [...prev, userMessageForDisplay]);
     setInput("");
     
-    // INSTANT SAVE: Save user message immediately to prevent loss during race conditions
-    if (currentActiveSessionId) {
-      try {
-        await saveMessageInstantly(currentActiveSessionId, userMessageForDisplay);
+    // BACKGROUND SAVE: Save user message without blocking
+    sessionPromise.then(sessionId => {
+      saveMessageInstantly(sessionId, userMessageForDisplay).then(() => {
         console.log('[Default Chat] User message saved instantly');
-      } catch (error) {
+      }).catch(error => {
         console.error('[Default Chat] Failed to instantly save user message:', error);
-      }
-    }
+      });
+    });
     
     // Clear any previous thinking state - each query gets fresh state
     setCurrentThinkingMessageId(null);
@@ -2687,18 +2683,17 @@ function TestChatComponent(props?: TestChatProps) {
       isProcessed: false
     };
     
-    // Add placeholder AI message immediately and save
+    // Add placeholder AI message immediately and save in background
     setMessages((prev) => [...prev, placeholderAiMessage]);
     
-    // INSTANT SAVE: Save AI placeholder message immediately
-    if (currentActiveSessionId) {
-      try {
-        await saveMessageInstantly(currentActiveSessionId, placeholderAiMessage);
+    // BACKGROUND SAVE: Save AI placeholder message without blocking
+    sessionPromise.then(sessionId => {
+      saveMessageInstantly(sessionId, placeholderAiMessage).then(() => {
         console.log('[Default Chat] AI placeholder message saved instantly');
-      } catch (error) {
+      }).catch(error => {
         console.error('[Default Chat] Failed to instantly save AI placeholder message:', error);
-      }
-    }
+      });
+    });
     
 
 
@@ -2835,11 +2830,11 @@ function TestChatComponent(props?: TestChatProps) {
       setMessages((prev) => {
         const updatedMessages = [...prev, aiMsg];
         // INSTANT SAVE: Save structured query response immediately
-        if (currentActiveSessionId) {
-          saveMessageInstantly(currentActiveSessionId, aiMsg).catch(error => {
+        sessionPromise.then(sessionId => {
+          saveMessageInstantly(sessionId, aiMsg).catch(error => {
             console.error('[Structured Query] Failed to instantly save AI message:', error);
           });
-        }
+        });
         return updatedMessages;
       });
       } else { 
