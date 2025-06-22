@@ -3998,7 +3998,7 @@ function TestChatComponent(props?: TestChatProps) {
           }`}
         >
             {/* Heading with fade animation */}
-            <h1 className={`text-[3.2rem] font-normal text-gray-200 text-center mb-6 transition-opacity duration-500 ${inputPosition === "center" ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
+            <h1 className={`text-2xl sm:text-3xl md:text-4xl lg:text-[3.2rem] font-normal text-gray-200 text-center mb-6 transition-opacity duration-500 whitespace-nowrap ${inputPosition === "center" ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
             Seek and You'll find
           </h1>
 
