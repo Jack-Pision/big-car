@@ -3834,9 +3834,9 @@ function TestChatComponent(props?: TestChatProps) {
                                 rehypePlugins={[rehypeRaw, rehypeKatex]} 
                                 className="research-output"
                                 components={{
-                                  h1: ({ children }) => (<h1 className="text-3xl font-bold mb-6 mt-8 border-b border-cyan-500/30 pb-3" style={{ color: '#FCFCFC' }}>{children}</h1>),
-                                  h2: ({ children }) => (<h2 className="text-2xl font-semibold mb-4 mt-8 flex items-center gap-2" style={{ color: '#FCFCFC' }}>{children}</h2>),
-                                  h3: ({ children }) => (<h3 className="text-xl font-semibold mb-3 mt-6" style={{ color: '#FCFCFC' }}>{children}</h3>),
+                                  h1: ({ children }) => (<h1 className="text-xl md:text-3xl font-bold mb-6 mt-8 border-b border-cyan-500/30 pb-3" style={{ color: '#FCFCFC' }}>{children}</h1>),
+                                  h2: ({ children }) => (<h2 className="text-lg md:text-2xl font-semibold mb-4 mt-8 flex items-center gap-2" style={{ color: '#FCFCFC' }}>{children}</h2>),
+                                  h3: ({ children }) => (<h3 className="text-base md:text-xl font-semibold mb-3 mt-6" style={{ color: '#FCFCFC' }}>{children}</h3>),
                                   p: ({ children }) => (<p className="leading-relaxed mb-4 text-sm" style={{ color: '#FCFCFC' }}>{children}</p>),
                                   ul: ({ children }) => (<ul className="space-y-2 mb-4 ml-4">{children}</ul>),
                                   li: ({ children }) => (<li className="flex items-start gap-2" style={{ color: '#FCFCFC' }}><span className="text-cyan-400 mt-1.5 text-xs">●</span><span className="flex-1">{children}</span></li>),
@@ -3844,8 +3844,8 @@ function TestChatComponent(props?: TestChatProps) {
                                   strong: ({ children }) => (<strong className="font-semibold" style={{ color: '#FCFCFC' }}>{children}</strong>),
                                   table: ({ children }) => (<div className="overflow-x-auto mb-6 max-w-full scrollbar-thin"><table className="border-collapse" style={{ tableLayout: 'auto', width: 'auto' }}>{children}</table></div>),
                                   thead: ({ children }) => <thead className="">{children}</thead>,
-                                  th: ({ children }) => (<th className="px-4 py-3 text-left font-semibold border-b-2 border-gray-600" style={{ fontSize: '14px', color: '#FCFCFC' }}>{children}</th>),
-                                  td: ({ children }) => (<td className="px-4 py-3 border-b border-gray-700" style={{ fontSize: '14px', color: '#FCFCFC' }}>{children}</td>),
+                                  th: ({ children }) => (<th className="px-3 md:px-4 py-2 md:py-3 text-left font-semibold border-b-2 border-gray-600 text-xs md:text-sm" style={{ color: '#FCFCFC' }}>{children}</th>),
+                                  td: ({ children }) => (<td className="px-3 md:px-4 py-2 md:py-3 border-b border-gray-700 text-xs md:text-sm" style={{ color: '#FCFCFC' }}>{children}</td>),
                                   blockquote: ({ children }) => (<blockquote className="border-l-4 border-cyan-500 pl-4 py-2 rounded-r-lg mb-4 italic" style={{ background: 'transparent', color: '#FCFCFC' }}>{children}</blockquote>),
                                   code: ({ children, className }) => {
                                     const isInline = !className;
