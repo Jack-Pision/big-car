@@ -4299,14 +4299,15 @@ function TestChatComponent(props?: TestChatProps) {
 
           {/* Desktop: Combined wrapper with current behavior */}
           <div
-            className={`hidden md:flex fixed flex-col items-center z-50 transition-all duration-500 ease-in-out ${
-              inputPosition === "center" ? "top-1/2" : "bottom-0"
+            className={`hidden md:flex fixed flex-col w-full max-w-3xl items-center justify-center z-50 transition-all duration-500 ease-in-out ${
+              inputPosition === "center" ? "top-1/2 -translate-y-1/2" : "bottom-0 translate-y-0"
             }`}
             style={{
               left: isArtifactMode ? '0' : '50%',
               width: isArtifactMode ? `${leftPaneWidth}%` : '100%',
+              maxWidth: '48rem',
               transform: isArtifactMode
-                ? (inputPosition === 'center' ? 'translateY(-50%)' : 'translateY(0)')
+                ? undefined
                 : (inputPosition === 'center' ? 'translate(-50%, -50%)' : 'translateX(-50%)'),
             }}
           >
