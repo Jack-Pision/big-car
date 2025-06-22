@@ -165,7 +165,7 @@ async function fetchNvidiaText(messages: any[], options: any = {}) {
     messages: enhancedMessages,
     temperature: options.temperature || 0.6,
     top_p: options.top_p || 0.95,
-    max_tokens: options.max_tokens || (selectedModel === 'deepseek-ai/deepseek-r1' ? 8064 : (isArtifact ? 8192 : 8139)), // 8064 for DeepSeek reasoning, else default
+    max_tokens: options.max_tokens || (selectedModel === 'deepseek-ai/deepseek-r1' ? 15000 : (isArtifact ? 8192 : 8139)), // 15000 for DeepSeek reasoning (Think Mode), else default
     presence_penalty: options.presence_penalty || 0.8,
     frequency_penalty: options.frequency_penalty || 0.5,
     stream: options.stream !== undefined ? options.stream : true,
