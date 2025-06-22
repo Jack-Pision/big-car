@@ -376,8 +376,8 @@ function postProcessAIChatResponse(text: string, isDefaultChat: boolean): string
     // Remove circled numbers/letters and custom symbols (e.g., ?????)
     processedText = processedText.replace(/[???????????????????????????????????????]/g, '');
     
-    // Collapse repeated numbers/dashes (e.g., 20K–20K–20K–50K => 20K–50K)
-    processedText = processedText.replace(/(\b\d+[KkMm]\b[–-])(?:\1)+/g, '$1');
+    // Collapse repeated numbers/dashes (e.g., 20Kï¿½20Kï¿½20Kï¿½50K => 20Kï¿½50K)
+    processedText = processedText.replace(/(\b\d+[KkMm]\b[ï¿½-])(?:\1)+/g, '$1');
     // Remove accidental number/letter repetition at the start of lines (e.g., 2 2 Solution: => 2 Solution:)
     processedText = processedText.replace(/^(\d+)\s+\1\s+/gm, '$1 ');
     // Remove accidental dash repetition (e.g., - - - Item => - Item)
@@ -1668,7 +1668,7 @@ Be conversational but direct - answer first, elaborate only if specifically aske
 const getThinkPrompt = (basePrompt: string) => {
   return `You are Tehom AI, an advanced assistant built for deep reasoning, clarity, and thoughtful analysis. You always aim to think before answering and explain complex ideas in a natural, human-like tone.
 
-You always use markdown formatting in your replies to organize your output cleanly — including headings, bullet points, code blocks, and emphasis when helpful.
+You always use markdown formatting in your replies to organize your output cleanly ï¿½ including headings, bullet points, code blocks, and emphasis when helpful.
 
 Your responses should be thorough and well-reasoned. Take time to consider different aspects of the question, analyze relevant factors, and provide comprehensive answers with examples and explanations.
 
@@ -3360,7 +3360,7 @@ function TestChatComponent(props?: TestChatProps) {
           return renderArtifactPreviewCard(
             artifactData.title || 'Generated Document', 
             false, 
-            `${artifactData.metadata?.wordCount || 0} words • ${artifactData.metadata?.estimatedReadTime || '2 minutes'}`
+            `${artifactData.metadata?.wordCount || 0} words ï¿½ ${artifactData.metadata?.estimatedReadTime || '2 minutes'}`
           );
         case 'reasoning':
           return <ReasoningDisplay data={msg.structuredContent as string} />;
@@ -4003,19 +4003,7 @@ function TestChatComponent(props?: TestChatProps) {
 
           {/* Mobile-only: Bottom input */}
           <div className="md:hidden fixed left-1/2 -translate-x-1/2 bottom-0 translate-y-0 w-full max-w-3xl flex flex-col items-center justify-center z-50 px-4 pb-4">
-        <div
-            className={`hidden md:flex fixed left-1/2 -translate-x-1/2 w-full max-w-3xl flex-col items-center justify-center z-50 transition-all duration-500 ease-in-out ${
-              inputPosition === "center" ? "top-1/2 -translate-y-1/2" : "bottom-0 translate-y-0"
-          }`}
-        >
-            {/* Heading with fade animation - show on mobile when centered, desktop behavior preserved */}
-            <h1 className={`text-2xl sm:text-3xl md:text-4xl lg:text-[3.2rem] font-normal text-gray-200 text-center mb-3 md:mb-6 transition-opacity duration-500 whitespace-nowrap ${inputPosition === "center" ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
-            Seek and You'll find
-          </h1>
-
-
-
-            {/* Input form */}
+            {/* Input form for mobile */}
             <form
               className="flex flex-col gap-2 rounded-2xl shadow-lg py-2 w-full px-4 pl-4 sm:px-6 md:px-8 lg:pl-4 lg:pr-0 mb-3 bg-[#232323] border border-white/20"
               style={{ boxShadow: '0 4px 32px 0 rgba(0,0,0,0.32)' }}
@@ -4038,27 +4026,27 @@ function TestChatComponent(props?: TestChatProps) {
                             <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
                           </div>
                         )}
-                      <button
-                        type="button"
+                        <button
+                          type="button"
                           onClick={() => removeImagePreview(index)}
                           className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
-                      >
-                          ×
-                      </button>
-              </div>
-          ))}
+                        >
+                          Ã—
+                        </button>
+                      </div>
+                    ))}
                   </div>
-        </div>
+                </div>
               )}
 
               {/* Input area: textarea on top, actions below */}
               <div className="flex flex-col w-full gap-2 items-center">
                 {/* Textarea row */}
                 <div className="w-full">
-          <textarea
-            ref={textareaRef}
-            value={input}
-            onChange={e => setInput(e.target.value)}
+                  <textarea
+                    ref={textareaRef}
+                    value={input}
+                    onChange={e => setInput(e.target.value)}
                     onKeyDown={e => {
                       if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.altKey) {
                         e.preventDefault();
@@ -4067,8 +4055,8 @@ function TestChatComponent(props?: TestChatProps) {
                     }}
                     className="w-full border-none outline-none bg-transparent px-2 py-1 text-gray-200 text-sm placeholder-gray-500 resize-none overflow-auto self-center rounded-lg"
                     placeholder="Ask anything..."
-            disabled={isLoading}
-            rows={1}
+                    disabled={isLoading}
+                    rows={1}
                     style={{ maxHeight: '96px', minHeight: '40px', lineHeight: '1.5' }}
                   />
                 </div>
@@ -4150,7 +4138,7 @@ function TestChatComponent(props?: TestChatProps) {
                         />
                       </svg>
                     </button>
-              </div>
+                  </div>
 
                   {/* Right group: Plus, Send */}
                   <div className="flex flex-row gap-2 items-center ml-auto pr-4">
@@ -4169,12 +4157,12 @@ function TestChatComponent(props?: TestChatProps) {
                       {isUploadingImage ? (
                         <div className="w-4 h-4 border-2 border-gray-300 border-t-transparent rounded-full animate-spin"></div>
                       ) : (
-                      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
+                        <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                          <line x1="12" y1="5" x2="12" y2="19" />
+                          <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
                       )}
-            </button>
+                    </button>
                     
                     {/* Hidden file input */}
                     <input
@@ -4186,7 +4174,7 @@ function TestChatComponent(props?: TestChatProps) {
                     />
 
                     {/* Send/Stop button */}
-            <button
+                    <button
                       type={isAiResponding ? "button" : "submit"}
                       className="rounded-full bg-gray-200 hover:bg-white transition flex items-center justify-center flex-shrink-0"
                       style={{ width: "36px", height: "36px", pointerEvents: isLoading && !isAiResponding ? 'none' : 'auto' }}
@@ -4197,18 +4185,226 @@ function TestChatComponent(props?: TestChatProps) {
                       {isAiResponding ? (
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                           <rect x="7" y="7" width="10" height="10" rx="2" fill="#374151" />
-              </svg>
+                        </svg>
                       ) : (
                         <svg width="16" height="16" fill="none" stroke="#374151" strokeWidth="2.5" viewBox="0 0 24 24">
                           <path d="M12 19V5M5 12l7-7 7 7" />
                         </svg>
                       )}
-            </button>
+                    </button>
                   </div>
                 </div>
+              </div>
+            </form>
           </div>
-        </form>
-      </div>
+
+          {/* Desktop: Combined wrapper with current behavior */}
+          <div
+            className={`hidden md:flex fixed left-1/2 -translate-x-1/2 w-full max-w-3xl flex-col items-center justify-center z-50 transition-all duration-500 ease-in-out ${
+              inputPosition === "center" ? "top-1/2 -translate-y-1/2" : "bottom-0 translate-y-0"
+            }`}
+          >
+            {/* Heading with fade animation - show on desktop when centered */}
+            <h1 className={`text-2xl sm:text-3xl md:text-4xl lg:text-[3.2rem] font-normal text-gray-200 text-center mb-3 md:mb-6 transition-opacity duration-500 whitespace-nowrap ${inputPosition === "center" ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
+              Seek and You'll find
+            </h1>
+
+
+
+            {/* Input form for desktop */}
+            <form
+              className="flex flex-col gap-2 rounded-2xl shadow-lg py-2 w-full px-4 pl-4 sm:px-6 md:px-8 lg:pl-4 lg:pr-0 mb-3 bg-[#232323] border border-white/20"
+              style={{ boxShadow: '0 4px 32px 0 rgba(0,0,0,0.32)' }}
+              onSubmit={handleSend}
+            >
+              {/* Image Preview inside input box */}
+              {(selectedFiles.length > 0 || imagePreviewUrls.length > 0) && (
+                <div className="w-full px-2 py-2">
+                  <div className="flex gap-2 flex-wrap">
+                    {selectedFiles.map((file, index) => (
+                      <div key={index} className="relative">
+                        {imagePreviewUrls[index] ? (
+                          <img 
+                            src={imagePreviewUrls[index]} 
+                            alt={`Preview ${index + 1}`} 
+                            className="w-16 h-16 object-cover rounded-lg border border-gray-600"
+                          />
+                        ) : (
+                          <div className="w-16 h-16 bg-gray-700 rounded-lg border border-gray-600 flex items-center justify-center">
+                            <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => removeImagePreview(index)}
+                          className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
+                        >
+                          Ã—
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Input area: textarea on top, actions below */}
+              <div className="flex flex-col w-full gap-2 items-center">
+                {/* Textarea row */}
+                <div className="w-full">
+                  <textarea
+                    ref={textareaRef}
+                    value={input}
+                    onChange={e => setInput(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.altKey) {
+                        e.preventDefault();
+                        if (!isLoading) handleSend(e);
+                      }
+                    }}
+                    className="w-full border-none outline-none bg-transparent px-2 py-1 text-gray-200 text-sm placeholder-gray-500 resize-none overflow-auto self-center rounded-lg"
+                    placeholder="Ask anything..."
+                    disabled={isLoading}
+                    rows={1}
+                    style={{ maxHeight: '96px', minHeight: '40px', lineHeight: '1.5' }}
+                  />
+                </div>
+
+                {/* Actions row */}
+                <div className="flex flex-row w-full items-center justify-between gap-2">
+                  {/* Left group: Tab bar with Search, Artifact, Think */}
+                  <div className="flex flex-row items-center rounded-lg p-1" style={{ backgroundColor: '#161618' }}>
+                    {/* Search tab */}
+                    <button
+                      type="button"
+                      onClick={() => handleModeSwitch(activeMode === 'search' ? 'chat' : 'search')}
+                      className={`
+                        flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200 
+                        ${activeMode === 'search' 
+                          ? 'border' 
+                          : 'hover:brightness-150'
+                        }
+                      `}
+                      style={{ 
+                        color: activeMode === 'search' ? '#FCFCFC' : 'rgba(252, 252, 252, 0.6)',
+                        borderColor: activeMode === 'search' ? '#FCFCFC' : 'transparent'
+                      }}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
+                      </svg>
+                    </button>
+
+                    {/* Artifact tab */}
+                    <button
+                      type="button"
+                      className={`
+                        flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200 
+                        ${activeButton === 'artifact' 
+                          ? 'border' 
+                          : 'hover:brightness-150'
+                        }
+                      `}
+                      style={{ 
+                        color: activeButton === 'artifact' ? '#FCFCFC' : 'rgba(252, 252, 252, 0.6)',
+                        borderColor: activeButton === 'artifact' ? '#FCFCFC' : 'transparent'
+                      }}
+                      onClick={() => handleButtonClick('artifact')}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="9" y1="9" x2="15" y2="9"></line>
+                        <line x1="9" y1="13" x2="15" y2="13"></line>
+                      </svg>
+                    </button>
+
+                    {/* Think tab */}
+                    <button
+                      type="button"
+                      className={`
+                        flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200 
+                        ${activeButton === 'reasoning' 
+                          ? 'border' 
+                          : 'hover:brightness-150'
+                        }
+                      `}
+                      style={{ 
+                        color: activeButton === 'reasoning' ? '#FCFCFC' : 'rgba(252, 252, 252, 0.6)',
+                        borderColor: activeButton === 'reasoning' ? '#FCFCFC' : 'transparent'
+                      }}
+                      onClick={() => handleButtonClick('reasoning')}
+                    >
+                      <svg 
+                        width="16" 
+                        height="16" 
+                        viewBox="0 0 32 32" 
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path 
+                          fill="currentColor" 
+                          d="M10.799 4.652c-1.485 0.324-2.271 2.045-2.104 4.593 0.051 0.738 0.043 0.666 0.196 1.609 0.064 0.38 0.107 0.7 0.098 0.709-0.008 0.013-0.269 0.077-0.572 0.149-2.019 0.465-3.505 1.165-4.397 2.070-0.602 0.606-0.854 1.17-0.845 1.882 0.004 0.401 0.137 0.841 0.38 1.264 0.209 0.363 0.956 1.101 1.447 1.434 1.029 0.692 1.345 0.79 1.626 0.508 0.12-0.119 0.145-0.179 0.145-0.32 0-0.273-0.094-0.405-0.414-0.581-1.409-0.781-2.147-1.592-2.147-2.369 0-0.282 0.098-0.538 0.333-0.845 0.619-0.824 2.113-1.562 4.115-2.036 0.529-0.124 0.632-0.132 0.632-0.043 0 0.115 0.427 1.481 0.7 2.228l0.273 0.751-0.337 0.645c-0.184 0.354-0.448 0.892-0.585 1.2-1.959 4.316-2.284 7.743-0.867 9.152 0.333 0.333 0.606 0.487 1.054 0.602 1.033 0.265 2.399-0.132 3.931-1.144 0.534-0.354 0.653-0.487 0.653-0.721 0-0.282-0.307-0.555-0.581-0.512-0.077 0.013-0.376 0.179-0.662 0.367-0.632 0.422-1.34 0.773-1.853 0.926-0.525 0.154-1.093 0.162-1.417 0.021-0.995-0.44-1.225-2.215-0.606-4.678 0.29-1.17 0.956-2.928 1.558-4.128l0.239-0.482 0.132 0.299c0.248 0.572 1.212 2.437 1.588 3.073 2.079 3.534 4.422 6.125 6.501 7.184 1.473 0.751 2.689 0.683 3.517-0.201 0.61-0.645 0.909-1.584 0.96-2.992 0.081-2.425-0.709-5.579-2.254-8.96-0.205-0.453-0.41-0.862-0.448-0.905-0.094-0.102-0.333-0.171-0.495-0.137s-0.359 0.231-0.388 0.397c-0.034 0.158 0.004 0.265 0.384 1.088 1.059 2.284 1.801 4.683 2.087 6.744 0.094 0.679 0.111 2.151 0.026 2.604-0.085 0.457-0.252 0.931-0.431 1.204-0.286 0.44-0.615 0.619-1.157 0.615-1.609-0.004-4.145-2.215-6.399-5.571-1.037-1.55-1.993-3.3-2.732-5.011l-0.265-0.61 0.371-0.627c0.478-0.811 0.982-1.579 1.545-2.369l0.448-0.627h0.692c4.747 0 9.459 1.076 11.867 2.702 0.551 0.371 1.080 0.914 1.264 1.289 0.128 0.265 0.145 0.337 0.145 0.64-0.004 0.286-0.021 0.376-0.119 0.563-0.294 0.572-1.042 1.14-2.079 1.592-0.487 0.209-0.64 0.354-0.64 0.602 0 0.23 0.094 0.397 0.273 0.482 0.196 0.094 0.265 0.085 0.581-0.043 1.49-0.602 2.565-1.49 2.903-2.395 0.623-1.665-0.683-3.347-3.564-4.602-2.518-1.101-6.219-1.789-10.070-1.87l-0.423-0.009 0.482-0.555c0.555-0.645 1.78-1.87 2.305-2.309 1.246-1.050 2.361-1.716 3.321-1.989 0.474-0.137 1.059-0.132 1.362 0.004 0.41 0.184 0.696 0.598 0.854 1.238 0.098 0.388 0.098 1.575 0 2.147-0.111 0.632-0.098 0.743 0.073 0.913 0.124 0.124 0.175 0.145 0.354 0.145 0.38 0 0.478-0.141 0.593-0.832 0.060-0.354 0.081-0.692 0.081-1.387 0-0.811-0.013-0.965-0.098-1.302-0.269-1.063-0.926-1.797-1.806-2.006-2.040-0.478-5.161 1.485-8.264 5.208-0.256 0.303-0.495 0.602-0.534 0.653-0.064 0.094-0.107 0.102-0.726 0.141-0.359 0.021-1.016 0.081-1.464 0.132-1.187 0.137-1.093 0.149-1.161-0.158-0.179-0.858-0.239-1.46-0.243-2.39-0.004-1.007 0.030-1.306 0.213-1.865 0.196-0.593 0.529-0.995 0.952-1.135 0.205-0.073 0.709-0.064 1.007 0.013 0.499 0.132 1.204 0.508 1.844 0.99 0.38 0.286 0.512 0.337 0.713 0.269 0.23-0.073 0.367-0.265 0.367-0.504 0-0.179-0.017-0.213-0.205-0.393-0.265-0.256-1.033-0.768-1.498-0.999-0.879-0.44-1.648-0.581-2.339-0.431zM12.4 12.216c-0.004 0.021-0.282 0.44-0.61 0.935s-0.653 0.995-0.721 1.11l-0.124 0.209-0.102-0.277c-0.128-0.337-0.525-1.643-0.525-1.725 0-0.077 0.188-0.107 1.579-0.252 0.29-0.030 0.521-0.030 0.504 0zM15.649 14.854c-0.303 0.098-0.598 0.316-0.773 0.576-0.525 0.773-0.269 1.78 0.555 2.185 0.256 0.128 0.32 0.141 0.67 0.141s0.414-0.013 0.67-0.141c1.114-0.546 1.089-2.168-0.043-2.689-0.299-0.137-0.781-0.166-1.080-0.073z"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Right group: Plus, Send */}
+                  <div className="flex flex-row gap-2 items-center ml-auto pr-4">
+                    {/* Plus button */}
+                    <button 
+                      type="button" 
+                      className="p-2 rounded-full text-gray-300 hover:brightness-150 transition flex items-center justify-center flex-shrink-0"
+                      style={{ 
+                        width: "36px", 
+                        height: "36px",
+                        backgroundColor: '#161618'
+                      }}
+                      onClick={handlePlusClick}
+                      disabled={isUploadingImage}
+                    >
+                      {isUploadingImage ? (
+                        <div className="w-4 h-4 border-2 border-gray-300 border-t-transparent rounded-full animate-spin"></div>
+                      ) : (
+                        <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                          <line x1="12" y1="5" x2="12" y2="19" />
+                          <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                      )}
+                    </button>
+                    
+                    {/* Hidden file input */}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/gif,image/webp"
+                      onChange={handleFileChange}
+                      style={{ display: 'none' }}
+                    />
+
+                    {/* Send/Stop button */}
+                    <button
+                      type={isAiResponding ? "button" : "submit"}
+                      className="rounded-full bg-gray-200 hover:bg-white transition flex items-center justify-center flex-shrink-0"
+                      style={{ width: "36px", height: "36px", pointerEvents: isLoading && !isAiResponding ? 'none' : 'auto' }}
+                      onClick={isAiResponding ? handleStopAIResponse : undefined}
+                      disabled={isLoading && !isAiResponding}
+                      aria-label={isAiResponding ? "Stop AI response" : "Send"}
+                    >
+                      {isAiResponding ? (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <rect x="7" y="7" width="10" height="10" rx="2" fill="#374151" />
+                        </svg>
+                      ) : (
+                        <svg width="16" height="16" fill="none" stroke="#374151" strokeWidth="2.5" viewBox="0 0 24 24">
+                          <path d="M12 19V5M5 12l7-7 7 7" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </form>
+          </div>
 
           {/* Conversation and other UI below */}
           <div className="w-full max-w-3xl mx-auto flex flex-col gap-4 items-center justify-center z-10 pt-12 pb-4">
