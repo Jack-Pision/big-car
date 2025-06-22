@@ -3994,7 +3994,7 @@ function TestChatComponent(props?: TestChatProps) {
           {/* Centered wrapper for heading and input */}
         <div
             className={`fixed left-1/2 -translate-x-1/2 w-full max-w-3xl flex flex-col items-center justify-center z-50 transition-all duration-500 ease-in-out ${
-              inputPosition === "center" ? "md:top-1/2 md:-translate-y-1/2 bottom-0 translate-y-0" : "bottom-0 translate-y-0"
+              inputPosition === "center" ? "top-1/2 -translate-y-1/2" : "bottom-0 translate-y-0"
           }`}
         >
             {/* Heading with fade animation - show on mobile when centered, desktop behavior preserved */}
