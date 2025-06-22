@@ -3731,9 +3731,8 @@ function TestChatComponent(props?: TestChatProps) {
                   .trim();
                 const isStoppedMsg = cleanContent.trim() === '[Response stopped by user]';
                 
-                // Industry standard approach: Single ReactMarkdown renderer with smart buffering
-                // Apply smart buffering for streaming content to prevent layout issues
-                const processedContent = msg.isStreaming 
+                // HYBRID APPROACH: Apply smart buffering only for non-conversation content types
+                const processedContent = msg.isStreaming && msg.contentType !== 'conversation'
                   ? smartBufferStreamingContent(cleanContent)
                   : cleanContent;
                 
