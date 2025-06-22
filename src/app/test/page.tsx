@@ -3994,11 +3994,11 @@ function TestChatComponent(props?: TestChatProps) {
           {/* Centered wrapper for heading and input */}
         <div
             className={`fixed left-1/2 -translate-x-1/2 w-full max-w-3xl flex flex-col items-center justify-center z-50 transition-all duration-500 ease-in-out ${
-              inputPosition === "center" ? "top-1/2 -translate-y-1/2" : "bottom-0 translate-y-0"
+              inputPosition === "center" ? "md:top-1/2 md:-translate-y-1/2 bottom-0 translate-y-0" : "bottom-0 translate-y-0"
           }`}
         >
-            {/* Heading with fade animation */}
-            <h1 className={`text-2xl sm:text-3xl md:text-4xl lg:text-[3.2rem] font-normal text-gray-200 text-center mb-6 transition-opacity duration-500 whitespace-nowrap ${inputPosition === "center" ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
+            {/* Heading with fade animation - only show on desktop when centered */}
+            <h1 className={`text-2xl sm:text-3xl md:text-4xl lg:text-[3.2rem] font-normal text-gray-200 text-center mb-6 transition-opacity duration-500 whitespace-nowrap ${inputPosition === "center" ? "md:opacity-100 opacity-0 pointer-events-none" : "opacity-0 pointer-events-none"}`}>
             Seek and You'll find
           </h1>
 
