@@ -2793,7 +2793,7 @@ function TestChatComponent(props?: TestChatProps) {
       const apiPayload: any = {
         messages: formattedMessages,
         temperature: 0.7,        // OPTIMIZATION 3: Increased from 0.6 for faster initial responses
-        max_tokens: 4096,
+        max_tokens: activeButton === 'reasoning' ? 15000 : 4096, // 15,000 tokens for Think mode, 4096 for default chat
         top_p: 0.9,
         frequency_penalty: 0.2,  // OPTIMIZATION 3: Decreased from 0.5 
         presence_penalty: 0.2,   // OPTIMIZATION 3: Decreased from 0.8
