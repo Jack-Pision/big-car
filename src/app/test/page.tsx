@@ -3534,7 +3534,7 @@ function TestChatComponent(props?: TestChatProps) {
         {msg.structuredContent ? (
           <>
             {/* Completed Artifact with Preview Card */}
-            <div className="w-full bg-gray-800 rounded-lg border border-gray-700 p-4 mb-2">
+            <div className="w-full bg-[#232323] rounded-2xl border border-gray-700 shadow-lg p-6 mb-2">
               <div className="flex items-center gap-3 mb-3">
                 <div className="p-2 bg-blue-600 rounded-lg">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -3565,7 +3565,7 @@ function TestChatComponent(props?: TestChatProps) {
                   setArtifactContent(cleanedArtifact);
                   setIsArtifactMode(true);
                 }}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+                className="w-full bg-white hover:bg-gray-100 text-gray-900 px-4 py-2 rounded-2xl shadow-lg transition-colors flex items-center justify-center gap-2"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
@@ -3648,7 +3648,7 @@ function TestChatComponent(props?: TestChatProps) {
         ) : (
           <>
             {/* Streaming Artifact - show clean content in artifact viewer style */}
-            <div className="w-full bg-gray-800 rounded-lg border border-gray-700 p-4 mb-2">
+            <div className="w-full bg-[#232323] rounded-2xl border border-gray-700 shadow-lg p-6 mb-2">
               <div className="flex items-center gap-3 mb-3">
                 <div className="p-2 bg-blue-600 rounded-lg">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -3699,7 +3699,7 @@ function TestChatComponent(props?: TestChatProps) {
                   setArtifactContent(tempArtifact);
                   setIsArtifactMode(true);
                 }}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+                className="w-full bg-white hover:bg-gray-100 text-gray-900 px-4 py-2 rounded-2xl shadow-lg transition-colors flex items-center justify-center gap-2"
                 disabled={!cleanContent || cleanContent.trim().length === 0}
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
