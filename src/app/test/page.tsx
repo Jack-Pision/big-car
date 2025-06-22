@@ -3997,8 +3997,8 @@ function TestChatComponent(props?: TestChatProps) {
               inputPosition === "center" ? "md:top-1/2 md:-translate-y-1/2 bottom-0 translate-y-0" : "bottom-0 translate-y-0"
           }`}
         >
-            {/* Heading with fade animation - only show on desktop when centered */}
-            <h1 className={`text-2xl sm:text-3xl md:text-4xl lg:text-[3.2rem] font-normal text-gray-200 text-center mb-6 transition-opacity duration-500 whitespace-nowrap ${inputPosition === "center" ? "md:opacity-100 opacity-0 pointer-events-none" : "opacity-0 pointer-events-none"}`}>
+            {/* Heading with fade animation - show on mobile when centered, desktop behavior preserved */}
+            <h1 className={`text-2xl sm:text-3xl md:text-4xl lg:text-[3.2rem] font-normal text-gray-200 text-center mb-3 md:mb-6 transition-opacity duration-500 whitespace-nowrap ${inputPosition === "center" ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
             Seek and You'll find
           </h1>
 
