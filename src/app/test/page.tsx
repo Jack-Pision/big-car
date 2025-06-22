@@ -4627,7 +4627,7 @@ function TestChatComponent(props?: TestChatProps) {
           className="fixed top-0 bottom-0 bg-gray-600 hover:bg-gray-500 cursor-col-resize z-[10001] transition-colors"
           style={{ 
             left: `${leftPaneWidth}%`, 
-            width: '4px',
+            width: " 2px\,
             transform: 'translateX(-2px)' // Center the divider on the boundary
           }}
           onMouseDown={handleMouseDown}
