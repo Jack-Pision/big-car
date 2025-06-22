@@ -159,6 +159,20 @@ export default function Sidebar({
                   </svg>
                   <span className="font-medium">New chat</span>
                 </button>
+                <button
+                  className="mb-2 flex items-center gap-2 px-3 py-2 rounded-lg text-[#e5e7eb] hover:bg-[#232323]/80 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/10 text-left w-full pl-4"
+                  onClick={() => router.push('/dashboard')}
+                  aria-label="Go to dashboard"
+                  tabIndex={0}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e5e7eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="7" height="9"/>
+                    <rect x="14" y="3" width="7" height="5"/>
+                    <rect x="14" y="12" width="7" height="9"/>
+                    <rect x="3" y="16" width="7" height="5"/>
+                  </svg>
+                  <span className="font-medium">Dashboard</span>
+                </button>
                 <div className="mx-4 mt-4 mb-2">
                   <span className="text-xs font-semibold text-gray-300 tracking-wide" style={{ letterSpacing: '0.05em' }}>SESSIONS</span>
                 </div>
