@@ -50,7 +50,7 @@ import { Message as ConversationMessage } from "@/utils/conversation-context";
 import { filterAIThinking } from '../../utils/content-filter';
 import ThinkingButton from '@/components/ThinkingButton';
 import { ArtifactViewer } from '@/components/ArtifactViewer';
-import { shouldTriggerArtifact, getArtifactPrompt, artifactSchema, validateArtifactData, createFallbackArtifact, createArtifactFromRawContent, extractTitleFromContent, type ArtifactData } from '@/utils/artifact-utils';
+import { getArtifactPrompt, artifactSchema, validateArtifactData, createFallbackArtifact, createArtifactFromRawContent, extractTitleFromContent, type ArtifactData } from '@/utils/artifact-utils';
 import { uploadAndAnalyzeImage, uploadImageToSupabase, analyzeImageWithNVIDIA, ImageUploadResult } from '@/lib/image-upload-service';
 import toast from 'react-hot-toast';
 import ReasoningDisplay from '@/components/ReasoningDisplay';
@@ -2422,8 +2422,8 @@ function TestChatComponent(props?: TestChatProps) {
       return;
     }
 
-    // Check if we're in artifact mode
-    if (activeButton === 'artifact' || shouldTriggerArtifact(input.trim())) {
+    // Check if we're in artifact mode (only by button click, no auto-triggering)
+    if (activeButton === 'artifact') {
       // Ensure we have an active session using consolidated function
       const currentActiveSessionId = await ensureActiveSession(input.trim());
 
