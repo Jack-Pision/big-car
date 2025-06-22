@@ -191,7 +191,7 @@ async function fetchNvidiaText(messages: any[], options: any = {}) {
         'Accept': 'text/event-stream; charset=utf-8',
       },
       body: JSON.stringify(payload),
-    }, isArtifact ? 45000 : 25000); // 45-second timeout for artifacts, 25-second for regular chats
+    }, isArtifact ? 45000 : 15000); // 45-second timeout for artifacts, 15-second for regular chats
 
     if (!res.ok) {
       const errorText = await res.text();

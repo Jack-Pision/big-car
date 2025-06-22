@@ -2752,13 +2752,15 @@ function TestChatComponent(props?: TestChatProps) {
         true
       );
 
+      const isReasoningMode = activeButton === 'reasoning';
+
       const apiPayload: any = {
         messages: formattedMessages,
-        temperature: 0.7,        // OPTIMIZATION 3: Increased from 0.6 for faster initial responses
-        max_tokens: activeButton === 'reasoning' ? 15000 : 4096, // 15,000 tokens for Think mode, 4096 for default chat
-        top_p: 0.9,
-        frequency_penalty: 0.2,  // OPTIMIZATION 3: Decreased from 0.5 
-        presence_penalty: 0.2,   // OPTIMIZATION 3: Decreased from 0.8
+        temperature: isReasoningMode ? 0.7 : 0.4,
+        max_tokens: isReasoningMode ? 15000 : 6000, // Keep reasoning at 15k, default chat at 6k
+        top_p: isReasoningMode ? 0.9 : 0.5,
+        frequency_penalty: isReasoningMode ? 0.2 : 0.1,
+        presence_penalty: isReasoningMode ? 0.2 : 0.1,
       };
       
 
