@@ -4138,7 +4138,7 @@ function TestChatComponent(props?: TestChatProps) {
                   </div>
 
                   {/* Right group: Plus, Send */}
-                  <div className="flex flex-row gap-2 items-center ml-auto pr-4">
+                  <div className="flex flex-row gap-2 items-center ml-auto">
                     {/* Plus button */}
                     <button 
                       type="button" 
