@@ -149,7 +149,7 @@ const BrowserPageComponent = () => {
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#161618', fontFamily: 'Inter, sans-serif' }}>
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-[#161618] shadow-xl h-14 flex items-center px-4">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-[#161618] h-14 flex items-center px-4">
         <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
         <img src="/Logo.svg" alt="Logo" className="ml-3" style={{ width: 90, height: 90 }} />
         
@@ -170,22 +170,29 @@ const BrowserPageComponent = () => {
 
       <main className="max-w-4xl mx-auto px-6 py-8 pt-20">
         {/* Main Search Section */}
-        <div className="text-center mb-12">
-          <motion.h2 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-3xl font-medium mb-8"
-            style={{ color: '#FCFCFC' }}
-          >
-            Search the web with AI
-          </motion.h2>
+        <div className={`flex flex-col items-center justify-center ${aiResponse ? 'mb-6' : 'mb-12 h-[calc(100vh-200px)]'}`}>
+          {!aiResponse && (
+            <motion.h2 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-3xl font-medium mb-8"
+              style={{ color: '#FCFCFC' }}
+            >
+              Search the web with AI
+            </motion.h2>
+          )}
           
           {/* Search Input */}
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+            animate={{ 
+              opacity: 1, 
+              y: 0,
+              width: aiResponse ? '100%' : '600px',
+              maxWidth: '100%'
+            }}
             transition={{ delay: 0.1 }}
-            className="relative max-w-2xl mx-auto mb-8"
+            className="relative mx-auto mb-8"
           >
             <div 
               className="flex items-center gap-3 px-6 py-4 rounded-2xl border transition-all duration-200 focus-within:ring-2 focus-within:ring-cyan-400/30"
@@ -304,10 +311,11 @@ const BrowserPageComponent = () => {
             >
 
               {/* Source Results */}
-              <div>
-                <h3 className="text-lg font-medium mb-4" style={{ color: '#FCFCFC' }}>Sources</h3>
-                <div className="space-y-4">
-                  {aiResponse.sources.map((result, index) => (
+              {aiResponse.sources.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-medium mb-4" style={{ color: '#FCFCFC' }}>Sources</h3>
+                  <div className="space-y-4">
+                    {aiResponse.sources.map((result, index) => (
                     <motion.div
                       key={result.id}
                       initial={{ opacity: 0, y: 10 }}
@@ -354,6 +362,7 @@ const BrowserPageComponent = () => {
                   ))}
                 </div>
               </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
