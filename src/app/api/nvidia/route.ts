@@ -101,39 +101,7 @@ function isArtifactRequest(messages: any[]): boolean {
   return artifactKeywords.some(keyword => content.includes(keyword));
 }
 
-// Enhanced prompt modification for artifact requests
-function enhanceArtifactPrompt(messages: any[]): any[] {
-  if (!isArtifactRequest(messages)) {
-    return messages;
-  }
-  
-  const lastMessage = messages[messages.length - 1];
-  const enhancedContent = `${lastMessage.content}
 
-IMPORTANT INSTRUCTIONS:
-- At the end of your response, provide a valid JSON object with the document structure
-- The JSON should include: title, content, type, category, tags, wordCount, readingTime
-- Format the JSON clearly and ensure it's valid
-- You can include your reasoning in <think> tags, but end with clean JSON
-- Example format:
-{
-  "title": "Document Title",
-  "content": "Full document content...",
-  "type": "document",
-  "category": "Educational",
-  "tags": ["example", "guide"],
-  "wordCount": 500,
-  "readingTime": "3 min"
-}`;
-
-  return [
-    ...messages.slice(0, -1),
-    {
-      ...lastMessage,
-      content: enhancedContent
-    }
-  ];
-}
 
 // Update the fetchNvidiaText function to use caching and handle timeouts better
 async function fetchNvidiaText(messages: any[], options: any = {}) {
@@ -152,8 +120,8 @@ async function fetchNvidiaText(messages: any[], options: any = {}) {
     });
   }
   
-  // Enhance messages for artifact requests
-  const enhancedMessages = enhanceArtifactPrompt(messages);
+  // No longer enhance messages for artifact requests - use them directly
+  const enhancedMessages = messages;
   
   // Check if this is an artifact request - if so, remove response_format to avoid compatibility issues
   const isArtifact = isArtifactRequest(messages);

@@ -50,7 +50,7 @@ import { Message as ConversationMessage } from "@/utils/conversation-context";
 import { filterAIThinking } from '../../utils/content-filter';
 import ThinkingButton from '@/components/ThinkingButton';
 import { ArtifactViewer } from '@/components/ArtifactViewer';
-import { getArtifactPrompt, artifactSchema, validateArtifactData, createFallbackArtifact, createArtifactFromRawContent, extractTitleFromContent, type ArtifactData } from '@/utils/artifact-utils';
+import { type ArtifactData } from '@/utils/artifact-utils';
 import { uploadAndAnalyzeImage, uploadImageToSupabase, analyzeImageWithNVIDIA, ImageUploadResult } from '@/lib/image-upload-service';
 import toast from 'react-hot-toast';
 import ReasoningDisplay from '@/components/ReasoningDisplay';
@@ -1633,67 +1633,12 @@ function detectAndCleanAdvancedStructure(content: string): {
 }
 
 // Add prompt handler functions after the BASE_SYSTEM_PROMPT and before the TestChat component
-const getDefaultChatPrompt = (basePrompt: string) => {
-  return `${basePrompt}
-
-You are Tehom AI, a helpful and intelligent assistant who provides direct, clear answers without showing your thinking process.
-
-IMPORTANT: Do NOT show your internal reasoning, analysis, or thought process. Give direct answers only.
-
-Your response style:
-- Provide clear, direct answers immediately
-- Skip explanations of how you arrived at the answer
-- Do not show step-by-step reasoning or analysis
-- Be concise and to the point
-- Answer the question directly without preamble
-
-Your tone is friendly and helpful, but focused on giving the answer the user needs without extra explanation.
-
-Use markdown formatting naturally:
-- **Bold** for important terms
-- *Italics* for emphasis
-- Bullet points for lists
-- Code blocks for technical content
-- Keep formatting simple and clean
-
-Be conversational but direct - answer first, elaborate only if specifically asked.`;
-};
 
 const getThinkPrompt = (basePrompt: string) => {
-  return `You are Tehom AI, an advanced assistant built for deep reasoning, clarity, and thoughtful analysis. You always aim to think before answering and explain complex ideas in a natural, human-like tone.
-
-You always use markdown formatting in your replies to organize your output cleanly � including headings, bullet points, code blocks, and emphasis when helpful.
-
-Your responses should be thorough and well-reasoned. Take time to consider different aspects of the question, analyze relevant factors, and provide comprehensive answers with examples and explanations.
-
-You are here to help users understand not just the answer, but provide deep insights and clear explanations. Think deeply, then explain clearly.`;
+  return `You are Tehom AI, an advanced and thoughtful assistant designed for deep reasoning, clear explanation, and insightful analysis. You think carefully before responding, consider multiple perspectives, and help users understand not just the answer, but the reasoning behind it. You communicate in a natural, human-like tone that feels intelligent, calm, and genuinely helpful. You often use analogies, examples, and counterpoints to make complex ideas easier to grasp, and you’re not afraid to explore ambiguity when needed. Your goal is to guide users toward clarity and understanding, uncover hidden assumptions, and bring depth to every conversation. You always respond in markdown format to keep your output clean, readable, and well-structured.`;
 };
 
-const getSearchPrompt = (basePrompt: string) => {
-  return `${basePrompt}
 
-IMPORTANT FOR SEARCH:
-- Focus on finding and presenting relevant information
-- Include source citations when available
-- Structure the response with clear sections
-- Highlight key findings
-- Provide a summary of search results`;
-};
-
-const getStructuredQueryPrompt = (basePrompt: string, queryType: string, schema: any) => {
-  return `${basePrompt}
-
-IMPORTANT FOR STRUCTURED QUERY (${queryType}):
-- Response MUST be a single JSON object
-- Strictly conform to the provided schema
-- Include all required fields
-- Maintain proper data types
-- No additional text outside the JSON object
-- ONLY use this format when explicitly requested by the user
-
-Schema:
-${JSON.stringify(schema, null, 2)}`;
-};
 
 // Function to extract think content during streaming and update live thinking state
 const extractThinkContentDuringStream = (content: string) => {
@@ -2430,20 +2375,7 @@ function TestChatComponent(props?: TestChatProps) {
       if (!hasInteracted) setHasInteracted(true);
       if (showHeading) setShowHeading(false);
 
-      // Generate AI title quickly based on user input
-      const generateQuickTitle = (query: string): string => {
-        const lowerQuery = query.toLowerCase();
-        if (lowerQuery.includes('essay') || lowerQuery.includes('write about')) {
-          return query.replace(/write|create|essay|about/gi, '').trim() || 'Generated Essay';
-        } else if (lowerQuery.includes('guide') || lowerQuery.includes('tutorial')) {
-          return query.replace(/guide|tutorial|how to/gi, '').trim() + ' Guide' || 'User Guide';
-        } else if (lowerQuery.includes('report') || lowerQuery.includes('analysis')) {
-          return query.replace(/report|analysis|analyze/gi, '').trim() + ' Analysis' || 'Analysis Report';
-        }
-        return query.length > 50 ? query.substring(0, 50) + '...' : query;
-      };
 
-      const quickTitle = generateQuickTitle(input.trim());
 
       // Add user message and save instantly
       const userMessageId = uuidv4();
@@ -2468,64 +2400,36 @@ function TestChatComponent(props?: TestChatProps) {
       setInput('');
       setIsLoading(true);
       setIsAiResponding(true);
-      setIsArtifactStreaming(true);
-      setArtifactStreamingContent('');
-      setArtifactProgress('Initializing artifact generation...');
 
-      // Add immediate preview card with generated title and save instantly
+
+      // Add AI message placeholder (like default chat)
       const aiMessageId = uuidv4();
-      const previewMessage: LocalMessage = {
+      const aiMessage: LocalMessage = {
         role: 'assistant',
         id: aiMessageId,
-        content: 'Creating your artifact...',
+        content: '',
         timestamp: Date.now(),
         parentId: userMessageId,
-        contentType: 'artifact',
-        title: quickTitle,
         isStreaming: true,
         isProcessed: false
       };
       
-      setMessages(prev => [...prev, previewMessage]);
-      
-      // INSTANT SAVE: Save AI preview message immediately
-      try {
-        await saveMessageInstantly(currentActiveSessionId, previewMessage);
-        console.log('[Artifact Mode] AI preview message saved instantly');
-      } catch (error) {
-        console.error('[Artifact Mode] Failed to instantly save AI preview message:', error);
-      }
-
-      // Auto-open right pane immediately with placeholder content
-      setIsArtifactMode(true);
-      
-      // Create initial placeholder artifact for streaming
-      const placeholderArtifact = {
-        type: 'document' as const,
-        title: quickTitle,
-        content: '',
-        metadata: {
-          wordCount: 0,
-          estimatedReadTime: '0 minutes',
-          category: 'General Document',
-          tags: ['document', 'ai-generated']
-        }
-      };
-      setArtifactContent(placeholderArtifact);
+      setMessages(prev => [...prev, aiMessage]);
 
       try {
-        // Call NVIDIA API with artifact prompt and streaming enabled
-        const artifactPrompt = getArtifactPrompt(input.trim());
-        
+        // Call NVIDIA API with simple user query (like default chat)
         const response = await fetch('/api/nvidia', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            messages: [{ role: 'user', content: artifactPrompt }],
-            temperature: 0.3,
-            max_tokens: 8192,
-            mode: 'artifact',
-            stream: true // Enable streaming for artifacts
+            messages: [
+              { role: 'system', content: BASE_SYSTEM_PROMPT },
+              { role: 'user', content: input.trim() }
+            ],
+            temperature: 0.7,
+            max_tokens: 4096,
+            mode: 'chat',  // Use chat mode instead of artifact mode
+            stream: true
           })
         });
 
@@ -2538,8 +2442,7 @@ function TestChatComponent(props?: TestChatProps) {
           throw new Error('No response body reader available');
         }
 
-        let rawContent = '';
-        let hasStartedContent = false;
+        let textContent = '';
 
         try {
           while (true) {
@@ -2559,34 +2462,14 @@ function TestChatComponent(props?: TestChatProps) {
                   const content = parsed.choices?.[0]?.delta?.content;
                   
                   if (content) {
-                    rawContent += content;
-                    setArtifactStreamingContent(rawContent);
+                    textContent += content;
                     
-                    // Update progress based on content progress
-                    if (!hasStartedContent && rawContent.trim().length > 0) {
-                      setArtifactProgress('Writing content...');
-                      hasStartedContent = true;
-                    }
-
-                    // DIRECT STREAMING: Update artifact with raw content immediately
-                    const words = rawContent.split(/\s+/).filter(word => word.length > 0).length;
-                    const estimatedTime = Math.max(1, Math.ceil(words / 200));
-                    
-                    // Extract title from content as it streams
-                    const currentTitle = extractTitleFromContent(rawContent, input.trim()) || quickTitle;
-                    
-                    // Update artifact content in real-time with raw markdown
-                    setArtifactContent(prev => ({
-                      type: 'document' as const,
-                      title: currentTitle,
-                      content: rawContent,
-                      metadata: {
-                        wordCount: words,
-                        estimatedReadTime: `${estimatedTime} minute${estimatedTime !== 1 ? 's' : ''}`,
-                        category: prev?.metadata.category || 'General Document',
-                        tags: prev?.metadata.tags || ['document', 'ai-generated']
-                      }
-                    }));
+                    // Update the AI message in real-time like default chat
+                    setMessages(prev => prev.map(msg => 
+                      msg.id === aiMessageId 
+                        ? { ...msg, content: textContent, isStreaming: true }
+                        : msg
+                    ));
                   }
                 } catch (parseError) {
                   // Continue streaming even if individual chunks fail to parse
@@ -2599,21 +2482,13 @@ function TestChatComponent(props?: TestChatProps) {
           reader.releaseLock();
         }
 
-        // Create final artifact from raw content
-        const finalArtifactData = createArtifactFromRawContent(rawContent, input.trim());
-        
-        // Set final artifact content
-        setArtifactContent(finalArtifactData);
-
-        // Update the AI message with final artifact
+        // Update the AI message as completed (like default chat)
         const finalAiMessage: LocalMessage = {
           role: 'assistant',
           id: aiMessageId,
-          content: `I've created a ${finalArtifactData.type} titled "${finalArtifactData.title}". Click to view it in the artifact viewer.`,
+          content: textContent,
           timestamp: Date.now(),
           parentId: userMessageId,
-          contentType: 'artifact',
-          structuredContent: finalArtifactData,
           isProcessed: true,
           isStreaming: false
         };
@@ -2622,7 +2497,7 @@ function TestChatComponent(props?: TestChatProps) {
           msg.id === aiMessageId ? finalAiMessage : msg
         ));
         
-        // FAST SAVE: Save complete artifact message instantly
+        // Save final message
         try {
           await saveMessageInstantly(currentActiveSessionId, finalAiMessage);
           console.log('[Artifact Mode] Final AI message saved instantly');
@@ -2652,9 +2527,6 @@ function TestChatComponent(props?: TestChatProps) {
       } finally {
         setIsLoading(false);
         setIsAiResponding(false);
-        setIsArtifactStreaming(false);
-        setArtifactStreamingContent('');
-        setArtifactProgress('');
         setActiveButton(null); // Reset artifact mode
       }
 
@@ -2762,15 +2634,12 @@ function TestChatComponent(props?: TestChatProps) {
       // Determine the appropriate prompt based on mode and query type
       let turnSpecificSystemPrompt = BASE_SYSTEM_PROMPT;
 
-      // @ts-ignore - TypeScript has trouble with activeMode scope in this context
-      if (activeMode === 'search') {
-        turnSpecificSystemPrompt = getSearchPrompt(BASE_SYSTEM_PROMPT);
-      } else if (activeButton === 'reasoning') {
+      if (activeButton === 'reasoning') {
         // Use specialized Think prompt for reasoning mode
         turnSpecificSystemPrompt = getThinkPrompt(BASE_SYSTEM_PROMPT);
       } else {
-        // Use default chat prompt for regular chat
-        turnSpecificSystemPrompt = getDefaultChatPrompt(BASE_SYSTEM_PROMPT);
+        // Use base prompt for all other modes (default chat, search, artifact)
+        turnSpecificSystemPrompt = BASE_SYSTEM_PROMPT;
       }
 
       console.log("[handleSend] Turn Specific System Prompt Length:", turnSpecificSystemPrompt.length);

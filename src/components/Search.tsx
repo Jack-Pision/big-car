@@ -27,6 +27,13 @@ export interface SearchProps {
 
 const MAX_STEP1_PROMPT_LENGTH = 3000; // Increased for enhanced prompts
 
+// Simple base prompt to replace complex search prompts
+const BASE_SYSTEM_PROMPT = `You are Tehom AI, a helpful, intelligent, and friendly assistant. You communicate in a natural, conversational way that feels warm and engaging.
+
+You always use markdown formatting in your replies to organize your output cleanly – including headings, bullet points, code blocks, and emphasis when helpful.
+
+Your responses are informative and well-structured, making complex topics easy to understand. You aim to be both thorough and accessible in your explanations.`;
+
 // Helper for safe base64-encoding of Unicode strings
 const safeBtoa = (str: string): string => {
   const bytes = new TextEncoder().encode(str);
@@ -709,73 +716,15 @@ const Search: React.FC<SearchProps> = ({ query, onComplete }) => {
       // Shorten the query if it's very long
       const shortenedQuery = query.length > 500 ? query.substring(0, 500) + "..." : query;
       
-      // Step 1: AI Search Strategy Planner - Generate optimized search queries
-      console.time('Step 1: AI Search Strategy Planner');
-      let step1SystemPrompt = `You are an AI Search Strategy Planner specializing in smart query analysis and Google-style search optimization. Your role is to understand user questions deeply and transform them into effective search phrases.
-
-SMART QUERY ANALYSIS PROCESS:
-1. UNDERSTAND THE QUESTION:
-   - Identify the main topic and key concepts
-   - Determine the intent (comparison, latest news, statistics, how something works, opinions, etc.)
-   - Extract the core information need
-
-2. EXTRACT IMPORTANT PARTS:
-   - Remove polite phrases ("Can you tell me", "I would like to know", "Please explain")
-   - Remove filler words and vague language
-   - Focus on concrete keywords and specific terms
-
-3. REWRITE INTO GOOGLE-STYLE SEARCH PHRASES:
-   - Create 2-3 short, direct, keyword-packed phrases
-   - Use search terms people actually type into Google
-   - NOT full questions - just key phrases
-   - Focus on specific, searchable terms
-
-CRITICAL REQUIREMENTS:
-- Generate EXACTLY 2-3 optimized search phrases (no more than 3)
-- Each phrase should be short and keyword-focused
-- Use specific terms that will yield high-quality Google results
-- Format as a numbered list with just the search phrases
-
-RESPONSE FORMAT:
-1. [First Google-style search phrase]
-2. [Second Google-style search phrase]
-3. [Third Google-style search phrase] (if needed)
-
-Do not include explanations or additional text - only the numbered search phrases.`;
-      let step1UserPrompt = `Apply the smart query analysis process to transform this user question into 2-3 Google-style search phrases.
-
-User Question: ${shortenedQuery}
-
-ANALYSIS STEPS:
-1. Understand what they're really asking about
-2. Extract the important keywords and concepts
-3. Rewrite as short, direct search phrases (not full questions)
-
-EXAMPLE TRANSFORMATION:
-"Can you tell me what's going on with OpenAI's Sora model?" → "OpenAI Sora model update 2025"
-
-Output only the numbered search phrases, nothing else.`;
-      // Aggressively truncate for step 1
-      const step1SystemPromptTruncated = step1SystemPrompt.length > MAX_STEP1_PROMPT_LENGTH
-        ? step1SystemPrompt.substring(0, MAX_STEP1_PROMPT_LENGTH) + '...'
-        : step1SystemPrompt;
-      const step1UserPromptTruncated = step1UserPrompt.length > MAX_STEP1_PROMPT_LENGTH
-        ? step1UserPrompt.substring(0, MAX_STEP1_PROMPT_LENGTH) + '...'
-        : step1UserPrompt;
-      console.log('[Nvidia API] Step 1 prompt length:', step1SystemPromptTruncated.length + step1UserPromptTruncated.length);
-      const strategyResult = await executeNvidiaStep(
-        'understand',
-        step1SystemPromptTruncated,
-        step1UserPromptTruncated
-      );
-      console.timeEnd('Step 1: AI Search Strategy Planner');
+      // Step 1: Simple query processing - just use the original query
+      console.time('Step 1: Query Processing');
       
-      // Extract search queries from Step 1 results
-      const searchQueries = extractSearchQueries(strategyResult);
-      console.log('Extracted search queries:', searchQueries);
+      // Skip complex prompt processing and just use the original query
+      const strategyResult = shortenedQuery;
+      console.timeEnd('Step 1: Query Processing');
       
-      // If no queries extracted, use original query as fallback
-      const finalSearchQueries = searchQueries.length > 0 ? searchQueries : [shortenedQuery];
+      // Use original query for search
+      const finalSearchQueries = [shortenedQuery];
       
       // Step 2: Multi-Source Web Discovery & Content Scraping
       console.time('Step 2: Web Discovery & Content Scraping');
@@ -833,104 +782,7 @@ Error details: ${errorMessage}
             messages: [
               {
                 role: 'system',
-              content: `You are a professional research analyst. Generate comprehensive research reports with authoritative analysis and extensive detail.
-
-CRITICAL: Always show your thinking process using <think> tags before providing your final answer. This is required for all responses. Use this format:
-
-<think>
-Let me analyze the research data and plan my comprehensive report...
-
-First, I'll examine the scraped content from each source to identify key themes and insights:
-- Source analysis: Looking at [specific sources] for [specific information]
-- Content quality assessment: [evaluation of source reliability]
-- Key findings extraction: [major insights discovered]
-- Cross-source validation: [checking for contradictions/agreements]
-- Synthesis approach: [how I'll structure the comprehensive report]
-
-My analysis reveals:
-[Detailed analysis of the content, identifying patterns, themes, and key insights]
-
-My approach will be to structure this as:
-[Report structure planning with specific sections based on findings]
-</think>
-
-Then provide your final research report after the thinking process.
-
-OUTPUT REQUIREMENTS:
-- 1500-2500 words minimum
-- Professional academic/journalistic tone
-- Specific names, dates, statistics, locations, technical details
-- Multiple detailed sections with deep analysis
-- Well-structured tables for comparative data
-- Numbered citations [1], [2], [3] for every factual claim
-- Extensive background context and implications
-
-REPORT STRUCTURE:
-
-# [Detailed, Specific Title with Context and Date/Timeframe if Relevant]
-
-[Opening paragraph: 2-3 sentences providing comprehensive context and overview, establishing significance and current state]
-
-## [Major Section 1: Core Topic/Event Analysis]
-
-[Extensive paragraph with detailed background, specific details, names, dates, statistics. Include multiple citations.]
-
-### [Detailed Subsection 1.1]
-
-[Comprehensive analysis with specific data points, quotes, technical details. Include:]
-- **Specific metric/aspect**: Detailed explanation with numbers and citations
-- **Another key point**: In-depth analysis with supporting evidence
-- **Technical details**: Specific technical information, processes, or mechanisms
-
-### [Detailed Subsection 1.2]
-
-[Continue with extensive detail, including tables when relevant for comparisons or data]
-
-## [Major Section 2: Impact Analysis/Stakeholder Perspectives]
-
-[Detailed analysis of different perspectives, impacts, or stakeholder views]
-
-### [Subsection 2.1: Specific Stakeholder/Impact Area]
-[Extensive detail with specific examples, quotes, statistics]
-
-### [Subsection 2.2: Another Key Area]
-[More comprehensive analysis with supporting data]
-
-## [Major Section 3: Technical/Economic/Political Analysis]
-
-[Deep dive into technical aspects, economic implications, or political ramifications]
-
-### [Relevant Technical/Economic Subsection]
-[Include specific technical details, economic data, market analysis, etc.]
-
-## [Major Section 4: Regional/Global/Industry Impact]
-
-[Analysis of broader implications and consequences]
-
-## [Major Section 5: Current Status and Future Outlook]
-
-[Present situation analysis and future projections with expert opinions]
-
-## Sources and References
-[1] [Complete Source Title] - [Full Domain Name]
-[2] [Complete Source Title] - [Full Domain Name]
-[Continue with all sources used, numbered sequentially]
-
-FORMATTING RULES:
-- Write 1500-2500 words minimum
-- Include specific names, dates, locations, statistics, technical details throughout
-- Use professional journalistic/academic tone
-- Create detailed tables for comparative data, statistics, structured information
-- Bold important terms, names, key statistics
-- Every major factual claim must have numbered citation [1], [2], etc.
-- Include extensive background context and detailed explanations
-- Provide multiple perspectives and comprehensive analysis
-- Use clear section hierarchy with detailed subsections
-- Include specific quotes, data points, technical specifications when available
-- Analyze implications, consequences, future projections
-- Maintain authoritative, expert-level depth throughout
-
-CRITICAL: Output ONLY the final research report. Do not include any planning thoughts, reasoning, or meta-commentary about the report creation process.`
+              content: BASE_SYSTEM_PROMPT
               },
               {
                 role: 'user',
