@@ -82,8 +82,17 @@ const BrowserPageComponent = () => {
   useEffect(() => {
     const initialQuery = searchParams?.get('q');
     if (initialQuery) {
-      setQuery(initialQuery);
-      handleSearch(initialQuery);
+      // Check sessionStorage first to prevent API calls on simple refresh
+      const cachedResults = sessionStorage.getItem(`search-results-${initialQuery}`);
+      if (cachedResults) {
+        setQuery(initialQuery);
+        const parsedResults = JSON.parse(cachedResults);
+        setSearchResults(parsedResults);
+        setAiResponse({ sources: parsedResults });
+      } else {
+        setQuery(initialQuery);
+        handleSearch(initialQuery);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -148,6 +157,13 @@ const BrowserPageComponent = () => {
       setSearchResults(searchResults);
       setAiResponse(aiResponse);
 
+      // Cache results in sessionStorage to avoid re-fetching on refresh
+      try {
+        sessionStorage.setItem(`search-results-${searchQuery}`, JSON.stringify(searchResults));
+      } catch (error) {
+        console.error('Error saving to sessionStorage:', error);
+      }
+
       // Update URL so the search can be shared / reloaded
       try {
         router.replace(`/browser?q=${encodeURIComponent(searchQuery)}`);
@@ -155,18 +171,16 @@ const BrowserPageComponent = () => {
         console.error('Failed to update URL:', e);
       }
 
-      // Save to browser history
-      if (user) {
-        try {
-          await browserHistoryService.saveBrowserSearch({
-            query: searchQuery,
-            results_summary: `Found ${searchResults.length} sources from the web`,
-            sources_count: searchResults.length,
-            search_results: searchResults
-          });
-        } catch (error) {
-          console.error('Error saving to browser history:', error);
-        }
+      // Save to browser history - service will handle auth check
+      try {
+        await browserHistoryService.saveBrowserSearch({
+          query: searchQuery,
+          results_summary: `Found ${searchResults.length} sources from the web`,
+          sources_count: searchResults.length,
+          search_results: searchResults
+        });
+      } catch (error) {
+        console.error('Error saving to browser history:', error);
       }
       
     } catch (error) {
