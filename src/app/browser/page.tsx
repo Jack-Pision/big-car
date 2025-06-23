@@ -9,6 +9,11 @@ import rehypeRaw from 'rehype-raw';
 import 'katex/dist/katex.min.css';
 import ThinkingButton from '@/components/ThinkingButton';
 import { useRouter } from 'next/navigation';
+import Sidebar from '@/components/Sidebar';
+import HamburgerMenu from '@/components/HamburgerMenu';
+import BrowserHistoryModal from '@/components/BrowserHistoryModal';
+import AuthProvider, { useAuth } from '@/components/AuthProvider';
+import { browserHistoryService } from '@/lib/browser-history-service';
 
 interface SearchResult {
   id: string;
@@ -25,8 +30,9 @@ interface AIResponse {
   thinking?: string;
 }
 
-const BrowserPage = () => {
+const BrowserPageComponent = () => {
   const router = useRouter();
+  const { user } = useAuth();
   const [query, setQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
@@ -34,6 +40,10 @@ const BrowserPage = () => {
   const [showThinking, setShowThinking] = useState(false);
   const [liveThinking, setLiveThinking] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
+  
+  // New state for sidebar and history modal
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [historyModalOpen, setHistoryModalOpen] = useState(false);
 
   const trendingTopics = [
     "AI search engines 2025",
@@ -131,6 +141,20 @@ For someone looking to understand this topic better, I'd recommend starting with
       setAiResponse(mockAIResponse);
       setLiveThinking('');
       setShowThinking(false);
+
+      // Save to browser history
+      if (user) {
+        try {
+          await browserHistoryService.saveBrowserSearch({
+            query: searchQuery,
+            results_summary: `Found ${mockResults.length} sources with comprehensive analysis`,
+            sources_count: mockResults.length,
+            search_results: mockResults
+          });
+        } catch (error) {
+          console.error('Error saving to browser history:', error);
+        }
+      }
       
     } catch (error) {
       console.error('Search error:', error);
@@ -160,30 +184,26 @@ For someone looking to understand this topic better, I'd recommend starting with
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#161618', fontFamily: 'Inter, sans-serif' }}>
       {/* Header */}
-      <header className="border-b border-gray-800 px-6 py-4">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => router.push('/test')}
-              className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M19 12H5M12 19l-7-7 7-7"/>
-              </svg>
-              <span className="text-sm">Back to Chat</span>
-            </button>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            <img src="/Logo.svg" alt="App Logo" className="h-8 w-auto" />
-            <h1 className="text-xl font-semibold" style={{ color: '#FCFCFC' }}>AI Browser</h1>
-          </div>
-          
-          <div className="w-20"></div> {/* Spacer for centering */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-[#161618] shadow-xl h-14 flex items-center px-4">
+        <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
+        <img src="/Logo.svg" alt="Logo" className="ml-3" style={{ width: 90, height: 90 }} />
+        
+        {/* History Button */}
+        <div className="ml-auto">
+          <button
+            onClick={() => setHistoryModalOpen(true)}
+            className="p-2 rounded-lg hover:bg-gray-700 transition-colors text-gray-400 hover:text-white"
+            title="Browser History"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12,6 12,12 16,14"/>
+            </svg>
+          </button>
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-6 py-8">
+      <main className="max-w-4xl mx-auto px-6 py-8 pt-20">
         {/* Main Search Section */}
         <div className="text-center mb-12">
           <motion.h2 
@@ -427,7 +447,46 @@ For someone looking to understand this topic better, I'd recommend starting with
           )}
         </AnimatePresence>
       </main>
+
+      {/* Overlay for sidebar */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/20 z-[9998]"
+          aria-hidden="true"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <Sidebar
+        open={sidebarOpen}
+        activeSessionId={null}
+        onClose={() => setSidebarOpen(false)}
+        onNewChat={() => router.push('/test')}
+        onSelectSession={() => {}}
+        refreshTrigger={0}
+        user={user}
+        onSettingsClick={() => {}}
+      />
+
+      {/* Browser History Modal */}
+      <BrowserHistoryModal
+        isOpen={historyModalOpen}
+        onClose={() => setHistoryModalOpen(false)}
+        onSelectQuery={(selectedQuery) => {
+          setQuery(selectedQuery);
+          handleSearch(selectedQuery);
+        }}
+      />
     </div>
+  );
+};
+
+const BrowserPage = () => {
+  return (
+    <AuthProvider>
+      <BrowserPageComponent />
+    </AuthProvider>
   );
 };
 
