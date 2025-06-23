@@ -164,7 +164,7 @@ const BrowserPageComponent = () => {
       }
 
       const data = await response.json();
-      const searchResults = data.results || [];
+      const searchResults = data.sources || [];
 
       const aiResponse: AIResponse = {
         sources: searchResults
