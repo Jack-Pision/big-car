@@ -1660,7 +1660,13 @@ Be conversational but direct - answer first, elaborate only if specifically aske
 };
 
 const getThinkPrompt = (basePrompt: string) => {
-  return `You are Tehom AI, an advanced and thoughtful assistant designed for deep reasoning, clear explanation, and insightful analysis. You think carefully before responding, consider multiple perspectives, and help users understand not just the answer, but the reasoning behind it. You communicate in a natural, human-like tone that feels intelligent, calm, and genuinely helpful. You often use analogies, examples, and counterpoints to make complex ideas easier to grasp, and you're not afraid to explore ambiguity when needed. Your goal is to guide users toward clarity and understanding, uncover hidden assumptions, and bring depth to every conversation. You always respond in markdown format to keep your output clean, readable, and well-structured.`;
+  return `You are Tehom AI, an advanced assistant built for deep reasoning, clarity, and thoughtful analysis. You always aim to think before answering and explain complex ideas in a natural, human-like tone.
+
+You always use markdown formatting in your replies to organize your output cleanly � including headings, bullet points, code blocks, and emphasis when helpful.
+
+Your responses should be thorough and well-reasoned. Take time to consider different aspects of the question, analyze relevant factors, and provide comprehensive answers with examples and explanations.
+
+You are here to help users understand not just the answer, but provide deep insights and clear explanations. Think deeply, then explain clearly.`;
 };
 
 const getSearchPrompt = (basePrompt: string) => {
@@ -1694,17 +1700,12 @@ const extractThinkContentDuringStream = (content: string) => {
   let thinkContent = '';
   let mainContent = content;
   
-  // Debug logging
-  console.log('[Think Debug] Full content buffer:', content.substring(0, 200) + '...');
-  console.log('[Think Debug] Looking for think tags in content');
-  
   // First, handle complete think tags
   const completeThinkRegex = /<think>([\s\S]*?)<\/think>/g;
   let match;
   
   while ((match = completeThinkRegex.exec(content)) !== null) {
     thinkContent += match[1];
-    console.log('[Think Debug] Found complete think tag with content:', match[1].substring(0, 100) + '...');
     // Remove the complete think tags from main content
     mainContent = mainContent.replace(match[0], '');
   }
@@ -1712,25 +1713,17 @@ const extractThinkContentDuringStream = (content: string) => {
   // Only handle partial think tags if no complete tags were found
   // This prevents double-processing the same content
   if (!thinkContent) {
-    const partialThinkMatch = content.match(/<think>([^<]*?)$/);
-    if (partialThinkMatch) {
+  const partialThinkMatch = content.match(/<think>([^<]*?)$/);
+  if (partialThinkMatch) {
       thinkContent = partialThinkMatch[1];
-      console.log('[Think Debug] Found partial think tag with content:', partialThinkMatch[1].substring(0, 100) + '...');
-      mainContent = mainContent.replace(partialThinkMatch[0], '');
-    } else {
-      console.log('[Think Debug] No think tags found in content');
+    mainContent = mainContent.replace(partialThinkMatch[0], '');
     }
   }
   
-  const result = {
+  return {
     thinkContent: thinkContent.trim(),
     mainContent: mainContent.trim()
   };
-  
-  console.log('[Think Debug] Extracted think content length:', result.thinkContent.length);
-  console.log('[Think Debug] Extracted main content length:', result.mainContent.length);
-  
-  return result;
 };
 
 // Helper function to extract JSON from streaming artifact content
@@ -2936,11 +2929,6 @@ function TestChatComponent(props?: TestChatProps) {
                   const parsed = JSON.parse(data);
                   const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.message?.content || parsed.choices?.[0]?.text || parsed.content || '';
                   
-                  // Debug logging for DeepSeek response
-                  if (activeButton === 'reasoning') {
-                    console.log('[DeepSeek Debug] Raw delta:', delta?.substring(0, 100) + '...');
-                  }
-                  
                   if (delta) {
                     contentBuffer += delta;
                     
@@ -2966,15 +2954,9 @@ function TestChatComponent(props?: TestChatProps) {
                         const now = Date.now();
                         if (now - lastLiveReasoningUpdate > 120) { // throttle to ~8 updates/sec
                           lastLiveReasoningUpdate = now;
-                          console.log('[Think Debug] Setting liveReasoning:', thinkContent.substring(0, 100) + '...');
-                          console.log('[Think Debug] Current reasoning message ID:', aiMessageId);
                         setLiveReasoning(thinkContent);
                         setCurrentReasoningMessageId(aiMessageId);
-                        } else {
-                          console.log('[Think Debug] Throttled update, skipping liveReasoning update');
                         }
-                      } else {
-                        console.log('[Think Debug] No think content found for live reasoning update');
                       }
                       } else {
                       // For default chat, use content directly without think processing
