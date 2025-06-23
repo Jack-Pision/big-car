@@ -25,7 +25,7 @@ function getApiKeyForMode(mode: string): string {
 function getModelForMode(mode: string): string {
   switch (mode) {
     case 'reasoning':
-      return 'deepseek-r1-0528'; // Reasoning model with thinking capability
+      return 'deepseek-ai/deepseek-r1-0528'; // Reasoning model with thinking capability
     case 'image_analysis':
       return 'nvidia/llama-3.1-nemotron-nano-vl-8b-v1'; // Updated NVIDIA vision model
     case 'chat':
@@ -133,7 +133,7 @@ async function fetchNvidiaText(messages: any[], options: any = {}) {
     messages: enhancedMessages,
     temperature: options.temperature || 0.6,
     top_p: options.top_p || 0.7,
-    max_tokens: options.max_tokens || (selectedModel === 'deepseek-r1-0528' ? 15000 : (isArtifact ? 8192 : 8139)), // 15000 for DeepSeek reasoning (Think Mode), else default
+    max_tokens: options.max_tokens || (selectedModel === 'deepseek-ai/deepseek-r1-0528' ? 15000 : (isArtifact ? 8192 : 8139)), // 15000 for DeepSeek reasoning (Think Mode), else default
     presence_penalty: options.presence_penalty || 0.8,
     frequency_penalty: options.frequency_penalty || 0.5,
     stream: options.stream !== undefined ? options.stream : true,
