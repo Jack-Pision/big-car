@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -7,6 +7,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import rehypeRaw from 'rehype-raw';
 import 'katex/dist/katex.min.css';
+import ImageCarousel from '@/components/ImageCarousel';
 
 import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
@@ -21,6 +22,7 @@ interface SearchResult {
   snippet: string;
   url: string;
   favicon?: string;
+  image?: string;
   timestamp?: string;
 }
 
@@ -36,6 +38,19 @@ const BrowserPageComponent = () => {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [aiResponse, setAiResponse] = useState<AIResponse | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
+  
+  // Extract images from search results for the carousel
+  const carouselImages = useMemo(() => {
+    if (!searchResults?.length) return [];
+    
+    return searchResults
+      .filter(result => result.image)
+      .map(result => ({
+        url: result.image!,
+        title: result.title,
+        sourceUrl: result.url
+      }));
+  }, [searchResults]);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   
@@ -353,6 +368,19 @@ const BrowserPageComponent = () => {
           </motion.div>
         )}
         
+        {/* Image Carousel */}
+        <AnimatePresence>
+          {aiResponse && carouselImages.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+            >
+              <ImageCarousel images={carouselImages} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+        
         {/* AI Response */}
         <AnimatePresence>
           {aiResponse && (
@@ -387,24 +415,58 @@ const BrowserPageComponent = () => {
                             <img 
                               src={result.favicon} 
                               alt="" 
-                              className="w-full h-full object-cover"
+                              className="w-full h-full object-contain p-1"
                               onError={(e) => {
-                                // Fallback to default icon on error
+                                // Extract domain for favicon fallback
+                                const domain = new URL(result.url).hostname;
+                                // Try Google's favicon service as fallback
                                 const target = e.target as HTMLImageElement;
-                                target.style.display = 'none';
-                                target.parentElement!.innerHTML = `
+                                target.src = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+                                
+                                // If that also fails, show default icon
+                                target.onerror = () => {
+                                  target.style.display = 'none';
+                                  target.parentElement!.innerHTML = `
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                                      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                                    </svg>
+                                  `;
+                                };
+                              }}
+                            />
+                          ) : (
+                            // Try to get favicon from domain if not provided
+                            (() => {
+                              try {
+                                const domain = new URL(result.url).hostname;
+                                return (
+                                  <img 
+                                    src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`}
+                                    alt=""
+                                    className="w-full h-full object-contain p-1"
+                                    onError={(e) => {
+                                      // Fallback to default icon
+                                      const target = e.target as HTMLImageElement;
+                                      target.style.display = 'none';
+                                      target.parentElement!.innerHTML = `
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                                          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                                        </svg>
+                                      `;
+                                    }}
+                                  />
+                                );
+                              } catch (e) {
+                                return (
                                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
                                     <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
                                   </svg>
-                                `;
-                              }}
-                            />
-                          ) : (
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-                            </svg>
+                                );
+                              }
+                            })()
                           )}
                         </div>
                         

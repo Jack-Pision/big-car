@@ -5,7 +5,7 @@ interface ExaSearchResult {
   url: string;
   snippet: string;
   favicon_url?: string;
-  image_url?: string;
+  image?: string; // Exa API returns image URLs as 'image'
 }
 
 interface ExaApiResponse {
@@ -18,6 +18,7 @@ interface TransformedSearchResult {
   snippet: string;
   url: string;
   favicon?: string;
+  image?: string;
   timestamp?: string;
 }
 
@@ -52,6 +53,13 @@ export async function POST(req: NextRequest) {
         query,
         numResults: 10,
         useAutoprompt: true,
+        includeDomains: [], // No domain restrictions
+        excludeDomains: [], // No domain exclusions
+        startPublishedDate: "", // No date restrictions
+        endPublishedDate: "",
+        text: true, // Include text content
+        highlights: false, // No need for highlights
+        imageSupport: true, // Request image URLs
       }),
     });
 
@@ -73,6 +81,7 @@ export async function POST(req: NextRequest) {
       snippet: result.snippet,
       url: result.url,
       favicon: result.favicon_url,
+      image: result.image,
       timestamp: new Date().toISOString() // Current timestamp as these are fresh results
     }));
 
