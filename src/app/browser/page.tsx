@@ -225,10 +225,10 @@ const BrowserPageComponent = () => {
             className="relative mx-auto mb-8"
           >
             <div 
-              className={`flex items-center gap-3 px-6 ${aiResponse ? 'py-4' : 'py-5'} rounded-2xl border transition-all duration-200 focus-within:ring-2 focus-within:ring-cyan-400/30`}
+              className="flex items-center gap-3 px-6 py-4 h-14 rounded-2xl border transition-all duration-200 focus-within:ring-2 focus-within:ring-cyan-400/30"
               style={{ 
-                backgroundColor: '#1a1a1a',
-                borderColor: '#333333'
+                backgroundColor: '#262626',
+                borderColor: '#3b3b3b'
               }}
             >
               <svg 
@@ -256,7 +256,7 @@ const BrowserPageComponent = () => {
                 className="flex-1 bg-transparent outline-none text-base placeholder-gray-400"
                 style={{ 
                   color: '#FCFCFC', 
-                  fontSize: aiResponse ? '14px' : '16px'
+                  fontSize: '16px'
                 }}
               />
               
@@ -264,19 +264,16 @@ const BrowserPageComponent = () => {
                 <button
                   onClick={() => handleSearch(query)}
                   disabled={isSearching}
-                  className="flex items-center justify-center w-10 h-10 rounded-full bg-cyan-500 hover:bg-cyan-600 transition-colors disabled:opacity-50"
+                  className="flex items-center justify-center px-3 py-1.5 rounded-md bg-white hover:bg-white/90 transition-colors disabled:opacity-50"
                 >
                   {isSearching ? (
                     <motion.div
                       animate={{ rotate: 360 }}
                       transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                      className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
+                      className="w-4 h-4 border-2 border-black border-t-transparent rounded-full"
                     />
                   ) : (
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="22" y1="2" x2="11" y2="13"/>
-                      <polygon points="22,2 15,22 11,13 2,9 22,2"/>
-                    </svg>
+                    <span className="text-black text-sm font-medium">Search</span>
                   )}
                 </button>
               )}
