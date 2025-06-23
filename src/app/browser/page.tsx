@@ -175,10 +175,10 @@ const BrowserPageComponent = () => {
             <motion.h2 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-3xl font-medium mb-8"
+              className="text-4xl font-medium mb-10"
               style={{ color: '#FCFCFC' }}
             >
-              Search the web with AI
+              Search the web with Tehom
             </motion.h2>
           )}
           
@@ -188,20 +188,29 @@ const BrowserPageComponent = () => {
             animate={{ 
               opacity: 1, 
               y: 0,
-              width: aiResponse ? '100%' : '600px',
+              width: aiResponse ? '100%' : '800px',
               maxWidth: '100%'
             }}
             transition={{ delay: 0.1 }}
             className="relative mx-auto mb-8"
           >
             <div 
-              className="flex items-center gap-3 px-6 py-4 rounded-2xl border transition-all duration-200 focus-within:ring-2 focus-within:ring-cyan-400/30"
+              className={`flex items-center gap-3 px-6 ${aiResponse ? 'py-4' : 'py-5'} rounded-2xl border transition-all duration-200 focus-within:ring-2 focus-within:ring-cyan-400/30`}
               style={{ 
                 backgroundColor: '#1a1a1a',
                 borderColor: '#333333'
               }}
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg 
+                width={aiResponse ? "20" : "24"} 
+                height={aiResponse ? "20" : "24"} 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="#9ca3af" 
+                strokeWidth="2" 
+                strokeLinecap="round" 
+                strokeLinejoin="round"
+              >
                 <circle cx="11" cy="11" r="8"/>
                 <path d="m21 21-4.35-4.35"/>
               </svg>
@@ -215,7 +224,10 @@ const BrowserPageComponent = () => {
                 onKeyPress={handleKeyPress}
                 disabled={isSearching}
                 className="flex-1 bg-transparent outline-none text-base placeholder-gray-400"
-                style={{ color: '#FCFCFC', fontSize: '14px' }}
+                style={{ 
+                  color: '#FCFCFC', 
+                  fontSize: aiResponse ? '14px' : '16px'
+                }}
               />
               
               {query && (
