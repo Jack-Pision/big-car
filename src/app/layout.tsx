@@ -4,12 +4,16 @@ import { Toaster } from 'react-hot-toast';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import type { Metadata } from 'next'
+import { AuthProvider } from '@/components/AuthProvider';
 
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'Tehom AI',
-  description: 'A modern chatbot interface for AI study assistance',
+  description: 'AI-powered study assistant',
+  icons: {
+    icon: '/favicon.svg',
+  },
 };
 
 export default function RootLayout({
