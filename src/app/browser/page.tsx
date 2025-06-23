@@ -241,7 +241,7 @@ const BrowserPageComponent = () => {
             className="relative mx-auto mb-8"
           >
             <div 
-              className="flex items-center gap-3 px-6 py-4 h-14 rounded-2xl border transition-all duration-200 focus-within:ring-2 focus-within:ring-cyan-400/30"
+              className="flex items-center gap-2 px-4 py-4 h-14 rounded-2xl border transition-all duration-200 focus-within:ring-2 focus-within:ring-gray-400/30"
               style={{ 
                 backgroundColor: '#262626',
                 borderColor: '#3b3b3b'
@@ -280,14 +280,14 @@ const BrowserPageComponent = () => {
                 <button
                   onClick={() => handleSearch(query)}
                   disabled={isSearching}
-                  className="flex items-center justify-center w-10 h-10 rounded-2xl bg-cyan-400 hover:bg-cyan-300 transition-all duration-200 disabled:opacity-50 hover:scale-105 active:scale-95"
+                  className="flex items-center justify-center w-10 h-10 rounded-2xl bg-white hover:bg-gray-100 transition-all duration-200 disabled:opacity-50 hover:scale-105 active:scale-95"
                   title="Search"
                 >
                   {isSearching ? (
                     <motion.div
                       animate={{ rotate: 360 }}
                       transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                      className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
+                      className="w-4 h-4 border-2 border-black border-t-transparent rounded-full"
                     />
                   ) : (
                     <svg
@@ -295,7 +295,7 @@ const BrowserPageComponent = () => {
                       height="18"
                       viewBox="0 0 24 24"
                       fill="none"
-                      stroke="white"
+                      stroke="black"
                       strokeWidth="2.5"
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -324,7 +324,7 @@ const BrowserPageComponent = () => {
             <motion.div
               animate={{ rotate: 360 }}
               transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-              className="w-12 h-12 border-2 border-cyan-500 border-t-transparent rounded-full mb-4"
+              className="w-12 h-12 border-2 border-white border-t-transparent rounded-full mb-4"
             />
             <p className="text-gray-400">Searching the web...</p>
           </motion.div>
@@ -348,7 +348,7 @@ const BrowserPageComponent = () => {
             <p className="text-gray-400 text-center max-w-md">{searchError}</p>
             <button 
               onClick={() => handleSearch(query)}
-              className="mt-4 px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg transition-colors"
+              className="mt-4 px-4 py-2 bg-white hover:bg-gray-100 text-black rounded-lg transition-colors"
             >
               Try Again
             </button>
