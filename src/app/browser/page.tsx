@@ -7,7 +7,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import rehypeRaw from 'rehype-raw';
 import 'katex/dist/katex.min.css';
-import ThinkingButton from '@/components/ThinkingButton';
+
 import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import HamburgerMenu from '@/components/HamburgerMenu';
@@ -25,9 +25,7 @@ interface SearchResult {
 }
 
 interface AIResponse {
-  summary: string;
   sources: SearchResult[];
-  thinking?: string;
 }
 
 const BrowserPageComponent = () => {
@@ -37,8 +35,7 @@ const BrowserPageComponent = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [aiResponse, setAiResponse] = useState<AIResponse | null>(null);
-  const [showThinking, setShowThinking] = useState(false);
-  const [liveThinking, setLiveThinking] = useState('');
+
   const searchInputRef = useRef<HTMLInputElement>(null);
   
   // New state for sidebar and history modal
@@ -75,19 +72,10 @@ const BrowserPageComponent = () => {
     if (!searchQuery.trim()) return;
     
     setIsSearching(true);
-    setLiveThinking('');
-    setShowThinking(true);
     
     try {
-      // Simulate AI thinking process
-      setLiveThinking('Analyzing your query and determining the best search strategy...');
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      setLiveThinking('Searching multiple sources across the web for relevant information...');
+      // Add a small delay to simulate search
       await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      setLiveThinking('Processing and synthesizing information from reliable sources...');
-      await new Promise(resolve => setTimeout(resolve, 1000));
       
       // Mock search results
       const mockResults: SearchResult[] = [
@@ -115,32 +103,11 @@ const BrowserPageComponent = () => {
       ];
 
       const mockAIResponse: AIResponse = {
-        summary: `Based on my analysis of multiple sources, here's what I found about "${searchQuery}":
-
-## Key Insights
-
-The topic you're exploring involves several important aspects that are worth understanding. Current research and expert opinions suggest that this area is rapidly evolving with significant developments happening regularly.
-
-## Main Points
-
-- **Primary Concept**: The fundamental principles are well-established and widely accepted in the field
-- **Recent Developments**: New advancements have emerged that change how we approach this topic
-- **Practical Applications**: There are several real-world implementations that demonstrate effectiveness
-- **Future Outlook**: Experts predict continued growth and innovation in this area
-
-## Recommendations
-
-For someone looking to understand this topic better, I'd recommend starting with the foundational concepts and then exploring the latest research. The sources I've found provide comprehensive coverage from basic principles to advanced applications.
-
-*This analysis is based on information from ${mockResults.length} reliable sources.*`,
-        sources: mockResults,
-        thinking: 'I analyzed your query by first understanding the key concepts you\'re asking about, then searching across multiple reliable sources including academic papers, expert blogs, and recent news articles. I prioritized sources that provide both foundational knowledge and current developments. The synthesis combines information from these sources to give you a comprehensive overview while highlighting the most important and actionable insights.'
+        sources: mockResults
       };
 
       setSearchResults(mockResults);
       setAiResponse(mockAIResponse);
-      setLiveThinking('');
-      setShowThinking(false);
 
       // Save to browser history
       if (user) {
@@ -158,8 +125,6 @@ For someone looking to understand this topic better, I'd recommend starting with
       
     } catch (error) {
       console.error('Search error:', error);
-      setLiveThinking('');
-      setShowThinking(false);
     } finally {
       setIsSearching(false);
     }
@@ -326,22 +291,7 @@ For someone looking to understand this topic better, I'd recommend starting with
           </motion.div>
         )}
 
-        {/* Thinking Box */}
-        <AnimatePresence>
-          {(showThinking || liveThinking) && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="mb-8"
-            >
-              <ThinkingButton 
-                content={liveThinking || 'Preparing to search...'}
-                isLive={isSearching}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
+
 
         {/* AI Response */}
         <AnimatePresence>
@@ -352,45 +302,6 @@ For someone looking to understand this topic better, I'd recommend starting with
               transition={{ delay: 0.2 }}
               className="mb-8"
             >
-              {/* AI Summary */}
-              <div 
-                className="rounded-2xl border p-6 mb-6"
-                style={{ 
-                  backgroundColor: '#1a1a1a',
-                  borderColor: '#333333'
-                }}
-              >
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-8 h-8 rounded-full bg-cyan-500 flex items-center justify-center">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M9 12l2 2 4-4"/>
-                      <path d="M21 12c.552 0 1-.448 1-1s-.448-1-1-1-1 .448-1 1 .448 1 1 1z"/>
-                      <path d="M3 12c.552 0 1-.448 1-1s-.448-1-1-1-1 .448-1 1 .448 1 1 1z"/>
-                    </svg>
-                  </div>
-                  <h3 className="text-lg font-medium" style={{ color: '#FCFCFC' }}>AI Summary</h3>
-                </div>
-                
-                <div className="prose prose-invert max-w-none" style={{ fontSize: '14px' }}>
-                  <ReactMarkdown 
-                    remarkPlugins={[remarkGfm, remarkMath]}
-                    rehypePlugins={[rehypeRaw, rehypeKatex]}
-                    className="text-gray-300"
-                  >
-                    {aiResponse.summary}
-                  </ReactMarkdown>
-                </div>
-              </div>
-
-              {/* Thinking Process */}
-              {aiResponse.thinking && (
-                <div className="mb-6">
-                  <ThinkingButton 
-                    content={aiResponse.thinking}
-                    isLive={false}
-                  />
-                </div>
-              )}
 
               {/* Source Results */}
               <div>
