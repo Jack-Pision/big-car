@@ -566,10 +566,16 @@ const BrowserPageComponent = () => {
   );
 };
 
+// Disable static prerendering because we depend on search params at runtime
+export const dynamic = 'force-dynamic';
+
 const BrowserPage = () => {
   return (
     <AuthProvider>
-      <BrowserPageComponent />
+      {/* Wrap in Suspense to satisfy useSearchParams requirement */}
+      <React.Suspense fallback={null}>
+        <BrowserPageComponent />
+      </React.Suspense>
     </AuthProvider>
   );
 };
