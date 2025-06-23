@@ -9,7 +9,7 @@ import rehypeRaw from 'rehype-raw';
 import 'katex/dist/katex.min.css';
 import ImageCarousel from '@/components/ImageCarousel';
 
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import HamburgerMenu from '@/components/HamburgerMenu';
 import BrowserHistoryModal from '@/components/BrowserHistoryModal';
@@ -32,6 +32,7 @@ interface AIResponse {
 
 const BrowserPageComponent = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const [query, setQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
@@ -76,6 +77,16 @@ const BrowserPageComponent = () => {
     "Sustainable energy solutions",
     "Remote work productivity tips"
   ];
+
+  // Run search automatically if ?q= parameter present on first load
+  useEffect(() => {
+    const initialQuery = searchParams?.get('q');
+    if (initialQuery) {
+      setQuery(initialQuery);
+      handleSearch(initialQuery);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     // Focus search input on page load
@@ -136,6 +147,13 @@ const BrowserPageComponent = () => {
 
       setSearchResults(searchResults);
       setAiResponse(aiResponse);
+
+      // Update URL so the search can be shared / reloaded
+      try {
+        router.replace(`/browser?q=${encodeURIComponent(searchQuery)}`);
+      } catch (e) {
+        console.error('Failed to update URL:', e);
+      }
 
       // Save to browser history
       if (user) {
