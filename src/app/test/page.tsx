@@ -3517,15 +3517,15 @@ function TestChatComponent(props?: TestChatProps) {
             <div 
               className="w-full rounded-2xl border shadow-lg p-3 mb-2 cursor-pointer transition-all duration-300 ease-in-out" 
               style={{ backgroundColor: '#1a1a1a', borderColor: '#333333' }}
-              onClick={() => {
-                // Clean the structured content before passing to artifact viewer
-                const cleanedArtifact = {
-                  ...msg.structuredContent,
-                  content: cleanArtifactContent(msg.structuredContent.content)
-                };
-                setArtifactContent(cleanedArtifact);
-                setIsArtifactMode(true);
-              }}
+                onClick={() => {
+                  // Clean the structured content before passing to artifact viewer
+                  const cleanedArtifact = {
+                    ...msg.structuredContent,
+                    content: cleanArtifactContent(msg.structuredContent.content)
+                  };
+                  setArtifactContent(cleanedArtifact);
+                  setIsArtifactMode(true);
+                }}
             >
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-cyan-500/20 rounded-lg flex-shrink-0">
@@ -3533,7 +3533,7 @@ function TestChatComponent(props?: TestChatProps) {
                     <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
                     <line x1="9" y1="9" x2="15" y2="9"></line>
                     <line x1="9" y1="13" x2="15" y2="13"></line>
-                  </svg>
+                      </svg>
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="text-lg truncate" style={{ color: '#FCFCFC' }}>{msg.structuredContent.title}</h3>
@@ -3542,7 +3542,7 @@ function TestChatComponent(props?: TestChatProps) {
                   </div>
                 </div>
               </div>
-            </div>
+              </div>
 
             {/* Action buttons for completed artifact */}
             {msg.isProcessed && (
@@ -3620,22 +3620,22 @@ function TestChatComponent(props?: TestChatProps) {
             <div 
               className="w-full rounded-2xl border shadow-lg p-3 mb-2 cursor-pointer transition-all duration-300 ease-in-out" 
               style={{ backgroundColor: '#1a1a1a', borderColor: '#333333' }}
-              onClick={() => {
-                // For streaming artifacts, create temporary structured content with cleaned content
-                const tempArtifact = {
-                  title: msg.title || "Generated Content",
-                  type: "document" as const,
-                  content: cleanContent,
-                  metadata: {
-                    wordCount: cleanContent.split(' ').length,
-                    estimatedReadTime: `${Math.ceil(cleanContent.split(' ').length / 200)} min read`,
-                    category: "", // placeholder category
-                    tags: [] // placeholder tags
-                  }
-                };
-                setArtifactContent(tempArtifact);
-                setIsArtifactMode(true);
-              }}
+                onClick={() => {
+                  // For streaming artifacts, create temporary structured content with cleaned content
+                  const tempArtifact = {
+                    title: msg.title || "Generated Content",
+                    type: "document" as const,
+                    content: cleanContent,
+                    metadata: {
+                      wordCount: cleanContent.split(' ').length,
+                      estimatedReadTime: `${Math.ceil(cleanContent.split(' ').length / 200)} min read`,
+                      category: "", // placeholder category
+                      tags: [] // placeholder tags
+                    }
+                  };
+                  setArtifactContent(tempArtifact);
+                  setIsArtifactMode(true);
+                }}
             >
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-cyan-500/20 rounded-lg flex-shrink-0">
@@ -3643,7 +3643,7 @@ function TestChatComponent(props?: TestChatProps) {
                     <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
                     <line x1="9" y1="9" x2="15" y2="9"></line>
                     <line x1="9" y1="13" x2="15" y2="13"></line>
-                  </svg>
+                </svg>
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="text-lg truncate" style={{ color: '#FCFCFC' }}>
