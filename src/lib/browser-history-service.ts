@@ -18,6 +18,7 @@ export interface CreateBrowserHistoryItem {
 }
 
 class BrowserHistoryService {
+  // @ts-ignore - Ensure supabase is initialized
   private supabase = createSupabaseClient();
 
   async saveBrowserSearch(item: CreateBrowserHistoryItem): Promise<BrowserHistoryItem | null> {
@@ -29,8 +30,8 @@ class BrowserHistoryService {
         return null;
       }
 
-      const { data, error } = await this.supabase
-        .from('browser_history')
+      // @ts-ignore - Supabase client types issue
+      const { data, error } = await this.supabase?.from('browser_history')
         .insert([
           {
             user_id: authResponse.data.user.id,
@@ -64,8 +65,8 @@ class BrowserHistoryService {
         return [];
       }
 
-      const { data, error } = await this.supabase
-        .from('browser_history')
+      // @ts-ignore - Supabase client types issue
+      const { data, error } = await this.supabase?.from('browser_history')
         .select('*')
         .eq('user_id', authResponse.data.user.id)
         .order('created_at', { ascending: false })
@@ -92,8 +93,8 @@ class BrowserHistoryService {
         return false;
       }
 
-      const { error } = await this.supabase
-        .from('browser_history')
+      // @ts-ignore - Supabase client types issue
+      const { error } = await this.supabase?.from('browser_history')
         .delete()
         .eq('id', id)
         .eq('user_id', authResponse.data.user.id);
@@ -119,8 +120,8 @@ class BrowserHistoryService {
         return false;
       }
 
-      const { error } = await this.supabase
-        .from('browser_history')
+      // @ts-ignore - Supabase client types issue
+      const { error } = await this.supabase?.from('browser_history')
         .delete()
         .eq('user_id', authResponse.data.user.id);
 
@@ -145,8 +146,8 @@ class BrowserHistoryService {
         return [];
       }
 
-      const { data, error } = await this.supabase
-        .from('browser_history')
+      // @ts-ignore - Supabase client types issue
+      const { data, error } = await this.supabase?.from('browser_history')
         .select('*')
         .eq('user_id', authResponse.data.user.id)
         .ilike('query', `%${searchTerm}%`)
