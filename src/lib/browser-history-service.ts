@@ -22,17 +22,17 @@ class BrowserHistoryService {
 
   async saveBrowserSearch(item: CreateBrowserHistoryItem): Promise<BrowserHistoryItem | null> {
     try {
-      const { data } = await this.supabase.auth.getUser();
-      if (!data?.user) {
-        console.error('No authenticated user found');
+      const { data: { user }, error: authError } = await this.supabase.auth.getUser();
+      if (authError || !user) {
+        console.error('No authenticated user found:', authError);
         return null;
       }
 
-      const { data: insertData, error } = await this.supabase
+      const { data, error } = await this.supabase
         .from('browser_history')
         .insert([
           {
-            user_id: data.user.id,
+            user_id: user.id,
             query: item.query,
             results_summary: item.results_summary,
             sources_count: item.sources_count || 0,
@@ -42,12 +42,12 @@ class BrowserHistoryService {
         .select()
         .single();
 
-      if (error) {
+      if (error || !data) {
         console.error('Error saving browser history:', error);
         return null;
       }
 
-      return insertData;
+      return data as BrowserHistoryItem;
     } catch (error) {
       console.error('Error in saveBrowserSearch:', error);
       return null;
@@ -56,16 +56,16 @@ class BrowserHistoryService {
 
   async getBrowserHistory(limit: number = 50): Promise<BrowserHistoryItem[]> {
     try {
-      const { data } = await this.supabase.auth.getUser();
-      if (!data?.user) {
-        console.error('No authenticated user found');
+      const { data: { user }, error: authError } = await this.supabase.auth.getUser();
+      if (authError || !user) {
+        console.error('No authenticated user found:', authError);
         return [];
       }
 
-      const { data: historyData, error } = await this.supabase
+      const { data, error } = await this.supabase
         .from('browser_history')
         .select('*')
-        .eq('user_id', data.user.id)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(limit);
 
@@ -74,7 +74,7 @@ class BrowserHistoryService {
         return [];
       }
 
-      return historyData || [];
+      return (data as BrowserHistoryItem[]) || [];
     } catch (error) {
       console.error('Error in getBrowserHistory:', error);
       return [];
@@ -83,9 +83,9 @@ class BrowserHistoryService {
 
   async deleteBrowserHistoryItem(id: string): Promise<boolean> {
     try {
-      const { data } = await this.supabase.auth.getUser();
-      if (!data?.user) {
-        console.error('No authenticated user found');
+      const { data: { user }, error: authError } = await this.supabase.auth.getUser();
+      if (authError || !user) {
+        console.error('No authenticated user found:', authError);
         return false;
       }
 
@@ -93,7 +93,7 @@ class BrowserHistoryService {
         .from('browser_history')
         .delete()
         .eq('id', id)
-        .eq('user_id', data.user.id);
+        .eq('user_id', user.id);
 
       if (error) {
         console.error('Error deleting browser history item:', error);
@@ -109,16 +109,16 @@ class BrowserHistoryService {
 
   async clearBrowserHistory(): Promise<boolean> {
     try {
-      const { data } = await this.supabase.auth.getUser();
-      if (!data?.user) {
-        console.error('No authenticated user found');
+      const { data: { user }, error: authError } = await this.supabase.auth.getUser();
+      if (authError || !user) {
+        console.error('No authenticated user found:', authError);
         return false;
       }
 
       const { error } = await this.supabase
         .from('browser_history')
         .delete()
-        .eq('user_id', data.user.id);
+        .eq('user_id', user.id);
 
       if (error) {
         console.error('Error clearing browser history:', error);
@@ -134,16 +134,16 @@ class BrowserHistoryService {
 
   async searchBrowserHistory(searchTerm: string, limit: number = 20): Promise<BrowserHistoryItem[]> {
     try {
-      const { data } = await this.supabase.auth.getUser();
-      if (!data?.user) {
-        console.error('No authenticated user found');
+      const { data: { user }, error: authError } = await this.supabase.auth.getUser();
+      if (authError || !user) {
+        console.error('No authenticated user found:', authError);
         return [];
       }
 
-      const { data: searchData, error } = await this.supabase
+      const { data, error } = await this.supabase
         .from('browser_history')
         .select('*')
-        .eq('user_id', data.user.id)
+        .eq('user_id', user.id)
         .ilike('query', `%${searchTerm}%`)
         .order('created_at', { ascending: false })
         .limit(limit);
@@ -153,7 +153,7 @@ class BrowserHistoryService {
         return [];
       }
 
-      return searchData || [];
+      return (data as BrowserHistoryItem[]) || [];
     } catch (error) {
       console.error('Error in searchBrowserHistory:', error);
       return [];
