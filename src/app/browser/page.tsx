@@ -305,16 +305,29 @@ const BrowserPageComponent = () => {
                 <button
                   onClick={() => handleSearch(query)}
                   disabled={isSearching}
-                  className="flex items-center justify-center px-3 py-1.5 rounded-md bg-white hover:bg-white/90 transition-colors disabled:opacity-50"
+                  className="flex items-center justify-center w-10 h-10 rounded-2xl bg-cyan-400 hover:bg-cyan-300 transition-all duration-200 disabled:opacity-50 hover:scale-105 active:scale-95"
+                  title="Search"
                 >
                   {isSearching ? (
                     <motion.div
                       animate={{ rotate: 360 }}
                       transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                      className="w-4 h-4 border-2 border-black border-t-transparent rounded-full"
+                      className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
                     />
                   ) : (
-                    <span className="text-black text-sm font-medium">Search</span>
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="white"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M5 12h14" />
+                      <path d="m12 5 7 7-7 7" />
+                    </svg>
                   )}
                 </button>
               )}
