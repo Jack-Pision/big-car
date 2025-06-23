@@ -62,8 +62,7 @@ export async function POST(req: NextRequest) {
         startPublishedDate: "", // No date restrictions
         endPublishedDate: "",
         text: true, // Include text content
-        highlights: false, // No need for highlights
-        imageSupport: true, // Request image URLs
+        highlights: false // No need for highlights
       }),
     });
 
