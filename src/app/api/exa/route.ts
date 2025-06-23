@@ -47,23 +47,28 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Build payload without empty date strings to avoid 400 errors from Exa
+    const payload: Record<string, any> = {
+      query,
+      numResults: 10,
+      useAutoprompt: true,
+      includeDomains: [], // No domain restrictions at the moment
+      excludeDomains: [], // No domain exclusions at the moment
+      text: true, // Include text content
+      highlights: false, // Disable highlights
+    };
+
+    // TODO: If the client sends real date filters in future, attach them here, e.g.
+    // if (receivedStartDate) payload.startPublishedDate = receivedStartDate;
+    // if (receivedEndDate)   payload.endPublishedDate   = receivedEndDate;
+
     const exaResponse = await fetch('https://api.exa.ai/search', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': EXA_API_KEY,
       },
-      body: JSON.stringify({
-        query,
-        numResults: 10,
-        useAutoprompt: true,
-        includeDomains: [], // No domain restrictions
-        excludeDomains: [], // No domain exclusions
-        startPublishedDate: "", // No date restrictions
-        endPublishedDate: "",
-        text: true, // Include text content
-        highlights: false // No need for highlights
-      }),
+      body: JSON.stringify(payload),
     });
 
     if (!exaResponse.ok) {
