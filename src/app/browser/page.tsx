@@ -101,8 +101,23 @@ const BrowserPageComponent = () => {
       });
       
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        const errorMessage = errorData.error || `Search failed with status: ${response.status}`;
+        let errorMessage = `Search failed with status: ${response.status}`;
+        
+        try {
+          const errorData = await response.json();
+          if (errorData && errorData.error) {
+            errorMessage = errorData.error;
+            
+            // If it's an API key issue, provide a more helpful message
+            if (errorMessage.includes('API key') || response.status === 500) {
+              errorMessage = "Search service configuration error. Please contact support.";
+              console.error("Original error:", errorData.error);
+            }
+          }
+        } catch (e) {
+          console.error("Error parsing error response:", e);
+        }
+        
         throw new Error(errorMessage);
       }
       

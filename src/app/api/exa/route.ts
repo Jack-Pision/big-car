@@ -33,12 +33,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Log all environment variables (be careful with this in production)
+    console.log('Available env variables:', Object.keys(process.env).filter(key => !key.includes('PASSWORD') && !key.includes('SECRET')));
+    
     const EXA_API_KEY = process.env.EXA_API_KEY;
-
+    console.log('EXA_API_KEY exists:', !!EXA_API_KEY);
+    
     if (!EXA_API_KEY) {
       console.error('EXA_API_KEY is not defined in environment variables');
       return NextResponse.json(
-        { error: 'Search service configuration error' },
+        { error: 'Search service configuration error: API key not found' },
         { status: 500 }
       );
     }
