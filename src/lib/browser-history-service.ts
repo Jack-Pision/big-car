@@ -165,6 +165,40 @@ class BrowserHistoryService {
       return [];
     }
   }
+
+  async findExactQuery(query: string): Promise<BrowserHistoryItem | null> {
+    try {
+      // @ts-ignore - Supabase auth types issue
+      const authResponse = await this.supabase?.auth?.getUser();
+      if (!authResponse || authResponse.error || !authResponse.data?.user) {
+        console.error('No authenticated user found:', authResponse?.error);
+        return null;
+      }
+
+      // @ts-ignore - Supabase client types issue
+      const { data, error } = await this.supabase?.from('browser_history')
+        .select('*')
+        .eq('user_id', authResponse.data.user.id)
+        .eq('query', query.trim())
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error) {
+        if (error.code === 'PGRST116') {
+          // No match found
+          return null;
+        }
+        console.error('Error finding exact query:', error);
+        return null;
+      }
+
+      return data as BrowserHistoryItem;
+    } catch (error) {
+      console.error('Error in findExactQuery:', error);
+      return null;
+    }
+  }
 }
 
 export const browserHistoryService = new BrowserHistoryService();

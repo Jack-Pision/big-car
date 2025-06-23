@@ -82,20 +82,36 @@ const BrowserPageComponent = () => {
   useEffect(() => {
     const initialQuery = searchParams?.get('q');
     if (initialQuery) {
-      // Check sessionStorage first to prevent API calls on simple refresh
-      const cachedResults = sessionStorage.getItem(`search-results-${initialQuery}`);
-      if (cachedResults) {
-        setQuery(initialQuery);
-        const parsedResults = JSON.parse(cachedResults);
-        setSearchResults(parsedResults);
-        setAiResponse({ sources: parsedResults });
-      } else {
-        setQuery(initialQuery);
-        handleSearch(initialQuery);
-      }
+      setQuery(initialQuery);
+      // Check if we have cached results in Supabase first
+      loadSearchFromHistory(initialQuery);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Load search results from browser history (Supabase cache)
+  const loadSearchFromHistory = async (searchQuery: string) => {
+    try {
+      // Search for exact match in browser history
+      const exactMatch = await browserHistoryService.findExactQuery(searchQuery);
+      
+      if (exactMatch && exactMatch.search_results && Array.isArray(exactMatch.search_results)) {
+        console.log('Loading cached search results from Supabase');
+        setSearchResults(exactMatch.search_results);
+        setAiResponse({ sources: exactMatch.search_results });
+        return true; // Found cached results
+      }
+      
+      // No cached results found, perform new search
+      handleSearch(searchQuery);
+      return false;
+    } catch (error) {
+      console.error('Error loading search from history:', error);
+      // Fallback to new search if cache loading fails
+      handleSearch(searchQuery);
+      return false;
+    }
+  };
 
   useEffect(() => {
     // Focus search input on page load
@@ -106,12 +122,35 @@ const BrowserPageComponent = () => {
 
   const handleSearch = async (searchQuery: string) => {
     if (!searchQuery.trim()) return;
-    
+
+    // Check if we already have cached results for this exact query
+    try {
+      const exactMatch = await browserHistoryService.findExactQuery(searchQuery);
+      
+      if (exactMatch && exactMatch.search_results && Array.isArray(exactMatch.search_results)) {
+        console.log('Using cached search results from Supabase');
+        setSearchResults(exactMatch.search_results);
+        setAiResponse({ sources: exactMatch.search_results });
+        
+        // Update URL
+        try {
+          router.replace(`/browser?q=${encodeURIComponent(searchQuery)}`);
+        } catch (e) {
+          console.error('Failed to update URL:', e);
+        }
+        return;
+      }
+    } catch (error) {
+      console.error('Error checking for cached results:', error);
+      // Continue with fresh search if cache check fails
+    }
+
     setIsSearching(true);
     setSearchError(null);
-    
+    setSearchResults([]);
+    setAiResponse(null);
+
     try {
-      // Call our Exa API endpoint
       const response = await fetch('/api/exa', {
         method: 'POST',
         headers: {
@@ -119,50 +158,20 @@ const BrowserPageComponent = () => {
         },
         body: JSON.stringify({ query: searchQuery }),
       });
-      
+
       if (!response.ok) {
-        let errorMessage = `Search failed with status: ${response.status}`;
-        
-        try {
-          const errorData = await response.json();
-          if (errorData && errorData.error) {
-            errorMessage = errorData.error;
-            
-            // If it's an API key issue, provide a more helpful message
-            if (errorMessage.includes('API key') || response.status === 500) {
-              errorMessage = "Search service configuration error. Please contact support.";
-              console.error("Original error:", errorData.error);
-            }
-          }
-        } catch (e) {
-          console.error("Error parsing error response:", e);
-        }
-        
-        throw new Error(errorMessage);
+        throw new Error('Failed to fetch search results');
       }
-      
+
       const data = await response.json();
-      const searchResults = data.sources || [];
-      
-      if (searchResults.length === 0) {
-        setSearchError("No results found. Please try a different search query.");
-        setAiResponse(null);
-        return;
-      }
-      
+      const searchResults = data.results || [];
+
       const aiResponse: AIResponse = {
         sources: searchResults
       };
 
       setSearchResults(searchResults);
       setAiResponse(aiResponse);
-
-      // Cache results in sessionStorage to avoid re-fetching on refresh
-      try {
-        sessionStorage.setItem(`search-results-${searchQuery}`, JSON.stringify(searchResults));
-      } catch (error) {
-        console.error('Error saving to sessionStorage:', error);
-      }
 
       // Update URL so the search can be shared / reloaded
       try {
@@ -171,13 +180,13 @@ const BrowserPageComponent = () => {
         console.error('Failed to update URL:', e);
       }
 
-      // Save to browser history - service will handle auth check
+      // Save to browser history with full search results for caching
       try {
         await browserHistoryService.saveBrowserSearch({
           query: searchQuery,
           results_summary: `Found ${searchResults.length} sources from the web`,
           sources_count: searchResults.length,
-          search_results: searchResults
+          search_results: searchResults // Save full results for caching
         });
       } catch (error) {
         console.error('Error saving to browser history:', error);
