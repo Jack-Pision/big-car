@@ -33,7 +33,7 @@ interface AIResponse {
 const BrowserPageComponent = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user } = useAuth();
+  const { user, showSettingsModal } = useAuth();
   const [query, setQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
@@ -547,10 +547,10 @@ const BrowserPageComponent = () => {
         activeSessionId={null}
         onClose={() => setSidebarOpen(false)}
         onNewChat={() => router.push('/test')}
-        onSelectSession={() => {}}
+        onSelectSession={(id: string) => router.push(`/chat/${id}`)}
         refreshTrigger={0}
         user={user}
-        onSettingsClick={() => {}}
+        onSettingsClick={showSettingsModal}
       />
 
       {/* Browser History Modal */}
