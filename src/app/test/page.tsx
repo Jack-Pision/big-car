@@ -1694,12 +1694,17 @@ const extractThinkContentDuringStream = (content: string) => {
   let thinkContent = '';
   let mainContent = content;
   
+  // Debug logging
+  console.log('[Think Debug] Full content buffer:', content.substring(0, 200) + '...');
+  console.log('[Think Debug] Looking for think tags in content');
+  
   // First, handle complete think tags
   const completeThinkRegex = /<think>([\s\S]*?)<\/think>/g;
   let match;
   
   while ((match = completeThinkRegex.exec(content)) !== null) {
     thinkContent += match[1];
+    console.log('[Think Debug] Found complete think tag with content:', match[1].substring(0, 100) + '...');
     // Remove the complete think tags from main content
     mainContent = mainContent.replace(match[0], '');
   }
@@ -1707,17 +1712,25 @@ const extractThinkContentDuringStream = (content: string) => {
   // Only handle partial think tags if no complete tags were found
   // This prevents double-processing the same content
   if (!thinkContent) {
-  const partialThinkMatch = content.match(/<think>([^<]*?)$/);
-  if (partialThinkMatch) {
+    const partialThinkMatch = content.match(/<think>([^<]*?)$/);
+    if (partialThinkMatch) {
       thinkContent = partialThinkMatch[1];
-    mainContent = mainContent.replace(partialThinkMatch[0], '');
+      console.log('[Think Debug] Found partial think tag with content:', partialThinkMatch[1].substring(0, 100) + '...');
+      mainContent = mainContent.replace(partialThinkMatch[0], '');
+    } else {
+      console.log('[Think Debug] No think tags found in content');
     }
   }
   
-  return {
+  const result = {
     thinkContent: thinkContent.trim(),
     mainContent: mainContent.trim()
   };
+  
+  console.log('[Think Debug] Extracted think content length:', result.thinkContent.length);
+  console.log('[Think Debug] Extracted main content length:', result.mainContent.length);
+  
+  return result;
 };
 
 // Helper function to extract JSON from streaming artifact content
@@ -2923,6 +2936,11 @@ function TestChatComponent(props?: TestChatProps) {
                   const parsed = JSON.parse(data);
                   const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.message?.content || parsed.choices?.[0]?.text || parsed.content || '';
                   
+                  // Debug logging for DeepSeek response
+                  if (activeButton === 'reasoning') {
+                    console.log('[DeepSeek Debug] Raw delta:', delta?.substring(0, 100) + '...');
+                  }
+                  
                   if (delta) {
                     contentBuffer += delta;
                     
@@ -2948,9 +2966,15 @@ function TestChatComponent(props?: TestChatProps) {
                         const now = Date.now();
                         if (now - lastLiveReasoningUpdate > 120) { // throttle to ~8 updates/sec
                           lastLiveReasoningUpdate = now;
+                          console.log('[Think Debug] Setting liveReasoning:', thinkContent.substring(0, 100) + '...');
+                          console.log('[Think Debug] Current reasoning message ID:', aiMessageId);
                         setLiveReasoning(thinkContent);
                         setCurrentReasoningMessageId(aiMessageId);
+                        } else {
+                          console.log('[Think Debug] Throttled update, skipping liveReasoning update');
                         }
+                      } else {
+                        console.log('[Think Debug] No think content found for live reasoning update');
                       }
                       } else {
                       // For default chat, use content directly without think processing
