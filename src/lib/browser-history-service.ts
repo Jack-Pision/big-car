@@ -22,9 +22,10 @@ class BrowserHistoryService {
 
   async saveBrowserSearch(item: CreateBrowserHistoryItem): Promise<BrowserHistoryItem | null> {
     try {
-      const authResponse = await this.supabase.auth.getUser();
-      if (authResponse.error || !authResponse.data?.user) {
-        console.error('No authenticated user found:', authResponse.error);
+      // @ts-ignore - Supabase auth types issue
+      const authResponse = await this.supabase?.auth?.getUser();
+      if (!authResponse || authResponse.error || !authResponse.data?.user) {
+        console.error('No authenticated user found:', authResponse?.error);
         return null;
       }
 
@@ -56,9 +57,10 @@ class BrowserHistoryService {
 
   async getBrowserHistory(limit: number = 50): Promise<BrowserHistoryItem[]> {
     try {
-      const authResponse = await this.supabase.auth.getUser();
-      if (authResponse.error || !authResponse.data?.user) {
-        console.error('No authenticated user found:', authResponse.error);
+      // @ts-ignore - Supabase auth types issue
+      const authResponse = await this.supabase?.auth?.getUser();
+      if (!authResponse || authResponse.error || !authResponse.data?.user) {
+        console.error('No authenticated user found:', authResponse?.error);
         return [];
       }
 
@@ -83,9 +85,10 @@ class BrowserHistoryService {
 
   async deleteBrowserHistoryItem(id: string): Promise<boolean> {
     try {
-      const authResponse = await this.supabase.auth.getUser();
-      if (authResponse.error || !authResponse.data?.user) {
-        console.error('No authenticated user found:', authResponse.error);
+      // @ts-ignore - Supabase auth types issue
+      const authResponse = await this.supabase?.auth?.getUser();
+      if (!authResponse || authResponse.error || !authResponse.data?.user) {
+        console.error('No authenticated user found:', authResponse?.error);
         return false;
       }
 
@@ -109,9 +112,10 @@ class BrowserHistoryService {
 
   async clearBrowserHistory(): Promise<boolean> {
     try {
-      const authResponse = await this.supabase.auth.getUser();
-      if (authResponse.error || !authResponse.data?.user) {
-        console.error('No authenticated user found:', authResponse.error);
+      // @ts-ignore - Supabase auth types issue
+      const authResponse = await this.supabase?.auth?.getUser();
+      if (!authResponse || authResponse.error || !authResponse.data?.user) {
+        console.error('No authenticated user found:', authResponse?.error);
         return false;
       }
 
@@ -134,9 +138,10 @@ class BrowserHistoryService {
 
   async searchBrowserHistory(searchTerm: string, limit: number = 20): Promise<BrowserHistoryItem[]> {
     try {
-      const authResponse = await this.supabase.auth.getUser();
-      if (authResponse.error || !authResponse.data?.user) {
-        console.error('No authenticated user found:', authResponse.error);
+      // @ts-ignore - Supabase auth types issue
+      const authResponse = await this.supabase?.auth?.getUser();
+      if (!authResponse || authResponse.error || !authResponse.data?.user) {
+        console.error('No authenticated user found:', authResponse?.error);
         return [];
       }
 
