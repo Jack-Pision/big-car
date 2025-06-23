@@ -59,24 +59,7 @@ const BrowserPageComponent = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [historyModalOpen, setHistoryModalOpen] = useState(false);
 
-  const trendingTopics = [
-    "AI search engines 2025",
-    "Latest ChatGPT updates", 
-    "Machine learning tutorials",
-    "Web development trends",
-    "Cryptocurrency news",
-    "Climate change solutions",
-    "Space exploration news",
-    "Quantum computing breakthroughs"
-  ];
 
-  const searchSuggestions = [
-    "How does artificial intelligence work?",
-    "Best programming languages to learn",
-    "Latest technology trends 2025",
-    "Sustainable energy solutions",
-    "Remote work productivity tips"
-  ];
 
   // Run search automatically if ?q= parameter present on first load
   useEffect(() => {
@@ -207,18 +190,10 @@ const BrowserPageComponent = () => {
     }
   };
 
-  const handleTrendingClick = (topic: string) => {
-    setQuery(topic);
-    handleSearch(topic);
-  };
 
-  const handleSuggestionClick = (suggestion: string) => {
-    setQuery(suggestion);
-    handleSearch(suggestion);
-  };
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#161618', fontFamily: 'Inter, sans-serif' }}>
+    <div className={`${aiResponse ? 'min-h-screen' : 'h-screen overflow-hidden'}`} style={{ backgroundColor: '#161618', fontFamily: 'Inter, sans-serif' }}>
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-[#161618] h-14 flex items-center px-4">
         <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
@@ -239,9 +214,9 @@ const BrowserPageComponent = () => {
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-6 py-8 pt-20">
+      <main className={`max-w-4xl mx-auto px-6 py-8 pt-20 ${aiResponse ? '' : 'h-full'}`}>
         {/* Main Search Section */}
-        <div className={`flex flex-col items-center justify-center ${aiResponse ? 'mb-6' : 'mb-12 h-[calc(100vh-200px)]'}`}>
+        <div className={`flex flex-col items-center justify-center ${aiResponse ? 'mb-6' : 'h-full'}`}>
           {!aiResponse && (
             <motion.h2 
               initial={{ opacity: 0, y: 20 }}
@@ -335,61 +310,7 @@ const BrowserPageComponent = () => {
           </motion.div>
         </div>
 
-        {/* Trending Topics - Only show when no search results */}
-        {!aiResponse && (
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="mb-12"
-          >
-            <h3 className="text-lg font-medium mb-4" style={{ color: '#FCFCFC' }}>Trending Topics</h3>
-            <div className="flex flex-wrap gap-2">
-              {trendingTopics.map((topic, index) => (
-                <button
-                  key={index}
-                  onClick={() => handleTrendingClick(topic)}
-                  className="px-4 py-2 rounded-full border text-sm transition-all duration-200 hover:scale-105"
-                  style={{ 
-                    backgroundColor: 'transparent',
-                    borderColor: '#333333',
-                    color: '#FCFCFC'
-                  }}
-                >
-                  {topic}
-                </button>
-              ))}
-            </div>
-          </motion.div>
-        )}
 
-        {/* Search Suggestions - Only show when no search results */}
-        {!aiResponse && (
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="mb-12"
-          >
-            <h3 className="text-lg font-medium mb-4" style={{ color: '#FCFCFC' }}>Try asking...</h3>
-            <div className="space-y-2">
-              {searchSuggestions.map((suggestion, index) => (
-                <button
-                  key={index}
-                  onClick={() => handleSuggestionClick(suggestion)}
-                  className="block w-full text-left px-4 py-3 rounded-lg border transition-colors hover:bg-gray-800/50"
-                  style={{ 
-                    backgroundColor: 'transparent',
-                    borderColor: '#333333',
-                    color: '#9ca3af'
-                  }}
-                >
-                  {suggestion}
-                </button>
-              ))}
-            </div>
-          </motion.div>
-        )}
 
 
 
