@@ -35,6 +35,7 @@ const BrowserPageComponent = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [aiResponse, setAiResponse] = useState<AIResponse | null>(null);
+  const [searchError, setSearchError] = useState<string | null>(null);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   
@@ -72,51 +73,48 @@ const BrowserPageComponent = () => {
     if (!searchQuery.trim()) return;
     
     setIsSearching(true);
+    setSearchError(null);
     
     try {
-      // Add a small delay to simulate search
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Call our Exa API endpoint
+      const response = await fetch('/api/exa', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query: searchQuery }),
+      });
       
-      // Mock search results
-      const mockResults: SearchResult[] = [
-        {
-          id: '1',
-          title: 'Comprehensive Guide to ' + searchQuery,
-          snippet: 'A detailed overview covering all aspects of your query with expert insights and practical examples.',
-          url: 'https://example.com/guide',
-          timestamp: '2 hours ago'
-        },
-        {
-          id: '2', 
-          title: 'Latest Research on ' + searchQuery,
-          snippet: 'Recent findings and developments in this field, including peer-reviewed studies and expert analysis.',
-          url: 'https://research.example.com/latest',
-          timestamp: '1 day ago'
-        },
-        {
-          id: '3',
-          title: 'Expert Analysis: ' + searchQuery,
-          snippet: 'In-depth analysis from industry experts providing valuable insights and recommendations.',
-          url: 'https://experts.example.com/analysis',
-          timestamp: '3 days ago'
-        }
-      ];
-
-      const mockAIResponse: AIResponse = {
-        sources: mockResults
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error || `Search failed with status: ${response.status}`;
+        throw new Error(errorMessage);
+      }
+      
+      const data = await response.json();
+      const searchResults = data.sources || [];
+      
+      if (searchResults.length === 0) {
+        setSearchError("No results found. Please try a different search query.");
+        setAiResponse(null);
+        return;
+      }
+      
+      const aiResponse: AIResponse = {
+        sources: searchResults
       };
 
-      setSearchResults(mockResults);
-      setAiResponse(mockAIResponse);
+      setSearchResults(searchResults);
+      setAiResponse(aiResponse);
 
       // Save to browser history
       if (user) {
         try {
           await browserHistoryService.saveBrowserSearch({
             query: searchQuery,
-            results_summary: `Found ${mockResults.length} sources with comprehensive analysis`,
-            sources_count: mockResults.length,
-            search_results: mockResults
+            results_summary: `Found ${searchResults.length} sources from the web`,
+            sources_count: searchResults.length,
+            search_results: searchResults
           });
         } catch (error) {
           console.error('Error saving to browser history:', error);
@@ -125,6 +123,8 @@ const BrowserPageComponent = () => {
       
     } catch (error) {
       console.error('Search error:', error);
+      setSearchError((error as Error).message || "An error occurred while searching. Please try again.");
+      setAiResponse(null);
     } finally {
       setIsSearching(false);
     }
@@ -312,6 +312,47 @@ const BrowserPageComponent = () => {
 
 
 
+        {/* Loading State */}
+        {isSearching && !aiResponse && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="mt-16 flex flex-col items-center justify-center"
+          >
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+              className="w-12 h-12 border-2 border-cyan-500 border-t-transparent rounded-full mb-4"
+            />
+            <p className="text-gray-400">Searching the web...</p>
+          </motion.div>
+        )}
+        
+        {/* Error State */}
+        {searchError && !isSearching && !aiResponse && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="mt-16 flex flex-col items-center justify-center"
+          >
+            <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+            </div>
+            <p className="text-red-400 mb-2 font-medium">Search Error</p>
+            <p className="text-gray-400 text-center max-w-md">{searchError}</p>
+            <button 
+              onClick={() => handleSearch(query)}
+              className="mt-4 px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg transition-colors"
+            >
+              Try Again
+            </button>
+          </motion.div>
+        )}
+        
         {/* AI Response */}
         <AnimatePresence>
           {aiResponse && (
@@ -341,11 +382,30 @@ const BrowserPageComponent = () => {
                       onClick={() => window.open(result.url, '_blank')}
                     >
                       <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 rounded bg-gray-700 flex items-center justify-center flex-shrink-0">
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-                          </svg>
+                        <div className="w-8 h-8 rounded bg-gray-700 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                          {result.favicon ? (
+                            <img 
+                              src={result.favicon} 
+                              alt="" 
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                // Fallback to default icon on error
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                                target.parentElement!.innerHTML = `
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                                  </svg>
+                                `;
+                              }}
+                            />
+                          ) : (
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                            </svg>
+                          )}
                         </div>
                         
                         <div className="flex-1 min-w-0">
