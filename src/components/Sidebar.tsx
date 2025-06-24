@@ -152,7 +152,16 @@ export default function Sidebar({
       onMouseEnter={isDesktop ? () => setIsHovered(true) : undefined}
       onMouseLeave={isDesktop ? () => setIsHovered(false) : undefined}
     >
-      <div className="flex-shrink-0 flex flex-col items-center justify-center mt-4 mb-2 gap-2 px-2">
+      {/* Logo at the top */}
+      <div className={`flex items-center justify-center w-full ${showText ? 'mt-6 mb-6' : 'mt-4 mb-4'}`}>
+        <img
+          src="/icons/big-icon.png"
+          alt="App Logo"
+          className={`transition-all duration-200 object-contain ${showText ? 'w-24 h-24' : 'w-16 h-16'}`}
+          style={{ display: 'block' }}
+        />
+      </div>
+      <div className="flex-shrink-0 flex flex-col items-center justify-center mb-2 gap-2 px-2">
         <button
           className={`flex items-center gap-2 px-3 py-2 rounded-lg text-[#e5e7eb] hover:bg-gray-800/60 transition-colors duration-200 focus:outline-none w-full ${showText ? 'justify-start' : 'justify-center'}`}
           onClick={handleNewChat}
