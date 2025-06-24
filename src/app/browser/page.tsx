@@ -11,7 +11,6 @@ import ImageCarousel from '@/components/ImageCarousel';
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
-import HamburgerMenu from '@/components/HamburgerMenu';
 import BrowserHistoryModal from '@/components/BrowserHistoryModal';
 import AuthProvider, { useAuth } from '@/components/AuthProvider';
 import { browserHistoryService } from '@/lib/browser-history-service';
@@ -56,11 +55,8 @@ const BrowserPageComponent = () => {
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   
-  // New state for sidebar and history modal
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  // New state for history modal
   const [historyModalOpen, setHistoryModalOpen] = useState(false);
-
-
 
   // Run search automatically if ?q= parameter present on first load
   useEffect(() => {
@@ -191,337 +187,323 @@ const BrowserPageComponent = () => {
     }
   };
 
-
-
   return (
-    <div className={`${aiResponse ? 'min-h-screen' : 'h-screen overflow-hidden'}`} style={{ backgroundColor: '#161618', fontFamily: 'Inter, sans-serif' }}>
-      {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-[#161618] h-14 flex items-center px-4">
-        <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
-        
-        {/* History Button */}
-        <div className="ml-auto">
-          <button
-            onClick={() => setHistoryModalOpen(true)}
-            className="p-2 rounded-lg hover:bg-gray-700 transition-colors text-gray-400 hover:text-white"
-            title="Browser History"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10"/>
-              <polyline points="12,6 12,12 16,14"/>
-            </svg>
-          </button>
-        </div>
-      </header>
-
-      <main className={`max-w-4xl mx-auto px-6 py-8 pt-20 ${aiResponse ? '' : 'h-full'}`}>
-        {/* Main Search Section */}
-        <div className={`flex flex-col items-center justify-center ${aiResponse ? 'mb-6' : 'h-full'}`}>
-          {!aiResponse && (
-            <motion.h2 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-4xl font-medium mb-10"
-              style={{ color: '#FCFCFC' }}
-            >
-              Search the web with Tehom
-            </motion.h2>
-          )}
-          
-          {/* Search Input */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ 
-              opacity: 1, 
-              y: 0,
-              width: aiResponse ? '100%' : '800px',
-              maxWidth: '100%'
-            }}
-            transition={{ delay: 0.1 }}
-            className="relative mx-auto mb-8"
-          >
-            <div 
-              className="flex items-center gap-2 px-4 py-4 h-14 rounded-2xl border transition-all duration-200 focus-within:ring-2 focus-within:ring-gray-400/30"
-              style={{ 
-                backgroundColor: '#262626',
-                borderColor: '#3b3b3b'
-              }}
-            >
-              <svg 
-                width={aiResponse ? "20" : "24"} 
-                height={aiResponse ? "20" : "24"} 
-                viewBox="0 0 24 24" 
-                fill="none" 
-                stroke="#9ca3af" 
-                strokeWidth="2" 
-                strokeLinecap="round" 
-                strokeLinejoin="round"
-              >
-                <circle cx="11" cy="11" r="8"/>
-                <path d="m21 21-4.35-4.35"/>
-              </svg>
-              
-              <input
-                ref={searchInputRef}
-                type="text"
-                placeholder="Ask anything..."
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyPress={handleKeyPress}
-                disabled={isSearching}
-                className="flex-1 bg-transparent outline-none text-base placeholder-gray-400"
-                style={{ 
-                  color: '#FCFCFC', 
-                  fontSize: '16px'
-                }}
-              />
-              
-              {query && (
-                <button
-                  onClick={() => handleSearch(query)}
-                  disabled={isSearching}
-                  className="flex items-center justify-center w-10 h-10 rounded-2xl bg-white hover:bg-gray-100 transition-all duration-200 disabled:opacity-50 hover:scale-105 active:scale-95"
-                  title="Search"
-                >
-                  {isSearching ? (
-                    <motion.div
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                      className="w-4 h-4 border-2 border-black border-t-transparent rounded-full"
-                    />
-                  ) : (
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="black"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M5 12h14" />
-                      <path d="m12 5 7 7-7 7" />
-                    </svg>
-                  )}
-                </button>
-              )}
-            </div>
-          </motion.div>
-        </div>
-
-
-
-
-
-        {/* Loading State */}
-        {isSearching && !aiResponse && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="mt-16 flex flex-col items-center justify-center"
-          >
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-              className="w-12 h-12 border-2 border-white border-t-transparent rounded-full mb-4"
-            />
-            <p className="text-gray-400">Searching the web...</p>
-          </motion.div>
-        )}
-        
-        {/* Error State */}
-        {searchError && !isSearching && !aiResponse && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="mt-16 flex flex-col items-center justify-center"
-          >
-            <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="8" x2="12" y2="12" />
-                <line x1="12" y1="16" x2="12.01" y2="16" />
-              </svg>
-            </div>
-            <p className="text-red-400 mb-2 font-medium">Search Error</p>
-            <p className="text-gray-400 text-center max-w-md">{searchError}</p>
-            <button 
-              onClick={() => handleSearch(query)}
-              className="mt-4 px-4 py-2 bg-white hover:bg-gray-100 text-black rounded-lg transition-colors"
-            >
-              Try Again
-            </button>
-          </motion.div>
-        )}
-        
-        {/* Image Carousel */}
-        <AnimatePresence>
-          {aiResponse && carouselImages.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-            >
-              <ImageCarousel images={carouselImages} />
-            </motion.div>
-          )}
-        </AnimatePresence>
-        
-        {/* AI Response */}
-        <AnimatePresence>
-          {aiResponse && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="mb-8"
-            >
-
-              {/* Source Results */}
-              {aiResponse.sources.length > 0 && (
-                <div>
-                  <h3 className="text-lg font-medium mb-4" style={{ color: '#FCFCFC' }}>Sources</h3>
-                  <div className="space-y-4">
-                    {aiResponse.sources.map((result, index) => (
-                    <motion.div
-                      key={result.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                      className="border rounded-lg p-4 hover:bg-gray-800/30 transition-colors cursor-pointer"
-                      style={{ 
-                        backgroundColor: 'transparent',
-                        borderColor: '#333333'
-                      }}
-                      onClick={() => window.open(result.url, '_blank')}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 rounded bg-gray-700 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                          {result.favicon ? (
-                            <img 
-                              src={result.favicon} 
-                              alt="" 
-                              className="w-full h-full object-contain p-1"
-                              onError={(e) => {
-                                // Extract domain for favicon fallback
-                                const domain = new URL(result.url).hostname;
-                                // Try Google's favicon service as fallback
-                                const target = e.target as HTMLImageElement;
-                                target.src = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
-                                
-                                // If that also fails, show default icon
-                                target.onerror = () => {
-                                  target.style.display = 'none';
-                                  target.parentElement!.innerHTML = `
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                                      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-                                    </svg>
-                                  `;
-                                };
-                              }}
-                            />
-                          ) : (
-                            // Try to get favicon from domain if not provided
-                            (() => {
-                              try {
-                                const domain = new URL(result.url).hostname;
-                                return (
-                                  <img 
-                                    src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`}
-                                    alt=""
-                                    className="w-full h-full object-contain p-1"
-                                    onError={(e) => {
-                                      // Fallback to default icon
-                                      const target = e.target as HTMLImageElement;
-                                      target.style.display = 'none';
-                                      target.parentElement!.innerHTML = `
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                                          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-                                        </svg>
-                                      `;
-                                    }}
-                                  />
-                                );
-                              } catch (e) {
-                                return (
-                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-                                  </svg>
-                                );
-                              }
-                            })()
-                          )}
-                        </div>
-                        
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-medium mb-1 line-clamp-2" style={{ color: '#FCFCFC', fontSize: '14px' }}>
-                            {result.title}
-                          </h4>
-                          <p className="text-gray-400 text-sm mb-2 line-clamp-2">
-                            {result.snippet}
-                          </p>
-                          <div className="flex items-center gap-2 text-xs text-gray-500">
-                            <span>{new URL(result.url).hostname}</span>
-                            {result.timestamp && (
-                              <>
-                                <span>•</span>
-                                <span>{result.timestamp}</span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                        
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
-                          <path d="M7 17L17 7M17 7H7M17 7V17"/>
-                        </svg>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </main>
-
-      {/* Overlay for sidebar */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/20 z-[9998]"
-          aria-hidden="true"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Sidebar */}
+    <>
+      {/* Sidebar - always visible, collapsible */}
       <Sidebar
-        open={sidebarOpen}
         activeSessionId={null}
-        onClose={() => setSidebarOpen(false)}
         onNewChat={() => router.push('/test')}
         onSelectSession={(id: string) => router.push(`/chat/${id}`)}
         refreshTrigger={0}
         user={user}
         onSettingsClick={showSettingsModal}
       />
+      <div
+        className={`${aiResponse ? 'min-h-screen' : 'h-screen overflow-hidden'}`}
+        style={{ backgroundColor: '#161618', fontFamily: 'Inter, sans-serif', paddingLeft: '4rem' }}
+      >
+        {/* Header: remove HamburgerMenu */}
+        <header className="fixed top-0 left-0 right-0 z-50 bg-[#161618] h-14 flex items-center px-4">
+          {/* <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} /> */}
+          {/* History Button */}
+          <div className="ml-auto">
+            <button
+              onClick={() => setHistoryModalOpen(true)}
+              className="p-2 rounded-lg hover:bg-gray-700 transition-colors text-gray-400 hover:text-white"
+              title="Browser History"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12,6 12,12 16,14"/>
+              </svg>
+            </button>
+          </div>
+        </header>
 
-      {/* Browser History Modal */}
-      <BrowserHistoryModal
-        isOpen={historyModalOpen}
-        onClose={() => setHistoryModalOpen(false)}
-        onSelectQuery={(selectedQuery) => {
-          setQuery(selectedQuery);
-          handleSearch(selectedQuery);
-        }}
-      />
+        <main className={`max-w-4xl mx-auto px-6 py-8 pt-20 ${aiResponse ? '' : 'h-full'}`}>
+          {/* Main Search Section */}
+          <div className={`flex flex-col items-center justify-center ${aiResponse ? 'mb-6' : 'h-full'}`}>
+            {!aiResponse && (
+              <motion.h2 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-4xl font-medium mb-10"
+                style={{ color: '#FCFCFC' }}
+              >
+                Search the web with Tehom
+              </motion.h2>
+            )}
+            
+            {/* Search Input */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ 
+                opacity: 1, 
+                y: 0,
+                width: aiResponse ? '100%' : '800px',
+                maxWidth: '100%'
+              }}
+              transition={{ delay: 0.1 }}
+              className="relative mx-auto mb-8"
+            >
+              <div 
+                className="flex items-center gap-2 px-4 py-4 h-14 rounded-2xl border transition-all duration-200 focus-within:ring-2 focus-within:ring-gray-400/30"
+                style={{ 
+                  backgroundColor: '#262626',
+                  borderColor: '#3b3b3b'
+                }}
+              >
+                <svg 
+                  width={aiResponse ? "20" : "24"} 
+                  height={aiResponse ? "20" : "24"} 
+                  viewBox="0 0 24 24" 
+                  fill="none" 
+                  stroke="#9ca3af" 
+                  strokeWidth="2" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round"
+                >
+                  <circle cx="11" cy="11" r="8"/>
+                  <path d="m21 21-4.35-4.35"/>
+                </svg>
+                
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  placeholder="Ask anything..."
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  disabled={isSearching}
+                  className="flex-1 bg-transparent outline-none text-base placeholder-gray-400"
+                  style={{ 
+                    color: '#FCFCFC', 
+                    fontSize: '16px'
+                  }}
+                />
+                
+                {query && (
+                  <button
+                    onClick={() => handleSearch(query)}
+                    disabled={isSearching}
+                    className="flex items-center justify-center w-10 h-10 rounded-2xl bg-white hover:bg-gray-100 transition-all duration-200 disabled:opacity-50 hover:scale-105 active:scale-95"
+                    title="Search"
+                  >
+                    {isSearching ? (
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                        className="w-4 h-4 border-2 border-black border-t-transparent rounded-full"
+                      />
+                    ) : (
+                      <svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="black"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M5 12h14" />
+                        <path d="m12 5 7 7-7 7" />
+                      </svg>
+                    )}
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          </div>
 
-      <AIChatPopup />
-    </div>
+          {/* Loading State */}
+          {isSearching && !aiResponse && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="mt-16 flex flex-col items-center justify-center"
+            >
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                className="w-12 h-12 border-2 border-white border-t-transparent rounded-full mb-4"
+              />
+              <p className="text-gray-400">Searching the web...</p>
+            </motion.div>
+          )}
+          
+          {/* Error State */}
+          {searchError && !isSearching && !aiResponse && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="mt-16 flex flex-col items-center justify-center"
+            >
+              <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+              </div>
+              <p className="text-red-400 mb-2 font-medium">Search Error</p>
+              <p className="text-gray-400 text-center max-w-md">{searchError}</p>
+              <button 
+                onClick={() => handleSearch(query)}
+                className="mt-4 px-4 py-2 bg-white hover:bg-gray-100 text-black rounded-lg transition-colors"
+              >
+                Try Again
+              </button>
+            </motion.div>
+          )}
+          
+          {/* Image Carousel */}
+          <AnimatePresence>
+            {aiResponse && carouselImages.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+              >
+                <ImageCarousel images={carouselImages} />
+              </motion.div>
+            )}
+          </AnimatePresence>
+          
+          {/* AI Response */}
+          <AnimatePresence>
+            {aiResponse && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="mb-8"
+              >
+
+                {/* Source Results */}
+                {aiResponse.sources.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-medium mb-4" style={{ color: '#FCFCFC' }}>Sources</h3>
+                    <div className="space-y-4">
+                      {aiResponse.sources.map((result, index) => (
+                      <motion.div
+                        key={result.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                        className="border rounded-lg p-4 hover:bg-gray-800/30 transition-colors cursor-pointer"
+                        style={{ 
+                          backgroundColor: 'transparent',
+                          borderColor: '#333333'
+                        }}
+                        onClick={() => window.open(result.url, '_blank')}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 rounded bg-gray-700 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                            {result.favicon ? (
+                              <img 
+                                src={result.favicon} 
+                                alt="" 
+                                className="w-full h-full object-contain p-1"
+                                onError={(e) => {
+                                  // Extract domain for favicon fallback
+                                  const domain = new URL(result.url).hostname;
+                                  // Try Google's favicon service as fallback
+                                  const target = e.target as HTMLImageElement;
+                                  target.src = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+                                  
+                                  // If that also fails, show default icon
+                                  target.onerror = () => {
+                                    target.style.display = 'none';
+                                    target.parentElement!.innerHTML = `
+                                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                                      </svg>
+                                    `;
+                                  };
+                                }}
+                              />
+                            ) : (
+                              // Try to get favicon from domain if not provided
+                              (() => {
+                                try {
+                                  const domain = new URL(result.url).hostname;
+                                  return (
+                                    <img 
+                                      src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`}
+                                      alt=""
+                                      className="w-full h-full object-contain p-1"
+                                      onError={(e) => {
+                                        // Fallback to default icon
+                                        const target = e.target as HTMLImageElement;
+                                        target.style.display = 'none';
+                                        target.parentElement!.innerHTML = `
+                                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                                          </svg>
+                                        `;
+                                      }}
+                                    />
+                                  );
+                                } catch (e) {
+                                  return (
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                                      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                                    </svg>
+                                  );
+                                }
+                              })()
+                            )}
+                          </div>
+                          
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-medium mb-1 line-clamp-2" style={{ color: '#FCFCFC', fontSize: '14px' }}>
+                              {result.title}
+                            </h4>
+                            <p className="text-gray-400 text-sm mb-2 line-clamp-2">
+                              {result.snippet}
+                            </p>
+                            <div className="flex items-center gap-2 text-xs text-gray-500">
+                              <span>{new URL(result.url).hostname}</span>
+                              {result.timestamp && (
+                                <>
+                                  <span>•</span>
+                                  <span>{result.timestamp}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+                            <path d="M7 17L17 7M17 7H7M17 7V17"/>
+                          </svg>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </main>
+
+        {/* Browser History Modal */}
+        <BrowserHistoryModal
+          isOpen={historyModalOpen}
+          onClose={() => setHistoryModalOpen(false)}
+          onSelectQuery={(selectedQuery) => {
+            setQuery(selectedQuery);
+            handleSearch(selectedQuery);
+          }}
+        />
+
+        <AIChatPopup />
+      </div>
+    </>
   );
 };
 

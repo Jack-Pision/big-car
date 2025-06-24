@@ -6,7 +6,6 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import Sidebar from '../../components/Sidebar';
-import HamburgerMenu from '../../components/HamburgerMenu';
 import AuthProvider, { useAuth } from '../../components/AuthProvider';
 import { useRouter } from 'next/navigation';
 import { supabase, createSupabaseClient } from '@/lib/supabase-client';
@@ -1726,7 +1725,6 @@ function TestChatComponent(props?: TestChatProps) {
   const [isSearchMode, setIsSearchMode] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
 
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [inputBarHeight, setInputBarHeight] = useState(96);
   const [isAiResponding, setIsAiResponding] = useState(false);
   const [abortController, setAbortController] = useState<AbortController | null>(null);
@@ -3182,7 +3180,6 @@ User Request: ${input.trim()}`;
       setInput('');
       setShowHeading(processedMessages.length === 0); // Show heading if the loaded session is empty
       setHasInteracted(true); // Assume interaction when a session is selected
-      setSidebarOpen(false); // Close sidebar
       
       // Update URL to reflect the new session
       router.push(`/chat/${sessionId}`, { scroll: false });
@@ -3194,7 +3191,6 @@ User Request: ${input.trim()}`;
   };
 
   const handleNewChatRequest = async () => {
-    setSidebarOpen(false);
     setInput('');
     setShowHeading(true); // Show welcoming heading
     setHasInteracted(false); // Reset interaction state
@@ -3970,68 +3966,78 @@ User Request: ${input.trim()}`;
 
                 return (
     <>
+      {/* Sidebar - always visible, collapsible */}
+      <Sidebar
+        activeSessionId={activeSessionId}
+        onNewChat={handleNewChatRequest}
+        onSelectSession={handleSelectSession}
+        refreshTrigger={sidebarRefreshTrigger}
+        user={user}
+        onSettingsClick={showSettingsModal}
+      />
       <div 
         className="min-h-screen flex flex-col px-4 sm:px-4 md:px-8 lg:px-0 transition-all duration-300" 
         style={{ 
           background: '#161618',
-          width: isArtifactMode ? `${leftPaneWidth}%` : '100%'
+          width: isArtifactMode ? `${leftPaneWidth}%` : '100%',
+          paddingLeft: '4rem', // 16 (collapsed) or 18rem (expanded) - let Sidebar handle overlay
         }}
       >
         <GlobalStyles />
-      {/* Single Header: always visible on all devices */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-[#161618] shadow-md shadow-black/30 lg:shadow-none h-14 flex items-center px-4">
-        <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
-        <img src="/Logo.svg" alt="Logo" className="ml-3" style={{ width: 90, height: 90 }} />
-      </header>
+        {/* Header: remove HamburgerMenu */}
+        <header className="fixed top-0 left-0 right-0 z-50 bg-[#161618] shadow-md shadow-black/30 lg:shadow-none h-14 flex items-center px-4">
+          {/* <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} /> */}
+          <img src="/Logo.svg" alt="Logo" className="ml-3" style={{ width: 90, height: 90 }} />
+        </header>
 
-      {/* Conversation area (scrollable) */}
-      <div
-        ref={scrollRef}
-        className="flex-1 overflow-y-auto w-full flex flex-col items-center justify-center relative px-4 sm:px-4 md:px-8 lg:px-0 pt-8"
-          style={{ paddingBottom: `${isChatEmpty && !hasInteracted ? 0 : inputBarHeight + EXTRA_GAP}px` }}
-      >
-          {/* Mobile: Separate heading (centered) and input (bottom) */}
-          {/* Desktop: Combined wrapper with current behavior */}
-          
-          {/* Mobile-only: Centered heading */}
-          <div className={`md:hidden fixed left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 w-full max-w-3xl flex flex-col items-center justify-center z-40 transition-opacity duration-500 ${inputPosition === "center" ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
-            <h1 className="text-2xl sm:text-3xl font-normal text-gray-200 text-center whitespace-nowrap">
-            Seek and You'll find
-          </h1>
-          </div>
+        {/* Conversation area (scrollable) */}
+        <div
+          ref={scrollRef}
+          className="flex-1 overflow-y-auto w-full flex flex-col items-center justify-center relative px-4 sm:px-4 md:px-8 lg:px-0 pt-8"
+            style={{ paddingBottom: `${isChatEmpty && !hasInteracted ? 0 : inputBarHeight + EXTRA_GAP}px` }}
+        >
+            {/* Mobile: Separate heading (centered) and input (bottom) */}
+            {/* Desktop: Combined wrapper with current behavior */}
+            
+            {/* Mobile-only: Centered heading */}
+            <div className={`md:hidden fixed left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 w-full max-w-3xl flex flex-col items-center justify-center z-40 transition-opacity duration-500 ${inputPosition === "center" ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
+              <h1 className="text-2xl sm:text-3xl font-normal text-gray-200 text-center whitespace-nowrap">
+              Seek and You'll find
+            </h1>
+            </div>
 
-          {/* Mobile-only: Bottom input */}
-          <div className="md:hidden fixed left-1/2 -translate-x-1/2 bottom-0 translate-y-0 w-full max-w-3xl flex flex-col items-center justify-center z-50 px-4 pb-4">
-            {/* Input form for mobile */}
-            <form
-              className="flex flex-col gap-2 rounded-2xl shadow-lg py-2 w-full px-4 pl-4 sm:px-6 md:px-8 lg:pl-4 lg:pr-0 mb-3 bg-[#232323] border border-white/20"
-              style={{ boxShadow: '0 4px 32px 0 rgba(0,0,0,0.32)' }}
-              onSubmit={handleSend}
-            >
-              {/* Image Preview inside input box */}
-              {(selectedFiles.length > 0 || imagePreviewUrls.length > 0) && (
-                <div className="w-full px-2 py-2">
-                  <div className="flex gap-2 flex-wrap">
-                    {selectedFiles.map((file, index) => (
-                      <div key={index} className="relative">
-                        {imagePreviewUrls[index] ? (
-                          <img 
-                            src={imagePreviewUrls[index]} 
-                            alt={`Preview ${index + 1}`} 
-                            className="w-16 h-16 object-cover rounded-lg border border-gray-600"
-                          />
-                        ) : (
-                          <div className="w-16 h-16 bg-gray-700 rounded-lg border border-gray-600 flex items-center justify-center">
-                            <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
-                          </div>
-                        )}
-                      <button
-                        type="button"
-                          onClick={() => removeImagePreview(index)}
-                          className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
-                      >
-                          ×
-                      </button>
+            {/* Mobile-only: Bottom input */}
+            <div className="md:hidden fixed left-1/2 -translate-x-1/2 bottom-0 translate-y-0 w-full max-w-3xl flex flex-col items-center justify-center z-50 px-4 pb-4">
+              {/* Input form for mobile */}
+              <form
+                className="flex flex-col gap-2 rounded-2xl shadow-lg py-2 w-full px-4 pl-4 sm:px-6 md:px-8 lg:pl-4 lg:pr-0 mb-3 bg-[#232323] border border-white/20"
+                style={{ boxShadow: '0 4px 32px 0 rgba(0,0,0,0.32)' }}
+                onSubmit={handleSend}
+              >
+                {/* Image Preview inside input box */}
+                {(selectedFiles.length > 0 || imagePreviewUrls.length > 0) && (
+                  <div className="w-full px-2 py-2">
+                    <div className="flex gap-2 flex-wrap">
+                      {selectedFiles.map((file, index) => (
+                        <div key={index} className="relative">
+                          {imagePreviewUrls[index] ? (
+                            <img 
+                              src={imagePreviewUrls[index]} 
+                              alt={`Preview ${index + 1}`} 
+                              className="w-16 h-16 object-cover rounded-lg border border-gray-600"
+                            />
+                          ) : (
+                            <div className="w-16 h-16 bg-gray-700 rounded-lg border border-gray-600 flex items-center justify-center">
+                              <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                            </div>
+                          )}
+                        <button
+                          type="button"
+                            onClick={() => removeImagePreview(index)}
+                            className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
+                        >
+                            ×
+                        </button>
               </div>
           ))}
                   </div>
@@ -4511,20 +4517,6 @@ User Request: ${input.trim()}`;
             onClick={() => setSidebarOpen(false)}
           />
         )}
-
-
-
-        {/* Sidebar */}
-        <Sidebar
-          open={sidebarOpen}
-          activeSessionId={activeSessionId}
-          onClose={() => setSidebarOpen(false)}
-          onNewChat={handleNewChatRequest}
-          onSelectSession={handleSelectSession}
-          refreshTrigger={sidebarRefreshTrigger}
-          user={user}
-          onSettingsClick={showSettingsModal}
-        />
       </div>
       {chatError && (
         <div className="text-red-500 text-sm text-center mt-2">{chatError}</div>
