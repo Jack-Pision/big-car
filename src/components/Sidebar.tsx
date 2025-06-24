@@ -157,7 +157,7 @@ export default function Sidebar({
         <img
           src="/icons/big-icon.png"
           alt="App Logo"
-          className={`transition-all duration-200 object-contain ${showText ? 'w-24 h-24' : 'w-16 h-16'}`}
+          className={`transition-all duration-200 object-contain ${showText ? 'w-12 h-12' : 'w-7 h-7'}`}
           style={{ display: 'block' }}
         />
       </div>
