@@ -15,6 +15,7 @@ import HamburgerMenu from '@/components/HamburgerMenu';
 import BrowserHistoryModal from '@/components/BrowserHistoryModal';
 import AuthProvider, { useAuth } from '@/components/AuthProvider';
 import { browserHistoryService } from '@/lib/browser-history-service';
+import AIChatPopup from '@/components/AIChatPopup';
 
 interface SearchResult {
   id: string;
@@ -197,7 +198,7 @@ const BrowserPageComponent = () => {
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-[#161618] h-14 flex items-center px-4">
         <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
-        <img src="/Logo.svg" alt="Logo" className="ml-3" style={{ width: 90, height: 90 }} />
+        <img src="/ICON TEHOM 2.png" alt="Tehom Logo" className="ml-3" style={{ width: 40, height: 40, borderRadius: '50%' }} />
         
         {/* History Button */}
         <div className="ml-auto">
@@ -519,6 +520,8 @@ const BrowserPageComponent = () => {
           handleSearch(selectedQuery);
         }}
       />
+
+      <AIChatPopup />
     </div>
   );
 };
