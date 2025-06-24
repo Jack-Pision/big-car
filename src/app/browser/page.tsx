@@ -11,6 +11,7 @@ import ImageCarousel from '@/components/ImageCarousel';
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
+import HamburgerMenu from '@/components/HamburgerMenu';
 import BrowserHistoryModal from '@/components/BrowserHistoryModal';
 import AuthProvider, { useAuth } from '@/components/AuthProvider';
 import { browserHistoryService } from '@/lib/browser-history-service';
@@ -57,6 +58,7 @@ const BrowserPageComponent = () => {
   
   // New state for history modal
   const [historyModalOpen, setHistoryModalOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Run search automatically if ?q= parameter present on first load
   useEffect(() => {
@@ -189,8 +191,9 @@ const BrowserPageComponent = () => {
 
   return (
     <>
-      {/* Sidebar - always visible, collapsible */}
       <Sidebar
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
         activeSessionId={null}
         onNewChat={() => router.push('/test')}
         onSelectSession={(id: string) => router.push(`/chat/${id}`)}
@@ -199,12 +202,14 @@ const BrowserPageComponent = () => {
         onSettingsClick={showSettingsModal}
       />
       <div
-        className={`${aiResponse ? 'min-h-screen' : 'h-screen overflow-hidden'}`}
-        style={{ backgroundColor: '#161618', fontFamily: 'Inter, sans-serif', paddingLeft: '4rem' }}
+        className={`${aiResponse ? 'min-h-screen' : 'h-screen overflow-hidden'} md:pl-16`}
+        style={{ backgroundColor: '#161618', fontFamily: 'Inter, sans-serif' }}
       >
-        {/* Header: remove HamburgerMenu */}
-        <header className="fixed top-0 left-0 right-0 z-50 bg-[#161618] h-14 flex items-center px-4">
-          {/* <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} /> */}
+        <header className="fixed top-0 left-0 right-0 z-50 bg-[#161618] h-14 flex items-center px-4 md:pl-16">
+          <div className="md:hidden">
+            <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
+          </div>
+          
           {/* History Button */}
           <div className="ml-auto">
             <button
@@ -490,6 +495,15 @@ const BrowserPageComponent = () => {
             )}
           </AnimatePresence>
         </main>
+
+        {/* Overlay for sidebar (mobile only) */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black/40 z-[9998] md:hidden"
+            aria-hidden="true"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
 
         {/* Browser History Modal */}
         <BrowserHistoryModal
