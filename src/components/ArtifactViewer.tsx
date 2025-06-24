@@ -19,9 +19,17 @@ interface ArtifactViewerProps {
   artifact: ArtifactData;
   onClose: () => void;
   versions?: ArtifactData[]; // Optional list of versions, newest last
+  isStreaming?: boolean; // New prop to indicate if content is streaming
+  streamingContent?: string; // New prop for streaming content
 }
 
-export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({ artifact, onClose, versions }) => {
+export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({ 
+  artifact, 
+  onClose, 
+  versions,
+  isStreaming = false,
+  streamingContent = ''
+}) => {
   // State to track selected version (default to latest if provided)
   const [selectedVersionIndex, setSelectedVersionIndex] = useState(
     versions && versions.length > 0 ? versions.length - 1 : 0
@@ -30,8 +38,13 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({ artifact, onClos
   // Determine which artifact data to display (selected version or single artifact)
   const artifactData = versions && versions.length > 0 ? versions[selectedVersionIndex] : artifact;
 
+  // Determine if we should show streaming content or artifact content
+  const displayContent = isStreaming ? streamingContent : artifactData.content;
+  const isContentEmpty = isStreaming ? !streamingContent : !artifactData.content;
+
   const handleCopy = () => {
-    navigator.clipboard.writeText(artifactData.content);
+    const contentToCopy = isStreaming ? streamingContent : artifactData.content;
+    navigator.clipboard.writeText(contentToCopy);
     // Show toast notification
     const toast = document.createElement('div');
     toast.textContent = 'Content copied to clipboard!';
@@ -61,11 +74,14 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({ artifact, onClos
   };
 
   const handleDownload = () => {
-    const blob = new Blob([artifactData.content], { type: 'text/markdown' });
+    const contentToDownload = isStreaming ? streamingContent : artifactData.content;
+    const titleToUse = isStreaming ? "Streaming Document" : artifactData.title;
+    
+    const blob = new Blob([contentToDownload], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${artifactData.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.md`;
+    a.download = `${titleToUse.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.md`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -77,7 +93,7 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({ artifact, onClos
       {/* Floating Action Buttons */}
       <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
         {/* Version selector (only if multiple versions are provided) */}
-        {versions && versions.length > 1 && (
+        {!isStreaming && versions && versions.length > 1 && (
           <select
             value={selectedVersionIndex}
             onChange={(e) => setSelectedVersionIndex(Number(e.target.value))}
@@ -131,7 +147,7 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({ artifact, onClos
       {/* Content */}
       <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent px-4 pt-12 pb-6 lg:px-6 xl:px-8">
         <div className="max-w-3xl mx-auto w-full">
-          {!artifactData.content ? (
+          {isContentEmpty ? (
             // Show streaming state when content is empty
             <div className="flex flex-col items-center justify-center h-64">
               <div className="flex items-center space-x-3 mb-4">
@@ -254,11 +270,11 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({ artifact, onClos
                 )
                 }}
               >
-                {artifactData.content}
+                {displayContent}
               </ReactMarkdown>
             
             {/* Streaming indicator - show when content is being written */}
-            {artifactData.content && artifactData.metadata.wordCount < 50 && (
+            {isStreaming && (
               <div className="flex items-center gap-2 mt-4 text-cyan-400">
                 <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
                 <span className="text-xs">AI is writing...</span>

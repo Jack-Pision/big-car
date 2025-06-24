@@ -1837,6 +1837,14 @@ function TestChatComponent(props?: TestChatProps) {
     }
   }, [isResizing, handleMouseMove, handleMouseUp]);
 
+  // Effect to handle artifact streaming
+  useEffect(() => {
+    // If artifact streaming is active but artifact viewer is not open, open it
+    if (isArtifactStreaming && !isArtifactMode && artifactContent) {
+      setIsArtifactMode(true);
+    }
+  }, [isArtifactStreaming, isArtifactMode, artifactContent]);
+
   // Effect to load the active session (from URL hash, props, or saved state)
   useEffect(() => {
     const loadActiveSession = async () => {
@@ -2400,6 +2408,10 @@ function TestChatComponent(props?: TestChatProps) {
       setInput('');
       setIsLoading(true);
       setIsAiResponding(true);
+      
+      // Set artifact streaming mode
+      setIsArtifactStreaming(true);
+      setArtifactStreamingContent('');
 
       // Generate a quick title for the artifact
       const quickTitle = input.trim().length > 50 
@@ -2421,6 +2433,23 @@ function TestChatComponent(props?: TestChatProps) {
       };
       
       setMessages(prev => [...prev, aiMessage]);
+      
+      // Create a temporary artifact data structure for the streaming content
+      const tempArtifact: ArtifactData = {
+        type: 'document',
+        title: 'Generating Document...',
+        content: '',
+        metadata: {
+          wordCount: 0,
+          estimatedReadTime: '1 minute',
+          category: 'Document',
+          tags: ['document']
+        }
+      };
+      
+      // Open artifact viewer immediately
+      setArtifactContent(tempArtifact);
+      setIsArtifactMode(true);
 
       try {
         // Create artifact prompt
@@ -2485,6 +2514,9 @@ User Request: ${input.trim()}`;
                   if (content) {
                     textContent += content;
                     
+                    // Update the streaming content in the artifact viewer
+                    setArtifactStreamingContent(textContent);
+                    
                     // Update the AI message in real-time with artifact content
                     setMessages(prev => prev.map(msg => 
                       msg.id === aiMessageId 
@@ -2538,9 +2570,9 @@ User Request: ${input.trim()}`;
           msg.id === aiMessageId ? finalAiMessage : msg
         ));
         
-        // Auto-open artifact viewer
+        // Update artifact viewer with final content
         setArtifactContent(structuredContent);
-        setIsArtifactMode(true);
+        setIsArtifactStreaming(false);
         
         // Save final message
         try {
@@ -3412,6 +3444,12 @@ User Request: ${input.trim()}`;
 
   // Independent artifact message rendering system
   const renderArtifactMessage = (msg: LocalMessage, i: number) => {
+    // If this message is currently streaming and we're in artifact mode,
+    // don't render it in the chat area
+    if (msg.isStreaming && isArtifactStreaming && isArtifactMode) {
+      return null;
+    }
+    
     // Clean the content to remove all thinking tags for artifacts
     const cleanContent = cleanArtifactContent(msg.content);
     
@@ -4541,7 +4579,14 @@ User Request: ${input.trim()}`;
             onClose={() => {
               setIsArtifactMode(false);
               setArtifactContent(null);
+              // If we were streaming, also reset streaming state
+              if (isArtifactStreaming) {
+                setIsArtifactStreaming(false);
+                setArtifactStreamingContent('');
+              }
             }}
+            isStreaming={isArtifactStreaming}
+            streamingContent={artifactStreamingContent}
           />
         </div>
       )}
