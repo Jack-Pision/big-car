@@ -3228,17 +3228,9 @@ User Request: ${input.trim()}`;
       }}
     >
       <div className="flex items-center gap-3">
-        <div className="p-2 bg-cyan-500/20 rounded-lg flex-shrink-0">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-            <line x1="9" y1="9" x2="15" y2="9"></line>
-            <line x1="9" y1="13" x2="15" y2="13"></line>
-          </svg>
-        </div>
         <div className="flex-1 min-w-0">
           <h3 className="text-lg truncate" style={{ color: '#FCFCFC' }}>{title}</h3>
           <div className="flex items-center gap-4 text-xs text-gray-400 mt-1">
-            <span>Document</span>
             {isStreaming && (
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
@@ -3480,17 +3472,19 @@ User Request: ${input.trim()}`;
                 }}
             >
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-cyan-500/20 rounded-lg flex-shrink-0">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                    <line x1="9" y1="9" x2="15" y2="9"></line>
-                    <line x1="9" y1="13" x2="15" y2="13"></line>
-                      </svg>
-                </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-lg truncate" style={{ color: '#FCFCFC' }}>{msg.structuredContent.title}</h3>
+                  <h3 className="text-lg truncate" style={{ color: '#FCFCFC' }}>
+                    {msg.structuredContent ? msg.structuredContent.title : (msg.title || "Generating Artifact...")}
+                    {msg.isStreaming && (
+                      <span className="inline-block ml-2 w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></span>
+                    )}
+                  </h3>
                   <div className="flex items-center gap-4 text-xs text-gray-400 mt-1">
-                    <span>Document</span>
+                    {msg.isStreaming && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-cyan-400">Writing...</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -3590,13 +3584,6 @@ User Request: ${input.trim()}`;
                 }}
             >
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-cyan-500/20 rounded-lg flex-shrink-0">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                    <line x1="9" y1="9" x2="15" y2="9"></line>
-                    <line x1="9" y1="13" x2="15" y2="13"></line>
-                </svg>
-                </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="text-lg truncate" style={{ color: '#FCFCFC' }}>
                     {msg.title || "Generating Artifact..."}
@@ -3605,7 +3592,6 @@ User Request: ${input.trim()}`;
                     )}
                   </h3>
                   <div className="flex items-center gap-4 text-xs text-gray-400 mt-1">
-                    <span>Document</span>
                     {msg.isStreaming && (
                       <div className="flex items-center gap-2">
                         <span className="text-cyan-400">Writing...</span>
