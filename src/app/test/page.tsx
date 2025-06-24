@@ -4509,14 +4509,7 @@ User Request: ${input.trim()}`;
           aria-hidden="true"
         />
 
-        {/* Overlay for sidebar */}
-        {sidebarOpen && (
-          <div
-            className="fixed inset-0 bg-black/20 z-[9998]"
-            aria-hidden="true"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
+       
       </div>
       {chatError && (
         <div className="text-red-500 text-sm text-center mt-2">{chatError}</div>
