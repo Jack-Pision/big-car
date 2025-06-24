@@ -10,8 +10,7 @@ import 'katex/dist/katex.min.css';
 import ImageCarousel from '@/components/ImageCarousel';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import Sidebar from '@/components/Sidebar';
-import HamburgerMenu from '@/components/HamburgerMenu';
+
 import BrowserHistoryModal from '@/components/BrowserHistoryModal';
 import AuthProvider, { useAuth } from '@/components/AuthProvider';
 import { browserHistoryService } from '@/lib/browser-history-service';
@@ -56,11 +55,11 @@ const BrowserPageComponent = () => {
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   
-  // New state for sidebar and history modal
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  // State for history modal
   const [historyModalOpen, setHistoryModalOpen] = useState(false);
-
-
+  
+  // State for enhanced web context data
+  const [webContextData, setWebContextData] = useState<any>(null);
 
   // Run search automatically if ?q= parameter present on first load
   useEffect(() => {
@@ -79,10 +78,35 @@ const BrowserPageComponent = () => {
       // Search for exact match in browser history
       const exactMatch = await browserHistoryService.findExactQuery(searchQuery);
       
-      if (exactMatch && exactMatch.search_results && Array.isArray(exactMatch.search_results)) {
+      if (exactMatch && exactMatch.search_results) {
         console.log('Loading cached search results from Supabase');
-        setSearchResults(exactMatch.search_results);
-        setAiResponse({ sources: exactMatch.search_results });
+        
+        // Handle both old and new data structures
+        let sources, enhancedData;
+        if (Array.isArray(exactMatch.search_results)) {
+          // Old format - just an array of sources
+          sources = exactMatch.search_results;
+          enhancedData = null;
+        } else {
+          // New format - object with sources and enhanced_data
+          sources = exactMatch.search_results.sources || [];
+          enhancedData = exactMatch.search_results.enhanced_data || null;
+        }
+        
+        setSearchResults(sources);
+        setAiResponse({ sources });
+        
+        // Create web context data for cached results
+        const contextData = {
+          hasSearchResults: true,
+          query: searchQuery,
+          sourcesCount: sources.length,
+          hasEnhancedContent: !!enhancedData,
+          enhancedData: enhancedData,
+          sources: sources
+        };
+        setWebContextData(contextData);
+        
         return true; // Found cached results
       }
       
@@ -106,33 +130,12 @@ const BrowserPageComponent = () => {
 
   const handleSearch = async (searchQuery: string) => {
     if (!searchQuery.trim()) return;
-
-    // Check if we already have cached results for this exact query
-    try {
-      const exactMatch = await browserHistoryService.findExactQuery(searchQuery);
-      
-      if (exactMatch && exactMatch.search_results && Array.isArray(exactMatch.search_results)) {
-        console.log('Using cached search results from Supabase');
-        setSearchResults(exactMatch.search_results);
-        setAiResponse({ sources: exactMatch.search_results });
-        
-        // Update URL
-        try {
-          router.replace(`/browser?q=${encodeURIComponent(searchQuery)}`);
-        } catch (e) {
-          console.error('Failed to update URL:', e);
-        }
-        return;
-      }
-    } catch (error) {
-      console.error('Error checking for cached results:', error);
-      // Continue with fresh search if cache check fails
-    }
-
+    
     setIsSearching(true);
     setSearchError(null);
     setSearchResults([]);
     setAiResponse(null);
+    setWebContextData(null); // Reset web context
 
     try {
       const response = await fetch('/api/exa', {
@@ -140,7 +143,10 @@ const BrowserPageComponent = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ query: searchQuery }),
+        body: JSON.stringify({ 
+          query: searchQuery,
+          enhanced: true // Request enhanced data for AI context
+        }),
       });
 
       if (!response.ok) {
@@ -157,6 +163,17 @@ const BrowserPageComponent = () => {
       setSearchResults(searchResults);
       setAiResponse(aiResponse);
 
+      // Create web context data for AI chat popup
+      const contextData = {
+        hasSearchResults: true,
+        query: searchQuery,
+        sourcesCount: searchResults.length,
+        hasEnhancedContent: !!data.enhanced,
+        enhancedData: data.enhanced,
+        sources: searchResults
+      };
+      setWebContextData(contextData);
+
       // Update URL so the search can be shared / reloaded
       try {
         router.replace(`/browser?q=${encodeURIComponent(searchQuery)}`);
@@ -164,13 +181,24 @@ const BrowserPageComponent = () => {
         console.error('Failed to update URL:', e);
       }
 
-      // Save to browser history with full search results for caching
+      // Save to browser history with enhanced search results for caching
       try {
+        const enhancedSearchResults = {
+          sources: searchResults,
+          enhanced_data: data.enhanced,
+          search_metadata: data.metadata,
+          ai_context: {
+            processed_at: new Date().toISOString(),
+            context_summary: data.enhanced ? 'Enhanced content available for AI context' : 'Basic search results',
+            total_sources: searchResults.length
+          }
+        };
+
         await browserHistoryService.saveBrowserSearch({
           query: searchQuery,
-          results_summary: `Found ${searchResults.length} sources from the web`,
+          results_summary: `Found ${searchResults.length} sources${data.enhanced ? ' with enhanced content' : ''}`,
           sources_count: searchResults.length,
-          search_results: searchResults // Save full results for caching
+          search_results: enhancedSearchResults // Save enhanced results for AI context
         });
       } catch (error) {
         console.error('Error saving to browser history:', error);
@@ -180,6 +208,7 @@ const BrowserPageComponent = () => {
       console.error('Search error:', error);
       setSearchError((error as Error).message || "An error occurred while searching. Please try again.");
       setAiResponse(null);
+      setWebContextData(null); // Reset web context on error
     } finally {
       setIsSearching(false);
     }
@@ -191,16 +220,42 @@ const BrowserPageComponent = () => {
     }
   };
 
-
-
   return (
     <div className={`${aiResponse ? 'min-h-screen' : 'h-screen overflow-hidden'}`} style={{ backgroundColor: '#161618', fontFamily: 'Inter, sans-serif' }}>
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-[#161618] h-14 flex items-center px-4">
-        <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
+        <div className="flex items-center gap-2">
+          {/* Back to Chat Button */}
+          <button
+            onClick={() => router.push('/')}
+            className="p-2 rounded-lg hover:bg-gray-700 transition-colors text-gray-400 hover:text-white"
+            title="Back to Chat"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M19 12H5"/>
+              <path d="m12 19-7-7 7-7"/>
+            </svg>
+          </button>
+        </div>
         
-        {/* History Button */}
-        <div className="ml-auto">
+        {/* Settings and History Buttons */}
+        <div className="ml-auto flex items-center gap-2">
+          {/* Settings Button */}
+          <button
+            onClick={() => {
+              // TODO: Add proper settings functionality
+              console.log('Settings clicked');
+            }}
+            className="p-2 rounded-lg hover:bg-gray-700 transition-colors text-gray-400 hover:text-white"
+            title="Settings"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+          </button>
+          
+          {/* History Button */}
           <button
             onClick={() => setHistoryModalOpen(true)}
             className="p-2 rounded-lg hover:bg-gray-700 transition-colors text-gray-400 hover:text-white"
@@ -310,12 +365,8 @@ const BrowserPageComponent = () => {
           </motion.div>
         </div>
 
-
-
-
-
         {/* Loading State */}
-        {isSearching && !aiResponse && (
+        {isSearching && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -377,138 +428,110 @@ const BrowserPageComponent = () => {
               transition={{ delay: 0.2 }}
               className="mb-8"
             >
-
               {/* Source Results */}
               {aiResponse.sources.length > 0 && (
                 <div>
                   <h3 className="text-lg font-medium mb-4" style={{ color: '#FCFCFC' }}>Sources</h3>
                   <div className="space-y-4">
                     {aiResponse.sources.map((result, index) => (
-                    <motion.div
-                      key={result.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                      className="border rounded-lg p-4 hover:bg-gray-800/30 transition-colors cursor-pointer"
-                      style={{ 
-                        backgroundColor: 'transparent',
-                        borderColor: '#333333'
-                      }}
-                      onClick={() => window.open(result.url, '_blank')}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 rounded bg-gray-700 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                          {result.favicon ? (
-                            <img 
-                              src={result.favicon} 
-                              alt="" 
-                              className="w-full h-full object-contain p-1"
-                              onError={(e) => {
-                                // Extract domain for favicon fallback
-                                const domain = new URL(result.url).hostname;
-                                // Try Google's favicon service as fallback
-                                const target = e.target as HTMLImageElement;
-                                target.src = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
-                                
-                                // If that also fails, show default icon
-                                target.onerror = () => {
-                                  target.style.display = 'none';
-                                  target.parentElement!.innerHTML = `
+                      <motion.div
+                        key={result.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                        className="border rounded-lg p-4 hover:bg-gray-800/30 transition-colors cursor-pointer"
+                        style={{ 
+                          backgroundColor: 'transparent',
+                          borderColor: '#333333'
+                        }}
+                        onClick={() => window.open(result.url, '_blank')}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 rounded bg-gray-700 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                            {result.favicon ? (
+                              <img 
+                                src={result.favicon} 
+                                alt="" 
+                                className="w-full h-full object-contain p-1"
+                                onError={(e) => {
+                                  const domain = new URL(result.url).hostname;
+                                  const target = e.target as HTMLImageElement;
+                                  target.src = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+                                  target.onerror = () => {
+                                    target.style.display = 'none';
+                                    target.parentElement!.innerHTML = `
+                                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                                      </svg>
+                                    `;
+                                  };
+                                }}
+                              />
+                            ) : (
+                              (() => {
+                                try {
+                                  const domain = new URL(result.url).hostname;
+                                  return (
+                                    <img 
+                                      src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`}
+                                      alt=""
+                                      className="w-full h-full object-contain p-1"
+                                      onError={(e) => {
+                                        const target = e.target as HTMLImageElement;
+                                        target.style.display = 'none';
+                                        target.parentElement!.innerHTML = `
+                                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                                          </svg>
+                                        `;
+                                      }}
+                                    />
+                                  );
+                                } catch (e) {
+                                  return (
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                       <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
                                       <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
                                     </svg>
-                                  `;
-                                };
-                              }}
-                            />
-                          ) : (
-                            // Try to get favicon from domain if not provided
-                            (() => {
-                              try {
-                                const domain = new URL(result.url).hostname;
-                                return (
-                                  <img 
-                                    src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`}
-                                    alt=""
-                                    className="w-full h-full object-contain p-1"
-                                    onError={(e) => {
-                                      // Fallback to default icon
-                                      const target = e.target as HTMLImageElement;
-                                      target.style.display = 'none';
-                                      target.parentElement!.innerHTML = `
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                                          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-                                        </svg>
-                                      `;
-                                    }}
-                                  />
-                                );
-                              } catch (e) {
-                                return (
-                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-                                  </svg>
-                                );
-                              }
-                            })()
-                          )}
-                        </div>
-                        
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-medium mb-1 line-clamp-2" style={{ color: '#FCFCFC', fontSize: '14px' }}>
-                            {result.title}
-                          </h4>
-                          <p className="text-gray-400 text-sm mb-2 line-clamp-2">
-                            {result.snippet}
-                          </p>
-                          <div className="flex items-center gap-2 text-xs text-gray-500">
-                            <span>{new URL(result.url).hostname}</span>
-                            {result.timestamp && (
-                              <>
-                                <span>•</span>
-                                <span>{result.timestamp}</span>
-                              </>
+                                  );
+                                }
+                              })()
                             )}
                           </div>
+                          
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-medium mb-1 line-clamp-2" style={{ color: '#FCFCFC', fontSize: '14px' }}>
+                              {result.title}
+                            </h4>
+                            <p className="text-gray-400 text-sm mb-2 line-clamp-2">
+                              {result.snippet}
+                            </p>
+                            <div className="flex items-center gap-2 text-xs text-gray-500">
+                              <span>{new URL(result.url).hostname}</span>
+                              {result.timestamp && (
+                                <>
+                                  <span>•</span>
+                                  <span>{result.timestamp}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+                            <path d="M7 17L17 7M17 7H7M17 7V17"/>
+                          </svg>
                         </div>
-                        
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
-                          <path d="M7 17L17 7M17 7H7M17 7V17"/>
-                        </svg>
-                      </div>
-                    </motion.div>
-                  ))}
+                      </motion.div>
+                    ))}
+                  </div>
                 </div>
-              </div>
               )}
             </motion.div>
           )}
         </AnimatePresence>
       </main>
-
-      {/* Overlay for sidebar */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/20 z-[9998]"
-          aria-hidden="true"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Sidebar */}
-      <Sidebar
-        open={sidebarOpen}
-        activeSessionId={null}
-        onClose={() => setSidebarOpen(false)}
-        onNewChat={() => router.push('/')}
-        onSelectSession={(id: string) => router.push(`/chat/${id}`)}
-        refreshTrigger={0}
-        user={user}
-        onSettingsClick={showSettingsModal}
-      />
 
       {/* Browser History Modal */}
       <BrowserHistoryModal
@@ -520,7 +543,8 @@ const BrowserPageComponent = () => {
         }}
       />
 
-      <AIChatPopup />
+      {/* AI Chat Popup with web context */}
+      <AIChatPopup webContext={webContextData} />
     </div>
   );
 };
