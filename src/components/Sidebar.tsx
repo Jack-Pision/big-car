@@ -147,7 +147,7 @@ export default function Sidebar({
 
   const SidebarContent = (
     <aside
-      className={`bg-[#232323] shadow-xl flex flex-col border-r border-gray-800 h-full transition-all duration-200 ${isDesktop ? (isExpanded ? 'w-72' : 'w-16') : 'w-72'}`}
+      className={`bg-[#232323] shadow-xl flex flex-col h-full border-r border-gray-800 transition-all duration-200 ${isDesktop ? (isExpanded ? 'w-72' : 'w-16') : 'w-72'}`}
       aria-label="Sidebar navigation"
       onMouseEnter={isDesktop ? () => setIsHovered(true) : undefined}
       onMouseLeave={isDesktop ? () => setIsHovered(false) : undefined}
