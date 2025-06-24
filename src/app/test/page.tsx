@@ -3981,7 +3981,7 @@ User Request: ${input.trim()}`;
         onSettingsClick={showSettingsModal}
       />
       <div 
-        className="min-h-screen flex flex-col transition-all duration-300 md:pl-16" 
+        className="min-h-screen flex flex-col transition-all duration-300" 
         style={{ 
           background: '#161618',
           width: isArtifactMode ? `${leftPaneWidth}%` : '100%',
@@ -3998,7 +3998,7 @@ User Request: ${input.trim()}`;
         {/* Conversation area (scrollable, centered) */}
         <div
           ref={scrollRef}
-          className="flex-1 overflow-y-auto flex flex-col items-center justify-center relative"
+          className="flex-1 overflow-y-auto flex flex-col items-center justify-center relative w-full mx-auto max-w-3xl"
           style={{ paddingBottom: `${isChatEmpty && !hasInteracted ? 0 : inputBarHeight + EXTRA_GAP}px` }}
         >
           {/* Centered wrapper for heading and input (mobile and desktop) */}

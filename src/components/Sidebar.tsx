@@ -182,8 +182,8 @@ export default function Sidebar({
 
       {/* Search bar: only show when expanded */}
       {showText && (
-        <div className="flex-shrink-0 mt-4 mx-4">
-          <div className="mb-4 flex items-center gap-2 bg-transparent rounded-lg p-2 border" style={{ borderColor: '#555', minHeight: '36px' }}>
+        <div className="flex-shrink-0 mt-4 px-2">
+          <div className="flex items-center gap-2 bg-transparent rounded-lg p-2 border" style={{ borderColor: '#555', minHeight: '36px' }}>
             <svg width="18" height="18" fill="none" stroke="#e5e7eb" strokeWidth="2" viewBox="0 0 24 24">
               <circle cx="11" cy="11" r="8" />
               <line x1="21" y1="21" x2="16.65" y2="16.65" />
@@ -200,16 +200,14 @@ export default function Sidebar({
         </div>
       )}
 
-      {/* Session list: only show when expanded */}
+      {/* Session list: only show when expanded, and only show scroll bar when expanded */}
       {showText && (
-        <div className="flex-1 overflow-y-auto px-4 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto custom-scrollbar px-2 mt-2">
           {filteredSessions.map((session) => (
             <div
               key={session.id}
-              className={`group relative flex items-center justify-between gap-2 p-2 rounded-lg mb-1 cursor-pointer transition-colors text-sm font-medium
-                          ${activeSessionId === session.id 
-                            ? 'bg-gray-700 text-white' 
-                            : 'text-gray-300 hover:bg-gray-700/60'}`}
+              className={`group relative flex items-center gap-2 p-2 rounded-lg mb-1 cursor-pointer transition-colors text-sm font-medium
+                          ${activeSessionId === session.id ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-700/60'} justify-between`}
               onClick={() => handleSessionSelect(session.id)}
               title={session.title}
             >
