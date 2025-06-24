@@ -6,6 +6,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import Sidebar from '../../components/Sidebar';
+import HamburgerMenu from '../../components/HamburgerMenu';
 import AuthProvider, { useAuth } from '../../components/AuthProvider';
 import { useRouter } from 'next/navigation';
 import { supabase, createSupabaseClient } from '@/lib/supabase-client';
@@ -1713,8 +1714,8 @@ interface TestChatProps {
   initialSessionTitle?: string;
 }
 
-function TestChatComponent(props?: TestChatProps) {
-  const { initialSessionId, initialSessionTitle } = props || {};
+function TestChatComponent(props: TestChatProps = {}) {
+  const { initialSessionId, initialSessionTitle } = props;
   const router = useRouter();
   const { user, showSettingsModal } = useAuth();
   
@@ -1737,10 +1738,9 @@ function TestChatComponent(props?: TestChatProps) {
   const [activeButton, setActiveButton] = useState<string | null>(null);
   const [chatError, setChatError] = useState<string | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(props.initialSessionId || null);
   const [sidebarRefreshTrigger, setSidebarRefreshTrigger] = useState(0);
   const [isArtifactMode, setIsArtifactMode] = useState(false);
-  const [pendingUrlUpdate, setPendingUrlUpdate] = useState<string | null>(null);
   const [artifactContent, setArtifactContent] = useState<ArtifactData | null>(null);
   const [isGeneratingArtifact, setIsGeneratingArtifact] = useState(false);
   const [artifactProgress, setArtifactProgress] = useState('');
@@ -1775,6 +1775,8 @@ function TestChatComponent(props?: TestChatProps) {
   const [uploadedImageUrls, setUploadedImageUrls] = useState<string[]>([]);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [imageWaitingForResponse, setImageWaitingForResponse] = useState<string | null>(null);
+
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
 
   // Refs
@@ -3191,6 +3193,7 @@ User Request: ${input.trim()}`;
   };
 
   const handleNewChatRequest = async () => {
+    setSidebarOpen(false);
     setInput('');
     setShowHeading(true); // Show welcoming heading
     setHasInteracted(false); // Reset interaction state
@@ -3968,6 +3971,8 @@ User Request: ${input.trim()}`;
     <>
       {/* Sidebar - always visible, collapsible */}
       <Sidebar
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
         activeSessionId={activeSessionId}
         onNewChat={handleNewChatRequest}
         onSelectSession={handleSelectSession}
@@ -3976,17 +3981,17 @@ User Request: ${input.trim()}`;
         onSettingsClick={showSettingsModal}
       />
       <div 
-        className="min-h-screen flex flex-col px-4 sm:px-4 md:px-8 lg:px-0 transition-all duration-300" 
+        className="min-h-screen flex flex-col transition-all duration-300 md:pl-16" 
         style={{ 
           background: '#161618',
           width: isArtifactMode ? `${leftPaneWidth}%` : '100%',
-          paddingLeft: '4rem', // 16 (collapsed) or 18rem (expanded) - let Sidebar handle overlay
         }}
       >
         <GlobalStyles />
-        {/* Header: remove HamburgerMenu */}
-        <header className="fixed top-0 left-0 right-0 z-50 bg-[#161618] shadow-md shadow-black/30 lg:shadow-none h-14 flex items-center px-4">
-          {/* <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} /> */}
+        <header className="fixed top-0 left-0 right-0 z-50 bg-[#161618] shadow-md shadow-black/30 lg:shadow-none h-14 flex items-center px-4 md:pl-20">
+          <div className="md:hidden">
+            <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
+          </div>
           <img src="/Logo.svg" alt="Logo" className="ml-3" style={{ width: 90, height: 90 }} />
         </header>
 
@@ -4509,7 +4514,14 @@ User Request: ${input.trim()}`;
           aria-hidden="true"
         />
 
-       
+        {/* Overlay for sidebar (mobile only) */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black/40 z-[9998] md:hidden"
+            aria-hidden="true"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
       </div>
       {chatError && (
         <div className="text-red-500 text-sm text-center mt-2">{chatError}</div>
