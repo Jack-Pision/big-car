@@ -4056,7 +4056,7 @@ User Request: ${input.trim()}`;
                 {/* Actions row */}
                 <div className="flex flex-row w-full items-center justify-between gap-2">
                   {/* Left group: Tab bar with Search, Artifact, Think */}
-                  <div className="flex flex-row items-center rounded-lg p-1" style={{ backgroundColor: '#161618' }}>
+                  <div className="flex flex-row items-center rounded-lg px-1 py-1 sm:px-2" style={{ backgroundColor: '#161618' }}>
                     {/* Search tab */}
                     <button
                       type="button"
@@ -4136,7 +4136,7 @@ User Request: ${input.trim()}`;
                   </div>
 
                   {/* Right group: Plus, Send */}
-                  <div className="flex flex-row gap-2 items-center ml-auto pr-4">
+                  <div className="flex flex-row gap-2 items-center ml-auto px-1 sm:px-2">
                     {/* Plus button */}
                     <button 
                       type="button" 
