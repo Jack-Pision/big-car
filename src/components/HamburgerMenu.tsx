@@ -15,6 +15,7 @@ export default function HamburgerMenu({ open, onClick }: HamburgerMenuProps) {
     >
       <span className="sr-only">{open ? 'Close menu' : 'Open menu'}</span>
       <span className="flex items-center justify-center w-6 h-6">
+        {/* New static SVG icon */}
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeLinecap="round" strokeLinejoin="round" height="24" width="24">
           <desc>
             Columns 2 Streamline Icon: https://streamlinehq.com

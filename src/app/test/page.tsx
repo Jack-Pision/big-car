@@ -1714,8 +1714,8 @@ interface TestChatProps {
   initialSessionTitle?: string;
 }
 
-function TestChatComponent(props: TestChatProps = {}) {
-  const { initialSessionId, initialSessionTitle } = props;
+function TestChatComponent(props?: TestChatProps) {
+  const { initialSessionId, initialSessionTitle } = props || {};
   const router = useRouter();
   const { user, showSettingsModal } = useAuth();
   
@@ -1726,6 +1726,7 @@ function TestChatComponent(props: TestChatProps = {}) {
   const [isSearchMode, setIsSearchMode] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
 
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [inputBarHeight, setInputBarHeight] = useState(96);
   const [isAiResponding, setIsAiResponding] = useState(false);
   const [abortController, setAbortController] = useState<AbortController | null>(null);
@@ -1738,9 +1739,10 @@ function TestChatComponent(props: TestChatProps = {}) {
   const [activeButton, setActiveButton] = useState<string | null>(null);
   const [chatError, setChatError] = useState<string | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(props.initialSessionId || null);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [sidebarRefreshTrigger, setSidebarRefreshTrigger] = useState(0);
   const [isArtifactMode, setIsArtifactMode] = useState(false);
+  const [pendingUrlUpdate, setPendingUrlUpdate] = useState<string | null>(null);
   const [artifactContent, setArtifactContent] = useState<ArtifactData | null>(null);
   const [isGeneratingArtifact, setIsGeneratingArtifact] = useState(false);
   const [artifactProgress, setArtifactProgress] = useState('');
@@ -1775,8 +1777,6 @@ function TestChatComponent(props: TestChatProps = {}) {
   const [uploadedImageUrls, setUploadedImageUrls] = useState<string[]>([]);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [imageWaitingForResponse, setImageWaitingForResponse] = useState<string | null>(null);
-
-  const [sidebarOpen, setSidebarOpen] = useState(false);
 
 
   // Refs
@@ -3182,6 +3182,7 @@ User Request: ${input.trim()}`;
       setInput('');
       setShowHeading(processedMessages.length === 0); // Show heading if the loaded session is empty
       setHasInteracted(true); // Assume interaction when a session is selected
+      setSidebarOpen(false); // Close sidebar
       
       // Update URL to reflect the new session
       router.push(`/chat/${sessionId}`, { scroll: false });
@@ -3969,57 +3970,41 @@ User Request: ${input.trim()}`;
 
                 return (
     <>
-      {/* Sidebar - always visible, collapsible */}
-      <Sidebar
-        open={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        activeSessionId={activeSessionId}
-        onNewChat={handleNewChatRequest}
-        onSelectSession={handleSelectSession}
-        refreshTrigger={sidebarRefreshTrigger}
-        user={user}
-        onSettingsClick={showSettingsModal}
-      />
       <div 
-        className="min-h-screen flex flex-col transition-all duration-300" 
+        className="min-h-screen flex flex-col px-4 sm:px-4 md:px-8 lg:px-0 transition-all duration-300" 
         style={{ 
           background: '#161618',
-          width: isArtifactMode ? `${leftPaneWidth}%` : '100%',
+          width: isArtifactMode ? `${leftPaneWidth}%` : '100%'
         }}
       >
         <GlobalStyles />
-        <header className="fixed top-0 left-0 right-0 z-50 bg-[#161618] shadow-md shadow-black/30 lg:shadow-none h-14 flex items-center px-4 md:pl-20">
-          <div className="md:hidden">
-            <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
-          </div>
-          {/* Mobile: show and center logo; Desktop: hide logo */}
-          <div className="flex-1 flex justify-center md:hidden">
-            <img src="/Logo.svg" alt="Logo" className="block mx-auto w-20 h-20" />
-          </div>
-          <img src="/Logo.svg" alt="Logo" className="ml-3 hidden md:block" style={{ width: 90, height: 90 }} />
-        </header>
+      {/* Single Header: always visible on all devices */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-[#161618] shadow-md shadow-black/30 lg:shadow-none h-14 flex items-center px-4">
+        <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
+        <img src="/Logo.svg" alt="Logo" className="ml-3" style={{ width: 90, height: 90 }} />
+      </header>
 
-        {/* Conversation area (scrollable, centered) */}
-        <div
-          ref={scrollRef}
-          className="flex-1 overflow-y-auto flex flex-col items-center justify-center relative w-full mx-auto max-w-3xl"
+      {/* Conversation area (scrollable) */}
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto w-full flex flex-col items-center justify-center relative px-4 sm:px-4 md:px-8 lg:px-0 pt-8"
           style={{ paddingBottom: `${isChatEmpty && !hasInteracted ? 0 : inputBarHeight + EXTRA_GAP}px` }}
-        >
-          {/* Centered wrapper for heading and input (mobile and desktop) */}
-          <div
-            className={`fixed left-1/2 -translate-x-1/2 w-full max-w-3xl flex flex-col items-center justify-center z-50 transition-all duration-500 ease-in-out ${inputPosition === "center" ? "top-1/2 -translate-y-1/2" : "bottom-0 translate-y-0"}`}
-            style={{
-              maxWidth: '48rem',
-              transform: inputPosition === 'center' ? 'translate(-50%, -50%)' : 'translateX(-50%)',
-            }}
-          >
-            {/* Heading with fade animation - show on desktop and mobile when centered */}
-            <h1 className={`text-2xl sm:text-3xl md:text-4xl lg:text-[3.2rem] font-normal text-gray-200 text-center mb-3 md:mb-6 transition-opacity duration-500 whitespace-nowrap ${inputPosition === "center" ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
-              Seek and You'll find
-            </h1>
-            {/* Input form for both mobile and desktop, always centered */}
+      >
+          {/* Mobile: Separate heading (centered) and input (bottom) */}
+          {/* Desktop: Combined wrapper with current behavior */}
+          
+          {/* Mobile-only: Centered heading */}
+          <div className={`md:hidden fixed left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 w-full max-w-3xl flex flex-col items-center justify-center z-40 transition-opacity duration-500 ${inputPosition === "center" ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
+            <h1 className="text-2xl sm:text-3xl font-normal text-gray-200 text-center whitespace-nowrap">
+            Seek and You'll find
+          </h1>
+          </div>
+
+          {/* Mobile-only: Bottom input */}
+          <div className="md:hidden fixed left-1/2 -translate-x-1/2 bottom-0 translate-y-0 w-full max-w-3xl flex flex-col items-center justify-center z-50 px-4 pb-4">
+            {/* Input form for mobile */}
             <form
-              className="flex flex-col gap-2 rounded-2xl shadow-lg py-2 w-full px-6 sm:px-6 md:px-8 mb-3 bg-[#232323] border border-white/20"
+              className="flex flex-col gap-2 rounded-2xl shadow-lg py-2 w-full px-4 pl-4 sm:px-6 md:px-8 lg:pl-4 lg:pr-0 mb-3 bg-[#232323] border border-white/20"
               style={{ boxShadow: '0 4px 32px 0 rgba(0,0,0,0.32)' }}
               onSubmit={handleSend}
             >
@@ -4027,38 +4012,58 @@ User Request: ${input.trim()}`;
               {(selectedFiles.length > 0 || imagePreviewUrls.length > 0) && (
                 <div className="w-full px-2 py-2">
                   <div className="flex gap-2 flex-wrap">
-                    {selectedFiles.map((file, idx) => (
-                      <img key={idx} src={imagePreviewUrls[idx]} alt="preview" className="w-16 h-16 object-cover rounded-lg" />
-                    ))}
+                    {selectedFiles.map((file, index) => (
+                      <div key={index} className="relative">
+                        {imagePreviewUrls[index] ? (
+                          <img 
+                            src={imagePreviewUrls[index]} 
+                            alt={`Preview ${index + 1}`} 
+                            className="w-16 h-16 object-cover rounded-lg border border-gray-600"
+                          />
+                        ) : (
+                          <div className="w-16 h-16 bg-gray-700 rounded-lg border border-gray-600 flex items-center justify-center">
+                            <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                          </div>
+                        )}
+                      <button
+                        type="button"
+                          onClick={() => removeImagePreview(index)}
+                          className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
+                      >
+                          ×
+                      </button>
+              </div>
+          ))}
                   </div>
-                </div>
+        </div>
               )}
+
+              {/* Input area: textarea on top, actions below */}
               <div className="flex flex-col w-full gap-2 items-center">
-                                  {/* Textarea row */}
-                  <div className="w-full">
-                    <div className="flex-1 relative">
-                      <textarea
-                        ref={textareaRef}
-                        value={input}
-                        onChange={e => setInput(e.target.value)}
-                        onKeyDown={e => {
-                          if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.altKey) {
-                            e.preventDefault();
-                            if (!isLoading) handleSend(e);
-                          }
-                        }}
-                        className="w-full border-none outline-none bg-transparent px-3 py-1 text-gray-200 text-sm placeholder-gray-500 resize-none overflow-auto self-center rounded-lg"
-                        placeholder="Ask anything..."
-                        disabled={isLoading}
-                        rows={1}
-                        style={{ maxHeight: '96px', minHeight: '40px', lineHeight: '1.5' }}
-                      />
-                    </div>
-                  </div>
+                {/* Textarea row */}
+                <div className="w-full">
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={e => setInput(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.altKey) {
+                        e.preventDefault();
+                        if (!isLoading) handleSend(e);
+                      }
+                    }}
+                    className="w-full border-none outline-none bg-transparent px-2 py-1 text-gray-200 text-sm placeholder-gray-500 resize-none overflow-auto self-center rounded-lg"
+                    placeholder="Ask anything..."
+            disabled={isLoading}
+            rows={1}
+                    style={{ maxHeight: '96px', minHeight: '40px', lineHeight: '1.5' }}
+                  />
+                </div>
+
                 {/* Actions row */}
-                <div className="flex flex-row w-full items-center justify-between gap-1">
+                <div className="flex flex-row w-full items-center justify-between gap-2">
                   {/* Left group: Tab bar with Search, Artifact, Think */}
-                  <div className="flex flex-row items-center rounded-lg px-0.5 py-1 sm:px-1 mr-2" style={{ backgroundColor: '#161618' }}>
+                  <div className="flex flex-row items-center rounded-lg p-1" style={{ backgroundColor: '#161618' }}>
                     {/* Search tab */}
                     <button
                       type="button"
@@ -4138,7 +4143,7 @@ User Request: ${input.trim()}`;
                   </div>
 
                   {/* Right group: Plus, Send */}
-                  <div className="flex flex-row gap-2 items-center ml-auto ml-2 px-0.5 sm:px-1">
+                  <div className="flex flex-row gap-2 items-center ml-auto">
                     {/* Plus button */}
                     <button 
                       type="button" 
@@ -4195,8 +4200,227 @@ User Request: ${input.trim()}`;
             </form>
           </div>
 
-          {/* Chat messages area, always centered */}
-          <div className="w-full max-w-3xl mx-auto flex flex-col gap-4 items-center justify-center z-10 pt-12 pb-4 px-6 sm:px-6 md:px-8 lg:px-0">
+          {/* Desktop: Combined wrapper with current behavior */}
+          <div
+            className={`hidden md:flex fixed flex-col w-full max-w-3xl items-center justify-center z-50 transition-all duration-500 ease-in-out ${
+              inputPosition === "center" ? "top-1/2 -translate-y-1/2" : "bottom-0 translate-y-0"
+            }`}
+            style={{
+              left: isArtifactMode ? '0' : '50%',
+              width: isArtifactMode ? `${leftPaneWidth}%` : '100%',
+              maxWidth: '48rem',
+              transform: isArtifactMode
+                ? undefined
+                : (inputPosition === 'center' ? 'translate(-50%, -50%)' : 'translateX(-50%)'),
+            }}
+          >
+            {/* Heading with fade animation - show on desktop when centered */}
+            <h1 className={`text-2xl sm:text-3xl md:text-4xl lg:text-[3.2rem] font-normal text-gray-200 text-center mb-3 md:mb-6 transition-opacity duration-500 whitespace-nowrap ${inputPosition === "center" ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
+              Seek and You'll find
+            </h1>
+
+
+
+            {/* Input form for desktop */}
+            <form
+              className="flex flex-col gap-2 rounded-2xl shadow-lg py-2 w-full px-4 pl-4 sm:px-6 md:px-8 lg:pl-4 lg:pr-0 mb-3 bg-[#232323] border border-white/20"
+              style={{ boxShadow: '0 4px 32px 0 rgba(0,0,0,0.32)' }}
+              onSubmit={handleSend}
+            >
+              {/* Image Preview inside input box */}
+              {(selectedFiles.length > 0 || imagePreviewUrls.length > 0) && (
+                <div className="w-full px-2 py-2">
+                  <div className="flex gap-2 flex-wrap">
+                    {selectedFiles.map((file, index) => (
+                      <div key={index} className="relative">
+                        {imagePreviewUrls[index] ? (
+                          <img 
+                            src={imagePreviewUrls[index]} 
+                            alt={`Preview ${index + 1}`} 
+                            className="w-16 h-16 object-cover rounded-lg border border-gray-600"
+                          />
+                        ) : (
+                          <div className="w-16 h-16 bg-gray-700 rounded-lg border border-gray-600 flex items-center justify-center">
+                            <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => removeImagePreview(index)}
+                          className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Input area: textarea on top, actions below */}
+              <div className="flex flex-col w-full gap-2 items-center">
+                {/* Textarea row */}
+                <div className="w-full">
+                  <textarea
+                    ref={textareaRef}
+                    value={input}
+                    onChange={e => setInput(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.altKey) {
+                        e.preventDefault();
+                        if (!isLoading) handleSend(e);
+                      }
+                    }}
+                    className="w-full border-none outline-none bg-transparent px-2 py-1 text-gray-200 text-sm placeholder-gray-500 resize-none overflow-auto self-center rounded-lg"
+                    placeholder="Ask anything..."
+                    disabled={isLoading}
+                    rows={1}
+                    style={{ maxHeight: '96px', minHeight: '40px', lineHeight: '1.5' }}
+                  />
+                </div>
+
+                {/* Actions row */}
+                <div className="flex flex-row w-full items-center justify-between gap-2">
+                  {/* Left group: Tab bar with Search, Artifact, Think */}
+                  <div className="flex flex-row items-center rounded-lg p-1" style={{ backgroundColor: '#161618' }}>
+                    {/* Search tab */}
+                    <button
+                      type="button"
+                      onClick={() => handleModeSwitch(activeMode === 'search' ? 'chat' : 'search')}
+                      className={`
+                        flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200 
+                        ${activeMode === 'search' 
+                          ? 'border' 
+                          : 'hover:brightness-150'
+                        }
+                      `}
+                      style={{ 
+                        color: activeMode === 'search' ? '#FCFCFC' : 'rgba(252, 252, 252, 0.6)',
+                        borderColor: activeMode === 'search' ? '#FCFCFC' : 'transparent'
+                      }}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
+                      </svg>
+                    </button>
+
+                    {/* Artifact tab */}
+                    <button
+                      type="button"
+                      className={`
+                        flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200 
+                        ${activeButton === 'artifact' 
+                          ? 'border' 
+                          : 'hover:brightness-150'
+                        }
+                      `}
+                      style={{ 
+                        color: activeButton === 'artifact' ? '#FCFCFC' : 'rgba(252, 252, 252, 0.6)',
+                        borderColor: activeButton === 'artifact' ? '#FCFCFC' : 'transparent'
+                      }}
+                      onClick={() => handleButtonClick('artifact')}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="9" y1="9" x2="15" y2="9"></line>
+                        <line x1="9" y1="13" x2="15" y2="13"></line>
+                      </svg>
+                    </button>
+
+                    {/* Think tab */}
+                    <button
+                      type="button"
+                      className={`
+                        flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200 
+                        ${activeButton === 'reasoning' 
+                          ? 'border' 
+                          : 'hover:brightness-150'
+                        }
+                      `}
+                      style={{ 
+                        color: activeButton === 'reasoning' ? '#FCFCFC' : 'rgba(252, 252, 252, 0.6)',
+                        borderColor: activeButton === 'reasoning' ? '#FCFCFC' : 'transparent'
+                      }}
+                      onClick={() => handleButtonClick('reasoning')}
+                    >
+                      <svg 
+                        width="16" 
+                        height="16" 
+                        viewBox="0 0 24 24" 
+                        fill="none" 
+                        stroke="currentColor" 
+                        strokeWidth="2" 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round"
+                      >
+                        <circle cx="12" cy="12" r="1"/>
+                        <path d="M20.2 20.2c2.04-2.03.02-7.36-4.5-11.9-4.54-4.52-9.87-6.54-11.9-4.5-2.04 2.03-.02 7.36 4.5 11.9 4.54 4.52 9.87 6.54 11.9 4.5z"/>
+                        <path d="M15.7 15.7c4.52-4.54 6.54-9.87 4.5-11.9-2.03-2.04-7.36-.02-11.9 4.5-4.52 4.54-6.54 9.87-4.5 11.9 2.03 2.04 7.36.02 11.9-4.5z"/>
+                      </svg>
+                    </button>
+              </div>
+
+                  {/* Right group: Plus, Send */}
+                  <div className="flex flex-row gap-2 items-center ml-auto pr-4">
+                    {/* Plus button */}
+                    <button 
+                      type="button" 
+                      className="p-2 rounded-full text-gray-300 hover:brightness-150 transition flex items-center justify-center flex-shrink-0"
+                      style={{ 
+                        width: "36px", 
+                        height: "36px",
+                        backgroundColor: '#161618'
+                      }}
+                      onClick={handlePlusClick}
+                      disabled={isUploadingImage}
+                    >
+                      {isUploadingImage ? (
+                        <div className="w-4 h-4 border-2 border-gray-300 border-t-transparent rounded-full animate-spin"></div>
+                      ) : (
+                      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+                      )}
+            </button>
+                    
+                    {/* Hidden file input */}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/gif,image/webp"
+                      onChange={handleFileChange}
+                      style={{ display: 'none' }}
+                    />
+
+                    {/* Send/Stop button */}
+            <button
+                      type={isAiResponding ? "button" : "submit"}
+                      className="rounded-full bg-gray-200 hover:bg-white transition flex items-center justify-center flex-shrink-0"
+                      style={{ width: "36px", height: "36px", pointerEvents: isLoading && !isAiResponding ? 'none' : 'auto' }}
+                      onClick={isAiResponding ? handleStopAIResponse : undefined}
+                      disabled={isLoading && !isAiResponding}
+                      aria-label={isAiResponding ? "Stop AI response" : "Send"}
+                    >
+                      {isAiResponding ? (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <rect x="7" y="7" width="10" height="10" rx="2" fill="#374151" />
+              </svg>
+                      ) : (
+                        <svg width="16" height="16" fill="none" stroke="#374151" strokeWidth="2.5" viewBox="0 0 24 24">
+                          <path d="M12 19V5M5 12l7-7 7 7" />
+                        </svg>
+                      )}
+            </button>
+                  </div>
+                </div>
+          </div>
+        </form>
+      </div>
+
+          {/* Conversation and other UI below */}
+          <div className={`w-full max-w-3xl mx-auto flex flex-col gap-4 items-center justify-center z-10 pt-12 pb-4 ${isArtifactMode ? 'px-4 sm:px-6' : ''}`}>
             {messages.map((msg, i) => {
               // Assistant responses: artifacts first, then search results, then default chat
               if (msg.role === 'assistant') {
@@ -4279,14 +4503,28 @@ User Request: ${input.trim()}`;
           aria-hidden="true"
         />
 
-        {/* Overlay for sidebar (mobile only) */}
+        {/* Overlay for sidebar */}
         {sidebarOpen && (
           <div
-            className="fixed inset-0 bg-black/40 z-[9998] md:hidden"
+            className="fixed inset-0 bg-black/20 z-[9998]"
             aria-hidden="true"
             onClick={() => setSidebarOpen(false)}
           />
         )}
+
+
+
+        {/* Sidebar */}
+        <Sidebar
+          open={sidebarOpen}
+          activeSessionId={activeSessionId}
+          onClose={() => setSidebarOpen(false)}
+          onNewChat={handleNewChatRequest}
+          onSelectSession={handleSelectSession}
+          refreshTrigger={sidebarRefreshTrigger}
+          user={user}
+          onSettingsClick={showSettingsModal}
+        />
       </div>
       {chatError && (
         <div className="text-red-500 text-sm text-center mt-2">{chatError}</div>
