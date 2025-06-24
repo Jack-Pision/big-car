@@ -4034,29 +4034,31 @@ User Request: ${input.trim()}`;
                 </div>
               )}
               <div className="flex flex-col w-full gap-2 items-center">
-                {/* Textarea row */}
-                <div className="w-full">
-                  <textarea
-                    ref={textareaRef}
-                    value={input}
-                    onChange={e => setInput(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.altKey) {
-                        e.preventDefault();
-                        if (!isLoading) handleSend(e);
-                      }
-                    }}
-                    className="w-full border-none outline-none bg-transparent px-2 py-1 text-gray-200 text-sm placeholder-gray-500 resize-none overflow-auto self-center rounded-lg"
-                    placeholder="Ask anything..."
-                    disabled={isLoading}
-                    rows={1}
-                    style={{ maxHeight: '96px', minHeight: '40px', lineHeight: '1.5' }}
-                  />
-                </div>
+                                  {/* Textarea row */}
+                  <div className="w-full">
+                    <div className="flex-1 relative">
+                      <textarea
+                        ref={textareaRef}
+                        value={input}
+                        onChange={e => setInput(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.altKey) {
+                            e.preventDefault();
+                            if (!isLoading) handleSend(e);
+                          }
+                        }}
+                        className="w-full border-none outline-none bg-transparent px-3 py-1 text-gray-200 text-sm placeholder-gray-500 resize-none overflow-auto self-center rounded-lg"
+                        placeholder="Ask anything..."
+                        disabled={isLoading}
+                        rows={1}
+                        style={{ maxHeight: '96px', minHeight: '40px', lineHeight: '1.5' }}
+                      />
+                    </div>
+                  </div>
                 {/* Actions row */}
                 <div className="flex flex-row w-full items-center justify-between gap-1">
                   {/* Left group: Tab bar with Search, Artifact, Think */}
-                  <div className="flex flex-row items-center rounded-lg px-0.5 py-1 sm:px-1" style={{ backgroundColor: '#161618' }}>
+                  <div className="flex flex-row items-center rounded-lg px-0.5 py-1 sm:px-1 mr-2" style={{ backgroundColor: '#161618' }}>
                     {/* Search tab */}
                     <button
                       type="button"
@@ -4136,7 +4138,7 @@ User Request: ${input.trim()}`;
                   </div>
 
                   {/* Right group: Plus, Send */}
-                  <div className="flex flex-row gap-2 items-center ml-auto px-0.5 sm:px-1">
+                  <div className="flex flex-row gap-2 items-center ml-auto ml-2 px-0.5 sm:px-1">
                     {/* Plus button */}
                     <button 
                       type="button" 
