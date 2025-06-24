@@ -3992,7 +3992,11 @@ User Request: ${input.trim()}`;
           <div className="md:hidden">
             <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
           </div>
-          <img src="/Logo.svg" alt="Logo" className="ml-3" style={{ width: 90, height: 90 }} />
+          {/* Mobile: show and center logo; Desktop: hide logo */}
+          <div className="flex-1 flex justify-center md:hidden">
+            <img src="/Logo.svg" alt="Logo" className="block mx-auto" style={{ width: 48, height: 48 }} />
+          </div>
+          <img src="/Logo.svg" alt="Logo" className="ml-3 hidden md:block" style={{ width: 90, height: 90 }} />
         </header>
 
         {/* Conversation area (scrollable, centered) */}
