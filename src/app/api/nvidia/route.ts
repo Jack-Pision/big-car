@@ -13,6 +13,8 @@ function getApiKeyForMode(mode: string): string {
       return TEXT_API_KEY; // Use original key for reasoning mode
     case 'image_analysis':
       return TEXT_API_KEY2; // Use second key for image analysis
+    case 'artifact':
+      return TEXT_API_KEY3; // Use third key for artifact generation
     case 'chat':
     case 'default':
       return TEXT_API_KEY3; // Use third key for default chat mode
@@ -28,6 +30,8 @@ function getModelForMode(mode: string): string {
       return 'deepseek-ai/deepseek-r1'; // Reasoning model with thinking capability
     case 'image_analysis':
       return 'nvidia/llama-3.1-nemotron-nano-vl-8b-v1'; // Updated NVIDIA vision model
+    case 'artifact':
+      return 'qwen/qwen3-235b-a22b'; // Dedicated Qwen model for artifact generation
     case 'chat':
     case 'default':
       return 'qwen/qwen3-235b-a22b'; // Qwen model for default chat

@@ -2377,8 +2377,6 @@ function TestChatComponent(props?: TestChatProps) {
       if (!hasInteracted) setHasInteracted(true);
       if (showHeading) setShowHeading(false);
 
-
-
       // Add user message and save instantly
       const userMessageId = uuidv4();
       const userMessage: LocalMessage = {
@@ -2403,8 +2401,12 @@ function TestChatComponent(props?: TestChatProps) {
       setIsLoading(true);
       setIsAiResponding(true);
 
+      // Generate a quick title for the artifact
+      const quickTitle = input.trim().length > 50 
+        ? input.trim().substring(0, 50) + '...' 
+        : input.trim() || 'Generated Document';
 
-      // Add AI message placeholder (like default chat)
+      // Add AI message placeholder with artifact content type
       const aiMessageId = uuidv4();
       const aiMessage: LocalMessage = {
         role: 'assistant',
@@ -2412,6 +2414,8 @@ function TestChatComponent(props?: TestChatProps) {
         content: '',
         timestamp: Date.now(),
         parentId: userMessageId,
+        contentType: 'artifact',
+        title: quickTitle,
         isStreaming: true,
         isProcessed: false
       };
@@ -2419,18 +2423,33 @@ function TestChatComponent(props?: TestChatProps) {
       setMessages(prev => [...prev, aiMessage]);
 
       try {
-        // Call NVIDIA API with simple user query (like default chat)
+        // Create artifact prompt
+        const artifactPrompt = `You are an AI assistant specialized in creating well-structured documents and content. 
+
+Create a comprehensive, well-formatted document based on the user's request: "${input.trim()}"
+
+Guidelines:
+- Create detailed, informative content
+- Use proper markdown formatting with headers, lists, and emphasis
+- Structure the content logically with clear sections
+- Make it comprehensive and useful
+- Focus on quality and clarity
+- Do not include any thinking tags or meta-commentary
+- Respond only with the document content in markdown format
+
+User Request: ${input.trim()}`;
+
+        // Call NVIDIA API with artifact mode and enhanced prompt
         const response = await fetch('/api/nvidia', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             messages: [
-              { role: 'system', content: BASE_SYSTEM_PROMPT },
-              { role: 'user', content: input.trim() }
+              { role: 'user', content: artifactPrompt }
             ],
             temperature: 0.7,
-            max_tokens: 4096,
-            mode: 'chat',  // Use chat mode instead of artifact mode
+            max_tokens: 8192,
+            mode: 'artifact',  // Use dedicated artifact mode
             stream: true
           })
         });
@@ -2466,7 +2485,7 @@ function TestChatComponent(props?: TestChatProps) {
                   if (content) {
                     textContent += content;
                     
-                    // Update the AI message in real-time like default chat
+                    // Update the AI message in real-time with artifact content
                     setMessages(prev => prev.map(msg => 
                       msg.id === aiMessageId 
                         ? { ...msg, content: textContent, isStreaming: true }
@@ -2484,13 +2503,33 @@ function TestChatComponent(props?: TestChatProps) {
           reader.releaseLock();
         }
 
-        // Update the AI message as completed (like default chat)
+        // Create structured content for the artifact
+        const cleanedContent = textContent.replace(/<\/?think>/g, '').trim();
+        const wordCount = cleanedContent.split(' ').length;
+        const estimatedReadTime = Math.ceil(wordCount / 200);
+
+        const structuredContent = {
+          type: 'document' as const,
+          title: quickTitle,
+          content: cleanedContent,
+          metadata: {
+            wordCount: wordCount,
+            estimatedReadTime: `${estimatedReadTime} min read`,
+            category: 'AI Generated Document',
+            tags: ['document', 'ai-generated']
+          }
+        };
+
+        // Update the AI message as completed artifact
         const finalAiMessage: LocalMessage = {
           role: 'assistant',
           id: aiMessageId,
-          content: textContent,
+          content: cleanedContent,
           timestamp: Date.now(),
           parentId: userMessageId,
+          contentType: 'artifact',
+          title: quickTitle,
+          structuredContent: structuredContent,
           isProcessed: true,
           isStreaming: false
         };
@@ -2498,6 +2537,10 @@ function TestChatComponent(props?: TestChatProps) {
         setMessages(prev => prev.map(msg => 
           msg.id === aiMessageId ? finalAiMessage : msg
         ));
+        
+        // Auto-open artifact viewer
+        setArtifactContent(structuredContent);
+        setIsArtifactMode(true);
         
         // Save final message
         try {
@@ -2519,6 +2562,7 @@ function TestChatComponent(props?: TestChatProps) {
             : `Sorry, I encountered an error while creating the artifact: ${error instanceof Error ? error.message : 'Unknown error'}`,
           timestamp: Date.now(),
           parentId: userMessageId,
+          contentType: 'artifact',
           isProcessed: true,
           isStreaming: false
         };
