@@ -182,7 +182,7 @@ export default function Sidebar({
 
       {/* Search bar: only show when expanded */}
       {showText && (
-        <div className="flex-shrink-0 mt-4 px-2">
+        <div className="flex-shrink-0 mt-4 mx-4">
           <div className="flex items-center gap-2 bg-transparent rounded-lg p-2 border" style={{ borderColor: '#555', minHeight: '36px' }}>
             <svg width="18" height="18" fill="none" stroke="#e5e7eb" strokeWidth="2" viewBox="0 0 24 24">
               <circle cx="11" cy="11" r="8" />
@@ -200,9 +200,9 @@ export default function Sidebar({
         </div>
       )}
 
-      {/* Session list: only show when expanded, and only show scroll bar when expanded */}
+      {/* Session list: only show when expanded */}
       {showText && (
-        <div className="flex-1 overflow-y-auto custom-scrollbar px-2 mt-2">
+        <div className="flex-1 overflow-y-auto px-4 custom-scrollbar">
           {filteredSessions.map((session) => (
             <div
               key={session.id}
@@ -231,7 +231,9 @@ export default function Sidebar({
           ))}
         </div>
       )}
-      <div className="flex-shrink-0 border-t border-gray-700 px-2">
+
+      {/* User profile/avatar always pinned to bottom */}
+      <div className="mt-auto flex-shrink-0 border-t border-gray-700 px-2">
         {user && (
           <div className={`py-4`}>
             <div className={`flex items-center gap-3 min-w-0 ${showText ? 'justify-start' : 'justify-center'}`}>
