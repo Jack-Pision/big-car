@@ -198,7 +198,6 @@ const BrowserPageComponent = () => {
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-[#161618] h-14 flex items-center px-4">
         <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
-        <img src="/ICON TEHOM 2.png" alt="Tehom Logo" className="ml-3" style={{ width: 40, height: 40, borderRadius: '50%' }} />
         
         {/* History Button */}
         <div className="ml-auto">
