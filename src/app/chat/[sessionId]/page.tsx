@@ -13,7 +13,7 @@ export default function ChatPage() {
   // Redirect to main test page with session ID in URL hash
   useEffect(() => {
     if (sessionId) {
-      router.replace(`/test#session=${sessionId}${title ? `&title=${encodeURIComponent(title)}` : ''}`);
+      router.replace(`/#session=${sessionId}${title ? `&title=${encodeURIComponent(title)}` : ''}`);
     }
   }, [sessionId, title, router]);
 

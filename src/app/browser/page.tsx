@@ -503,7 +503,7 @@ const BrowserPageComponent = () => {
         open={sidebarOpen}
         activeSessionId={null}
         onClose={() => setSidebarOpen(false)}
-        onNewChat={() => router.push('/test')}
+        onNewChat={() => router.push('/')}
         onSelectSession={(id: string) => router.push(`/chat/${id}`)}
         refreshTrigger={0}
         user={user}

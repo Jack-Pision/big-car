@@ -1945,8 +1945,8 @@ function TestChatComponent(props?: TestChatProps) {
           setMessages([]);
           
           // Clear URL if no session to load (ensure clean state)
-          if (typeof window !== 'undefined' && window.location.pathname !== '/test') {
-            window.history.replaceState(null, '', '/test');
+                if (typeof window !== 'undefined' && window.location.pathname !== '/') {
+        window.history.replaceState(null, '', '/');
           }
         }
       } catch (error) {
@@ -3208,7 +3208,7 @@ User Request: ${input.trim()}`;
     setMessages([]);
     
     // Navigate to main test page for new chat
-    router.push('/test', { scroll: false });
+    router.push('/', { scroll: false });
   };
 
   // Enhanced artifact preview card component (Claude-like)
