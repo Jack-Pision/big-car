@@ -3221,10 +3221,32 @@ User Request: ${input.trim()}`;
 
   // Fix the renderMessageContent function to use LocalMessage
   const renderMessageContent = (msg: LocalMessage) => {
-    // Handle artifact streaming progress with enhanced preview card
+    // Handle artifact streaming progress with enhanced preview card AND streaming content
     if (msg.contentType === 'artifact' && msg.isStreaming && !msg.isProcessed) {
       const title = msg.title || 'Generated Document';
-      return renderArtifactPreviewCard(title, true, artifactProgress);
+      return (
+        <div className="w-full">
+          {/* Artifact Preview Card */}
+          {renderArtifactPreviewCard(title, true, artifactProgress)}
+          
+          {/* Streaming Content Display */}
+          {msg.content && msg.content.trim() && (
+            <div className="mt-4 p-4 bg-gray-900/50 rounded-lg border border-gray-700">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
+                <span className="text-sm text-cyan-400">Generating content...</span>
+              </div>
+              <ReactMarkdown 
+                remarkPlugins={[remarkGfm, remarkMath]} 
+                rehypePlugins={[rehypeRaw, rehypeKatex]} 
+                className="prose dark:prose-invert max-w-none text-sm"
+              >
+                {msg.content}
+              </ReactMarkdown>
+            </div>
+          )}
+        </div>
+      );
     }
 
     // Check for Vision Mode messages (messages with imageUrls)
