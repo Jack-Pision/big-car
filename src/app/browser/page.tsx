@@ -10,8 +10,6 @@ import 'katex/dist/katex.min.css';
 import ImageCarousel from '@/components/ImageCarousel';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import Sidebar from '@/components/Sidebar';
-import HamburgerMenu from '@/components/HamburgerMenu';
 import BrowserHistoryModal from '@/components/BrowserHistoryModal';
 import AuthProvider, { useAuth } from '@/components/AuthProvider';
 import { browserHistoryService } from '@/lib/browser-history-service';
@@ -56,8 +54,7 @@ const BrowserPageComponent = () => {
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   
-  // New state for sidebar and history modal
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  // New state for history modal
   const [historyModalOpen, setHistoryModalOpen] = useState(false);
 
 
@@ -197,10 +194,21 @@ const BrowserPageComponent = () => {
     <div className={`${aiResponse ? 'min-h-screen' : 'h-screen overflow-hidden'}`} style={{ backgroundColor: '#161618', fontFamily: 'Inter, sans-serif' }}>
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-[#161618] h-14 flex items-center px-4">
-        <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
+        {/* Back Button */}
+        <button
+          onClick={() => router.push('/test')}
+          className="p-2 rounded-lg hover:bg-gray-700 transition-colors text-gray-400 hover:text-white"
+          title="Back to Chat"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="m12 19-7-7 7-7"/>
+            <path d="M19 12H5"/>
+          </svg>
+        </button>
         
-        {/* History Button */}
-        <div className="ml-auto">
+        {/* Right side buttons */}
+        <div className="ml-auto flex items-center gap-2">
+          {/* History Button */}
           <button
             onClick={() => setHistoryModalOpen(true)}
             className="p-2 rounded-lg hover:bg-gray-700 transition-colors text-gray-400 hover:text-white"
@@ -211,6 +219,18 @@ const BrowserPageComponent = () => {
               <polyline points="12,6 12,12 16,14"/>
             </svg>
           </button>
+          
+                     {/* Settings Button */}
+           <button
+             onClick={showSettingsModal}
+             className="p-2 rounded-lg hover:bg-gray-700 transition-colors text-gray-400 hover:text-white"
+             title="Settings"
+           >
+             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+               <circle cx="12" cy="12" r="3"/>
+               <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+             </svg>
+           </button>
         </div>
       </header>
 
@@ -489,26 +509,7 @@ const BrowserPageComponent = () => {
         </AnimatePresence>
       </main>
 
-      {/* Overlay for sidebar */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/20 z-[9998]"
-          aria-hidden="true"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
 
-      {/* Sidebar */}
-      <Sidebar
-        open={sidebarOpen}
-        activeSessionId={null}
-        onClose={() => setSidebarOpen(false)}
-        onNewChat={() => router.push('/test')}
-        onSelectSession={(id: string) => router.push(`/chat/${id}`)}
-        refreshTrigger={0}
-        user={user}
-        onSettingsClick={showSettingsModal}
-      />
 
       {/* Browser History Modal */}
       <BrowserHistoryModal
