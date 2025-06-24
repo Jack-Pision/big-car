@@ -3436,12 +3436,6 @@ User Request: ${input.trim()}`;
 
   // Independent artifact message rendering system
   const renderArtifactMessage = (msg: LocalMessage, i: number) => {
-    // If this message is currently streaming and we're in artifact mode,
-    // don't render it in the chat area
-    if (msg.isStreaming && isArtifactStreaming && isArtifactMode) {
-      return null;
-    }
-    
     // Clean the content to remove all thinking tags for artifacts
     const cleanContent = cleanArtifactContent(msg.content);
     
