@@ -3994,7 +3994,7 @@ User Request: ${input.trim()}`;
           </div>
           {/* Mobile: show and center logo; Desktop: hide logo */}
           <div className="flex-1 flex justify-center md:hidden">
-            <img src="/Logo.svg" alt="Logo" className="block mx-auto" style={{ width: 48, height: 48 }} />
+            <img src="/Logo.svg" alt="Logo" className="block mx-auto w-20 h-20" />
           </div>
           <img src="/Logo.svg" alt="Logo" className="ml-3 hidden md:block" style={{ width: 90, height: 90 }} />
         </header>
