@@ -4019,7 +4019,7 @@ User Request: ${input.trim()}`;
             </h1>
             {/* Input form for both mobile and desktop, always centered */}
             <form
-              className="flex flex-col gap-2 rounded-2xl shadow-lg py-2 w-full px-4 sm:px-6 md:px-8 mb-3 bg-[#232323] border border-white/20"
+              className="flex flex-col gap-2 rounded-2xl shadow-lg py-2 w-full px-6 sm:px-6 md:px-8 mb-3 bg-[#232323] border border-white/20"
               style={{ boxShadow: '0 4px 32px 0 rgba(0,0,0,0.32)' }}
               onSubmit={handleSend}
             >
@@ -4194,7 +4194,7 @@ User Request: ${input.trim()}`;
           </div>
 
           {/* Chat messages area, always centered */}
-          <div className="w-full max-w-3xl mx-auto flex flex-col gap-4 items-center justify-center z-10 pt-12 pb-4 px-2 sm:px-6 md:px-8 lg:px-0">
+          <div className="w-full max-w-3xl mx-auto flex flex-col gap-4 items-center justify-center z-10 pt-12 pb-4 px-6 sm:px-6 md:px-8 lg:px-0">
             {messages.map((msg, i) => {
               // Assistant responses: artifacts first, then search results, then default chat
               if (msg.role === 'assistant') {
