@@ -20,6 +20,7 @@ interface SidebarProps {
     email: string;
     user_metadata?: {
       full_name?: string;
+      avatar_url?: string;
     };
   } | null;
   onSettingsClick?: () => void;
@@ -43,16 +44,22 @@ export default function Sidebar({
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [isHovered, setIsHovered] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
+  const [hasMounted, setHasMounted] = useState(false);
   const editInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
   useEffect(() => {
+    setHasMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hasMounted) return;
     const mediaQuery = window.matchMedia('(min-width: 768px)');
     setIsDesktop(mediaQuery.matches);
     const handler = () => setIsDesktop(mediaQuery.matches);
     mediaQuery.addEventListener('change', handler);
     return () => mediaQuery.removeEventListener('change', handler);
-  }, []);
+  }, [hasMounted]);
 
   const loadSessions = async () => {
     try {
@@ -131,20 +138,23 @@ export default function Sidebar({
     setEditValue('');
   };
 
+  if (!hasMounted) {
+    return null;
+  }
+
   const isExpanded = isDesktop ? isHovered : open;
-  const sidebarWidth = isDesktop ? (isExpanded ? 'w-72' : 'w-16') : 'w-72';
   const showText = isExpanded;
 
   const SidebarContent = (
     <aside
-      className={`bg-[#232323] shadow-xl flex flex-col border-r border-gray-800 h-full transition-all duration-200 ${isDesktop ? sidebarWidth : 'w-72 max-w-full'}`}
+      className={`bg-[#232323] shadow-xl flex flex-col border-r border-gray-800 h-full transition-all duration-200 ${isDesktop ? (isExpanded ? 'w-72' : 'w-16') : 'w-72'}`}
       aria-label="Sidebar navigation"
       onMouseEnter={isDesktop ? () => setIsHovered(true) : undefined}
       onMouseLeave={isDesktop ? () => setIsHovered(false) : undefined}
     >
-      <div className="flex-shrink-0 flex flex-col items-center justify-center mt-4 mb-2 gap-2">
+      <div className="flex-shrink-0 flex flex-col items-center justify-center mt-4 mb-2 gap-2 px-2">
         <button
-          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-[#e5e7eb] hover:bg-gray-800/60 transition-colors duration-200 focus:outline-none w-full ${showText ? 'justify-start pl-4' : 'justify-center'}`}
+          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-[#e5e7eb] hover:bg-gray-800/60 transition-colors duration-200 focus:outline-none w-full ${showText ? 'justify-start' : 'justify-center'}`}
           onClick={handleNewChat}
           aria-label="Start a new chat"
         >
@@ -154,7 +164,7 @@ export default function Sidebar({
           {showText && <span className="font-medium">New chat</span>}
         </button>
         <button
-          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-[#e5e7eb] hover:bg-gray-800/60 transition-colors duration-200 focus:outline-none w-full ${showText ? 'justify-start pl-4' : 'justify-center'}`}
+          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-[#e5e7eb] hover:bg-gray-800/60 transition-colors duration-200 focus:outline-none w-full ${showText ? 'justify-start' : 'justify-center'}`}
           onClick={() => {
             router.push('/browser');
             if (onClose) onClose();
@@ -170,8 +180,8 @@ export default function Sidebar({
         </button>
       </div>
 
-      <div className={`flex-shrink-0 mt-4 ${showText ? 'mx-4' : 'mx-2'}`}>
-        <div className={`mb-4 flex items-center gap-2 bg-transparent rounded-lg p-2 border ${showText ? '' : 'justify-center'}`} style={{ borderColor: '#555', minHeight: '36px' }}>
+      <div className={`flex-shrink-0 mt-4 px-2`}>
+        <div className={`flex items-center gap-2 bg-transparent rounded-lg p-2 border ${showText ? '' : 'justify-center'}`} style={{ borderColor: '#555', minHeight: '36px' }}>
           <svg width="18" height="18" fill="none" stroke="#e5e7eb" strokeWidth="2" viewBox="0 0 24 24">
             <circle cx="11" cy="11" r="8" />
             <line x1="21" y1="21" x2="16.65" y2="16.65" />
@@ -188,20 +198,18 @@ export default function Sidebar({
           )}
         </div>
       </div>
-
-      <div className={`flex-1 overflow-y-auto ${showText ? 'px-4 custom-scrollbar' : 'px-2 overflow-hidden'}`}>
+      
+      <div className={`flex-1 overflow-y-auto ${!showText ? 'overflow-hidden' : 'custom-scrollbar'} px-2 mt-2`}>
         {filteredSessions.map((session) => (
           <div
             key={session.id}
-            className={`group relative flex items-center justify-between gap-2 p-2 rounded-lg mb-1 cursor-pointer transition-colors text-sm font-medium
-                        ${activeSessionId === session.id 
-                          ? 'bg-gray-700 text-white' 
-                          : 'text-gray-300 hover:bg-gray-700/60'}
-                        ${showText ? '' : 'justify-center'}`}
+            className={`group relative flex items-center gap-2 p-2 rounded-lg mb-1 cursor-pointer transition-colors text-sm font-medium
+                        ${activeSessionId === session.id ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-700/60'}
+                        ${showText ? 'justify-between' : 'justify-center'}`}
             onClick={() => handleSessionSelect(session.id)}
             title={session.title}
           >
-            {isExpanded ? (
+            {showText ? (
               <>
                 <span className="flex-1 truncate">{session.title}</span>
                 <div style={{ position: 'relative' }}>
@@ -226,15 +234,18 @@ export default function Sidebar({
           </div>
         ))}
       </div>
-
-      <div className="flex-shrink-0 border-t border-gray-700">
+      <div className="flex-shrink-0 border-t border-gray-700 px-2">
         {user && (
-          <div className={`p-2 ${showText ? 'p-4' : 'py-4'}`}>
-            <div className={`flex items-center gap-3 min-w-0 ${showText ? 'justify-between' : 'justify-center'}`}>
+          <div className={`py-4`}>
+            <div className={`flex items-center gap-3 min-w-0 ${showText ? 'justify-start' : 'justify-center'}`}>
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
-                  {user.user_metadata?.full_name?.charAt(0) || user.email.charAt(0).toUpperCase()}
-                </div>
+                {user.user_metadata?.avatar_url ? (
+                  <img src={user.user_metadata.avatar_url} alt="User" className="w-8 h-8 rounded-full flex-shrink-0" />
+                ) : (
+                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
+                    {user.user_metadata?.full_name?.charAt(0) || user.email.charAt(0).toUpperCase()}
+                  </div>
+                )}
                 {showText && (
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-white truncate">{user.user_metadata?.full_name || 'User'}</p>
@@ -246,7 +257,7 @@ export default function Sidebar({
           </div>
         )}
         {isDesktop && showText && (
-          <div className="p-2 border-t border-gray-700">
+          <div className="py-2 border-t border-gray-700">
              <button
                 className="p-2 flex items-center justify-center rounded hover:bg-gray-700 transition-colors w-full text-gray-400"
                 onClick={() => setIsHovered(false)}
@@ -267,16 +278,18 @@ export default function Sidebar({
   return (
     <AnimatePresence>
       {open && (
-        <motion.div
-          key="sidebar"
-          initial={{ x: '-100%' }}
-          animate={{ x: 0 }}
-          exit={{ x: '-100%' }}
-          transition={{ duration: 0.2, ease: 'easeInOut' }}
-          className="fixed inset-y-0 left-0 z-[9999]"
-        >
-          {SidebarContent}
-        </motion.div>
+        <>
+          <motion.div
+            key="sidebar-content"
+            initial={{ x: '-100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '-100%' }}
+            transition={{ duration: 0.3, ease: 'easeInOut' }}
+            className="fixed inset-y-0 left-0 z-[9999]"
+          >
+            {SidebarContent}
+          </motion.div>
+        </>
       )}
     </AnimatePresence>
   );
