@@ -1,6 +1,8 @@
 import { NextRequest } from 'next/server';
 import OpenAI from 'openai';
 
+export const runtime = 'edge';
+
 const TEXT_API_KEY = process.env.NVIDIA_API_KEY || '';
 const TEXT_API_KEY2 = process.env.NVIDIA_API_KEY2 || '';
 const TEXT_API_KEY3 = process.env.NVIDIA_API_KEY3 || '';
@@ -9,6 +11,8 @@ const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || '';
 // Function to select the appropriate API key based on mode
 function getApiKeyForMode(mode: string): string {
   switch (mode) {
+    case 'browser_chat':
+      return TEXT_API_KEY3; // Use third key for browser chat mode
     case 'reasoning':
       return TEXT_API_KEY; // Use original key for reasoning mode
     case 'image_analysis':
@@ -26,6 +30,8 @@ function getApiKeyForMode(mode: string): string {
 // Function to select the appropriate model based on mode
 function getModelForMode(mode: string): string {
   switch (mode) {
+    case 'browser_chat':
+      return 'deepseek-ai/deepseek-r1-0528'; // New model for browser chat
     case 'reasoning':
       return 'deepseek-ai/deepseek-r1'; // Reasoning model with thinking capability
     case 'image_analysis':
@@ -135,16 +141,23 @@ async function fetchNvidiaText(messages: any[], options: any = {}) {
   const payload = {
     model: selectedModel,
     messages: enhancedMessages,
-    temperature: options.temperature || 0.6,
-    top_p: options.top_p || 0.7,
-    max_tokens: options.max_tokens || (selectedModel === 'deepseek-ai/deepseek-r1' ? 15000 : (isArtifact ? 8192 : 8139)), // 15000 for DeepSeek reasoning (Think Mode), else default
-    presence_penalty: options.presence_penalty || 0.8,
-    frequency_penalty: options.frequency_penalty || 0.5,
+    temperature: options.temperature || (options.mode === 'browser_chat' ? 0.8 : 0.6),
+    top_p: options.top_p || (options.mode === 'browser_chat' ? 0.95 : 0.7),
+    max_tokens: options.max_tokens || (
+      selectedModel.startsWith('deepseek-ai/') ? 16384 : // Increased tokens for deepseek models
+      isArtifact ? 8192 : 8139
+    ),
+    presence_penalty: options.presence_penalty || (options.mode === 'browser_chat' ? 0.3 : 0.8),
+    frequency_penalty: options.frequency_penalty || (options.mode === 'browser_chat' ? 0.4 : 0.5),
     stream: options.stream !== undefined ? options.stream : true,
     // Add Qwen3 specific parameters for multilingual support
     ...(selectedModel === 'qwen/qwen3-235b-a22b' && {
       enable_thinking: false, // Disable thinking mode for default chat
       language: 'auto', // Auto-detect input language for proper multilingual response
+    }),
+    // Add browser chat specific parameters
+    ...(options.mode === 'browser_chat' && {
+      context_window: 128000, // Increased context window to 128k
     }),
     // Remove response_format for DeepSeek R1 to avoid compatibility issues
     // DeepSeek R1 doesn't properly support response_format and will return streaming anyway

@@ -7,7 +7,6 @@ import rehypeKatex from 'rehype-katex';
 import rehypeRaw from 'rehype-raw';
 import 'katex/dist/katex.min.css';
 import { Bot } from 'lucide-react';
-import ThinkingButton from './ThinkingButton';
 
 const ICON_PATH = '/favicon.svg';
 
@@ -107,6 +106,9 @@ interface WebSource {
 
 interface EmbeddedAIChatProps {
   webContext?: WebContext;
+  onSendMessage?: (message: string) => void;
+  chatMessages?: any[];
+  isChatLoading?: boolean;
 }
 
 interface LocalMessage {
@@ -141,14 +143,15 @@ Key rule: Write like you're explaining the internet to a smart friend — not dr
   return basePrompt;
 };
 
-const EmbeddedAIChat: React.FC<EmbeddedAIChatProps> = ({ webContext }) => {
-  const [messages, setMessages] = useState<LocalMessage[]>([]);
+const EmbeddedAIChat: React.FC<EmbeddedAIChatProps> = ({ webContext, onSendMessage, chatMessages, isChatLoading }) => {
   const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const [isWebDataVisible, setIsWebDataVisible] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [searchFormulationThinking, setSearchFormulationThinking] = useState<string>('');
-  const [isFormulatingSearch, setIsFormulatingSearch] = useState<boolean>(false);
+  
+  // Use external chat messages if provided, otherwise use local state
+  const [localMessages, setLocalMessages] = useState<LocalMessage[]>([]);
+  const messages = chatMessages || localMessages;
+  const isLoading = isChatLoading !== undefined ? isChatLoading : false;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -188,200 +191,24 @@ const EmbeddedAIChat: React.FC<EmbeddedAIChatProps> = ({ webContext }) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
 
+    const currentInput = input.trim();
+    setInput('');
+
+    // If we have an onSendMessage callback (from BrowserPage), use it
+    if (onSendMessage) {
+      onSendMessage(currentInput);
+      return;
+    }
+
+    // Fallback: handle locally if no callback provided (for standalone usage)
     const userMessage: LocalMessage = {
       id: Date.now().toString() + '-user',
       role: 'user',
-      content: input.trim(),
+      content: currentInput,
       timestamp: Date.now()
     };
 
-    const aiMessageId = Date.now().toString() + '-ai';
-    const aiMessage: LocalMessage = {
-      id: aiMessageId,
-      role: 'assistant',
-      content: '',
-      isStreaming: true,
-      webSources: webContext?.sources || [],
-      timestamp: Date.now()
-    };
-
-    setMessages(prev => [...prev, userMessage, aiMessage]);
-    const currentInput = input;
-    setInput('');
-    setIsLoading(true);
-    setSearchFormulationThinking('');
-    setIsFormulatingSearch(true);
-
-    try {
-      // First step: Generate optimized search query
-      const searchFormulationResponse = await fetch('/api/nvidia', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [
-            { 
-              role: 'system', 
-              content: `You are a search query optimization assistant. Your job is to take a user's question and convert it into the most effective search query.
-              
-              Guidelines:
-              1. Analyze the user's question to understand their information needs
-              2. Identify key concepts and entities that should be included in the search
-              3. Remove unnecessary words and filler
-              4. Include important context terms
-              5. Explain your thought process as you formulate the query
-              6. End with the optimized search query clearly marked as "OPTIMIZED QUERY: [your query]"
-              
-              Think step by step about what would make the most effective search query.`
-            },
-            { role: 'user', content: currentInput.trim() }
-          ],
-          temperature: 0.3,
-          max_tokens: 1000
-        })
-      });
-
-      if (!searchFormulationResponse.ok) throw new Error('Failed to formulate search query');
-      
-      const reader = searchFormulationResponse.body?.getReader();
-      if (!reader) throw new Error('Failed to get reader');
-
-      let searchFormulationContent = '';
-      let optimizedQuery = '';
-      const decoder = new TextDecoder();
-      let buffer = '';
-      
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        
-        buffer += decoder.decode(value, { stream: true });
-        
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-        
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const jsonStr = line.slice(6);
-              if (jsonStr.trim() === '[DONE]') continue;
-              
-              const data = JSON.parse(jsonStr);
-              const content = data.choices?.[0]?.delta?.content || '';
-              
-              if (content) {
-                searchFormulationContent += content;
-                setSearchFormulationThinking(searchFormulationContent);
-                
-                // Extract the optimized query if it's marked in the response
-                const match = searchFormulationContent.match(/OPTIMIZED QUERY:\s*(.+?)(?:\n|$)/);
-                if (match && match[1]) {
-                  optimizedQuery = match[1].trim();
-                }
-              }
-            } catch (e) {
-              // Ignore parsing errors for incomplete chunks
-              console.warn('Failed to parse SSE chunk:', line);
-            }
-          }
-        }
-      }
-
-      setIsFormulatingSearch(false);
-
-      // Now proceed with the regular user message processing
-      let userMessageContent = currentInput.trim();
-
-      if (webContext && webContext.hasSearchResults && webContext.sources) {
-        const sourceTexts = webContext.sources.map((source, index) => (
-          `Source [${index + 1}]: ${source.url}\\n\\n${source.text || ''}`
-        )).join('\\n\\n---\\n\\n');
-        userMessageContent = `Please answer the following question based on the provided web content.\\n\\n---\\n\\n${sourceTexts}\\n\\n---\\n\\nUser Question: ${currentInput.trim()}`;
-      }
-
-      const messagesForApi = [
-        { role: 'system', content: getContextualSystemPrompt(webContext) },
-        { role: 'user', content: userMessageContent }
-      ];
-
-      const modelParameters = webContext?.modelConfig || {
-        temperature: 0.7,
-        top_p: 0.9,
-        max_tokens: 16384
-      };
-
-      const response = await fetch('/api/nvidia', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: messagesForApi,
-          mode: 'browser_chat',
-          ...modelParameters
-        })
-      });
-
-      if (!response.ok) throw new Error('Failed to get response');
-
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error('Failed to get reader');
-
-      let accumulatedContent = '';
-      let buffer = '';
-      const decoder = new TextDecoder();
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        
-        // Add new chunk to buffer
-        buffer += decoder.decode(value, { stream: true });
-        
-        // Process complete lines from buffer
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || ''; // Keep incomplete line in buffer
-        
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const jsonStr = line.slice(6); // Remove 'data: ' prefix
-              if (jsonStr.trim() === '[DONE]') continue;
-              
-              const data = JSON.parse(jsonStr);
-              const content = data.choices?.[0]?.delta?.content || '';
-              
-              if (content) {
-                accumulatedContent += content;
-                
-                setMessages(prev => prev.map(msg => 
-                  msg.id === aiMessageId 
-                    ? { ...msg, content: accumulatedContent, isStreaming: true } 
-                    : msg
-                ));
-              }
-            } catch (e) {
-              // Ignore parsing errors for incomplete chunks
-              console.warn('Failed to parse SSE chunk:', line);
-            }
-          }
-        }
-      }
-
-      setMessages(prev => prev.map(msg => 
-        msg.id === aiMessageId 
-          ? { ...msg, isStreaming: false, isProcessed: true } 
-          : msg
-      ));
-
-    } catch (error) {
-      console.error('Error fetching AI response:', error);
-      setMessages(prev => prev.map(msg => 
-        msg.id === aiMessageId 
-          ? { ...msg, content: 'Error: Could not fetch response.', isStreaming: false, isProcessed: true } 
-          : msg
-      ));
-      setIsFormulatingSearch(false);
-    } finally {
-      setIsLoading(false);
-    }
+    setLocalMessages(prev => [...prev, userMessage]);
   };
 
   const renderMessage = (msg: LocalMessage, i: number) => {
@@ -567,15 +394,6 @@ const EmbeddedAIChat: React.FC<EmbeddedAIChatProps> = ({ webContext }) => {
               )}
             </div>
           </div>
-        )}
-        
-        {/* Search Formulation Thinking Box */}
-        {(isFormulatingSearch || searchFormulationThinking) && (
-          <ThinkingButton 
-            content={searchFormulationThinking || "Formulating optimized search query..."} 
-            isLive={isFormulatingSearch}
-            mode="reasoning"
-          />
         )}
         
         {messages.map((message, index) => renderMessage(message, index))}

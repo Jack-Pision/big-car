@@ -1,33 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseClient } from '@/lib/supabase-client';
 
+export const runtime = 'edge';
+
 export async function POST(req: NextRequest) {
   try {
     const { query } = await req.json();
 
     if (!query || typeof query !== 'string') {
-      return NextResponse.json(
-        { error: 'Query parameter is required' },
-        { status: 400 }
-      );
+      return new Response(JSON.stringify({ error: 'Query parameter is required' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
 
     const supabase = createSupabaseClient();
     
     if (!supabase) {
-      return NextResponse.json(
-        { error: 'Database connection failed' },
-        { status: 500 }
-      );
+      return new Response(JSON.stringify({ error: 'Database connection failed' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
     
     // Get current user
     const authResponse = await supabase.auth.getUser();
     if (!authResponse || authResponse.error || !authResponse.data?.user) {
-      return NextResponse.json(
-        { error: 'User not authenticated' },
-        { status: 401 }
-      );
+      return new Response(JSON.stringify({ error: 'User not authenticated' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
 
     // Search for exact query match in browser history
@@ -41,19 +43,21 @@ export async function POST(req: NextRequest) {
 
     if (error) {
       console.error('Error searching browser history:', error);
-      return NextResponse.json(
-        { error: 'Failed to search browser history' },
-        { status: 500 }
-      );
+      return new Response(JSON.stringify({ error: 'Failed to search browser history' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
 
-    return NextResponse.json(data || []);
+    return new Response(JSON.stringify(data || []), {
+      headers: { 'Content-Type': 'application/json' }
+    });
     
   } catch (error) {
     console.error('Browser history search API error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 } 

@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 
+export const runtime = 'edge';
+
 export async function GET() {
   try {
     // Get all environment variable keys (excluding sensitive ones)
@@ -20,17 +22,19 @@ export async function GET() {
       NEXT_PUBLIC_SUPABASE_ANON_KEY: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     };
     
-    return NextResponse.json({
+    return new Response(JSON.stringify({
       message: 'Environment variables check',
       availableEnvKeys: envKeys,
       envStatus,
       nodeEnv: process.env.NODE_ENV,
+    }), {
+      headers: { 'Content-Type': 'application/json' }
     });
   } catch (error) {
     console.error('Error checking environment variables:', error);
-    return NextResponse.json(
-      { error: 'Error checking environment variables' },
-      { status: 500 }
-    );
+    return new Response(JSON.stringify({ error: 'Error checking environment variables' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 } 

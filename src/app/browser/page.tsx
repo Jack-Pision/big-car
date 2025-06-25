@@ -40,8 +40,6 @@ const BrowserPageComponent = () => {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [aiResponse, setAiResponse] = useState<AIResponse | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
-  const [aiGeneratedQuery, setAiGeneratedQuery] = useState<string | null>(null);
-  const [isGeneratingQuery, setIsGeneratingQuery] = useState(false);
   
   // Extract images from search results for the carousel
   const carouselImages = useMemo(() => {
@@ -63,6 +61,16 @@ const BrowserPageComponent = () => {
 
   // State for enhanced web context data
   const [webContextData, setWebContextData] = useState<any>(null);
+
+  // Add state for enhanced query and search status
+  const [searchStatus, setSearchStatus] = useState<'idle' | 'generating' | 'searching' | 'error'>('idle');
+  const [generatedQuery, setGeneratedQuery] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [selectedSource, setSelectedSource] = useState<string | null>(null);
+
+  // Add state for chat messages and loading
+  const [chatMessages, setChatMessages] = useState<any[]>([]);
+  const [isChatLoading, setIsChatLoading] = useState(false);
 
   // Run search automatically if ?q= parameter present on first load
   useEffect(() => {
@@ -86,8 +94,6 @@ const BrowserPageComponent = () => {
         
         // Handle both old and new data structures
         let sources, enhancedData;
-        let optimizedQuery = undefined;
-        
         if (Array.isArray(exactMatch.search_results)) {
           // Old format - just an array of sources
           sources = exactMatch.search_results;
@@ -96,11 +102,6 @@ const BrowserPageComponent = () => {
           // New format - object with sources and enhanced_data
           sources = exactMatch.search_results.sources || [];
           enhancedData = exactMatch.search_results.enhanced_data || null;
-          
-          // Check if we have an optimized query stored
-          if (exactMatch.search_results.ai_context?.optimized_query) {
-            optimizedQuery = exactMatch.search_results.ai_context.optimized_query;
-          }
         }
         
         setSearchResults(sources);
@@ -109,8 +110,7 @@ const BrowserPageComponent = () => {
         // Create web context data for cached results
         const contextData = {
           hasSearchResults: true,
-          query: optimizedQuery || searchQuery,
-          originalQuery: searchQuery,
+          query: searchQuery,
           sourcesCount: sources.length,
           hasEnhancedContent: !!enhancedData,
           enhancedData: enhancedData,
@@ -122,12 +122,12 @@ const BrowserPageComponent = () => {
       }
       
       // No cached results found, perform new search
-      generateSearchQuery(searchQuery);
+      handleSearch(searchQuery);
       return false;
     } catch (error) {
       console.error('Error loading search from history:', error);
       // Fallback to new search if cache loading fails
-      generateSearchQuery(searchQuery);
+      handleSearch(searchQuery);
       return false;
     }
   };
@@ -139,168 +139,223 @@ const BrowserPageComponent = () => {
     }
   }, []);
 
-  // Generate optimized search query using AI
-  const generateSearchQuery = async (userInput: string) => {
-    setIsGeneratingQuery(true);
-    setAiGeneratedQuery(null);
-
+  // Helper to get a plain-text enhanced query from the AI (DeepSeek, low tokens)
+  const getEnhancedQuery = async (originalQuery: string): Promise<string> => {
+    const systemPrompt = "You are an expert search query assistant. Your only job is to rewrite the user's question into the best possible, simple, plain-text search engine query. Do not add any explanation, preamble, or quotation marks. Only return the final query text.";
     try {
       const response = await fetch('/api/nvidia', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: [
-            { 
-              role: 'system', 
-              content: `You are a search query optimization assistant. Your job is to take a user's question or search intent and convert it into the most effective search query.
-              
-              Guidelines:
-              1. Focus on the key information needs
-              2. Use specific keywords that will yield relevant results
-              3. Remove unnecessary words and filler
-              4. Include important context terms
-              5. Return ONLY the optimized search query with no explanation or additional text
-              
-              Examples:
-              User input: "I want to find information about the health benefits of drinking green tea every day"
-              Output: "green tea daily health benefits research studies"
-              
-              User input: "What are the best programming languages to learn in 2025 for someone who wants to get a job in AI?"
-              Output: "best programming languages AI jobs 2025 career"
-              `
-            },
-            { role: 'user', content: userInput }
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: originalQuery }
           ],
-          temperature: 0.3,
-          max_tokens: 100
+          mode: 'chat',
+          model: 'deepseek-ai/deepseek-r1-0528',
+          temperature: 0.1,
+          max_tokens: 32,
+        }),
+      });
+      if (!response.ok) return originalQuery;
+      const reader = response.body!.getReader();
+      const decoder = new TextDecoder();
+      let accumulatedContent = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n');
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const jsonStr = line.slice(6).trim();
+            if (jsonStr === '[DONE]') break;
+            try {
+              const data = JSON.parse(jsonStr);
+              accumulatedContent += data.choices[0]?.delta?.content || '';
+            } catch {}
+          }
+        }
+      }
+      return accumulatedContent.trim() || originalQuery;
+    } catch {
+      return originalQuery;
+    }
+  };
+
+  // Helper to get the final AI answer (browser_chat mode)
+  const getFinalAnswer = async (userQuestion: string, webContext: any) => {
+    setIsChatLoading(true);
+    setChatMessages([{ role: 'user', content: userQuestion }]);
+    try {
+      // Prepare user message with web sources if available
+      let userMessageContent = userQuestion;
+      
+      if (webContext && webContext.hasSearchResults && webContext.sources) {
+        // Use enhanced data if available, otherwise fall back to basic sources
+        let sourceTexts = '';
+        
+        if (webContext.enhancedData && webContext.enhancedData.full_content) {
+          // Use the optimized character-limited content from enhanced data
+          sourceTexts = Object.entries(webContext.enhancedData.full_content).map(([sourceId, data]: [string, any], index: number) => {
+            const sourceInfo = webContext.sources.find((s: any) => s.id === sourceId) || webContext.sources[index];
+            return `Source [${index + 1}]: ${sourceInfo?.url || 'Unknown URL'}
+Title: ${sourceInfo?.title || 'Unknown Title'}
+Content: ${data.text || 'No content available'}`;
+          }).join('\n\n---\n\n');
+        } else {
+          // Fallback to basic source data
+          sourceTexts = webContext.sources.map((source: any, index: number) => (
+            `Source [${index + 1}]: ${source.url}
+Title: ${source.title}
+Content: ${source.text || source.snippet || 'No content available'}`
+          )).join('\n\n---\n\n');
+        }
+        
+        userMessageContent = `Please answer the following question based on the provided web sources. Focus your response on the user's specific question and use the web content to provide accurate, relevant information.
+
+---
+
+${sourceTexts}
+
+---
+
+User Question: ${userQuestion}
+
+Please provide a comprehensive answer that directly addresses this question using the information from the sources above.`;
+      }
+      
+      const messages = [
+        { role: 'system', content: buildContextualSystemPrompt(webContext) },
+        { role: 'user', content: userMessageContent }
+      ];
+      const modelParameters = webContext?.modelConfig || {
+        temperature: 0.8,
+        top_p: 0.95,
+        max_tokens: 64000
+      };
+      const response = await fetch('/api/nvidia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages,
+          mode: 'browser_chat',
+          ...modelParameters
         })
       });
-
-      if (!response.ok) throw new Error('Failed to generate search query');
-      
+      if (!response.ok) throw new Error('Failed to get response');
       const reader = response.body?.getReader();
       if (!reader) throw new Error('Failed to get reader');
-
-      let optimizedQuery = '';
-      const decoder = new TextDecoder();
+      
+      let accumulatedContent = '';
       let buffer = '';
+      const decoder = new TextDecoder();
       
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         
+        // Add new chunk to buffer
         buffer += decoder.decode(value, { stream: true });
         
+        // Process complete lines from buffer
         const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
+        buffer = lines.pop() || ''; // Keep incomplete line in buffer
         
         for (const line of lines) {
           if (line.startsWith('data: ')) {
             try {
-              const jsonStr = line.slice(6);
+              const jsonStr = line.slice(6); // Remove 'data: ' prefix
               if (jsonStr.trim() === '[DONE]') continue;
               
               const data = JSON.parse(jsonStr);
               const content = data.choices?.[0]?.delta?.content || '';
               
               if (content) {
-                optimizedQuery += content;
+                accumulatedContent += content;
+                
+                setChatMessages([
+                  { role: 'user', content: userQuestion },
+                  { role: 'assistant', content: accumulatedContent, isStreaming: true }
+                ]);
               }
             } catch (e) {
-              console.warn('Failed to parse SSE chunk:', e);
+              // Ignore parsing errors for incomplete chunks
+              console.warn('Failed to parse SSE chunk:', line);
             }
           }
         }
       }
       
-      optimizedQuery = optimizedQuery.trim();
-      console.log('Original query:', userInput);
-      console.log('AI optimized query:', optimizedQuery);
-      
-      setAiGeneratedQuery(optimizedQuery);
-      
-      // Automatically perform the search with the optimized query
-      if (optimizedQuery) {
-        handleSearch(userInput, optimizedQuery);
-      } else {
-        // Fallback to original query if AI didn't generate anything useful
-        handleSearch(userInput);
-      }
-      
+      setChatMessages([
+        { role: 'user', content: userQuestion },
+        { role: 'assistant', content: accumulatedContent, isStreaming: false, isProcessed: true }
+      ]);
     } catch (error) {
-      console.error('Error generating search query:', error);
-      // Fallback to original query
-      handleSearch(userInput);
+      setChatMessages([
+        { role: 'user', content: userQuestion },
+        { role: 'assistant', content: 'Error: Could not fetch response.', isStreaming: false, isProcessed: true }
+      ]);
     } finally {
-      setIsGeneratingQuery(false);
+      setIsChatLoading(false);
     }
   };
 
-  const handleSearch = async (searchQuery: string, optimizedQuery?: string) => {
+  // Update handleSearch to use the two-step pipeline
+  const handleSearch = async (searchQuery: string) => {
     if (!searchQuery.trim()) return;
-
-    const actualSearchQuery = optimizedQuery || searchQuery;
-
     setIsSearching(true);
     setSearchError(null);
     setSearchResults([]);
     setAiResponse(null);
-    setWebContextData(null); // Reset web context
-
+    setWebContextData(null);
+    setSelectedSource(null);
+    setGeneratedQuery('');
+    setErrorMessage('');
+    setSearchStatus('generating');
+    setChatMessages([]);
+    setIsChatLoading(true);
     try {
+      // Step 1: Get enhanced query
+      const enhancedQuery = await getEnhancedQuery(searchQuery);
+      setGeneratedQuery(enhancedQuery);
+      setSearchStatus('searching');
+      // Step 2: Search with enhanced query
       const response = await fetch('/api/exa', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          query: actualSearchQuery,
-          enhanced: true // Request enhanced data for AI context
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: enhancedQuery, enhanced: true }),
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch search results');
-      }
-
+      if (!response.ok) throw new Error('Failed to fetch search results');
       const data = await response.json();
       const searchResults = data.sources || [];
-
-      const aiResponse: AIResponse = {
-        sources: searchResults
-      };
-
       setSearchResults(searchResults);
-      setAiResponse(aiResponse);
-
+      setAiResponse({ sources: searchResults });
       // Create web context data for AI chat popup
       const contextData = {
         hasSearchResults: true,
-        query: actualSearchQuery,
-        originalQuery: searchQuery, // Store the original user query
+        query: enhancedQuery,
         sourcesCount: searchResults.length,
         hasEnhancedContent: !!data.enhanced,
         enhancedData: data.enhanced,
         sources: searchResults,
-        mode: 'browser_chat', // Explicitly set browser chat mode
+        mode: 'browser_chat',
         modelConfig: {
-          temperature: 0.8,
-          top_p: 0.95,
-          max_tokens: 16384,
+                  temperature: 0.8,
+        top_p: 0.95,
+        max_tokens: 64000,
           presence_penalty: 0.3,
           frequency_penalty: 0.4
         }
       };
       setWebContextData(contextData);
-
-      // Update URL so the search can be shared / reloaded
+      // Step 3: Only now, call the final AI for the answer
+      await getFinalAnswer(searchQuery, contextData);
+      // Update URL
       try {
         router.replace(`/browser?q=${encodeURIComponent(searchQuery)}`);
-      } catch (e) {
-        console.error('Failed to update URL:', e);
-      }
-
-      // Save to browser history with enhanced search results for caching
+      } catch {}
+      // Save to browser history
       try {
         const enhancedSearchResults = {
           sources: searchResults,
@@ -309,44 +364,89 @@ const BrowserPageComponent = () => {
           ai_context: {
             processed_at: new Date().toISOString(),
             context_summary: data.enhanced ? 'Enhanced content available for AI context' : 'Basic search results',
-            total_sources: searchResults.length,
-            original_query: searchQuery,
-            optimized_query: optimizedQuery || undefined
+            total_sources: searchResults.length
           }
         };
-
         await browserHistoryService.saveBrowserSearch({
           query: searchQuery,
           results_summary: `Found ${searchResults.length} sources${data.enhanced ? ' with enhanced content' : ''}`,
           sources_count: searchResults.length,
-          search_results: enhancedSearchResults // Save enhanced results for AI context
+          search_results: enhancedSearchResults
         });
-      } catch (error) {
-        console.error('Error saving to browser history:', error);
-      }
-      
-    } catch (error) {
-      console.error('Search error:', error);
-      setSearchError((error as Error).message || "An error occurred while searching. Please try again.");
+      } catch {}
+      setSearchStatus('idle');
+    } catch (error: any) {
+      setSearchError(error.message || 'An error occurred while searching. Please try again.');
       setAiResponse(null);
-      setWebContextData(null); // Reset web context on error
+      setWebContextData(null);
+      setSearchStatus('error');
+      setChatMessages([]);
     } finally {
       setIsSearching(false);
+      setIsChatLoading(false);
     }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !isSearching && !isGeneratingQuery) {
-      e.preventDefault();
-      generateSearchQuery(query);
+    if (e.key === 'Enter' && !isSearching) {
+      handleSearch(query);
     }
   };
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!isSearching && !isGeneratingQuery && query.trim()) {
-      generateSearchQuery(query);
-    }
+  // UI for search status
+  const StatusUI = () => (
+    <div className="flex flex-col items-center justify-center h-full text-center p-8">
+      {searchStatus === 'error' ? (
+        <>
+          <span className="text-red-500 text-2xl mb-2">Search Failed</span>
+          <p className="text-gray-400 mb-4">{errorMessage}</p>
+          <button onClick={() => setSearchStatus('idle')} className="bg-blue-600 text-white px-4 py-2 rounded-lg">Try Again</button>
+        </>
+      ) : (
+        <>
+          <div className="flex items-center gap-3 mb-4">
+            {searchStatus === 'generating' ? (
+              <span className="text-cyan-400 animate-pulse">Thinking...</span>
+            ) : (
+              <span className="text-cyan-400 animate-spin">Searching...</span>
+            )}
+          </div>
+          {searchStatus === 'searching' && (
+            <div className="bg-gray-800/50 p-3 rounded-lg flex items-center gap-2 animate-fade-in">
+              <span className="text-white">{generatedQuery}</span>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+
+  // Add getContextualSystemPrompt function for browser chat
+  const buildContextualSystemPrompt = (webContext: any) => {
+    const basePrompt = `You are Tehom AI, a sharp, articulate AI assistant that specializes in analyzing and summarizing web content for users in a natural, helpful, and human-sounding way. Your job is to:
+
+- Read and synthesize information from all available web sources provided in the user's message.
+- Cross-reference sources to identify agreement, uncertainty, or conflicts.
+- Focus specifically on the user's original question and provide a targeted, relevant answer.
+- Summarize key insights clearly and accurately based on the web content.
+- Use clean, readable markdown (headers, bold, bullets) but keep formatting minimal and purposeful.
+- Write like a smart human: confident, conversational, and clear — not robotic.
+- Be direct, helpful, and friendly.
+
+**Critical Rule for Citations:** The user has provided web sources, each identified by a number. When you use information from a source, you MUST cite it using only its number in brackets, for example: \`[1]\`. Do not use the source name or the full URL.
+
+${webContext?.hasSearchResults
+  ? `**Current Context:** You are analyzing the query "${webContext.query}" using ${webContext.sourcesCount} web sources. Each source contains character-limited content (up to 6,000 characters) that has been optimized for processing. The sources are provided in the user message. Base your answer specifically on these sources and the user's original question. Focus on providing information that directly addresses what the user is asking about.`
+  : 'No web sources available – provide general assistance while maintaining a web-aware mindset.'}
+
+**Key Instructions:**
+- The user's question is the primary focus - ensure your answer directly addresses what they're asking
+- Use the web sources to provide accurate, up-to-date information
+- If sources conflict, mention the disagreement and cite both sides
+- If information is missing or unclear, acknowledge this honestly
+- Write like you're explaining the internet to a smart friend — not drafting a formal report
+- Prioritize insight, tone, and usability over formality`;
+    return basePrompt;
   };
 
   return (
@@ -403,7 +503,12 @@ const BrowserPageComponent = () => {
         <PanelGroup direction="horizontal" autoSaveId="browser-layout">
           {/* Left Pane - AI Chat */}
           <Panel defaultSize={35} minSize={25} maxSize={50}>
-            <EmbeddedAIChat webContext={webContextData} />
+            <EmbeddedAIChat 
+              webContext={webContextData} 
+              onSendMessage={handleSearch}
+              chatMessages={chatMessages}
+              isChatLoading={isChatLoading}
+            />
           </Panel>
           
           {/* Resize Handle - Invisible with shadow effect */}
@@ -412,280 +517,42 @@ const BrowserPageComponent = () => {
           </PanelResizeHandle>
           
           {/* Right Pane - Search Interface */}
-          <Panel defaultSize={65} minSize={50}>
-            <div className="h-full overflow-y-auto bg-[#161618]">
-              <main className={`max-w-4xl mx-auto px-6 py-8 ${aiResponse ? '' : 'h-full'}`}>
-        {/* Main Search Section */}
-        <div className={`flex flex-col items-center justify-center ${aiResponse ? 'mb-6' : 'h-full'}`}>
-          {!aiResponse && (
-            <motion.h2 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-4xl font-medium mb-10"
-              style={{ color: '#FCFCFC' }}
-            >
-              Search the web with Tehom
-            </motion.h2>
-          )}
-          
-          {/* Search Input */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ 
-              opacity: 1, 
-              y: 0,
-              width: aiResponse ? '100%' : '800px',
-              maxWidth: '100%'
-            }}
-            transition={{ delay: 0.1 }}
-            className="relative mx-auto mb-8"
-          >
-            <div 
-              className="flex items-center gap-2 px-4 py-4 h-14 rounded-2xl border transition-all duration-200 focus-within:ring-2 focus-within:ring-gray-400/30"
-              style={{ 
-                borderColor: '#3b3b3b'
-              }}
-            >
-              <svg 
-                width={aiResponse ? "20" : "24"} 
-                height={aiResponse ? "20" : "24"} 
-                viewBox="0 0 24 24" 
-                fill="none" 
-                stroke="#9ca3af" 
-                strokeWidth="2" 
-                strokeLinecap="round" 
-                strokeLinejoin="round"
-              >
-                <circle cx="11" cy="11" r="8"/>
-                <path d="m21 21-4.35-4.35"/>
-              </svg>
-              
-              <input
-                ref={searchInputRef}
-                type="text"
-                placeholder="Ask anything..."
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyPress={handleKeyPress}
-                disabled={isSearching || isGeneratingQuery}
-                className="flex-1 bg-transparent outline-none text-base placeholder-gray-400"
-                style={{ 
-                  color: '#FCFCFC', 
-                  fontSize: '16px'
-                }}
-              />
-              
-              {query && (
-                <button
-                  onClick={() => generateSearchQuery(query)}
-                  disabled={isSearching || isGeneratingQuery}
-                  className="flex items-center justify-center w-10 h-10 rounded-2xl bg-white hover:bg-gray-100 transition-all duration-200 disabled:opacity-50 hover:scale-105 active:scale-95"
-                  title="Search"
-                >
-                  {isGeneratingQuery ? (
-                    <motion.div
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                      className="w-4 h-4 border-2 border-black border-t-transparent rounded-full"
+          <Panel defaultSize={50} minSize={30}>
+            <div className="h-full flex flex-col bg-gray-900/30">
+              {searchStatus !== 'idle' && searchResults.length === 0 ? (
+                <StatusUI />
+              ) : selectedSource ? (
+                <div className="h-full flex flex-col">
+                  <div className="flex justify-between items-center p-2 bg-gray-800 border-b border-gray-700">
+                    <h3 className="text-sm text-white truncate ml-2">{selectedSource}</h3>
+                    <button onClick={() => setSelectedSource(null)} className="text-gray-400 hover:text-white p-1 rounded-md">Close</button>
+                  </div>
+                  <div className="flex-grow bg-white">
+                    <iframe 
+                      src={selectedSource} 
+                      className="w-full h-full border-none" 
+                      sandbox="allow-same-origin allow-scripts"
+                      title="Source Content Viewer"
                     />
-                  ) : isSearching ? (
-                    <svg
-                      className="animate-spin h-5 w-5"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                  ) : (
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="black"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M5 12h14" />
-                      <path d="m12 5 7 7-7 7" />
-                    </svg>
-                  )}
-                </button>
-              )}
-            </div>
-          </motion.div>
-        </div>
-
-        {/* Loading State */}
-                {isSearching && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="mt-16 flex flex-col items-center justify-center"
-          >
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-              className="w-12 h-12 border-2 border-white border-t-transparent rounded-full mb-4"
-            />
-            <p className="text-gray-400">Searching the web...</p>
-          </motion.div>
-        )}
-        
-        {/* Error State */}
-        {searchError && !isSearching && !aiResponse && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="mt-16 flex flex-col items-center justify-center"
-          >
-            <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="8" x2="12" y2="12" />
-                <line x1="12" y1="16" x2="12.01" y2="16" />
-              </svg>
-            </div>
-            <p className="text-red-400 mb-2 font-medium">Search Error</p>
-            <p className="text-gray-400 text-center max-w-md">{searchError}</p>
-            <button 
-              onClick={() => handleSearch(query)}
-              className="mt-4 px-4 py-2 bg-white hover:bg-gray-100 text-black rounded-lg transition-colors"
-            >
-              Try Again
-            </button>
-          </motion.div>
-        )}
-        
-        {/* Image Carousel */}
-        <AnimatePresence>
-          {aiResponse && carouselImages.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-            >
-              <ImageCarousel images={carouselImages} />
-            </motion.div>
-          )}
-        </AnimatePresence>
-        
-        {/* AI Response */}
-        <AnimatePresence>
-          {aiResponse && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="mb-8"
-            >
-              {/* Source Results */}
-              {aiResponse.sources.length > 0 && (
-                <div>
-                  <h3 className="text-lg font-medium mb-4" style={{ color: '#FCFCFC' }}>Sources</h3>
-                  <div className="space-y-4">
-                    {aiResponse.sources.map((result, index) => (
-                    <motion.div
-                      key={result.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                      className="border rounded-lg p-4 hover:bg-gray-800/30 transition-colors cursor-pointer"
-                      style={{ 
-                        backgroundColor: 'transparent',
-                        borderColor: '#333333'
-                      }}
-                      onClick={() => window.open(result.url, '_blank')}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 rounded bg-gray-700 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                          {result.favicon ? (
-                            <img 
-                              src={result.favicon} 
-                              alt="" 
-                              className="w-full h-full object-contain p-1"
-                              onError={(e) => {
-                                const domain = new URL(result.url).hostname;
-                                const target = e.target as HTMLImageElement;
-                                target.src = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
-                                target.onerror = () => {
-                                  target.style.display = 'none';
-                                  target.parentElement!.innerHTML = `
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                                      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-                                    </svg>
-                                  `;
-                                };
-                              }}
-                            />
-                          ) : (
-                            (() => {
-                              try {
-                                const domain = new URL(result.url).hostname;
-                                return (
-                                  <img 
-                                    src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`}
-                                    alt=""
-                                    className="w-full h-full object-contain p-1"
-                                    onError={(e) => {
-                                      const target = e.target as HTMLImageElement;
-                                      target.style.display = 'none';
-                                      target.parentElement!.innerHTML = `
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                                          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-                                        </svg>
-                                      `;
-                                    }}
-                                  />
-                                );
-                              } catch (e) {
-                                return (
-                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-                                  </svg>
-                                );
-                              }
-                            })()
-                          )}
-                        </div>
-                        
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-medium mb-1 line-clamp-2" style={{ color: '#FCFCFC', fontSize: '14px' }}>
-                            {result.title}
-                          </h4>
-                          <p className="text-gray-400 text-sm mb-2 line-clamp-2">
-                            {result.snippet}
-                          </p>
-                          <div className="flex items-center gap-2 text-xs text-gray-500">
-                            <span>{new URL(result.url).hostname}</span>
-                            {result.timestamp && (
-                              <>
-                                <span>•</span>
-                                <span>{result.timestamp}</span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                        
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
-                          <path d="M7 17L17 7M17 7H7M17 7V17"/>
-                        </svg>
-                      </div>
-                    </motion.div>
-                  ))}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="h-full overflow-y-auto">
+                  {searchResults.length > 0 ? (
+                    <ul className="p-4 space-y-3">
+                      {searchResults.map((result) => (
+                        <li key={result.id} className="bg-gray-800/50 p-4 rounded-lg hover:bg-gray-800 transition-colors cursor-pointer" onClick={() => setSelectedSource(result.url)}>
+                          <p className="font-semibold text-cyan-400 mb-1 truncate">{result.title}</p>
+                          <p className="text-xs text-green-400 mb-2 truncate">{result.url}</p>
+                          <p className="text-sm text-gray-300 line-clamp-2">{result.snippet}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                     searchStatus === 'idle' && <div className="flex items-center justify-center h-full text-gray-500">Search results will appear here.</div>
+                  )}
+                </div>
               )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </main>
             </div>
           </Panel>
         </PanelGroup>
