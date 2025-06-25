@@ -4,65 +4,151 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
+import rehypeRaw from 'rehype-raw';
 import 'katex/dist/katex.min.css';
+import { Bot } from 'lucide-react';
+import ThinkingButton from './ThinkingButton';
 
 const ICON_PATH = '/favicon.svg';
 
-const getContextualSystemPrompt = (webContext: any = null) => {
-  const basePrompt = `You are Tehom AI, an advanced AI browser assistant with direct access to web content, search results, and browser functionality. You can see, analyze, and interact with any webpage content the user is viewing or has searched for.
-
-You can analyze any webpage content including text, forms, and data. Extract key information, prices, contact details, and relevant data points. Understand context and relationships between different pieces of information. Identify patterns, trends, and important insights from web content.
-
-You can synthesize information from multiple search results. Provide comprehensive answers with proper citations. Identify gaps in information and suggest additional research. Create knowledge graphs and connections between concepts. Track research progress and maintain context across sessions.
-
-Always be proactive. Anticipate user needs based on current webpage content. Suggest relevant actions, tools, or information. Offer to automate repetitive tasks. Provide insights and analysis without being asked.
-
-Always be contextual. Consider the current webpage content in your responses. Reference specific elements from the page when relevant. Maintain awareness of the user's research journey and goals. Adapt your communication style to match the content type.
-
-When analyzing content provide clear, structured analysis. Highlight key insights and important information. Use bullet points for lists and findings. Include confidence levels for uncertain information.
-
-When assisting with research synthesize information from multiple sources. Provide comprehensive yet concise summaries. Include relevant citations and sources. Suggest next steps or related research areas.
-
-Always format your responses in markdown for better readability and structure.`;
-
-  if (webContext?.hasSearchResults) {
-    return `${basePrompt}
-
-**CURRENT WEB SEARCH CONTEXT:**
-You have access to enhanced search results from the user's current browser session:
-- Query: "${webContext.query}"
-- Sources Available: ${webContext.sourcesCount} web sources
-- Enhanced Content: ${webContext.hasEnhancedContent ? 'YES - Full text, highlights, and summaries available' : 'NO - Basic results only'}
-${webContext.enhancedData ? `
-**ENHANCED CONTENT SUMMARY:**
-${Object.keys(webContext.enhancedData.full_content || {}).length} sources have full content available for analysis.
-
-**KEY INSIGHTS FROM SEARCH:**
-${webContext.enhancedData.ai_context?.context_summary || 'Rich content data available for detailed analysis.'}
-` : ''}
-
-**IMPORTANT:** When the user asks questions related to their search, use the provided search results and enhanced content to give accurate, well-cited answers. Reference specific sources by their titles and URLs when relevant.`;
+// Add smart buffering function from main chat
+function smartBufferStreamingContent(content: string): string {
+  if (!content) return content;
+  
+  const lines = content.split('\n');
+  let bufferedContent = '';
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    
+    // Skip incomplete markdown structures at the end
+    if (i === lines.length - 1 && isIncompleteMarkdown(line)) {
+      continue;
+    }
+    
+    bufferedContent += (i > 0 ? '\n' : '') + line;
   }
+  
+  return bufferedContent;
+}
+
+function isIncompleteMarkdown(line: string): boolean {
+  const patterns = [
+    /^#{1,6}\s*$/,        // Incomplete headers
+    /^\*{1,2}$/,          // Incomplete bold/italic
+    /^`{1,3}$/,           // Incomplete code blocks
+    /^\|.*\|?\s*$/,       // Incomplete table rows
+    /^-{1,2}\s*$/,        // Incomplete lists
+    /^\d+\.\s*$/          // Incomplete numbered lists
+  ];
+  
+  return patterns.some(pattern => pattern.test(line.trim()));
+}
+
+// Add content processing functions from main chat
+function cleanAIResponse(text: string): { content: string } {
+  if (!text) return { content: '' };
+  
+  let cleaned = text
+    .replace(/\*{3,}/g, '**')
+    .replace(/_{3,}/g, '__')
+    .replace(/`{4,}/g, '```')
+    .replace(/#{7,}/g, '######')
+    .replace(/\n{4,}/g, '\n\n\n')
+    .trim();
+  
+  return { content: cleaned };
+}
+
+const makeCitationsClickable = (content: string, sources: any[] = []) => {
+  if (!sources || sources.length === 0) return content;
+
+  let processedContent = content;
+
+  sources.forEach((source, index) => {
+    const url = source.url || source.link;
+    if (!url) return;
+
+    // Create a regular expression to find the raw URL, handling special characters
+    // and optional surrounding parentheses.
+    const escapedUrl = url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const urlRegex = new RegExp(`\\(?\\s*${escapedUrl}\\s*\\)?`, 'g');
+
+    // The simple numerical link to replace it with, e.g., [1], [2]
+    const citationLink = `[${index + 1}](${url})`;
+
+    // Replace all occurrences of the raw URL in the text
+    processedContent = processedContent.replace(urlRegex, citationLink);
+  });
+
+  return processedContent;
+};
+
+interface WebContext {
+  hasSearchResults: boolean;
+  sourcesCount: number;
+  query: string;
+  sources: WebSource[];
+  enhancedData?: any;
+  modelConfig?: {
+    temperature: number;
+    top_p: number;
+  };
+}
+
+interface WebSource {
+  id?: string;
+  url?: string;
+  link?: string;
+  title?: string;
+  text?: string;
+  timestamp?: number;
+}
+
+interface EmbeddedAIChatProps {
+  webContext?: WebContext;
+}
+
+interface LocalMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  isStreaming?: boolean;
+  isProcessed?: boolean;
+  webSources?: any[];
+  timestamp?: number;
+}
+
+// Add getContextualSystemPrompt function
+const getContextualSystemPrompt = (webContext: WebContext | undefined) => {
+  const basePrompt = `You are Tehom AI, a sharp, articulate AI assistant that specializes in analyzing and summarizing web content for users in a natural, helpful, and human-sounding way. Your job is to:
+
+- Read and synthesize information from all available web sources provided in the user's message.
+- Cross-reference sources to identify agreement, uncertainty, or conflicts.
+- Summarize key insights clearly and accurately.
+- Use clean, readable markdown (headers, bold, bullets) but keep formatting minimal and purposeful.
+- Write like a smart human: confident, conversational, and clear — not robotic.
+- Be direct, helpful, and friendly.
+
+**Critical Rule for Citations:** The user has provided web sources, each identified by a number. When you use information from a source, you MUST cite it using only its number in brackets, for example: \`[1]\`. Do not use the source name or the full URL.
+
+${webContext?.hasSearchResults
+  ? `Current context: Analyzing "${webContext.query}" using ${webContext.sourcesCount} web sources. The sources are provided in the user message. Base your answer on them and follow the citation rule.`
+  : 'No web sources available – provide general assistance while maintaining a web-aware mindset.'}
+
+Key rule: Write like you're explaining the internet to a smart friend — not drafting a formal report. Prioritize insight, tone, and usability.`;
 
   return basePrompt;
 };
 
-interface EmbeddedAIChatProps {
-  webContext?: {
-    hasSearchResults: boolean;
-    query: string;
-    sourcesCount: number;
-    hasEnhancedContent: boolean;
-    enhancedData: any;
-  };
-}
-
 const EmbeddedAIChat: React.FC<EmbeddedAIChatProps> = ({ webContext }) => {
-  const [messages, setMessages] = useState<{ role: 'user' | 'assistant'; content: string; isStreaming?: boolean }[]>([]);
+  const [messages, setMessages] = useState<LocalMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-
+  const [isWebDataVisible, setIsWebDataVisible] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [searchFormulationThinking, setSearchFormulationThinking] = useState<string>('');
+  const [isFormulatingSearch, setIsFormulatingSearch] = useState<boolean>(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -72,197 +158,459 @@ const EmbeddedAIChat: React.FC<EmbeddedAIChatProps> = ({ webContext }) => {
     scrollToBottom();
   }, [messages]);
 
-  const handleSend = async () => {
-    if (input.trim() === '' || isLoading) return;
+  const TypingIndicator = () => (
+    <motion.div
+      key="typing-indicator"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="flex items-center space-x-2"
+      style={{ minHeight: '2.5rem' }}
+    >
+      <Bot size={20} className="text-white" />
+      <div className="flex items-center space-x-1.5">
+        <span className="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '0s' }}></span>
+        <span className="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></span>
+        <span className="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></span>
+      </div>
+    </motion.div>
+  );
 
-    const userMessage = { role: 'user' as const, content: input.trim() };
-    setMessages(prev => [...prev, userMessage]);
+  const handleCopy = (content: string) => {
+    navigator.clipboard.writeText(content);
+  };
+
+  const handleRetry = (originalQuery: string) => {
+    setInput(originalQuery);
+  };
+
+  const handleSend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || isLoading) return;
+
+    const userMessage: LocalMessage = {
+      id: Date.now().toString() + '-user',
+      role: 'user',
+      content: input.trim(),
+      timestamp: Date.now()
+    };
+
+    const aiMessageId = Date.now().toString() + '-ai';
+    const aiMessage: LocalMessage = {
+      id: aiMessageId,
+      role: 'assistant',
+      content: '',
+      isStreaming: true,
+      webSources: webContext?.sources || [],
+      timestamp: Date.now()
+    };
+
+    setMessages(prev => [...prev, userMessage, aiMessage]);
+    const currentInput = input;
     setInput('');
     setIsLoading(true);
-
-    const systemPrompt = getContextualSystemPrompt(webContext);
-    let enhancedContext = '';
-    if (webContext?.hasEnhancedContent && webContext.enhancedData) {
-      enhancedContext = `\n\n### Web Content & Search Results\nHere is the relevant information from the web page or search results:\n\n${JSON.stringify(webContext.enhancedData, null, 2)}`;
-    }
-
-    const conversationHistory = [
-      { role: 'system', content: systemPrompt + enhancedContext },
-      ...messages,
-      userMessage,
-    ];
+    setSearchFormulationThinking('');
+    setIsFormulatingSearch(true);
 
     try {
-      const response = await fetch('/api/nvidia', {
+      // First step: Generate optimized search query
+      const searchFormulationResponse = await fetch('/api/nvidia', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'nvidia/nvidia-llama3-70b-instruct',
-          messages: conversationHistory,
-          stream: true,
-        }),
+          messages: [
+            { 
+              role: 'system', 
+              content: `You are a search query optimization assistant. Your job is to take a user's question and convert it into the most effective search query.
+              
+              Guidelines:
+              1. Analyze the user's question to understand their information needs
+              2. Identify key concepts and entities that should be included in the search
+              3. Remove unnecessary words and filler
+              4. Include important context terms
+              5. Explain your thought process as you formulate the query
+              6. End with the optimized search query clearly marked as "OPTIMIZED QUERY: [your query]"
+              
+              Think step by step about what would make the most effective search query.`
+            },
+            { role: 'user', content: currentInput.trim() }
+          ],
+          temperature: 0.3,
+          max_tokens: 1000
+        })
       });
 
-      if (!response.body) {
-        throw new Error('No response body');
-      }
+      if (!searchFormulationResponse.ok) throw new Error('Failed to formulate search query');
+      
+      const reader = searchFormulationResponse.body?.getReader();
+      if (!reader) throw new Error('Failed to get reader');
 
-      setMessages(prev => [...prev, { role: 'assistant', content: '', isStreaming: true }]);
-      const reader = response.body.getReader();
+      let searchFormulationContent = '';
+      let optimizedQuery = '';
       const decoder = new TextDecoder();
       let buffer = '';
-
+      
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-
+        
         buffer += decoder.decode(value, { stream: true });
+        
         const lines = buffer.split('\n');
         buffer = lines.pop() || '';
-
+        
         for (const line of lines) {
           if (line.startsWith('data: ')) {
-            const jsonStr = line.slice(6);
-            if (jsonStr === '[DONE]') {
-              setMessages(prev =>
-                prev.map(msg => (msg.isStreaming ? { ...msg, isStreaming: false } : msg))
-              );
-              setIsLoading(false);
-              return;
-            }
             try {
-              const chunk = JSON.parse(jsonStr);
-              if (chunk.choices && chunk.choices[0].delta.content) {
-                setMessages(prev => {
-                  const newMessages = [...prev];
-                  const lastMessage = newMessages[newMessages.length - 1];
-                  if (lastMessage && lastMessage.isStreaming) {
-                    lastMessage.content += chunk.choices[0].delta.content;
-                  }
-                  return newMessages;
-                });
+              const jsonStr = line.slice(6);
+              if (jsonStr.trim() === '[DONE]') continue;
+              
+              const data = JSON.parse(jsonStr);
+              const content = data.choices?.[0]?.delta?.content || '';
+              
+              if (content) {
+                searchFormulationContent += content;
+                setSearchFormulationThinking(searchFormulationContent);
+                
+                // Extract the optimized query if it's marked in the response
+                const match = searchFormulationContent.match(/OPTIMIZED QUERY:\s*(.+?)(?:\n|$)/);
+                if (match && match[1]) {
+                  optimizedQuery = match[1].trim();
+                }
               }
             } catch (e) {
-              console.error('Error parsing streaming JSON:', e);
+              // Ignore parsing errors for incomplete chunks
+              console.warn('Failed to parse SSE chunk:', line);
             }
           }
         }
       }
-    } catch (error) {
-      console.error('Error:', error);
-      setMessages(prev => {
-        const newMessages = [...prev];
-        const lastMessage = newMessages[newMessages.length - 1];
-        if (lastMessage && lastMessage.isStreaming) {
-          lastMessage.content = 'Sorry, something went wrong. Please try again.';
-          lastMessage.isStreaming = false;
-        }
-        return newMessages;
+
+      setIsFormulatingSearch(false);
+
+      // Now proceed with the regular user message processing
+      let userMessageContent = currentInput.trim();
+
+      if (webContext && webContext.hasSearchResults && webContext.sources) {
+        const sourceTexts = webContext.sources.map((source, index) => (
+          `Source [${index + 1}]: ${source.url}\\n\\n${source.text || ''}`
+        )).join('\\n\\n---\\n\\n');
+        userMessageContent = `Please answer the following question based on the provided web content.\\n\\n---\\n\\n${sourceTexts}\\n\\n---\\n\\nUser Question: ${currentInput.trim()}`;
+      }
+
+      const messagesForApi = [
+        { role: 'system', content: getContextualSystemPrompt(webContext) },
+        { role: 'user', content: userMessageContent }
+      ];
+
+      const modelParameters = webContext?.modelConfig || {
+        temperature: 0.7,
+        top_p: 0.9,
+        max_tokens: 16384
+      };
+
+      const response = await fetch('/api/nvidia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: messagesForApi,
+          mode: 'browser_chat',
+          ...modelParameters
+        })
       });
+
+      if (!response.ok) throw new Error('Failed to get response');
+
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('Failed to get reader');
+
+      let accumulatedContent = '';
+      let buffer = '';
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        // Add new chunk to buffer
+        buffer += decoder.decode(value, { stream: true });
+        
+        // Process complete lines from buffer
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // Keep incomplete line in buffer
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const jsonStr = line.slice(6); // Remove 'data: ' prefix
+              if (jsonStr.trim() === '[DONE]') continue;
+              
+              const data = JSON.parse(jsonStr);
+              const content = data.choices?.[0]?.delta?.content || '';
+              
+              if (content) {
+                accumulatedContent += content;
+                
+                setMessages(prev => prev.map(msg => 
+                  msg.id === aiMessageId 
+                    ? { ...msg, content: accumulatedContent, isStreaming: true } 
+                    : msg
+                ));
+              }
+            } catch (e) {
+              // Ignore parsing errors for incomplete chunks
+              console.warn('Failed to parse SSE chunk:', line);
+            }
+          }
+        }
+      }
+
+      setMessages(prev => prev.map(msg => 
+        msg.id === aiMessageId 
+          ? { ...msg, isStreaming: false, isProcessed: true } 
+          : msg
+      ));
+
+    } catch (error) {
+      console.error('Error fetching AI response:', error);
+      setMessages(prev => prev.map(msg => 
+        msg.id === aiMessageId 
+          ? { ...msg, content: 'Error: Could not fetch response.', isStreaming: false, isProcessed: true } 
+          : msg
+      ));
+      setIsFormulatingSearch(false);
     } finally {
       setIsLoading(false);
-      setMessages(prev =>
-        prev.map(msg => (msg.isStreaming ? { ...msg, isStreaming: false } : msg))
-      );
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
+  const renderMessage = (msg: LocalMessage, i: number) => {
+    if (msg.role === 'user') {
+      return (
+        <motion.div
+          key={msg.id + '-user-' + i}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="w-full text-right flex flex-col items-end mb-4"
+        >
+          <div className="max-w-[80%] bg-blue-600 text-white px-4 py-2 rounded-2xl">
+            {msg.content}
+          </div>
+        </motion.div>
+      );
     }
+
+    // Assistant message processing
+    const { content: rawContent } = cleanAIResponse(msg.content);
+    const cleanContent = rawContent
+      .replace(/<think>[\s\S]*?<\/think>/g, '')
+      .replace(/<thinking-indicator.*?>\n<\/thinking-indicator>\n|<thinking-indicator.*?\/>/g, '')
+      .trim();
+
+    const processedContent = msg.isStreaming 
+      ? smartBufferStreamingContent(cleanContent)
+      : cleanContent;
+
+    // Only apply citations if we have web sources
+    const finalContent = msg.webSources?.length 
+      ? makeCitationsClickable(processedContent, msg.webSources)
+      : processedContent;
+
+    const showTypingIndicator = msg.role === 'assistant' && finalContent.trim().length === 0 && !msg.isProcessed;
+
+    return (
+      <motion.div
+        key={msg.id + '-assistant-' + i}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: "easeOut" }}
+        className="w-full text-left flex flex-col items-start ai-response-text mb-4 relative"
+        style={{ color: '#FCFCFC', maxWidth: '100%', overflowWrap: 'break-word', wordBreak: 'break-word' }}
+      >
+        <div className="w-full max-w-full overflow-hidden" style={{ minHeight: showTypingIndicator ? '2.5rem' : 'auto' }}>
+          {showTypingIndicator ? (
+            <TypingIndicator />
+          ) : (
+            finalContent.trim().length > 0 && (
+              <ReactMarkdown 
+                remarkPlugins={[remarkGfm, remarkMath]} 
+                rehypePlugins={[rehypeRaw, rehypeKatex]} 
+                className="research-output"
+                components={{
+                  h1: ({ children }) => (<h1 className="text-xl md:text-3xl font-bold mb-6 mt-8 border-b border-cyan-500/30 pb-3" style={{ color: '#FCFCFC' }}>{children}</h1>),
+                  h2: ({ children }) => (<h2 className="text-lg md:text-2xl font-semibold mb-4 mt-8 flex items-center gap-2" style={{ color: '#FCFCFC' }}>{children}</h2>),
+                  h3: ({ children }) => (<h3 className="text-base md:text-xl font-semibold mb-3 mt-6" style={{ color: '#FCFCFC' }}>{children}</h3>),
+                  p: ({ children }) => (<p className="leading-relaxed mb-4 text-sm" style={{ color: '#FCFCFC' }}>{children}</p>),
+                  ul: ({ children }) => (<ul className="space-y-2 mb-4 ml-4">{children}</ul>),
+                  li: ({ children }) => (<li className="flex items-start gap-2" style={{ color: '#FCFCFC' }}><span className="text-cyan-400 mt-1.5 text-xs">●</span><span className="flex-1">{children}</span></li>),
+                  ol: ({ children }) => (<ol className="space-y-2 mb-4 ml-4 list-decimal list-inside">{children}</ol>),
+                  strong: ({ children }) => (<strong className="font-semibold" style={{ color: '#FCFCFC' }}>{children}</strong>),
+                  table: ({ children }) => (<div className="overflow-x-auto mb-6 max-w-full scrollbar-thin"><table className="border-collapse" style={{ tableLayout: 'auto', width: 'auto' }}>{children}</table></div>),
+                  thead: ({ children }) => <thead className="">{children}</thead>,
+                  th: ({ children }) => (<th className="px-3 md:px-4 py-2 md:py-3 text-left font-semibold border-b-2 border-gray-600 text-xs md:text-sm" style={{ color: '#FCFCFC' }}>{children}</th>),
+                  td: ({ children }) => (<td className="px-3 md:px-4 py-2 md:py-3 border-b border-gray-700 text-xs md:text-sm" style={{ color: '#FCFCFC' }}>{children}</td>),
+                  blockquote: ({ children }) => (<blockquote className="border-l-4 border-cyan-500 pl-4 py-2 rounded-r-lg mb-4 italic" style={{ background: 'transparent', color: '#FCFCFC' }}>{children}</blockquote>),
+                  code: ({ children, className }) => {
+                    const isInline = !className;
+                    return isInline
+                      ? (<code className="px-2 py-1 rounded text-xs font-mono" style={{ background: 'rgba(55, 65, 81, 0.5)', color: '#FCFCFC' }}>{children}</code>)
+                      : (<code className="block p-4 rounded-lg overflow-x-auto text-xs font-mono mb-4" style={{ background: 'rgba(17, 24, 39, 0.8)', color: '#FCFCFC' }}>{children}</code>);
+                  },
+                  a: ({ href, children }) => (
+                    <a 
+                      href={href}
+                      className="text-cyan-400 hover:text-cyan-300 transition-colors"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {children}
+                    </a>
+                  )
+                }}
+              >
+                {finalContent}
+              </ReactMarkdown>
+            )
+          )}
+        </div>
+
+        {/* Action buttons for completed messages */}
+        {msg.isProcessed && finalContent.trim().length > 0 && (
+          <div className="w-full flex justify-start gap-2 mt-2 relative z-50">
+            <button
+              onClick={() => handleCopy(finalContent)}
+              className="flex items-center justify-center w-8 h-8 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
+              aria-label="Copy response"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+            </button>
+            
+            <button
+              onClick={() => {
+                const userMsg = messages.find(m => m.role === 'user' && m.timestamp && m.timestamp < (msg.timestamp || Infinity));
+                if (userMsg) {
+                  handleRetry(userMsg.content);
+                }
+              }}
+              className="flex items-center justify-center w-8 h-8 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
+              aria-label="Retry with different response"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                <path d="M3 3v5h5"></path>
+              </svg>
+            </button>
+          </div>
+        )}
+      </motion.div>
+    );
+  };
+
+  const WebDataContextViewer = ({ webContext, onClose }: { webContext: WebContext | null | undefined, onClose: () => void }) => {
+    if (!webContext) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+        <div className="bg-[#1C1C1E] rounded-lg shadow-xl w-full max-w-4xl h-[85vh] flex flex-col">
+          <div className="flex justify-between items-center p-4 border-b border-gray-700">
+            <h3 className="text-xl font-semibold text-white">Web Search Context</h3>
+            <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl leading-none">&times;</button>
+          </div>
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
+            {webContext.enhancedData && (
+              <div className="mb-6">
+                <h4 className="text-lg font-semibold text-cyan-400 mb-2">Enhanced Summary & Data</h4>
+                <pre className="bg-[#2C2C2E] p-4 rounded-lg text-xs text-white whitespace-pre-wrap custom-scrollbar">
+                  {JSON.stringify(webContext.enhancedData, null, 2)}
+                </pre>
+              </div>
+            )}
+            <div>
+              <h4 className="text-lg font-semibold text-cyan-400 mb-2">Sources ({webContext.sourcesCount})</h4>
+              <ul className="space-y-4">
+                {webContext.sources.map((source, index) => (
+                  <li key={source.id || index} className="bg-[#2C2C2E] p-4 rounded-lg border border-gray-700">
+                    <p className="text-base font-semibold text-white mb-1">{source.title}</p>
+                    <a href={source.url || source.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 hover:underline break-all">
+                      {source.url || source.link}
+                    </a>
+                    {source.text && <p className="text-sm text-gray-300 mt-2 italic">"{source.text}"</p>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
-    <div className="h-full flex flex-col bg-[#161618] border-r border-gray-700">
-      {/* Header */}
-      <div className="h-12 bg-[#1C1C1E] flex items-center justify-center px-4 border-b border-gray-700 flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <img src={ICON_PATH} alt="Tehom AI" className="w-6 h-6" />
-          <span className="text-white font-semibold">Tehom AI</span>
-        </div>
-      </div>
-
-      {/* Chat History */}
-      <div className="flex-grow overflow-y-auto p-4 custom-scrollbar">
-        <div className="space-y-4">
-          {messages.length === 0 && (
-            <div className="flex items-center justify-center h-full text-gray-400 text-center">
-              <div>
-                <img src={ICON_PATH} alt="Tehom AI" className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p className="text-sm">Ask me anything about your search results!</p>
-                {webContext?.hasSearchResults && (
-                  <p className="text-xs mt-2 text-gray-500">
-                    I have access to {webContext.sourcesCount} sources from "{webContext.query}"
-                  </p>
-                )}
-              </div>
+    <div className="h-full flex flex-col bg-[#161618]">
+      {isWebDataVisible && (
+        <WebDataContextViewer webContext={webContext} onClose={() => setIsWebDataVisible(false)} />
+      )}
+      
+      {/* Messages Area */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+        {messages.length === 0 && (
+          <div className="flex items-center justify-center h-full text-gray-400 text-center">
+            <div>
+              {webContext?.hasSearchResults && (
+                <p className="text-xs text-gray-500">
+                  I have access to {webContext.sourcesCount} sources from "{webContext.query}"
+                </p>
+              )}
             </div>
-          )}
-          {messages.map((msg, index) => (
-            <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div
-                className={`max-w-xs md:max-w-md lg:max-w-lg px-4 py-2 rounded-2xl ${
-                  msg.role === 'user'
-                    ? 'bg-[#2E2E30] text-white'
-                    : 'bg-[#2A2A2C] text-gray-200'
-                }`}
-              >
-                {msg.role === 'assistant' ? (
-                  <div className="markdown-body text-sm">
-                    <ReactMarkdown
-                      remarkPlugins={[remarkGfm, remarkMath]}
-                      rehypePlugins={[rehypeKatex]}
-                    >
-                      {msg.content}
-                    </ReactMarkdown>
-                  </div>
-                ) : (
-                  <div className="text-sm">{msg.content}</div>
-                )}
-              </div>
-            </div>
-          ))}
-          <div ref={messagesEndRef} />
-        </div>
+          </div>
+        )}
+        
+        {/* Search Formulation Thinking Box */}
+        {(isFormulatingSearch || searchFormulationThinking) && (
+          <ThinkingButton 
+            content={searchFormulationThinking || "Formulating optimized search query..."} 
+            isLive={isFormulatingSearch}
+            mode="reasoning"
+          />
+        )}
+        
+        {messages.map((message, index) => renderMessage(message, index))}
+        <div ref={messagesEndRef} />
       </div>
 
       {/* Input Area */}
-      <div className="p-4 border-t border-gray-700 bg-[#1C1C1E] flex-shrink-0">
-        <div className="flex items-center bg-[#2A2A2C] rounded-xl p-2">
-          <textarea
+      <div className="p-4 bg-[#1C1C1E] flex-shrink-0 border-t border-gray-700">
+        {webContext?.hasSearchResults && (
+          <div className="mb-2 text-center">
+            <button
+              onClick={() => setIsWebDataVisible(true)}
+              className="text-xs px-3 py-1 rounded-full bg-gray-700 text-blue-300 hover:bg-gray-600 hover:text-blue-200 transition-colors"
+            >
+              View Web Context ({webContext.sourcesCount} sources)
+            </button>
+          </div>
+        )}
+        <form onSubmit={handleSend} className="flex gap-2">
+          <input
+            type="text"
             value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Ask me anything..."
-            className="flex-grow bg-transparent text-white placeholder-gray-400 focus:outline-none resize-none"
-            rows={1}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder={webContext?.hasSearchResults ? "Ask about the search results..." : "Ask me anything..."}
+            className="flex-1 px-4 py-2 bg-[#2C2C2E] text-white rounded-lg border border-gray-600 focus:border-blue-500 focus:outline-none"
+            disabled={isLoading}
           />
           <button
-            onClick={handleSend}
-            disabled={isLoading || input.trim() === ''}
-            className={`ml-2 p-2 rounded-full transition-colors ${
-              isLoading || input.trim() === ''
-                ? 'bg-gray-600 cursor-not-allowed'
-                : 'bg-white hover:bg-gray-200'
-            }`}
+            type="submit"
+            disabled={isLoading || !input.trim()}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              className={`${isLoading || input.trim() === '' ? 'text-gray-400' : 'text-black'}`}
-            >
-              <path
-                d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"
-                fill="currentColor"
-              />
-            </svg>
+            {isLoading ? '...' : 'Send'}
           </button>
-        </div>
+        </form>
       </div>
     </div>
   );
