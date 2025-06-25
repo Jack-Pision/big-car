@@ -1189,4 +1189,95 @@ textarea::-webkit-scrollbar-thumb,
 /* Header styles with consistent spacing */
 .markdown-body h1, .markdown-body h2, .markdown-body h3, .markdown-body h4, .markdown-body h5, .markdown-body h6 {
   margin-top: 1.5em;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #1C1C1E;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #4A4A4A;
+  border-radius: 10px;
+  border: 2px solid #1C1C1E;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: #6A6A6A;
+} 
+
+/* Custom scrollbar styles for chat components */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Resizable panel styles */
+[data-panel-group-direction="horizontal"] {
+  height: 100%;
+}
+
+[data-panel-resize-handle-enabled="true"] {
+  position: relative;
+}
+
+[data-panel-resize-handle-enabled="true"]:hover {
+  background: #6b7280 !important;
+}
+
+[data-panel-resize-handle-enabled="true"]:active {
+  background: #4b5563 !important;
+}
+
+/* Add a subtle visual indicator for the resize handle */
+[data-panel-resize-handle-enabled="true"]::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 3px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+[data-panel-resize-handle-enabled="true"]:hover::before {
+  opacity: 1;
+}
+
+/* Ensure panels take full height */
+[data-panel] {
+  height: 100%;
+}
+
+/* Smooth transitions for panel resizing */
+[data-panel-group] {
+  transition: none;
+}
+
+/* Line clamp utilities for text truncation */
+.line-clamp-2 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 } 

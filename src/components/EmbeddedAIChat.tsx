@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Rnd } from 'react-rnd';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 
 const ICON_PATH = '/favicon.svg';
 
@@ -43,7 +47,7 @@ ${webContext.enhancedData.ai_context?.context_summary || 'Rich content data avai
   return basePrompt;
 };
 
-interface AIChatPopupProps {
+interface EmbeddedAIChatProps {
   webContext?: {
     hasSearchResults: boolean;
     query: string;
@@ -53,12 +57,10 @@ interface AIChatPopupProps {
   };
 }
 
-const AIChatPopup: React.FC<AIChatPopupProps> = ({ webContext }) => {
-  const [isOpen, setIsOpen] = useState(false);
+const EmbeddedAIChat: React.FC<EmbeddedAIChatProps> = ({ webContext }) => {
   const [messages, setMessages] = useState<{ role: 'user' | 'assistant'; content: string; isStreaming?: boolean }[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isPanelVisible, setIsPanelVisible] = useState(true);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -69,20 +71,6 @@ const AIChatPopup: React.FC<AIChatPopupProps> = ({ webContext }) => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
-
-  const handleToggle = () => {
-    setIsOpen(!isOpen);
-    if (!isOpen) {
-      setIsPanelVisible(true);
-    }
-  };
-
-  const handleClose = () => {
-    setIsPanelVisible(false);
-    setTimeout(() => {
-      setIsOpen(false);
-    }, 300);
-  };
 
   const handleSend = async () => {
     if (input.trim() === '' || isLoading) return;
@@ -187,108 +175,97 @@ const AIChatPopup: React.FC<AIChatPopupProps> = ({ webContext }) => {
   };
 
   return (
-    <>
-      <motion.button
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
-        onClick={handleToggle}
-        className="fixed bottom-6 right-6 z-[9998] bg-[#1C1C1E] p-3 rounded-full shadow-lg border border-gray-700"
-        style={{ display: isOpen ? 'none' : 'block' }}
-      >
-        <img src={ICON_PATH} alt="Chat Icon" className="w-8 h-8" />
-      </motion.button>
+    <div className="h-full flex flex-col bg-[#161618] border-r border-gray-700">
+      {/* Header */}
+      <div className="h-12 bg-[#1C1C1E] flex items-center justify-center px-4 border-b border-gray-700 flex-shrink-0">
+        <div className="flex items-center gap-2">
+          <img src={ICON_PATH} alt="Tehom AI" className="w-6 h-6" />
+          <span className="text-white font-semibold">Tehom AI</span>
+        </div>
+      </div>
 
-      {isOpen && (
-        <Rnd
-          default={{
-            x: window.innerWidth - 420 - 24, // screen width - width - right margin
-            y: window.innerHeight - 600 - 24, // screen height - height - bottom margin
-            width: 420,
-            height: 600,
-          }}
-          minWidth={320}
-          minHeight={400}
-          bounds="window"
-          dragHandleClassName="drag-handle"
-          className="z-[9999] rounded-2xl shadow-2xl overflow-hidden border border-gray-700"
-          style={{ background: '#161618' }}
-        >
-          <motion.div
-            initial={{ opacity: 0, y: 50, scale: 0.9 }}
-            animate={{ opacity: isPanelVisible ? 1 : 0, y: isPanelVisible ? 0 : 50, scale: isPanelVisible ? 1 : 0.9 }}
-            transition={{ duration: 0.3, ease: 'easeInOut' }}
-            className="h-full w-full flex flex-col"
-          >
-            {/* Header / Drag Handle */}
-            <div className="drag-handle h-12 bg-[#1C1C1E] flex items-center justify-between px-4 cursor-move flex-shrink-0">
-              <div className="flex items-center gap-2">
-                <img src={ICON_PATH} alt="Tehom AI" className="w-6 h-6" />
-                <span className="text-white font-semibold">Tehom AI</span>
+      {/* Chat History */}
+      <div className="flex-grow overflow-y-auto p-4 custom-scrollbar">
+        <div className="space-y-4">
+          {messages.length === 0 && (
+            <div className="flex items-center justify-center h-full text-gray-400 text-center">
+              <div>
+                <img src={ICON_PATH} alt="Tehom AI" className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p className="text-sm">Ask me anything about your search results!</p>
+                {webContext?.hasSearchResults && (
+                  <p className="text-xs mt-2 text-gray-500">
+                    I have access to {webContext.sourcesCount} sources from "{webContext.query}"
+                  </p>
+                )}
               </div>
-              <button onClick={handleClose} className="text-gray-400 hover:text-white">&times;</button>
             </div>
-
-            {/* Chat History */}
-            <div className="flex-grow overflow-y-auto p-4 custom-scrollbar">
-              <div className="space-y-4">
-                {messages.map((msg, index) => (
-                  <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <div
-                      className={`max-w-xs md:max-w-md lg:max-w-lg px-4 py-2 rounded-2xl ${
-                        msg.role === 'user'
-                          ? 'bg-[#2E2E30] text-white'
-                          : 'bg-[#2A2A2C] text-gray-200'
-                      }`}
+          )}
+          {messages.map((msg, index) => (
+            <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div
+                className={`max-w-xs md:max-w-md lg:max-w-lg px-4 py-2 rounded-2xl ${
+                  msg.role === 'user'
+                    ? 'bg-[#2E2E30] text-white'
+                    : 'bg-[#2A2A2C] text-gray-200'
+                }`}
+              >
+                {msg.role === 'assistant' ? (
+                  <div className="markdown-body text-sm">
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm, remarkMath]}
+                      rehypePlugins={[rehypeKatex]}
                     >
                       {msg.content}
-                    </div>
+                    </ReactMarkdown>
                   </div>
-                ))}
-                <div ref={messagesEndRef} />
+                ) : (
+                  <div className="text-sm">{msg.content}</div>
+                )}
               </div>
             </div>
+          ))}
+          <div ref={messagesEndRef} />
+        </div>
+      </div>
 
-            {/* Input Area */}
-            <div className="p-4 border-t border-gray-700 bg-[#1C1C1E] flex-shrink-0">
-              <div className="flex items-center bg-[#2A2A2C] rounded-xl p-2">
-                <textarea
-                  value={input}
-                  onChange={e => setInput(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Ask me anything..."
-                  className="flex-grow bg-transparent text-white placeholder-gray-400 focus:outline-none resize-none"
-                  rows={1}
-                />
-                <button
-                  onClick={handleSend}
-                  disabled={isLoading || input.trim() === ''}
-                  className={`ml-2 p-2 rounded-full transition-colors ${
-                    isLoading || input.trim() === ''
-                      ? 'bg-gray-600 cursor-not-allowed'
-                      : 'bg-white hover:bg-gray-200'
-                  }`}
-                >
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                    className={`${isLoading || input.trim() === '' ? 'text-gray-400' : 'text-black'}`}
-                  >
-                    <path
-                      d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"
-                      fill="currentColor"
-                    />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        </Rnd>
-      )}
-    </>
+      {/* Input Area */}
+      <div className="p-4 border-t border-gray-700 bg-[#1C1C1E] flex-shrink-0">
+        <div className="flex items-center bg-[#2A2A2C] rounded-xl p-2">
+          <textarea
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Ask me anything..."
+            className="flex-grow bg-transparent text-white placeholder-gray-400 focus:outline-none resize-none"
+            rows={1}
+          />
+          <button
+            onClick={handleSend}
+            disabled={isLoading || input.trim() === ''}
+            className={`ml-2 p-2 rounded-full transition-colors ${
+              isLoading || input.trim() === ''
+                ? 'bg-gray-600 cursor-not-allowed'
+                : 'bg-white hover:bg-gray-200'
+            }`}
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              className={`${isLoading || input.trim() === '' ? 'text-gray-400' : 'text-black'}`}
+            >
+              <path
+                d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"
+                fill="currentColor"
+              />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
   );
 };
 
-export default AIChatPopup; 
+export default EmbeddedAIChat;
