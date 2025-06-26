@@ -64,26 +64,8 @@ const stripEmojis = (text: string) => {
   return text.replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, '').trim();
 };
 
-const processCitations = (text: string, sources: any[] = []) => {
-  if (!text) return '';
-  if (!sources || sources.length === 0) return text;
-
-  // Handle individual citations like [1], [2], [3]
-  // This regex specifically looks for individual numbers in brackets
-  return text.replace(/\[(\d+)\]/g, (match, numberStr) => {
-    const number = parseInt(numberStr, 10);
-    // Check if the number is valid and within our sources range
-    if (number >= 1 && number <= sources.length) {
-      const source = sources[number - 1];
-      if (source && (source.url || source.link)) {
-        const url = source.url || source.link;
-        return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="citation-badge">${number}</a>`;
-      }
-    }
-    // Return the original match if no valid source found
-    return match;
-  });
-};
+// Citation processing is no longer needed since we use direct Markdown links
+// The ReactMarkdown component will automatically render markdown links as clickable links
 
 interface WebContext {
   hasSearchResults: boolean;
@@ -134,10 +116,10 @@ const getContextualSystemPrompt = (webContext: WebContext | undefined) => {
 - Write like a smart human: confident, conversational, and clear — not robotic.
 - Be direct, helpful, and friendly.
 
-**Critical Citation Rules:** The user has provided web sources, each identified by a number. When you use information from a source, you MUST cite it using individual numbers in brackets immediately after the relevant information. Use only individual citations like [1] or [2], never group them like [1][2][3]. Place citations right after the specific fact or claim you're referencing.
+**Critical Rule for Citations:** The user has provided web sources, each identified by a number. When you use information from a source, you MUST cite it using only its number in brackets, for example: \`[1]\`. Do not use the source name or the full URL.
 
 ${webContext?.hasSearchResults
-  ? `Current context: Analyzing "${webContext.query}" using ${webContext.sourcesCount} web sources. The sources are provided in the user message. Base your answer on them and follow the citation rules.`
+  ? `Current context: Analyzing "${webContext.query}" using ${webContext.sourcesCount} web sources. The sources are provided in the user message. Base your answer on them and follow the citation rule.`
   : 'No web sources available – provide general assistance while maintaining a web-aware mindset.'}
 
 Key rule: Write like you're explaining the internet to a smart friend — not drafting a formal report. Prioritize insight, tone, and usability.`;
@@ -242,14 +224,9 @@ const EmbeddedAIChat: React.FC<EmbeddedAIChatProps> = ({ webContext, onSendMessa
       .replace(/<thinking-indicator.*?>\n<\/thinking-indicator>\n|<thinking-indicator.*?\/>/g, '')
       .trim();
 
-    const processedContent = msg.isStreaming 
+    const finalContent = msg.isStreaming 
       ? smartBufferStreamingContent(cleanContent)
       : cleanContent;
-
-    // Only apply citations if we have web sources
-    const finalContent = msg.webSources?.length 
-      ? processCitations(processedContent, msg.webSources)
-      : processedContent;
 
     const showTypingIndicator = msg.role === 'assistant' && finalContent.trim().length === 0 && !msg.isProcessed;
 
@@ -294,7 +271,7 @@ const EmbeddedAIChat: React.FC<EmbeddedAIChatProps> = ({ webContext, onSendMessa
                   a: ({ href, children }) => (
                     <a 
                       href={href}
-                      className="text-cyan-400 hover:text-cyan-300 transition-colors"
+                      className="citation-badge"
                       target="_blank"
                       rel="noopener noreferrer"
                     >

@@ -615,16 +615,17 @@ textarea::-webkit-scrollbar-thumb,
   @apply mr-2;
 }
 
-/* Citation badge styles - small, round, clickable */
+/* Citation badge styles - small, pill-shaped, clickable */
 .citation-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
+  min-width: 20px;
   height: 18px;
+  padding: 0 6px;
   background: #06b6d4;
   color: white;
-  border-radius: 50%;
+  border-radius: 9px;
   font-size: 10px;
   font-weight: 600;
   text-decoration: none;
@@ -632,6 +633,7 @@ textarea::-webkit-scrollbar-thumb,
   vertical-align: baseline;
   transition: all 0.2s ease;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .citation-badge:hover {

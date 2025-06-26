@@ -67,7 +67,7 @@ const BrowserPageComponent = () => {
       setTextSources([]);
     }
   }, [searchResults]);
-
+  
   // Extract images from search results for the carousel
   const carouselImages = useMemo(() => {
     if (!searchResults?.length) return [];
@@ -178,31 +178,75 @@ const BrowserPageComponent = () => {
   // Helper to get the final AI answer (browser_chat mode)
   const getFinalAnswer = async (userQuestion: string, webContext: any) => {
     setIsChatLoading(true);
-    let accumulatedContent = '';
-    
+    setChatMessages([{ role: 'user', content: userQuestion }]);
     try {
+      // Prepare user message with web sources if available
+      let userMessageContent = userQuestion;
+      
+      if (webContext && webContext.hasSearchResults && webContext.sources) {
+        // Use enhanced data if available, otherwise fall back to basic sources
+        let sourceTexts = '';
+        
+        if (webContext.enhancedData && webContext.enhancedData.full_content) {
+          // Use the optimized character-limited content from enhanced data
+          sourceTexts = Object.entries(webContext.enhancedData.full_content).map(([sourceId, data]: [string, any], index: number) => {
+            const sourceInfo = webContext.sources.find((s: any) => s.id === sourceId) || webContext.sources[index];
+            return `Source [${index + 1}]: ${sourceInfo?.url || 'Unknown URL'}
+Title: ${sourceInfo?.title || 'Unknown Title'}
+Content: ${data.text || 'No content available'}`;
+          }).join('\n\n---\n\n');
+        } else {
+          // Fallback to basic source data
+          sourceTexts = webContext.sources.map((source: any, index: number) => (
+            `Source [${index + 1}]: ${source.url}
+Title: ${source.title}
+Content: ${source.text || source.snippet || 'No content available'}`
+          )).join('\n\n---\n\n');
+        }
+        
+        userMessageContent = `Please answer the following question based on the provided web sources. Focus your response on the user's specific question and use the web content to provide accurate, relevant information.
+
+---
+
+${sourceTexts}
+
+---
+
+User Question: ${userQuestion}
+
+Please provide a comprehensive answer that directly addresses this question using the information from the sources above.`;
+      }
+      
+      const messages = [
+        { role: 'system', content: buildContextualSystemPrompt(webContext) },
+        { role: 'user', content: userMessageContent }
+      ];
+      const modelParameters = webContext?.modelConfig || {
+        temperature: 0.8,
+        top_p: 0.95,
+        max_tokens: 64000
+      };
       const response = await fetch('/api/nvidia', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: userQuestion,
-          webContext: webContext,
-          systemPrompt: buildContextualSystemPrompt(webContext),
-          mode: 'browser_chat'
-        }),
+          messages,
+          mode: 'browser_chat',
+          ...modelParameters
+        })
       });
-
-      if (!response.ok) throw new Error('Failed to fetch AI response');
-      if (!response.body) throw new Error('No response body');
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
+      if (!response.ok) throw new Error('Failed to get response');
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('Failed to get reader');
+      
+      let accumulatedContent = '';
       let buffer = '';
-
+      const decoder = new TextDecoder();
+      
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-
+        
         // Add new chunk to buffer
         buffer += decoder.decode(value, { stream: true });
         
@@ -224,12 +268,7 @@ const BrowserPageComponent = () => {
                 
                 setChatMessages([
                   { role: 'user', content: userQuestion },
-                  { 
-                    role: 'assistant', 
-                    content: accumulatedContent, 
-                    isStreaming: true,
-                    webSources: webContext?.sources || []
-                  }
+                  { role: 'assistant', content: accumulatedContent, isStreaming: true }
                 ]);
               }
         } catch (e) {
@@ -242,24 +281,12 @@ const BrowserPageComponent = () => {
       
       setChatMessages([
         { role: 'user', content: userQuestion },
-        { 
-          role: 'assistant', 
-          content: accumulatedContent, 
-          isStreaming: false, 
-          isProcessed: true,
-          webSources: webContext?.sources || []
-        }
+        { role: 'assistant', content: accumulatedContent, isStreaming: false, isProcessed: true }
       ]);
     } catch (error) {
       setChatMessages([
         { role: 'user', content: userQuestion },
-        { 
-          role: 'assistant', 
-          content: 'Error: Could not fetch response.', 
-          isStreaming: false, 
-          isProcessed: true,
-          webSources: []
-        }
+        { role: 'assistant', content: 'Error: Could not fetch response.', isStreaming: false, isProcessed: true }
       ]);
     } finally {
       setIsChatLoading(false);
@@ -377,10 +404,10 @@ const BrowserPageComponent = () => {
 Your mission is to analyze, synthesize, and present web content in a way that's both deeply informative and refreshingly human. You're not just summarizing—you're connecting dots, revealing patterns, and providing the kind of nuanced understanding that comes from truly comprehending the material.
 
 Core Methodology:
-1. Think like an analyst, write like a storyteller: Dive deep into the sources, identify key themes and contradictions, then weave them into a coherent narrative.
-2. Lead with insight: Start with the most important findings, then build your case with supporting details.
-3. Connect the dots: Highlight relationships between different sources, emerging patterns, and implications the user might not have considered.
-4. Address nuance: When sources disagree or information is uncertain, explore why that might be and what it means for the user.
+1.  Think like an analyst, write like a storyteller: Dive deep into the sources, identify key themes and contradictions, then weave them into a coherent narrative.
+2.  Lead with insight: Start with the most important findings, then build your case with supporting details.
+3.  Connect the dots: Highlight relationships between different sources, emerging patterns, and implications the user might not have considered.
+4.  Address nuance: When sources disagree or information is uncertain, explore why that might be and what it means for the user.
 
 Execution Rules:
 - Start strong: Jump straight into your key finding or most important insight. Do not use introductory filler like "Based on the sources provided." Start with impact. For example: "The cryptocurrency market in 2025 is experiencing a fundamental shift toward institutional legitimacy, but this mainstream adoption is creating new tensions around decentralization principles."
@@ -390,14 +417,13 @@ Execution Rules:
 - Handle conflicting information: Always identify contradictions and explain possible reasons. Highlight gaps in available information.
 - Explain the 'so what': Connect findings to broader implications. Offer perspective on what this means for the user's specific question.
 
-CRITICAL CITATION RULES:
-- Use ONLY individual numbers in brackets like [1] or [2] or [3]
-- Place citations IMMEDIATELY after each specific claim or fact as you write
-- NEVER group citations like [1][2][3] - always use them individually: [1] [2] [3]
-- Insert citations naturally throughout your response, not at the end of paragraphs
-- When you use information from a source, cite it RIGHT THEN with [X]
-- Example of CORRECT citation style: "Samsung phones are popular in Bangladesh [1] with Excel eStore being the official distributor [2]. However, delivery is currently suspended until June 22nd [2]."
-- Example of WRONG citation style: "Samsung phones are popular in Bangladesh with Excel eStore being the official distributor. However, delivery is currently suspended until June 22nd [1][2]."
+Citation Format:
+- Reference sources using direct Markdown links with descriptive link text, like [Latest Tech Report](https://example.com/tech-report) or [Study from MIT](https://mit.edu/study).
+- Place these links naturally within sentences where the information appears, not at the end of paragraphs.
+- Use meaningful anchor text that describes what the link contains (e.g., "recent analysis", "company report", "study findings").
+- When multiple sources support a point, include separate links: "According to [Forbes analysis](https://forbes.com/article) and [Bloomberg report](https://bloomberg.com/news), the market is growing."
+- **Correct Example:** "The cryptocurrency market is experiencing growth according to [latest industry analysis](https://example.com/crypto-report)."
+- **Incorrect Example:** "The cryptocurrency market is experiencing growth [1]."
 
 Tone and Style:
 - Human, not robotic: Use contractions, varied sentence lengths, and natural phrasing.
@@ -500,7 +526,7 @@ Do NOT use emojis or any other unnecessary characters.`;
                   {/* Tab Navigation */}
                   <div className="flex border-b border-gray-700 px-6 pt-6">
                     {['Sources', 'Images', 'Videos'].map((tab) => (
-                      <button
+                <button
                         key={tab}
                         onClick={() => setActiveTab(tab)}
                         disabled={tab === 'Videos' && videoSources.length === 0}
@@ -522,7 +548,7 @@ Do NOT use emojis or any other unnecessary characters.`;
                     {activeTab === 'Sources' && (
                       <div className="space-y-4">
                         {textSources.map((result, index) => (
-                          <motion.div
+                    <motion.div
                             key={result.id || index}
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -547,18 +573,15 @@ Do NOT use emojis or any other unnecessary characters.`;
                                   <span className="flex-shrink-0 ml-auto bg-gray-700 text-gray-200 text-xs w-5 h-5 flex items-center justify-center rounded-full">
                                     {index + 1}
                                   </span>
-                                )}
-                              </div>
+              )}
+            </div>
                               <h3 className="font-semibold text-white mb-1.5 hover:text-blue-400 transition-colors">
                                 {result.title}
                               </h3>
-                              <p className="text-sm text-gray-300 leading-relaxed">
-                                {result.snippet}
-                              </p>
                             </a>
-                          </motion.div>
+          </motion.div>
                         ))}
-                      </div>
+        </div>
                     )}
                     
                     {activeTab === 'Images' && (
@@ -567,17 +590,17 @@ Do NOT use emojis or any other unnecessary characters.`;
                       ) : (
                         <div className="flex items-center justify-center h-full">
                           <p className="text-gray-400">No images found for this search.</p>
-                        </div>
+            </div>
                       )
                     )}
 
                     {activeTab === 'Videos' && (
                       <div className="space-y-4">
                         {videoSources.map((result, index) => (
-                          <motion.div
+            <motion.div
                             key={result.id || index}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.3, delay: index * 0.05 }}
                             className="bg-transparent p-4 rounded-lg border border-gray-800/60 transition-colors max-w-3xl mx-auto"
                           >
@@ -595,20 +618,17 @@ Do NOT use emojis or any other unnecessary characters.`;
                                 <span className="text-xs text-gray-400 truncate">
                                   {extractDomain(result.url)}
                                 </span>
-                              </div>
+                            </div>
                               <h3 className="font-semibold text-white mb-1.5 hover:text-blue-400 transition-colors">
-                                {result.title}
+                            {result.title}
                               </h3>
-                              <p className="text-sm text-gray-300 leading-relaxed">
-                                {result.snippet}
-                              </p>
                             </a>
                           </motion.div>
                         ))}
                       </div>
                     )}
                   </div>
-                </div>
+              </div>
               )}
             </div>
           </Panel>
