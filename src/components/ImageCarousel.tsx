@@ -127,7 +127,7 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({ images }) => {
                 key={index}
                 onClick={() => setCurrentIndex(index)}
                 className={`w-2 h-2 rounded-full transition-colors ${
-                  currentIndex === index ? 'bg-cyan-500' : 'bg-gray-600'
+                  currentIndex === index ? 'bg-white/80' : 'bg-gray-600'
                 }`}
               />
             ))}

@@ -5,11 +5,11 @@ export const runtime = 'edge';
 interface ExaSearchResult {
   title: string;
   url: string;
-  snippet?: string; // Basic search results may have snippet
-  text?: string; // Full content from searchAndContents
-  highlights?: string[]; // Highlights from searchAndContents
-  highlightScores?: number[]; // Scores for highlights
-  summary?: string; // Summary from searchAndContents
+  snippet?: string;
+  text?: string;
+  highlights?: string[];
+  highlightScores?: number[];
+  summary?: string;
   author?: string | null;
   publishedDate?: string | null;
   score?: number;
@@ -18,11 +18,16 @@ interface ExaSearchResult {
   favicon?: string;
 }
 
-interface ExaApiResponse {
+interface ExaSearchResponse {
   requestId: string;
   resolvedSearchType: 'neural' | 'keyword';
   results: ExaSearchResult[];
-  searchType?: string;
+  costDollars?: any;
+}
+
+interface ExaContentsResponse {
+  requestId: string;
+  results: ExaSearchResult[];
   costDollars?: any;
 }
 
@@ -34,7 +39,7 @@ interface TransformedSearchResult {
   favicon?: string;
   image?: string;
   timestamp?: string;
-  text?: string;
+  summary?: string;
 }
 
 export async function POST(req: NextRequest) {
@@ -48,11 +53,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Log all environment variables (be careful with this in production)
-    console.log('Available env variables:', Object.keys(process.env).filter(key => !key.includes('PASSWORD') && !key.includes('SECRET')));
-    
     const EXA_API_KEY = process.env.EXA_API_KEY;
-    console.log('EXA_API_KEY exists:', !!EXA_API_KEY);
     
     if (!EXA_API_KEY) {
       console.error('EXA_API_KEY is not defined in environment variables');
@@ -62,157 +63,204 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Build optimized payload with character limits and essential content only
-    const payload: Record<string, any> = {
+    console.log('Starting two-step Exa API process for query:', query);
+
+    // Step 1: Search for URLs and basic metadata
+    const searchPayload = {
       query,
       numResults: 10,
-      contents: {
-        text: {
-          maxCharacters: 6000 // Limit to 6000 characters per result for manageable processing
-        },
-        livecrawl: "preferred", // Try fresh crawl but fallback to cache if fails
-        extras: {
-          imageLinks: 3 // Get up to 3 image links per result
-        }
-      },
-      useAutoprompt: true // Enable query enhancement
+      useAutoprompt: true
     };
 
-    console.log('Exa optimized search request:', {
-      query,
-      enhanced,
-      numResults: 10,
-      textLimit: '6000 chars per source',
-      imageLinks: 3,
-      livecrawl: "preferred",
-      totalEstimatedChars: '~60,000 max (10 sources × 6000 chars)'
-    });
+    console.log('Step 1: Searching for URLs...');
 
-    // Create a manual timeout controller for Edge Function compatibility
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 25000); // 25 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout for two-step process
     
     try {
-      const exaResponse = await fetch('https://api.exa.ai/search', {
+      // Step 1: Get URLs from search endpoint
+      const searchResponse = await fetch('https://api.exa.ai/search', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'x-api-key': EXA_API_KEY,
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(searchPayload),
         signal: controller.signal
       });
-      
-      clearTimeout(timeoutId); // Clear timeout on successful response
 
-      if (!exaResponse.ok) {
-        const errorData = await exaResponse.text();
-        console.error('Exa API error:', errorData);
+      if (!searchResponse.ok) {
+        clearTimeout(timeoutId);
+        const errorData = await searchResponse.text();
+        console.error('Exa search API error:', errorData);
         return new Response(JSON.stringify({ error: 'Failed to fetch search results' }), {
-          status: exaResponse.status,
+          status: searchResponse.status,
           headers: { 'Content-Type': 'application/json' }
         });
       }
 
-      const data = await exaResponse.json() as ExaApiResponse;
+      const searchData = await searchResponse.json() as ExaSearchResponse;
       
-      console.log('Exa optimized response:', {
-        requestId: data.requestId,
-        searchType: data.resolvedSearchType,
-        resultsCount: data.results.length,
-        textContentSizes: data.results.map(r => r.text ? r.text.length : 0),
-        totalCharacters: data.results.reduce((sum, r) => sum + (r.text?.length || 0), 0),
-        avgCharactersPerResult: data.results.length > 0 
-          ? Math.round(data.results.reduce((sum, r) => sum + (r.text?.length || 0), 0) / data.results.length)
-          : 0,
-        resultsWithImages: data.results.filter(r => r.image).length,
-        resultsWithFavicons: data.results.filter(r => r.favicon).length
+      console.log('Step 1 complete:', {
+        requestId: searchData.requestId,
+        searchType: searchData.resolvedSearchType,
+        resultsFound: searchData.results.length
       });
+
+      // Extract URLs for contents request
+      const urls = searchData.results.map(result => result.url);
       
-      // Transform Exa results to match our application's format with essential metadata
-      const transformedResults: TransformedSearchResult[] = data.results.map((result, index) => ({
-        id: result.id || (index + 1).toString(),
-        title: result.title,
-        snippet: result.text?.substring(0, 200) + '...' || 'No content available',
-        url: result.url,
-        favicon: result.favicon, // Essential for UI display
-        image: result.image, // Essential for visual context
-        timestamp: result.publishedDate || new Date().toISOString(),
-        text: result.text || '' // Character-limited full text
-      }));
+      console.log('Step 2: Fetching contents and summaries for', urls.length, 'URLs...');
 
-      // Check content quality with new limits
-      const contentfulResults = transformedResults.filter(r => r.text && r.text.length > 100);
-      const totalCharacters = transformedResults.reduce((sum, r) => sum + (r.text?.length || 0), 0);
+      // Step 2: Get summaries from contents endpoint
+      const contentsPayload = {
+        ids: urls,
+        summary: true,
+        text: false, // We only want summaries, not full text
+        highlights: false,
+        extras: {
+          imageLinks: 5
+        }
+      };
 
-      console.log('Optimized content quality check:', {
-        totalResults: transformedResults.length,
+      const contentsResponse = await fetch('https://api.exa.ai/contents', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': EXA_API_KEY,
+        },
+        body: JSON.stringify(contentsPayload),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!contentsResponse.ok) {
+        const errorData = await contentsResponse.text();
+        console.error('Exa contents API error:', errorData);
+        // Fall back to search results if contents fails
+        console.log('Falling back to search results without summaries');
+        
+        const fallbackResults: TransformedSearchResult[] = searchData.results.map((result, index) => ({
+          id: result.id || (index + 1).toString(),
+          title: result.title,
+          snippet: result.snippet || 'No summary available',
+          url: result.url,
+          favicon: result.favicon,
+          image: result.image,
+          timestamp: result.publishedDate || new Date().toISOString(),
+          summary: result.snippet || ''
+        }));
+
+        return new Response(JSON.stringify({ 
+          sources: fallbackResults,
+          resultsCount: fallbackResults.length,
+          metadata: {
+            timestamp: new Date().toISOString(),
+            query_processed: query,
+            enhanced_mode: enhanced,
+            exa_request_id: searchData.requestId,
+            api_method: 'search_only_fallback',
+            content_retrieval: 'fallback_no_summaries'
+          }
+        }), {
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      const contentsData = await contentsResponse.json() as ExaContentsResponse;
+      
+      console.log('Step 2 complete:', {
+        requestId: contentsData.requestId,
+        contentsFound: contentsData.results.length,
+        summaryLengths: contentsData.results.map(r => r.summary ? r.summary.length : 0),
+        resultsWithImages: contentsData.results.filter(r => r.image).length,
+        resultsWithFavicons: contentsData.results.filter(r => r.favicon).length
+      });
+
+      // Merge search results with contents data
+      const mergedResults: TransformedSearchResult[] = searchData.results.map((searchResult, index) => {
+        // Find corresponding content by URL
+        const contentResult = contentsData.results.find(content => content.url === searchResult.url);
+        
+        return {
+          id: searchResult.id || (index + 1).toString(),
+          title: searchResult.title,
+          snippet: contentResult?.summary || searchResult.snippet || 'No summary available',
+          url: searchResult.url,
+          favicon: contentResult?.favicon || searchResult.favicon,
+          image: contentResult?.image || searchResult.image,
+          timestamp: searchResult.publishedDate || new Date().toISOString(),
+          summary: contentResult?.summary || ''
+        };
+      });
+
+      const contentfulResults = mergedResults.filter(r => r.summary && r.summary.length > 50);
+      const totalCharacters = mergedResults.reduce((sum, r) => sum + (r.summary?.length || 0), 0);
+
+      console.log('Two-step process complete - content quality check:', {
+        totalResults: mergedResults.length,
         contentfulResults: contentfulResults.length,
         totalCharacters,
-        avgContentLength: contentfulResults.length > 0 
-          ? Math.round(contentfulResults.reduce((sum, r) => sum + (r.text?.length || 0), 0) / contentfulResults.length)
+        avgContentLength: contentfulResults.length > 0
+          ? Math.round(contentfulResults.reduce((sum, r) => sum + (r.summary?.length || 0), 0) / contentfulResults.length)
           : 0,
-        estimatedTokens: Math.round(totalCharacters / 4), // Rough token estimate
-        withinLimits: totalCharacters < 80000 // Should be well within limits now
+        estimatedTokens: Math.round(totalCharacters / 4),
       });
 
-      // Simplified enhanced data structure focused on essential content
+      // Enhanced data structure for two-step results
       const enhancedData = {
-        full_content: data.results.reduce((acc: any, result: any, index: number) => {
+        summaries: mergedResults.reduce((acc: any, result: any, index: number) => {
           const resultId = result.id || (index + 1).toString();
           acc[resultId] = {
-            text: result.text || '', // Character-limited full text
+            summary: result.summary || '',
             metadata: {
-              author: result.author || null,
-              publishedDate: result.publishedDate || null,
-              score: result.score || null,
-              searchType: data.resolvedSearchType || 'auto',
-              textLength: (result.text || '').length,
-              hasImage: !!(result.image),
-              hasFavicon: !!(result.favicon),
-              contentSource: result.text ? 'livecrawl' : 'cache'
+              author: null,
+              publishedDate: result.timestamp || null,
+              score: null,
+              searchType: searchData.resolvedSearchType || 'auto',
+              summaryLength: (result.summary || '').length
             }
           };
           return acc;
         }, {}),
         search_metadata: {
-          request_id: data.requestId,
-          search_type: data.resolvedSearchType || 'auto',
-          total_results: data.results.length,
-          content_available: data.results.filter(r => r.text).length,
+          search_request_id: searchData.requestId,
+          contents_request_id: contentsData.requestId,
+          search_type: searchData.resolvedSearchType || 'auto',
+          total_results: mergedResults.length,
+          content_available: contentfulResults.length,
           total_characters: totalCharacters,
           estimated_tokens: Math.round(totalCharacters / 4),
-          cost_info: data.costDollars || null,
-          optimization: 'character_limited',
-          content_quality: {
-            contentful_results: contentfulResults.length,
-            within_token_limits: totalCharacters < 80000,
-            avg_chars_per_result: Math.round(totalCharacters / data.results.length)
-          }
+          cost_info: {
+            search: searchData.costDollars || null,
+            contents: contentsData.costDollars || null
+          },
+          optimization: 'two_step_search_and_contents'
         }
       };
 
       return new Response(JSON.stringify({ 
-        sources: transformedResults,
-        resultsCount: transformedResults.length,
+        sources: mergedResults,
+        resultsCount: mergedResults.length,
         enhanced: enhancedData,
         metadata: {
           timestamp: new Date().toISOString(),
           query_processed: query,
           enhanced_mode: enhanced,
-          exa_request_id: data.requestId,
-          api_method: 'searchAndContents',
-          content_retrieval: 'single_api_call'
+          exa_search_request_id: searchData.requestId,
+          exa_contents_request_id: contentsData.requestId,
+          api_method: 'two_step_search_and_contents',
+          content_retrieval: 'reliable_summaries'
         }
       }), {
         headers: { 'Content-Type': 'application/json' }
       });
       
     } catch (error) {
-      clearTimeout(timeoutId); // Ensure timeout is cleared on error
-      console.error('Search API error:', error);
+      clearTimeout(timeoutId);
+      console.error('Two-step Exa API error:', error);
       
-      // Handle specific timeout errors
       if (error instanceof Error && error.name === 'AbortError') {
         return new Response(JSON.stringify({ 
           error: 'Search request timed out. Please try again with a simpler query.' 
@@ -222,13 +270,13 @@ export async function POST(req: NextRequest) {
         });
       }
       
-      return new Response(JSON.stringify({ error: 'Internal server error' }), {
+      return new Response(JSON.stringify({ error: 'Internal server error during search' }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' }
       });
     }
   } catch (error) {
-    console.error('Search API error:', error);
+    console.error('Exa API route error:', error);
     return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }

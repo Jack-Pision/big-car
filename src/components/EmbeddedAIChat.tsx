@@ -435,3 +435,4 @@ const EmbeddedAIChat: React.FC<EmbeddedAIChatProps> = ({ webContext, onSendMessa
 };
 
 export default EmbeddedAIChat;
+ 

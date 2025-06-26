@@ -36,10 +36,12 @@ const BrowserPageComponent = () => {
   const searchParams = useSearchParams();
   const { user, showSettingsModal } = useAuth();
   const [query, setQuery] = useState('');
+  const [rightPaneQuery, setRightPaneQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [aiResponse, setAiResponse] = useState<AIResponse | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState('Sources');
   
   // Extract images from search results for the carousel
   const carouselImages = useMemo(() => {
@@ -54,6 +56,16 @@ const BrowserPageComponent = () => {
       }));
   }, [searchResults]);
 
+  // Helper function to extract domain from URL
+  const extractDomain = (url: string): string => {
+    try {
+      const urlObj = new URL(url);
+      return urlObj.hostname.replace('www.', '');
+    } catch {
+      return url;
+    }
+  };
+
   const searchInputRef = useRef<HTMLInputElement>(null);
   
   // State for history modal
@@ -62,9 +74,8 @@ const BrowserPageComponent = () => {
   // State for enhanced web context data
   const [webContextData, setWebContextData] = useState<any>(null);
 
-  // Add state for enhanced query and search status
-  const [searchStatus, setSearchStatus] = useState<'idle' | 'generating' | 'searching' | 'error'>('idle');
-  const [generatedQuery, setGeneratedQuery] = useState('');
+  // Add state for search status
+  const [searchStatus, setSearchStatus] = useState<'idle' | 'searching' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const [selectedSource, setSelectedSource] = useState<string | null>(null);
 
@@ -138,50 +149,6 @@ const BrowserPageComponent = () => {
       searchInputRef.current.focus();
     }
   }, []);
-
-  // Helper to get a plain-text enhanced query from the AI (DeepSeek, low tokens)
-  const getEnhancedQuery = async (originalQuery: string): Promise<string> => {
-    const systemPrompt = "You are an expert search query assistant. Your only job is to rewrite the user's question into the best possible, simple, plain-text search engine query. Do not add any explanation, preamble, or quotation marks. Only return the final query text.";
-    try {
-      const response = await fetch('/api/nvidia', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: originalQuery }
-          ],
-          mode: 'chat',
-          model: 'deepseek-ai/deepseek-r1-0528',
-          temperature: 0.1,
-          max_tokens: 32,
-        }),
-      });
-      if (!response.ok) return originalQuery;
-      const reader = response.body!.getReader();
-      const decoder = new TextDecoder();
-      let accumulatedContent = '';
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n');
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const jsonStr = line.slice(6).trim();
-            if (jsonStr === '[DONE]') break;
-            try {
-              const data = JSON.parse(jsonStr);
-              accumulatedContent += data.choices[0]?.delta?.content || '';
-            } catch {}
-          }
-        }
-      }
-      return accumulatedContent.trim() || originalQuery;
-    } catch {
-      return originalQuery;
-    }
-  };
 
   // Helper to get the final AI answer (browser_chat mode)
   const getFinalAnswer = async (userQuestion: string, webContext: any) => {
@@ -279,7 +246,7 @@ Please provide a comprehensive answer that directly addresses this question usin
                   { role: 'assistant', content: accumulatedContent, isStreaming: true }
                 ]);
               }
-            } catch (e) {
+        } catch (e) {
               // Ignore parsing errors for incomplete chunks
               console.warn('Failed to parse SSE chunk:', line);
             }
@@ -301,7 +268,7 @@ Please provide a comprehensive answer that directly addresses this question usin
     }
   };
 
-  // Update handleSearch to use the two-step pipeline
+  // Update handleSearch to send user query directly to Exa
   const handleSearch = async (searchQuery: string) => {
     if (!searchQuery.trim()) return;
     setIsSearching(true);
@@ -310,21 +277,16 @@ Please provide a comprehensive answer that directly addresses this question usin
     setAiResponse(null);
     setWebContextData(null);
     setSelectedSource(null);
-    setGeneratedQuery('');
     setErrorMessage('');
-    setSearchStatus('generating');
+    setSearchStatus('searching');
     setChatMessages([]);
     setIsChatLoading(true);
     try {
-      // Step 1: Get enhanced query
-      const enhancedQuery = await getEnhancedQuery(searchQuery);
-      setGeneratedQuery(enhancedQuery);
-      setSearchStatus('searching');
-      // Step 2: Search with enhanced query
+      // Step 1: Search directly with user's original query (no query rewriting)
       const response = await fetch('/api/exa', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: enhancedQuery, enhanced: true }),
+        body: JSON.stringify({ query: searchQuery, enhanced: true }),
       });
       if (!response.ok) throw new Error('Failed to fetch search results');
       const data = await response.json();
@@ -334,7 +296,7 @@ Please provide a comprehensive answer that directly addresses this question usin
       // Create web context data for AI chat popup
       const contextData = {
         hasSearchResults: true,
-        query: enhancedQuery,
+        query: searchQuery,
         sourcesCount: searchResults.length,
         hasEnhancedContent: !!data.enhanced,
         enhancedData: data.enhanced,
@@ -349,7 +311,7 @@ Please provide a comprehensive answer that directly addresses this question usin
         }
       };
       setWebContextData(contextData);
-      // Step 3: Only now, call the final AI for the answer
+      // Step 2: Only now, call the final AI for the answer
       await getFinalAnswer(searchQuery, contextData);
       // Update URL
       try {
@@ -403,20 +365,9 @@ Please provide a comprehensive answer that directly addresses this question usin
           <button onClick={() => setSearchStatus('idle')} className="bg-blue-600 text-white px-4 py-2 rounded-lg">Try Again</button>
         </>
       ) : (
-        <>
-          <div className="flex items-center gap-3 mb-4">
-            {searchStatus === 'generating' ? (
-              <span className="text-cyan-400 animate-pulse">Thinking...</span>
-            ) : (
-              <span className="text-cyan-400 animate-spin">Searching...</span>
-            )}
-          </div>
-          {searchStatus === 'searching' && (
-            <div className="bg-gray-800/50 p-3 rounded-lg flex items-center gap-2 animate-fade-in">
-              <span className="text-white">{generatedQuery}</span>
-            </div>
-          )}
-        </>
+        <div className="flex items-center gap-3 mb-4">
+          <span className="text-gray-200 animate-spin">Searching...</span>
+        </div>
       )}
     </div>
   );
@@ -518,38 +469,111 @@ ${webContext?.hasSearchResults
           
           {/* Right Pane - Search Interface */}
           <Panel defaultSize={50} minSize={30}>
-            <div className="h-full flex flex-col bg-gray-900/30">
+            <div className="h-full flex flex-col bg-[#161618]">
               {searchStatus !== 'idle' && searchResults.length === 0 ? (
                 <StatusUI />
-              ) : selectedSource ? (
-                <div className="h-full flex flex-col">
-                  <div className="flex justify-between items-center p-2 bg-gray-800 border-b border-gray-700">
-                    <h3 className="text-sm text-white truncate ml-2">{selectedSource}</h3>
-                    <button onClick={() => setSelectedSource(null)} className="text-gray-400 hover:text-white p-1 rounded-md">Close</button>
-                  </div>
-                  <div className="flex-grow bg-white">
-                    <iframe 
-                      src={selectedSource} 
-                      className="w-full h-full border-none" 
-                      sandbox="allow-same-origin allow-scripts"
-                      title="Source Content Viewer"
-                    />
-                  </div>
-                </div>
               ) : (
-                <div className="h-full overflow-y-auto">
-                  {searchResults.length > 0 ? (
-                    <ul className="p-4 space-y-3">
-                      {searchResults.map((result) => (
-                        <li key={result.id} className="bg-gray-800/50 p-4 rounded-lg hover:bg-gray-800 transition-colors cursor-pointer" onClick={() => setSelectedSource(result.url)}>
-                          <p className="font-semibold text-cyan-400 mb-1 truncate">{result.title}</p>
-                          <p className="text-xs text-green-400 mb-2 truncate">{result.url}</p>
-                          <p className="text-sm text-gray-300 line-clamp-2">{result.snippet}</p>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                     searchStatus === 'idle' && <div className="flex items-center justify-center h-full text-gray-500">Search results will appear here.</div>
+                <div className="h-full flex flex-col relative">
+                  {/* Tab Navigation */}
+                  <div className="flex border-b border-gray-700 px-6 pt-6">
+                    {['Sources', 'Images', 'Videos', 'News'].map((tab) => (
+                      <button
+                        key={tab}
+                        onClick={() => setActiveTab(tab)}
+                        disabled={tab === 'Videos' || tab === 'News'}
+                        className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                          activeTab === tab 
+                            ? 'text-white border-white' 
+                            : tab === 'Videos' || tab === 'News'
+                            ? 'text-gray-500 border-transparent cursor-not-allowed'
+                            : 'text-gray-400 border-transparent hover:text-gray-200'
+                        }`}
+                      >
+                        {tab}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Tab Content */}
+                  <div className={`flex-1 px-6 py-4 ${searchResults.length > 0 || (activeTab === 'Images' && carouselImages.length > 0) ? 'overflow-y-auto custom-scrollbar' : 'overflow-hidden'}`}>
+                    {activeTab === 'Sources' && (
+                      <div className="space-y-6">
+                        {searchResults.map((result, index) => (
+                          <div
+                            key={result.id}
+                            className="cursor-pointer hover:bg-gray-800/20 -mx-2 px-2 py-2 rounded-lg transition-colors"
+                            onClick={() => window.open(result.url, '_blank')}
+                          >
+                            <div className="flex items-start gap-3">
+                              {result.favicon && (
+                                <img 
+                                  src={result.favicon} 
+                                  alt="" 
+                                  className="w-4 h-4 mt-1 flex-shrink-0" 
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = 'none';
+                                  }}
+                                />
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm text-gray-400 mb-1">
+                                  {extractDomain(result.url)}
+                                </div>
+                                <h3 className="text-white font-semibold text-base leading-tight mb-2">
+                                  {result.title}
+                                </h3>
+                                <p className="text-gray-300 text-sm leading-relaxed">
+                                  {result.snippet}
+                                </p>
+                              </div>
+                              {index < 3 && (
+                                <div className="flex-shrink-0 bg-gray-700 text-gray-300 text-xs px-2 py-1 rounded">
+                                  {index + 1}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {activeTab === 'Images' && (
+                      <div>
+                        {carouselImages.length > 0 ? (
+                          <ImageCarousel images={carouselImages} />
+                        ) : (
+                          <div className="flex items-center justify-center h-32 text-gray-500">
+                            No images found
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {(activeTab === 'Videos' || activeTab === 'News') && (
+                      <div className="flex items-center justify-center h-32 text-gray-500">
+                        {activeTab} coming soon
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Scroll Down Button */}
+                  {(activeTab === 'Sources' && searchResults.length > 3) && (
+                    <div className="absolute bottom-4 right-4">
+                      <button
+                        onClick={() => {
+                          const container = document.querySelector('.custom-scrollbar');
+                          if (container) {
+                            container.scrollBy({ top: 300, behavior: 'smooth' });
+                          }
+                        }}
+                        className="bg-gray-800/80 hover:bg-gray-700 text-white p-2 rounded-full shadow-lg transition-colors"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+                        </svg>
+                      </button>
+                    </div>
                   )}
                 </div>
               )}
