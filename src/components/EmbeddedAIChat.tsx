@@ -12,23 +12,27 @@ const ICON_PATH = '/favicon.svg';
 
 // Add smart buffering function from main chat
 function smartBufferStreamingContent(content: string): string {
-  if (!content) return content;
-  
+  if (!content) return '';
+
   const lines = content.split('\n');
-  let bufferedContent = '';
-  
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    
-    // Skip incomplete markdown structures at the end
-    if (i === lines.length - 1 && isIncompleteMarkdown(line)) {
-      continue;
-    }
-    
-    bufferedContent += (i > 0 ? '\n' : '') + line;
+  const lastLine = lines[lines.length - 1];
+
+  // Check if the last line contains an incomplete markdown link.
+  // An incomplete link is one that has an opening bracket '[' but not a closing parenthesis ')'.
+  const incompleteLinkRegex = /\[[^\]]*\([^)]*$/;
+
+  if (incompleteLinkRegex.test(lastLine)) {
+    // If an incomplete link is found, withhold the last line from rendering
+    // until the link is complete.
+    return lines.slice(0, -1).join('\n');
+  }
+
+  // Also check for incomplete markdown list items or blockquotes
+  if (isIncompleteMarkdown(lastLine)) {
+    return lines.slice(0, -1).join('\n');
   }
   
-  return bufferedContent;
+  return content;
 }
 
 function isIncompleteMarkdown(line: string): boolean {
@@ -41,7 +45,8 @@ function isIncompleteMarkdown(line: string): boolean {
     /^\d+\.\s*$/          // Incomplete numbered lists
   ];
   
-  return patterns.some(pattern => pattern.test(line.trim()));
+  const trimmedLine = line.trim();
+  return patterns.some(pattern => pattern.test(trimmedLine));
 }
 
 // Add content processing functions from main chat

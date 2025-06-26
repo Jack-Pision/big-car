@@ -204,6 +204,13 @@ Content: ${source.text || source.snippet || 'No content available'}`
           )).join('\n\n---\n\n');
         }
         
+        // Add explicit URL mapping for the AI
+        const urlMapping = webContext.sources.map((source: any, index: number) => 
+          `Source ${index + 1}: ${source.url}`
+        ).join('\n');
+        
+        sourceTexts += `\n\nAVAILABLE SOURCE URLs:\n${urlMapping}\n\nIMPORTANT: When creating links, use ONLY the exact URLs listed above. Do not make up or modify URLs.`;
+        
         userMessageContent = `Please answer the following question based on the provided web sources. Focus your response on the user's specific question and use the web content to provide accurate, relevant information.
 
 ---
@@ -224,7 +231,10 @@ Please provide a comprehensive answer that directly addresses this question usin
       const modelParameters = webContext?.modelConfig || {
         temperature: 0.8,
         top_p: 0.95,
-        max_tokens: 64000
+        max_tokens: 64000,
+        repetition_penalty: 1.2,
+        presence_penalty: 0.3,
+        frequency_penalty: 0.3
       };
       const response = await fetch('/api/nvidia', {
         method: 'POST',
@@ -328,11 +338,12 @@ Please provide a comprehensive answer that directly addresses this question usin
         sources: searchResults,
         mode: 'browser_chat',
         modelConfig: {
-                  temperature: 0.8,
-        top_p: 0.95,
-        max_tokens: 64000,
-          presence_penalty: 0.3,
-          frequency_penalty: 0.4
+          temperature: 0.8,
+          top_p: 0.95,
+          max_tokens: 8000,
+          repetition_penalty: 1.2,
+          presence_penalty: 0.4,
+          frequency_penalty: 0.3
         }
       };
       setWebContextData(contextData);
@@ -418,12 +429,14 @@ Execution Rules:
 - Explain the 'so what': Connect findings to broader implications. Offer perspective on what this means for the user's specific question.
 
 Citation Format:
-- Reference sources using direct Markdown links with descriptive link text, like [Latest Tech Report](https://example.com/tech-report) or [Study from MIT](https://mit.edu/study).
-- Place these links naturally within sentences where the information appears, not at the end of paragraphs.
-- Use meaningful anchor text that describes what the link contains (e.g., "recent analysis", "company report", "study findings").
-- When multiple sources support a point, include separate links: "According to [Forbes analysis](https://forbes.com/article) and [Bloomberg report](https://bloomberg.com/news), the market is growing."
-- **Correct Example:** "The cryptocurrency market is experiencing growth according to [latest industry analysis](https://example.com/crypto-report)."
-- **Incorrect Example:** "The cryptocurrency market is experiencing growth [1]."
+- Use ONLY the exact URLs provided in the source data above. Do not make up, modify, or create new URLs.
+- Place citations at the end of sentences or paragraphs, separated by a space, NOT inline.
+- Use the platform/domain name as clickable links, like [TechCrunch](https://techcrunch.com/article) or [MIT News](https://news.mit.edu/study).
+- Extract the platform name from the domain (e.g., "techcrunch.com" → "TechCrunch", "nytimes.com" → "New York Times", "forbes.com" → "Forbes").
+- Write your content naturally, then add the source attribution at the end of the relevant sentence or paragraph.
+- **CRITICAL**: The URL in your link must match exactly one of the URLs listed in the source data above.
+- **Correct Example:** "This was the most anticipated movie of 2025. It received widespread critical acclaim for its innovative approach to the zombie genre. [Rotten Tomatoes](https://rottentomatoes.com/article)"
+- **Incorrect Example:** "This was the most anticipated movie according to ([Rotten Tomatoes](url))" or making up URLs.
 
 Tone and Style:
 - Human, not robotic: Use contractions, varied sentence lengths, and natural phrasing.
@@ -618,16 +631,16 @@ Do NOT use emojis or any other unnecessary characters.`;
                                 <span className="text-xs text-gray-400 truncate">
                                   {extractDomain(result.url)}
                                 </span>
-                            </div>
+                        </div>
                               <h3 className="font-semibold text-white mb-1.5 hover:text-blue-400 transition-colors">
                             {result.title}
                               </h3>
                             </a>
-                          </motion.div>
-                        ))}
+                    </motion.div>
+                  ))}
                       </div>
                     )}
-                  </div>
+                </div>
               </div>
               )}
             </div>

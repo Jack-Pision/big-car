@@ -31,11 +31,11 @@ function getApiKeyForMode(mode: string): string {
 function getModelForMode(mode: string): string {
   switch (mode) {
     case 'browser_chat':
-      return 'deepseek-ai/deepseek-r1-0528'; // New model for browser chat
+      return 'deepseek-ai/deepseek-r1-0528'; // Changed back to DeepSeek
     case 'reasoning':
       return 'deepseek-ai/deepseek-r1'; // Reasoning model with thinking capability
     case 'image_analysis':
-      return 'nvidia/llama-3.1-nemotron-nano-vl-8b-v1'; // Updated NVIDIA vision model
+      return 'mistralai/mistral-large'; // Updated NVIDIA vision model
     case 'artifact':
       return 'qwen/qwen3-235b-a22b'; // Dedicated Qwen model for artifact generation
     case 'chat':

@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useRef, useLayoutEffect, useEffect, useCallback } from "react";
+import React, { useState, useRef, useLayoutEffect, useEffect, useCallback, useMemo } from "react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -45,7 +45,7 @@ import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import Image from 'next/image';
 import rehypeRaw from 'rehype-raw';
 import { Message as BaseMessage } from '@/utils/conversation-context';
-import Search from '@/components/Search';
+
 import { Message as ConversationMessage } from "@/utils/conversation-context";
 import { filterAIThinking } from '../utils/content-filter';
 import ThinkingButton from '@/components/ThinkingButton';
@@ -54,6 +54,7 @@ import { type ArtifactData } from '@/utils/artifact-utils';
 import { uploadAndAnalyzeImage, uploadImageToSupabase, analyzeImageWithNVIDIA, ImageUploadResult } from '@/lib/image-upload-service';
 import toast from 'react-hot-toast';
 import ReasoningDisplay from '@/components/ReasoningDisplay';
+import ImageCarousel from '@/components/ImageCarousel';
 
 // Define a type that includes all possible query types (including the ones in SCHEMAS and 'conversation')
 type QueryType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversation' | 'reasoning';
@@ -61,6 +62,17 @@ type QueryType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversa
 // Define types for query classification and content display
 type QueryClassificationType = keyof typeof SCHEMAS;
 type ContentDisplayType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversation' | 'reasoning';
+
+// Search result interface (from browser mode)
+interface SearchResult {
+  id: string;
+  title: string;
+  snippet: string;
+  url: string;
+  favicon?: string;
+  image?: string;
+  timestamp?: string;
+}
 
 const BASE_SYSTEM_PROMPT = `You are Tehom AI, a helpful, intelligent, and friendly assistant. You communicate in a natural, conversational way that feels warm and engaging.
 
@@ -1752,6 +1764,64 @@ function TestChatComponent(props?: TestChatProps) {
   const [isResizing, setIsResizing] = useState(false);
   const [resizeStartX, setResizeStartX] = useState(0);
   const [resizeStartWidth, setResizeStartWidth] = useState(55);
+  
+  // Search pane state management
+  const [isSearchPaneOpen, setIsSearchPaneOpen] = useState(false);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [webContextData, setWebContextData] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState('Sources');
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [searchStatus, setSearchStatus] = useState<'idle' | 'searching' | 'error'>('idle');
+  const [selectedSource, setSelectedSource] = useState<string | null>(null);
+  
+  // Filter sources into text and video categories
+  const [textSources, setTextSources] = useState<SearchResult[]>([]);
+  const [videoSources, setVideoSources] = useState<SearchResult[]>([]);
+  
+  // Filter sources into text and video categories (from browser mode)
+  useEffect(() => {
+    if (searchResults?.length) {
+      const videos = searchResults.filter(result => 
+        result.url.includes('youtube.com') || 
+        result.url.includes('vimeo.com') ||
+        result.url.includes('youtu.be')
+      );
+      const texts = searchResults.filter(result => 
+        !result.url.includes('youtube.com') && 
+        !result.url.includes('vimeo.com') &&
+        !result.url.includes('youtu.be')
+      );
+      setVideoSources(videos);
+      setTextSources(texts);
+    } else {
+      setVideoSources([]);
+      setTextSources([]);
+    }
+  }, [searchResults]);
+  
+  // Extract images from search results for the carousel
+  const carouselImages = useMemo(() => {
+    if (!searchResults?.length) return [];
+    
+    return searchResults
+      .filter(result => result.image)
+      .map(result => ({
+        url: result.image!,
+        title: result.title,
+        sourceUrl: result.url
+      }));
+  }, [searchResults]);
+  
+  // Helper function to extract domain from URL (from browser mode)
+  const extractDomain = (url: string): string => {
+    try {
+      const urlObj = new URL(url);
+      return urlObj.hostname.replace('www.', '');
+    } catch {
+      return url;
+    }
+  };
 
   const [emptyBoxes, setEmptyBoxes] = useState<string[]>([]);
   const [showPulsingDot, setShowPulsingDot] = useState(false);
@@ -2048,6 +2118,286 @@ function TestChatComponent(props?: TestChatProps) {
   };
 
   // Function to save messages with explicit session ID (bypasses React state timing issues)
+  // Build contextual system prompt for browser chat (from browser mode)
+  const buildContextualSystemPrompt = (webContext: any) => {
+    return `You are Tehom AI, an exceptionally intelligent and articulate AI assistant that transforms complex web information into clear, actionable insights. Your specialty is synthesizing multiple sources into comprehensive, naturally-flowing responses that feel like getting expert advice from a knowledgeable friend.
+
+Your mission is to analyze, synthesize, and present web content in a way that's both deeply informative and refreshingly human. You're not just summarizing—you're connecting dots, revealing patterns, and providing the kind of nuanced understanding that comes from truly comprehending the material.
+
+Core Methodology:
+1.  Think like an analyst, write like a storyteller: Dive deep into the sources, identify key themes and contradictions, then weave them into a coherent narrative.
+2.  Lead with insight: Start with the most important findings, then build your case with supporting details.
+3.  Connect the dots: Highlight relationships between different sources, emerging patterns, and implications the user might not have considered.
+4.  Address nuance: When sources disagree or information is uncertain, explore why that might be and what it means for the user.
+
+Execution Rules:
+- Start strong: Jump straight into your key finding or most important insight. Do not use introductory filler like "Based on the sources provided." Start with impact.
+- Organize by insight, not by source: Group related information thematically. Use conversational transitions like "What's particularly interesting is..." "This aligns with..." "However, there's a twist..."
+- Provide evidence: Include specific details like numbers, quotes, and examples that bring your points to life.
+- Acknowledge complexity: Use phrases like "It's not that simple though..." or "The reality is more nuanced..."
+- Handle conflicting information: Always identify contradictions and explain possible reasons. Highlight gaps in available information.
+- Explain the 'so what': Connect findings to broader implications. Offer perspective on what this means for the user's specific question.
+
+Citation Format:
+- Use ONLY the exact URLs provided in the source data above. Do not make up, modify, or create new URLs.
+- Place citations at the end of sentences or paragraphs, separated by a space, NOT inline.
+- Use the platform/domain name as clickable links, like [TechCrunch](https://techcrunch.com/article) or [MIT News](https://news.mit.edu/study).
+- Extract the platform name from the domain (e.g., "techcrunch.com" → "TechCrunch", "nytimes.com" → "New York Times", "forbes.com" → "Forbes").
+- Write your content naturally, then add the source attribution at the end of the relevant sentence or paragraph.
+- **CRITICAL**: The URL in your link must match exactly one of the URLs listed in the source data above.
+
+Tone and Style:
+- Human, not robotic: Use contractions, varied sentence lengths, and natural phrasing.
+- Confident but not arrogant: You know your stuff, but you're honest about limitations.
+- Conversational but substantive: Maintain a natural flow without sacrificing depth.
+- Engaging but focused: Keep it interesting while staying on-target.
+- No emojis or unnecessary characters.
+
+Core Principles:
+- Comprehensive: Cover all major angles relevant to the user's question.
+- Accurate: Represent sources faithfully without oversimplifying.
+- Relevant: Everything you include should directly serve the user's query.
+- Clear: Explain complex topics simply without talking down to the user.
+- Actionable: When appropriate, help the user understand what to do with this information.
+
+${webContext?.hasSearchResults 
+  ? `Current Task: You're analyzing the query "${webContext.query}" using ${webContext.sourcesCount} web sources. Each source contains optimized content up to 6,000 characters. The user wants a comprehensive answer that goes beyond surface-level summary—they want understanding, context, and insight.`
+  : 'No web sources available. Provide general assistance while maintaining your analytical, insight-driven approach.'}
+
+Remember: The user's question is your north star. Everything should serve that purpose. Quality over quantity. Uncertainty handled well builds trust. Your goal isn't just to inform, but to genuinely help the user understand and make better decisions.
+
+Transform information into understanding. Make the complex clear. Turn data into wisdom.
+Do NOT use emojis or any other unnecessary characters.`;
+  };
+
+  // Handle search and AI response (integrated from browser mode)
+  const handleSearchAndAI = async (searchQuery: string, sessionId: string, userMessageId: string) => {
+    setIsSearching(true);
+    setSearchError(null);
+    setSearchResults([]);
+    setWebContextData(null);
+    setSelectedSource(null);
+    setSearchStatus('searching');
+    
+    try {
+      // Step 1: Search with Exa API
+      const response = await fetch('/api/exa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: searchQuery, enhanced: true }),
+      });
+      
+      if (!response.ok) throw new Error('Failed to fetch search results');
+      
+      const data = await response.json();
+      const sources = data.sources || [];
+      setSearchResults(sources);
+      
+      // Create web context data for AI
+      const contextData = {
+        hasSearchResults: true,
+        query: searchQuery,
+        sourcesCount: sources.length,
+        hasEnhancedContent: !!data.enhanced,
+        enhancedData: data.enhanced,
+        sources: sources,
+        mode: 'browser_chat',
+        modelConfig: {
+          temperature: 0.8,
+          top_p: 0.95,
+          max_tokens: 8000,
+          repetition_penalty: 1.2,
+          presence_penalty: 0.4,
+          frequency_penalty: 0.3
+        }
+      };
+      setWebContextData(contextData);
+      setSearchStatus('idle');
+      
+      // Step 2: Get AI response
+      await getFinalAnswer(searchQuery, contextData, sessionId, userMessageId);
+      
+    } catch (error: any) {
+      setSearchError(error.message || 'An error occurred while searching.');
+      setSearchStatus('error');
+      setIsLoading(false);
+      setIsAiResponding(false);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // Get final AI answer (from browser mode)
+  const getFinalAnswer = async (userQuestion: string, webContext: any, sessionId: string, userMessageId: string) => {
+    try {
+      // Prepare user message with web sources
+      let userMessageContent = userQuestion;
+      
+      if (webContext && webContext.hasSearchResults && webContext.sources) {
+        let sourceTexts = '';
+        
+        if (webContext.enhancedData && webContext.enhancedData.full_content) {
+          sourceTexts = Object.entries(webContext.enhancedData.full_content).map(([sourceId, data]: [string, any], index: number) => {
+            const sourceInfo = webContext.sources.find((s: any) => s.id === sourceId) || webContext.sources[index];
+            return `Source [${index + 1}]: ${sourceInfo?.url || 'Unknown URL'}
+Title: ${sourceInfo?.title || 'Unknown Title'}
+Content: ${data.text || 'No content available'}`;
+          }).join('\n\n---\n\n');
+        } else {
+          sourceTexts = webContext.sources.map((source: any, index: number) => (
+            `Source [${index + 1}]: ${source.url}
+Title: ${source.title}
+Content: ${source.text || source.snippet || 'No content available'}`
+          )).join('\n\n---\n\n');
+        }
+        
+        const urlMapping = webContext.sources.map((source: any, index: number) => 
+          `Source ${index + 1}: ${source.url}`
+        ).join('\n');
+        
+        sourceTexts += `\n\nAVAILABLE SOURCE URLs:\n${urlMapping}\n\nIMPORTANT: When creating links, use ONLY the exact URLs listed above. Do not make up or modify URLs.`;
+        
+        userMessageContent = `Please answer the following question based on the provided web sources. Focus your response on the user's specific question and use the web content to provide accurate, relevant information.
+
+---
+
+${sourceTexts}
+
+---
+
+User Question: ${userQuestion}
+
+Please provide a comprehensive answer that directly addresses this question using the information from the sources above.`;
+      }
+      
+      const messages = [
+        { role: 'system', content: buildContextualSystemPrompt(webContext) },
+        { role: 'user', content: userMessageContent }
+      ];
+      
+      const modelParameters = webContext?.modelConfig || {
+        temperature: 0.8,
+        top_p: 0.95,
+        max_tokens: 64000,
+        repetition_penalty: 1.2,
+        presence_penalty: 0.3,
+        frequency_penalty: 0.3
+      };
+      
+      // Create AI message placeholder
+      const aiMessageId = uuidv4();
+      const aiMessage: LocalMessage = {
+        role: 'assistant',
+        id: aiMessageId,
+        content: '',
+        timestamp: Date.now(),
+        parentId: userMessageId,
+        isStreaming: true,
+        isProcessed: false,
+        webSources: webContext.sources
+      };
+      
+      setMessages(prev => [...prev, aiMessage]);
+      
+      const response = await fetch('/api/nvidia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages,
+          mode: 'browser_chat',
+          stream: true,
+          ...modelParameters
+        })
+      });
+      
+      if (!response.ok) throw new Error('Failed to get response');
+      
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('Failed to get reader');
+      
+      let accumulatedContent = '';
+      let buffer = '';
+      const decoder = new TextDecoder();
+      
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const jsonStr = line.slice(6);
+              if (jsonStr.trim() === '[DONE]') continue;
+              
+              const data = JSON.parse(jsonStr);
+              const content = data.choices?.[0]?.delta?.content || '';
+              
+              if (content) {
+                accumulatedContent += content;
+                
+                setMessages(prev => prev.map(m => 
+                  m.id === aiMessageId 
+                    ? { ...m, content: accumulatedContent, isStreaming: true }
+                    : m
+                ));
+              }
+            } catch (e) {
+              console.warn('Failed to parse SSE chunk:', line);
+            }
+          }
+        }
+      }
+      
+      // Mark as complete
+      setMessages(prev => prev.map(m => 
+        m.id === aiMessageId 
+          ? { ...m, content: accumulatedContent, isStreaming: false, isProcessed: true }
+          : m
+      ));
+      
+      // Save AI message
+      const finalMessage: LocalMessage = {
+        role: 'assistant',
+        id: aiMessageId,
+        content: accumulatedContent,
+        timestamp: Date.now(),
+        parentId: userMessageId,
+        isStreaming: false,
+        isProcessed: true,
+        webSources: webContext.sources
+      };
+      
+      try {
+        await saveMessageInstantly(sessionId, finalMessage);
+        console.log('[Search Mode] AI message saved instantly');
+      } catch (error) {
+        console.error('[Search Mode] Failed to save AI message:', error);
+      }
+      
+    } catch (error) {
+      console.error('Error in getFinalAnswer:', error);
+      
+      const errorMessage: LocalMessage = {
+        role: 'assistant',
+        id: uuidv4(),
+        content: 'Error: Could not fetch response.',
+        timestamp: Date.now(),
+        parentId: userMessageId,
+        isStreaming: false,
+        isProcessed: true
+      };
+      
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+      setIsAiResponding(false);
+    }
+  };
+
   const saveMessagesOnQueryCompleteWithSessionId = async (currentMessages: LocalMessage[], explicitSessionId: string) => {
     if (!explicitSessionId || !user || currentMessages.length === 0) return;
     
@@ -2318,64 +2668,45 @@ function TestChatComponent(props?: TestChatProps) {
     // Regular text handling (no images)
     if (!input.trim()) return;
 
-    // First check if we're in search mode
-    if (activeMode === 'search') {
-      // Ensure we have an active session using consolidated function
-      const currentActiveSessionId = await ensureActiveSession(input.trim());
-
-      if (!hasInteracted) setHasInteracted(true);
-      if (showHeading) setShowHeading(false);
-
-      // Add user message to chat and save instantly
-      const userMessageId = uuidv4();
-      const userMessage: LocalMessage = { 
-          role: 'user',
-          id: userMessageId,
-          content: input,
-          timestamp: Date.now(),
-          isProcessed: true
-      };
-      
-      setMessages(prev => [...prev, userMessage]);
-      
-      // INSTANT SAVE: Save user message immediately
-      try {
-        await saveMessageInstantly(currentActiveSessionId, userMessage);
-        console.log('[Search Mode] User message saved instantly');
-      } catch (error) {
-        console.error('[Search Mode] Failed to instantly save user message:', error);
-      }
-
-      // Create a placeholder message for search results that will use the Search component
-      const searchMessageId = uuidv4();
-      const searchPlaceholder: LocalMessage = {
-          role: 'search-ui',
-        id: searchMessageId,
-        content: "Searching for: " + input,
-          query: input,
-          timestamp: Date.now(),
-        isProcessed: false,
-        isStreaming: false
-      };
-      
-      setMessages(prev => [...prev, searchPlaceholder]);
-      
-      // INSTANT SAVE: Save search placeholder immediately
-      try {
-        await saveMessageInstantly(currentActiveSessionId, searchPlaceholder);
-        console.log('[Search Mode] Search placeholder saved instantly');
-      } catch (error) {
-        console.error('[Search Mode] Failed to instantly save search placeholder:', error);
-      }
-      
-      setInput('');
-      setIsLoading(true);
-      
-      // The actual search will be handled by the Search component in renderSearchMessage
-      // This simplifies the code here and ensures consistent search behavior
-      
-      return;
+      // Search mode - integrated browser functionality
+  if (activeMode === 'search') {
+    if (!input.trim()) return;
+    
+    // Ensure we have an active session
+    const currentActiveSessionId = await ensureActiveSession(input.trim());
+    
+    if (!hasInteracted) setHasInteracted(true);
+    if (showHeading) setShowHeading(false);
+    
+    // Add user message to chat
+    const userMessageId = uuidv4();
+    const userMessage: LocalMessage = { 
+      role: 'user',
+      id: userMessageId,
+      content: input,
+      timestamp: Date.now(),
+      isProcessed: true
+    };
+    
+    setMessages(prev => [...prev, userMessage]);
+    
+    // Save user message instantly
+    try {
+      await saveMessageInstantly(currentActiveSessionId, userMessage);
+      console.log('[Search Mode] User message saved instantly');
+    } catch (error) {
+      console.error('[Search Mode] Failed to instantly save user message:', error);
     }
+    
+    setInput('');
+    setIsLoading(true);
+    setIsAiResponding(true);
+    
+    // Execute search and AI response
+    await handleSearchAndAI(input.trim(), currentActiveSessionId, userMessageId);
+    
+    return;
+  }
 
     // Check if we're in artifact mode (only by button click, no auto-triggering)
     if (activeButton === 'artifact') {
@@ -3343,6 +3674,13 @@ User Request: ${input.trim()}`;
   function handleModeSwitch(newMode: 'chat' | 'search') {
     setActiveMode(newMode);
     setActiveButton(newMode);
+    
+    // Open/close search pane based on mode
+    if (newMode === 'search') {
+      setIsSearchPaneOpen(true);
+    } else {
+      setIsSearchPaneOpen(false);
+    }
   }
 
   const handleRetry = (originalQuery: string) => {
@@ -3665,121 +4003,7 @@ User Request: ${input.trim()}`;
                   );
   };
                 
-  // Independent search message rendering system
-  const renderSearchMessage = (msg: LocalMessage, i: number) => {
-                  return (
-                    <motion.div
-        key={msg.id + '-search-' + i}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, ease: "easeOut" }}
-        className="w-full"
-      >
-        {msg.isProcessed ? (
-          <>
-            {/* Render search results with proper formatting */}
-            <div className="search-result-container bg-gray-900/50 rounded-lg p-4 mb-4">
-              <h3 className="text-xl font-semibold text-cyan-400 mb-3">Search Results for: {msg.query}</h3>
-              <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} className="search-result-output">
-                {msg.content}
-              </ReactMarkdown>
-              
-              {/* Display web sources if available */}
-              {msg.webSources && msg.webSources.length > 0 && (
-                <div className="mt-4">
-                  <h4 className="text-md font-semibold text-white mb-2">Sources:</h4>
-                          <WebSourcesCarousel sources={msg.webSources} />
-                </div>
-              )}
-            </div>
-            
-            {/* Action buttons for search results */}
-            <div className="w-full flex justify-start gap-2 mt-2 relative z-50">
-              <button
-                onClick={() => handleCopy(msg.content)}
-                className="flex items-center justify-center w-8 h-8 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
-                aria-label="Copy search results"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                </svg>
-              </button>
-              
-              <button
-                onClick={() => {
-                  try {
-                    // Find the corresponding user message
-                    const userMsgIndex = messages.findIndex(m => m.id === msg.parentId);
-                    let userMsg = userMsgIndex >= 0 ? messages[userMsgIndex] : 
-                                messages.find(m => m.role === 'user' && m.timestamp && m.timestamp < (msg.timestamp || Infinity));
-                    
-                    // If we still don't have a user message, use the last one as fallback
-                    if (!userMsg) {
-                      userMsg = [...messages].reverse().find(m => m.role === 'user');
-                    }
-                    
-                    if (userMsg) {
-                      handleRetry(userMsg.content);
-                    } else {
-                      console.error('Could not find a user message to retry');
-                    }
-                  } catch (error) {
-                    console.error('Error handling retry button click:', error);
-                  }
-                }}
-                className="flex items-center justify-center w-8 h-8 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
-                aria-label="Retry search"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
-                  <path d="M3 3v5h5"></path>
-                </svg>
-              </button>
-            </div>
-          </>
-        ) : (
-          // Show Search component with progress for unprocessed messages
-          <Search 
-            query={msg.query || ''} 
-            onComplete={(result, sources) => {
-              // Update the message with the search results when complete
-              setMessages(prev => prev.map(m => 
-                m.id === msg.id 
-                  ? {
-                      ...m,
-                      content: result,
-                      isProcessed: true,
-                      isStreaming: false,
-                      webSources: sources
-                    } 
-                  : m
-              ));
-              
-              // FAST SAVE: Save complete search message instantly
-              const currentSessionId = sessionIdRef.current || activeSessionId;
-              if (currentSessionId) {
-                const completeSearchMessage: LocalMessage = {
-                  role: 'search-ui',
-                  id: msg.id!,
-                      content: result,
-                  query: msg.query,
-                  timestamp: Date.now(),
-                      isProcessed: true,
-                      isStreaming: false,
-                      webSources: sources
-                };
-                
-                saveMessageInstantly(currentSessionId, completeSearchMessage).catch(error => {
-                  console.error('[Search Mode] Failed to instantly save complete search message:', error);
-                });
-                    } 
-            }} 
-          />
-                      )}
-                    </motion.div>
-                  );
-  };
+  // Search message rendering removed - will be replaced with browser mode integration
 
   // Independent default chat message rendering system
   const renderDefaultChatMessage = (msg: LocalMessage, i: number) => {
@@ -3974,7 +4198,7 @@ User Request: ${input.trim()}`;
         className="min-h-screen flex flex-col px-4 sm:px-4 md:px-8 lg:px-0 transition-all duration-300" 
         style={{ 
           background: '#161618',
-          width: isArtifactMode ? `${leftPaneWidth}%` : '100%'
+          width: (isArtifactMode || isSearchPaneOpen) ? `${leftPaneWidth}%` : '100%'
         }}
       >
         <GlobalStyles />
@@ -4206,10 +4430,10 @@ User Request: ${input.trim()}`;
               inputPosition === "center" ? "top-1/2 -translate-y-1/2" : "bottom-0 translate-y-0"
             }`}
             style={{
-              left: isArtifactMode ? '0' : '50%',
-              width: isArtifactMode ? `${leftPaneWidth}%` : '100%',
+              left: (isArtifactMode || isSearchPaneOpen) ? '0' : '50%',
+              width: (isArtifactMode || isSearchPaneOpen) ? `${leftPaneWidth}%` : '100%',
               maxWidth: '48rem',
-              transform: isArtifactMode
+              transform: (isArtifactMode || isSearchPaneOpen)
                 ? undefined
                 : (inputPosition === 'center' ? 'translate(-50%, -50%)' : 'translateX(-50%)'),
             }}
@@ -4422,23 +4646,17 @@ User Request: ${input.trim()}`;
           {/* Conversation and other UI below */}
           <div className={`w-full max-w-3xl mx-auto flex flex-col gap-4 items-center justify-center z-10 pt-12 pb-4 ${isArtifactMode ? 'px-4 sm:px-6' : ''}`}>
             {messages.map((msg, i) => {
-              // Assistant responses: artifacts first, then search results, then default chat
+              // Assistant responses: artifacts first, then reasoning, then default chat
               if (msg.role === 'assistant') {
                 if (msg.contentType === 'artifact') {
                   return renderArtifactMessage(msg, i);
-                }
-                if (msg.isSearchResult) {
-                  return renderSearchMessage(msg, i);
                 }
                 if (msg.contentType === 'reasoning') {
                   return renderReasoningMessage(msg, i);
                 }
                 return renderDefaultChatMessage(msg, i);
               }
-              // Search UI messages
-              if (msg.role === 'search-ui') {
-                return renderSearchMessage(msg, i);
-              }
+              // Search UI messages removed - will be replaced with browser mode integration
               // User messages
                 return (
                 <div
@@ -4533,7 +4751,7 @@ User Request: ${input.trim()}`;
 
 
       {/* Resizable Divider */}
-      {isArtifactMode && (
+      {(isArtifactMode || isSearchPaneOpen) && (
         <div
           className="fixed top-0 bottom-0 bg-gray-600 hover:bg-gray-500 cursor-col-resize z-[10001] transition-colors"
           style={{ 
@@ -4543,6 +4761,161 @@ User Request: ${input.trim()}`;
           }}
           onMouseDown={handleMouseDown}
         />
+      )}
+
+      {/* Search Pane - Right Pane Split Screen */}
+      {isSearchPaneOpen && (
+        <div 
+          className="fixed top-0 right-0 bottom-0 z-[10000] bg-[#161618] border-l border-gray-700" 
+          style={{ 
+            width: `${100 - leftPaneWidth}%`,
+            left: `${leftPaneWidth}%`
+          }}
+        >
+          <div className="h-full flex flex-col">
+            {/* Search Pane Header */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-700">
+              <h2 className="text-lg font-semibold text-white">Search Results</h2>
+              <button
+                onClick={() => {
+                  setIsSearchPaneOpen(false);
+                  setActiveMode('chat');
+                }}
+                className="p-1 rounded-lg hover:bg-gray-700 transition-colors text-gray-400 hover:text-white"
+                title="Close Search Pane"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+
+            {searchStatus !== 'idle' && searchResults.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
+                {searchStatus === 'error' ? (
+                  <>
+                    <span className="text-red-500 text-2xl mb-2">Search Failed</span>
+                    <p className="text-gray-400 mb-4">{searchError}</p>
+                  </>
+                ) : (
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-6 h-6 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                    <span className="text-gray-200">Searching...</span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex-1 flex flex-col">
+                {/* Tab Navigation */}
+                <div className="flex border-b border-gray-700 px-6 pt-6">
+                  {['Sources', 'Images', 'Videos'].map((tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => setActiveTab(tab)}
+                      disabled={tab === 'Videos' && videoSources.length === 0}
+                      className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                        activeTab === tab 
+                          ? 'text-white border-white' 
+                          : tab === 'Videos' && videoSources.length === 0
+                          ? 'text-gray-500 border-transparent cursor-not-allowed'
+                          : 'text-gray-400 border-transparent hover:text-gray-200'
+                      }`}
+                    >
+                      {`${tab}${tab === 'Videos' ? ` (${videoSources.length})` : ''}`}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Tab Content */}
+                <div className="flex-1 px-4 py-4 overflow-y-auto custom-scrollbar">
+                  {activeTab === 'Sources' && (
+                    <div className="space-y-4">
+                      {textSources.map((result, index) => (
+                        <motion.div
+                          key={result.id || index}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.3, delay: index * 0.05 }}
+                          className="bg-transparent p-4 rounded-lg border border-gray-800/60 transition-colors max-w-3xl mx-auto"
+                        >
+                          <a
+                            href={result.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block"
+                            onClick={() => setSelectedSource(result.url)}
+                          >
+                            <div className="flex items-center gap-3 mb-2">
+                              {result.favicon && (
+                                <img src={result.favicon} alt="" className="w-4 h-4 rounded-full" />
+                              )}
+                              <span className="text-xs text-gray-400 truncate">
+                                {extractDomain(result.url)}
+                              </span>
+                              {index < 3 && (
+                                <span className="flex-shrink-0 ml-auto bg-gray-700 text-gray-200 text-xs w-5 h-5 flex items-center justify-center rounded-full">
+                                  {index + 1}
+                                </span>
+                              )}
+                            </div>
+                            <h3 className="font-semibold text-white mb-1.5 hover:text-blue-400 transition-colors">
+                              {result.title}
+                            </h3>
+                          </a>
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {activeTab === 'Images' && (
+                    carouselImages.length > 0 ? (
+                      <ImageCarousel images={carouselImages} />
+                    ) : (
+                      <div className="flex items-center justify-center h-full">
+                        <p className="text-gray-400">No images found for this search.</p>
+                      </div>
+                    )
+                  )}
+
+                  {activeTab === 'Videos' && (
+                    <div className="space-y-4">
+                      {videoSources.map((result, index) => (
+                        <motion.div
+                          key={result.id || index}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.3, delay: index * 0.05 }}
+                          className="bg-transparent p-4 rounded-lg border border-gray-800/60 transition-colors max-w-3xl mx-auto"
+                        >
+                          <a
+                            href={result.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block"
+                            onClick={() => setSelectedSource(result.url)}
+                          >
+                            <div className="flex items-center gap-3 mb-2">
+                              {result.favicon && (
+                                <img src={result.favicon} alt="" className="w-4 h-4 rounded-full" />
+                              )}
+                              <span className="text-xs text-gray-400 truncate">
+                                {extractDomain(result.url)}
+                              </span>
+                            </div>
+                            <h3 className="font-semibold text-white mb-1.5 hover:text-blue-400 transition-colors">
+                              {result.title}
+                            </h3>
+                          </a>
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {/* Artifact Viewer - Right Pane Split Screen */}
