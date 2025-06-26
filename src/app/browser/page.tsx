@@ -43,6 +43,31 @@ const BrowserPageComponent = () => {
   const [searchError, setSearchError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('Sources');
   
+  // State for different source types
+  const [textSources, setTextSources] = useState<SearchResult[]>([]);
+  const [videoSources, setVideoSources] = useState<SearchResult[]>([]);
+
+  // Filter sources into text and video categories
+  useEffect(() => {
+    if (searchResults?.length) {
+      const videos = searchResults.filter(result => 
+        result.url.includes('youtube.com') || 
+        result.url.includes('vimeo.com') ||
+        result.url.includes('youtu.be')
+      );
+      const texts = searchResults.filter(result => 
+        !result.url.includes('youtube.com') && 
+        !result.url.includes('vimeo.com') &&
+        !result.url.includes('youtu.be')
+      );
+      setVideoSources(videos);
+      setTextSources(texts);
+    } else {
+      setVideoSources([]);
+      setTextSources([]);
+    }
+  }, [searchResults]);
+
   // Extract images from search results for the carousel
   const carouselImages = useMemo(() => {
     if (!searchResults?.length) return [];
@@ -153,75 +178,31 @@ const BrowserPageComponent = () => {
   // Helper to get the final AI answer (browser_chat mode)
   const getFinalAnswer = async (userQuestion: string, webContext: any) => {
     setIsChatLoading(true);
-    setChatMessages([{ role: 'user', content: userQuestion }]);
+    let accumulatedContent = '';
+    
     try {
-      // Prepare user message with web sources if available
-      let userMessageContent = userQuestion;
-      
-      if (webContext && webContext.hasSearchResults && webContext.sources) {
-        // Use enhanced data if available, otherwise fall back to basic sources
-        let sourceTexts = '';
-        
-        if (webContext.enhancedData && webContext.enhancedData.full_content) {
-          // Use the optimized character-limited content from enhanced data
-          sourceTexts = Object.entries(webContext.enhancedData.full_content).map(([sourceId, data]: [string, any], index: number) => {
-            const sourceInfo = webContext.sources.find((s: any) => s.id === sourceId) || webContext.sources[index];
-            return `Source [${index + 1}]: ${sourceInfo?.url || 'Unknown URL'}
-Title: ${sourceInfo?.title || 'Unknown Title'}
-Content: ${data.text || 'No content available'}`;
-          }).join('\n\n---\n\n');
-        } else {
-          // Fallback to basic source data
-          sourceTexts = webContext.sources.map((source: any, index: number) => (
-            `Source [${index + 1}]: ${source.url}
-Title: ${source.title}
-Content: ${source.text || source.snippet || 'No content available'}`
-          )).join('\n\n---\n\n');
-        }
-        
-        userMessageContent = `Please answer the following question based on the provided web sources. Focus your response on the user's specific question and use the web content to provide accurate, relevant information.
-
----
-
-${sourceTexts}
-
----
-
-User Question: ${userQuestion}
-
-Please provide a comprehensive answer that directly addresses this question using the information from the sources above.`;
-      }
-      
-      const messages = [
-        { role: 'system', content: buildContextualSystemPrompt(webContext) },
-        { role: 'user', content: userMessageContent }
-      ];
-      const modelParameters = webContext?.modelConfig || {
-        temperature: 0.8,
-        top_p: 0.95,
-        max_tokens: 64000
-      };
       const response = await fetch('/api/nvidia', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages,
-          mode: 'browser_chat',
-          ...modelParameters
-        })
+          message: userQuestion,
+          webContext: webContext,
+          systemPrompt: buildContextualSystemPrompt(webContext),
+          mode: 'browser_chat'
+        }),
       });
-      if (!response.ok) throw new Error('Failed to get response');
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error('Failed to get reader');
-      
-      let accumulatedContent = '';
-      let buffer = '';
+
+      if (!response.ok) throw new Error('Failed to fetch AI response');
+      if (!response.body) throw new Error('No response body');
+
+      const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      
+      let buffer = '';
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        
+
         // Add new chunk to buffer
         buffer += decoder.decode(value, { stream: true });
         
@@ -243,7 +224,12 @@ Please provide a comprehensive answer that directly addresses this question usin
                 
                 setChatMessages([
                   { role: 'user', content: userQuestion },
-                  { role: 'assistant', content: accumulatedContent, isStreaming: true }
+                  { 
+                    role: 'assistant', 
+                    content: accumulatedContent, 
+                    isStreaming: true,
+                    webSources: webContext?.sources || []
+                  }
                 ]);
               }
         } catch (e) {
@@ -256,12 +242,24 @@ Please provide a comprehensive answer that directly addresses this question usin
       
       setChatMessages([
         { role: 'user', content: userQuestion },
-        { role: 'assistant', content: accumulatedContent, isStreaming: false, isProcessed: true }
+        { 
+          role: 'assistant', 
+          content: accumulatedContent, 
+          isStreaming: false, 
+          isProcessed: true,
+          webSources: webContext?.sources || []
+        }
       ]);
     } catch (error) {
       setChatMessages([
         { role: 'user', content: userQuestion },
-        { role: 'assistant', content: 'Error: Could not fetch response.', isStreaming: false, isProcessed: true }
+        { 
+          role: 'assistant', 
+          content: 'Error: Could not fetch response.', 
+          isStreaming: false, 
+          isProcessed: true,
+          webSources: []
+        }
       ]);
     } finally {
       setIsChatLoading(false);
@@ -374,30 +372,55 @@ Please provide a comprehensive answer that directly addresses this question usin
 
   // Add getContextualSystemPrompt function for browser chat
   const buildContextualSystemPrompt = (webContext: any) => {
-    const basePrompt = `You are Tehom AI, a sharp, articulate AI assistant that specializes in analyzing and summarizing web content for users in a natural, helpful, and human-sounding way. Your job is to:
+    return `You are Tehom AI, an exceptionally intelligent and articulate AI assistant that transforms complex web information into clear, actionable insights. Your specialty is synthesizing multiple sources into comprehensive, naturally-flowing responses that feel like getting expert advice from a knowledgeable friend.
 
-- Read and synthesize information from all available web sources provided in the user's message.
-- Cross-reference sources to identify agreement, uncertainty, or conflicts.
-- Focus specifically on the user's original question and provide a targeted, relevant answer.
-- Summarize key insights clearly and accurately based on the web content.
-- Use clean, readable markdown (headers, bold, bullets) but keep formatting minimal and purposeful.
-- Write like a smart human: confident, conversational, and clear — not robotic.
-- Be direct, helpful, and friendly.
+Your mission is to analyze, synthesize, and present web content in a way that's both deeply informative and refreshingly human. You're not just summarizing—you're connecting dots, revealing patterns, and providing the kind of nuanced understanding that comes from truly comprehending the material.
 
-**Critical Rule for Citations:** The user has provided web sources, each identified by a number. When you use information from a source, you MUST cite it using only its number in brackets, for example: \`[1]\`. Do not use the source name or the full URL.
+Core Methodology:
+1. Think like an analyst, write like a storyteller: Dive deep into the sources, identify key themes and contradictions, then weave them into a coherent narrative.
+2. Lead with insight: Start with the most important findings, then build your case with supporting details.
+3. Connect the dots: Highlight relationships between different sources, emerging patterns, and implications the user might not have considered.
+4. Address nuance: When sources disagree or information is uncertain, explore why that might be and what it means for the user.
 
-${webContext?.hasSearchResults
-  ? `**Current Context:** You are analyzing the query "${webContext.query}" using ${webContext.sourcesCount} web sources. Each source contains character-limited content (up to 6,000 characters) that has been optimized for processing. The sources are provided in the user message. Base your answer specifically on these sources and the user's original question. Focus on providing information that directly addresses what the user is asking about.`
-  : 'No web sources available – provide general assistance while maintaining a web-aware mindset.'}
+Execution Rules:
+- Start strong: Jump straight into your key finding or most important insight. Do not use introductory filler like "Based on the sources provided." Start with impact. For example: "The cryptocurrency market in 2025 is experiencing a fundamental shift toward institutional legitimacy, but this mainstream adoption is creating new tensions around decentralization principles."
+- Organize by insight, not by source: Group related information thematically. Use conversational transitions like "What's particularly interesting is..." "This aligns with..." "However, there's a twist..."
+- Provide evidence: Include specific details like numbers, quotes, and examples that bring your points to life.
+- Acknowledge complexity: Use phrases like "It's not that simple though..." or "The reality is more nuanced..."
+- Handle conflicting information: Always identify contradictions and explain possible reasons. Highlight gaps in available information.
+- Explain the 'so what': Connect findings to broader implications. Offer perspective on what this means for the user's specific question.
 
-**Key Instructions:**
-- The user's question is the primary focus - ensure your answer directly addresses what they're asking
-- Use the web sources to provide accurate, up-to-date information
-- If sources conflict, mention the disagreement and cite both sides
-- If information is missing or unclear, acknowledge this honestly
-- Write like you're explaining the internet to a smart friend — not drafting a formal report
-- Prioritize insight, tone, and usability over formality`;
-    return basePrompt;
+CRITICAL CITATION RULES:
+- Use ONLY individual numbers in brackets like [1] or [2] or [3]
+- Place citations IMMEDIATELY after each specific claim or fact as you write
+- NEVER group citations like [1][2][3] - always use them individually: [1] [2] [3]
+- Insert citations naturally throughout your response, not at the end of paragraphs
+- When you use information from a source, cite it RIGHT THEN with [X]
+- Example of CORRECT citation style: "Samsung phones are popular in Bangladesh [1] with Excel eStore being the official distributor [2]. However, delivery is currently suspended until June 22nd [2]."
+- Example of WRONG citation style: "Samsung phones are popular in Bangladesh with Excel eStore being the official distributor. However, delivery is currently suspended until June 22nd [1][2]."
+
+Tone and Style:
+- Human, not robotic: Use contractions, varied sentence lengths, and natural phrasing.
+- Confident but not arrogant: You know your stuff, but you're honest about limitations.
+- Conversational but substantive: Maintain a natural flow without sacrificing depth.
+- Engaging but focused: Keep it interesting while staying on-target.
+- No emojis or unnecessary characters.
+
+Core Principles:
+- Comprehensive: Cover all major angles relevant to the user's question.
+- Accurate: Represent sources faithfully without oversimplifying.
+- Relevant: Everything you include should directly serve the user's query.
+- Clear: Explain complex topics simply without talking down to the user.
+- Actionable: When appropriate, help the user understand what to do with this information.
+
+${webContext?.hasSearchResults 
+  ? `Current Task: You're analyzing the query "${webContext.query}" using ${webContext.sourcesCount} web sources. Each source contains optimized content up to 6,000 characters. The user wants a comprehensive answer that goes beyond surface-level summary—they want understanding, context, and insight.`
+  : 'No web sources available. Provide general assistance while maintaining your analytical, insight-driven approach.'}
+
+Remember: The user's question is your north star. Everything should serve that purpose. Quality over quantity. Uncertainty handled well builds trust. Your goal isn't just to inform, but to genuinely help the user understand and make better decisions.
+
+Transform information into understanding. Make the complex clear. Turn data into wisdom.
+Do NOT use emojis or any other unnecessary characters.`;
   };
 
   return (
@@ -476,105 +499,115 @@ ${webContext?.hasSearchResults
                 <div className="h-full flex flex-col relative">
                   {/* Tab Navigation */}
                   <div className="flex border-b border-gray-700 px-6 pt-6">
-                    {['Sources', 'Images', 'Videos', 'News'].map((tab) => (
+                    {['Sources', 'Images', 'Videos'].map((tab) => (
                       <button
                         key={tab}
                         onClick={() => setActiveTab(tab)}
-                        disabled={tab === 'Videos' || tab === 'News'}
+                        disabled={tab === 'Videos' && videoSources.length === 0}
                         className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
                           activeTab === tab 
                             ? 'text-white border-white' 
-                            : tab === 'Videos' || tab === 'News'
+                            : tab === 'Videos' && videoSources.length === 0
                             ? 'text-gray-500 border-transparent cursor-not-allowed'
                             : 'text-gray-400 border-transparent hover:text-gray-200'
                         }`}
                       >
-                        {tab}
+                        {`${tab}${tab === 'Videos' ? ` (${videoSources.length})` : ''}`}
                       </button>
                     ))}
                   </div>
 
                   {/* Tab Content */}
-                  <div className={`flex-1 px-6 py-4 ${searchResults.length > 0 || (activeTab === 'Images' && carouselImages.length > 0) ? 'overflow-y-auto custom-scrollbar' : 'overflow-hidden'}`}>
+                  <div className={`flex-1 px-4 py-4 ${searchResults.length > 0 || (activeTab === 'Images' && carouselImages.length > 0) ? 'overflow-y-auto custom-scrollbar' : 'overflow-hidden'}`}>
                     {activeTab === 'Sources' && (
-                      <div className="space-y-6">
-                        {searchResults.map((result, index) => (
-                          <div
-                            key={result.id}
-                            className="cursor-pointer hover:bg-gray-800/20 -mx-2 px-2 py-2 rounded-lg transition-colors"
-                            onClick={() => window.open(result.url, '_blank')}
+                      <div className="space-y-4">
+                        {textSources.map((result, index) => (
+                          <motion.div
+                            key={result.id || index}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.3, delay: index * 0.05 }}
+                            className="bg-transparent p-4 rounded-lg border border-gray-800/60 transition-colors max-w-3xl mx-auto"
                           >
-                            <div className="flex items-start gap-3">
-                              {result.favicon && (
-                                <img 
-                                  src={result.favicon} 
-                                  alt="" 
-                                  className="w-4 h-4 mt-1 flex-shrink-0" 
-                                  onError={(e) => {
-                                    const target = e.target as HTMLImageElement;
-                                    target.style.display = 'none';
-                                  }}
-                                />
-                              )}
-                              <div className="flex-1 min-w-0">
-                                <div className="text-sm text-gray-400 mb-1">
+                            <a
+                              href={result.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="block"
+                              onClick={() => setSelectedSource(result.url)}
+                            >
+                              <div className="flex items-center gap-3 mb-2">
+                                {result.favicon && (
+                                  <img src={result.favicon} alt="" className="w-4 h-4 rounded-full" />
+                                )}
+                                <span className="text-xs text-gray-400 truncate">
                                   {extractDomain(result.url)}
-                                </div>
-                                <h3 className="text-white font-semibold text-base leading-tight mb-2">
-                                  {result.title}
-                                </h3>
-                                <p className="text-gray-300 text-sm leading-relaxed">
-                                  {result.snippet}
-                                </p>
+                                </span>
+                                {index < 3 && (
+                                  <span className="flex-shrink-0 ml-auto bg-gray-700 text-gray-200 text-xs w-5 h-5 flex items-center justify-center rounded-full">
+                                    {index + 1}
+                                  </span>
+                                )}
                               </div>
-                              {index < 3 && (
-                                <div className="flex-shrink-0 bg-gray-700 text-gray-300 text-xs px-2 py-1 rounded">
-                                  {index + 1}
-                                </div>
-                              )}
-                            </div>
-                          </div>
+                              <h3 className="font-semibold text-white mb-1.5 hover:text-blue-400 transition-colors">
+                                {result.title}
+                              </h3>
+                              <p className="text-sm text-gray-300 leading-relaxed">
+                                {result.snippet}
+                              </p>
+                            </a>
+                          </motion.div>
                         ))}
                       </div>
                     )}
-
+                    
                     {activeTab === 'Images' && (
-                      <div>
-                        {carouselImages.length > 0 ? (
-                          <ImageCarousel images={carouselImages} />
-                        ) : (
-                          <div className="flex items-center justify-center h-32 text-gray-500">
-                            No images found
-                          </div>
-                        )}
-                      </div>
+                      carouselImages.length > 0 ? (
+                        <ImageCarousel images={carouselImages} />
+                      ) : (
+                        <div className="flex items-center justify-center h-full">
+                          <p className="text-gray-400">No images found for this search.</p>
+                        </div>
+                      )
                     )}
 
-                    {(activeTab === 'Videos' || activeTab === 'News') && (
-                      <div className="flex items-center justify-center h-32 text-gray-500">
-                        {activeTab} coming soon
+                    {activeTab === 'Videos' && (
+                      <div className="space-y-4">
+                        {videoSources.map((result, index) => (
+                          <motion.div
+                            key={result.id || index}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.3, delay: index * 0.05 }}
+                            className="bg-transparent p-4 rounded-lg border border-gray-800/60 transition-colors max-w-3xl mx-auto"
+                          >
+                            <a
+                              href={result.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="block"
+                              onClick={() => setSelectedSource(result.url)}
+                            >
+                              <div className="flex items-center gap-3 mb-2">
+                                {result.favicon && (
+                                  <img src={result.favicon} alt="" className="w-4 h-4 rounded-full" />
+                                )}
+                                <span className="text-xs text-gray-400 truncate">
+                                  {extractDomain(result.url)}
+                                </span>
+                              </div>
+                              <h3 className="font-semibold text-white mb-1.5 hover:text-blue-400 transition-colors">
+                                {result.title}
+                              </h3>
+                              <p className="text-sm text-gray-300 leading-relaxed">
+                                {result.snippet}
+                              </p>
+                            </a>
+                          </motion.div>
+                        ))}
                       </div>
                     )}
                   </div>
-
-                  {/* Scroll Down Button */}
-                  {(activeTab === 'Sources' && searchResults.length > 3) && (
-                    <div className="absolute bottom-4 right-4">
-                      <button
-                        onClick={() => {
-                          const container = document.querySelector('.custom-scrollbar');
-                          if (container) {
-                            container.scrollBy({ top: 300, behavior: 'smooth' });
-                          }
-                        }}
-                        className="bg-gray-800/80 hover:bg-gray-700 text-white p-2 rounded-full shadow-lg transition-colors"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
-                        </svg>
-                      </button>
-                    </div>
-                  )}
                 </div>
               )}
             </div>

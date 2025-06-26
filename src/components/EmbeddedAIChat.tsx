@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import ReactMarkdown from 'react-markdown';
+import ReactMarkdown, { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
@@ -59,28 +59,30 @@ function cleanAIResponse(text: string): { content: string } {
   return { content: cleaned };
 }
 
-const makeCitationsClickable = (content: string, sources: any[] = []) => {
-  if (!sources || sources.length === 0) return content;
+const stripEmojis = (text: string) => {
+  // This regex removes most common emojis.
+  return text.replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, '').trim();
+};
 
-  let processedContent = content;
+const processCitations = (text: string, sources: any[] = []) => {
+  if (!text) return '';
+  if (!sources || sources.length === 0) return text;
 
-  sources.forEach((source, index) => {
-    const url = source.url || source.link;
-    if (!url) return;
-
-    // Create a regular expression to find the raw URL, handling special characters
-    // and optional surrounding parentheses.
-    const escapedUrl = url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const urlRegex = new RegExp(`\\(?\\s*${escapedUrl}\\s*\\)?`, 'g');
-
-    // The simple numerical link to replace it with, e.g., [1], [2]
-    const citationLink = `[${index + 1}](${url})`;
-
-    // Replace all occurrences of the raw URL in the text
-    processedContent = processedContent.replace(urlRegex, citationLink);
+  // Handle individual citations like [1], [2], [3]
+  // This regex specifically looks for individual numbers in brackets
+  return text.replace(/\[(\d+)\]/g, (match, numberStr) => {
+    const number = parseInt(numberStr, 10);
+    // Check if the number is valid and within our sources range
+    if (number >= 1 && number <= sources.length) {
+      const source = sources[number - 1];
+      if (source && (source.url || source.link)) {
+        const url = source.url || source.link;
+        return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="citation-badge">${number}</a>`;
+      }
+    }
+    // Return the original match if no valid source found
+    return match;
   });
-
-  return processedContent;
 };
 
 interface WebContext {
@@ -132,10 +134,10 @@ const getContextualSystemPrompt = (webContext: WebContext | undefined) => {
 - Write like a smart human: confident, conversational, and clear — not robotic.
 - Be direct, helpful, and friendly.
 
-**Critical Rule for Citations:** The user has provided web sources, each identified by a number. When you use information from a source, you MUST cite it using only its number in brackets, for example: \`[1]\`. Do not use the source name or the full URL.
+**Critical Citation Rules:** The user has provided web sources, each identified by a number. When you use information from a source, you MUST cite it using individual numbers in brackets immediately after the relevant information. Use only individual citations like [1] or [2], never group them like [1][2][3]. Place citations right after the specific fact or claim you're referencing.
 
 ${webContext?.hasSearchResults
-  ? `Current context: Analyzing "${webContext.query}" using ${webContext.sourcesCount} web sources. The sources are provided in the user message. Base your answer on them and follow the citation rule.`
+  ? `Current context: Analyzing "${webContext.query}" using ${webContext.sourcesCount} web sources. The sources are provided in the user message. Base your answer on them and follow the citation rules.`
   : 'No web sources available – provide general assistance while maintaining a web-aware mindset.'}
 
 Key rule: Write like you're explaining the internet to a smart friend — not drafting a formal report. Prioritize insight, tone, and usability.`;
@@ -230,7 +232,12 @@ const EmbeddedAIChat: React.FC<EmbeddedAIChatProps> = ({ webContext, onSendMessa
 
     // Assistant message processing
     const { content: rawContent } = cleanAIResponse(msg.content);
-    const cleanContent = rawContent
+
+    // 1. Strip emojis
+    const emojiFreeContent = stripEmojis(rawContent);
+    
+    // 2. Process for custom citation components, now handled differently
+    const cleanContent = emojiFreeContent
       .replace(/<think>[\s\S]*?<\/think>/g, '')
       .replace(/<thinking-indicator.*?>\n<\/thinking-indicator>\n|<thinking-indicator.*?\/>/g, '')
       .trim();
@@ -241,7 +248,7 @@ const EmbeddedAIChat: React.FC<EmbeddedAIChatProps> = ({ webContext, onSendMessa
 
     // Only apply citations if we have web sources
     const finalContent = msg.webSources?.length 
-      ? makeCitationsClickable(processedContent, msg.webSources)
+      ? processCitations(processedContent, msg.webSources)
       : processedContent;
 
     const showTypingIndicator = msg.role === 'assistant' && finalContent.trim().length === 0 && !msg.isProcessed;
