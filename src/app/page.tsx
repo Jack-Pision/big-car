@@ -4014,7 +4014,7 @@ User Request: ${input.trim()}`;
                     >
                       {/* Image Carousel - Show above AI response when images are available */}
                       {carouselImages.length > 0 && (
-                        <div className="mb-4">
+                        <div className="mb-4 w-full max-w-full overflow-hidden">
                           <ImageCarousel images={carouselImages} />
                         </div>
                       )}
@@ -4196,8 +4196,13 @@ User Request: ${input.trim()}`;
         }}
       >
         <GlobalStyles />
-      {/* Single Header: always visible on all devices */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-[#161618] shadow-md shadow-black/30 lg:shadow-none h-14 flex items-center px-4">
+      {/* Single Header: always visible on all devices - constrained to left pane when right pane is open */}
+      <header 
+        className="fixed top-0 left-0 z-50 bg-[#161618] shadow-md shadow-black/30 lg:shadow-none h-14 flex items-center px-4"
+        style={{
+          width: isSearchPaneOpen ? 'calc(100% - 350px)' : isArtifactMode ? '55%' : '100%'
+        }}
+      >
         <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
         <img src="/Logo.svg" alt="Logo" className="ml-3" style={{ width: 90, height: 90 }} />
       </header>
