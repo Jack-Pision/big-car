@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import ReactMarkdown, { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -7,6 +7,8 @@ import rehypeKatex from 'rehype-katex';
 import rehypeRaw from 'rehype-raw';
 import 'katex/dist/katex.min.css';
 import { Bot } from 'lucide-react';
+import ThinkingButton from './ThinkingButton';
+import ReasoningDisplay from './ReasoningDisplay';
 
 const ICON_PATH = '/favicon.svg';
 
@@ -134,7 +136,7 @@ Key rule: Write like you're explaining the internet to a smart friend — not dr
 
 const EmbeddedAIChat: React.FC<EmbeddedAIChatProps> = ({ webContext, onSendMessage, chatMessages, isChatLoading }) => {
   const [input, setInput] = useState('');
-  const [isWebDataVisible, setIsWebDataVisible] = useState(false);
+  const [isThinking, setIsThinking] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   // Use external chat messages if provided, otherwise use local state
@@ -174,6 +176,13 @@ const EmbeddedAIChat: React.FC<EmbeddedAIChatProps> = ({ webContext, onSendMessa
 
   const handleRetry = (originalQuery: string) => {
     setInput(originalQuery);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey && !isLoading) {
+      e.preventDefault();
+      handleSend(e);
+    }
   };
 
   const handleSend = async (e: React.FormEvent) => {
@@ -326,99 +335,53 @@ const EmbeddedAIChat: React.FC<EmbeddedAIChatProps> = ({ webContext, onSendMessa
     );
   };
 
-  const WebDataContextViewer = ({ webContext, onClose }: { webContext: WebContext | null | undefined, onClose: () => void }) => {
-    if (!webContext) return null;
-
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-        <div className="bg-[#1C1C1E] rounded-lg shadow-xl w-full max-w-4xl h-[85vh] flex flex-col">
-          <div className="flex justify-between items-center p-4 border-b border-gray-700">
-            <h3 className="text-xl font-semibold text-white">Web Search Context</h3>
-            <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl leading-none">&times;</button>
-          </div>
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
-            {webContext.enhancedData && (
-              <div className="mb-6">
-                <h4 className="text-lg font-semibold text-cyan-400 mb-2">Enhanced Summary & Data</h4>
-                <pre className="bg-[#2C2C2E] p-4 rounded-lg text-xs text-white whitespace-pre-wrap custom-scrollbar">
-                  {JSON.stringify(webContext.enhancedData, null, 2)}
-                </pre>
-              </div>
-            )}
-            <div>
-              <h4 className="text-lg font-semibold text-cyan-400 mb-2">Sources ({webContext.sourcesCount})</h4>
-              <ul className="space-y-4">
-                {webContext.sources.map((source, index) => (
-                  <li key={source.id || index} className="bg-[#2C2C2E] p-4 rounded-lg border border-gray-700">
-                    <p className="text-base font-semibold text-white mb-1">{source.title}</p>
-                    <a href={source.url || source.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 hover:underline break-all">
-                      {source.url || source.link}
-                    </a>
-                    {source.text && <p className="text-sm text-gray-300 mt-2 italic">"{source.text}"</p>}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   return (
-    <div className="h-full flex flex-col bg-[#161618]">
-      {isWebDataVisible && (
-        <WebDataContextViewer webContext={webContext} onClose={() => setIsWebDataVisible(false)} />
-      )}
-      
-      {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
-        {messages.length === 0 && (
-          <div className="flex items-center justify-center h-full text-gray-400 text-center">
-            <div>
-              {webContext?.hasSearchResults && (
-                <p className="text-xs text-gray-500">
-                  I have access to {webContext.sourcesCount} sources from "{webContext.query}"
-                </p>
-              )}
-            </div>
-          </div>
-        )}
-        
-        {messages.map((message, index) => renderMessage(message, index))}
-        <div ref={messagesEndRef} />
+    <div className="h-full flex flex-col bg-[#1a1a1c] relative">
+      {/* Chat Messages Container */}
+      <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+        <div className="max-w-3xl mx-auto">
+          {messages.map((message, index) => renderMessage(message, index))}
+          <div ref={messagesEndRef} />
+        </div>
       </div>
 
       {/* Input Area */}
-      <div className="p-4 bg-[#1C1C1E] flex-shrink-0 border-t border-gray-700">
-        {webContext?.hasSearchResults && (
-          <div className="mb-2 text-center">
-            <button
-              onClick={() => setIsWebDataVisible(true)}
-              className="text-xs px-3 py-1 rounded-full bg-gray-700 text-blue-300 hover:bg-gray-600 hover:text-blue-200 transition-colors"
-            >
-              View Web Context ({webContext.sourcesCount} sources)
-            </button>
-          </div>
-        )}
-        <form onSubmit={handleSend} className="flex gap-2">
+      <div className="border-t border-gray-800 p-4">
+        <div className="max-w-3xl mx-auto flex gap-2">
+          <ThinkingButton isActive={isThinking} onClick={() => setIsThinking(!isThinking)} />
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={webContext?.hasSearchResults ? "Ask about the search results..." : "Ask me anything..."}
-            className="flex-1 px-4 py-2 bg-[#2C2C2E] text-white rounded-lg border border-gray-600 focus:border-blue-500 focus:outline-none"
+            onKeyDown={handleKeyDown}
+            placeholder="Ask about these search results..."
+            className="flex-1 bg-[#2C2C2E] text-white border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
             disabled={isLoading}
           />
           <button
-            type="submit"
-            disabled={isLoading || !input.trim()}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            onClick={handleSend}
+            disabled={!input.trim() || isLoading}
+            className={`px-4 py-2 rounded-lg ${
+              !input.trim() || isLoading
+                ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                : 'bg-blue-600 text-white hover:bg-blue-700'
+            }`}
           >
-            {isLoading ? '...' : 'Send'}
+            {isLoading ? (
+              <span className="inline-block w-4 h-4 border-2 border-gray-300 border-t-white rounded-full animate-spin"></span>
+            ) : (
+              'Send'
+            )}
           </button>
-        </form>
+        </div>
       </div>
+      
+      {/* Thinking Mode Overlay */}
+      {isThinking && (
+        <div className="absolute inset-0 bg-[#1a1a1c] z-10">
+          <ReasoningDisplay webContext={webContext} />
+        </div>
+      )}
     </div>
   );
 };
