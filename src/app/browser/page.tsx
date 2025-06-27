@@ -42,7 +42,7 @@ const BrowserPageComponent = () => {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [aiResponse, setAiResponse] = useState<AIResponse | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'Sources' | 'Images' | 'Videos'>('Sources');
+  const [activeTab, setActiveTab] = useState<'Images' | 'Videos'>('Images');
   
   // State for different source types
   const [textSources, setTextSources] = useState<SearchResult[]>([]);
@@ -531,44 +531,34 @@ Do NOT use emojis or any other unnecessary characters.`;
           </PanelResizeHandle>
           
           {/* Right Pane - Search Interface */}
-          <Panel defaultSize={50} minSize={30}>
-            <div className="h-full flex flex-col bg-[#161618]">
+          <Panel defaultSize={40} minSize={25}>
+            <div className="h-full flex flex-col bg-[#161618] border-l border-gray-700 max-w-[280px] w-full">
               {searchStatus !== 'idle' && searchResults.length === 0 ? (
                 <StatusUI />
               ) : (
                 <div className="h-full flex flex-col relative">
                   {/* Tab Navigation */}
                   <div className="flex border-b border-gray-700 px-6 pt-6">
-                    {['Sources', 'Images', 'Videos'].map((tab) => (
+                    {['Images', 'Videos'].map((tab) => (
                       <button
                         key={tab}
-                        onClick={() => setActiveTab(tab as 'Sources' | 'Images' | 'Videos')}
+                        onClick={() => setActiveTab(tab as 'Images' | 'Videos')}
                         disabled={tab === 'Videos' && videoSources.length === 0}
                         className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
                           activeTab === tab 
-                            ? (tab === 'Sources' ? 'text-cyan-400 border-cyan-400' : 'text-white border-white')
+                            ? 'text-white border-white'
                             : tab === 'Videos' && videoSources.length === 0
                             ? 'text-gray-500 border-transparent cursor-not-allowed'
                             : 'text-gray-400 border-transparent hover:text-gray-200'
                         }`}
                       >
-                        {tab === 'Sources' 
-                          ? `Sources (${textSources.length})` 
-                          : `${tab}${tab === 'Videos' ? ` (${videoSources.length})` : ''}`
-                        }
+                        {`${tab}${tab === 'Videos' ? ` (${videoSources.length})` : ''}`}
                       </button>
                     ))}
                   </div>
 
                   {/* Tab Content */}
                   <div className={`flex-1 px-4 py-4 ${searchResults.length > 0 || (activeTab === 'Images' && carouselImages.length > 0) ? 'overflow-y-auto custom-scrollbar' : 'overflow-hidden'}`}>
-                    {activeTab === 'Sources' && (
-                      <WebSourcesPanel 
-                        sources={textSources} 
-                        onSourceClick={(url) => setSelectedSource(url)} 
-                      />
-                    )}
-                    
                     {activeTab === 'Images' && (
                       carouselImages.length > 0 ? (
                         <ImageCarousel images={carouselImages} />

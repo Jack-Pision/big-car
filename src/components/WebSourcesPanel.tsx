@@ -36,7 +36,7 @@ const WebSourcesPanel: React.FC<WebSourcesPanelProps> = ({ sources, onSourceClic
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: index * 0.05 }}
-          className="bg-[#2C2C2E] p-2.5 rounded border border-gray-700 transition-colors"
+          className="bg-[#2C2C2E] p-2 border-l border-gray-700 transition-colors"
         >
           <a
             href={source.url}
@@ -60,7 +60,7 @@ const WebSourcesPanel: React.FC<WebSourcesPanelProps> = ({ sources, onSourceClic
               {source.title}
             </h3>
             {source.snippet && (
-              <p className="text-[9px] text-gray-300 italic line-clamp-1">
+              <p className="text-[9px] text-gray-300 italic leading-snug line-clamp-1">
                 {source.snippet}
               </p>
             )}
