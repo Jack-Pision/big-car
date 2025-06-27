@@ -44,10 +44,10 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({ images }) => {
   }, [currentIndex]);
 
   return (
-    <div className="relative w-full mb-8">
+    <div className="relative w-full mb-8 max-w-full overflow-hidden">
       <h3 className="text-lg font-medium mb-4" style={{ color: '#FCFCFC' }}>Images</h3>
       
-      <div className="relative">
+      <div className="relative max-w-full">
         {/* Navigation buttons */}
         {images.length > 1 && (
           <>
@@ -75,7 +75,7 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({ images }) => {
         {/* Carousel container */}
         <div 
           ref={carouselRef}
-          className="flex overflow-x-auto scrollbar-hide gap-4 pb-2"
+          className="flex overflow-x-auto scrollbar-hide gap-4 pb-2 max-w-full"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           {images.map((image, index) => (

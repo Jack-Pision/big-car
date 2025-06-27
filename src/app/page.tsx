@@ -15,7 +15,6 @@ import TextReveal from '@/components/TextReveal';
 import { WebSource } from '@/utils/source-utils/index';
 import { v4 as uuidv4 } from 'uuid';
 import EmptyBox from '@/components/EmptyBox';
-import WebSourcesCarousel from '../components/WebSourcesCarousel';
 import { formatMessagesForApi, enhanceSystemPrompt, buildConversationContext } from '@/utils/conversation-context';
 import { Session } from '@/lib/types';
 import {
@@ -54,8 +53,8 @@ import { type ArtifactData } from '@/utils/artifact-utils';
 import { uploadAndAnalyzeImage, uploadImageToSupabase, analyzeImageWithNVIDIA, ImageUploadResult } from '@/lib/image-upload-service';
 import toast from 'react-hot-toast';
 import ReasoningDisplay from '@/components/ReasoningDisplay';
-import ImageCarousel from '@/components/ImageCarousel';
 import { EnhancedMarkdownRenderer } from '@/components/EnhancedMarkdownRenderer';
+import ImageCarousel from '@/components/ImageCarousel';
 
 // Define a type that includes all possible query types (including the ones in SCHEMAS and 'conversation')
 type QueryType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversation' | 'reasoning';
@@ -789,6 +788,26 @@ const GlobalStyles = () => (
       border-radius: inherit;
       pointer-events: none;
       z-index: 1;
+    }
+
+    /* Hide scrollbars completely */
+    .scrollbar-none {
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    .scrollbar-none::-webkit-scrollbar {
+      display: none;
+    }
+
+    /* Additional scrollbar hiding class for carousel */
+    .scrollbar-hide {
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    .scrollbar-hide::-webkit-scrollbar {
+      display: none;
     }
   `}</style>
 );
@@ -1761,10 +1780,7 @@ function TestChatComponent(props?: TestChatProps) {
   const [artifactProgress, setArtifactProgress] = useState('');
   
   // Add state for resizable panes
-  const [leftPaneWidth, setLeftPaneWidth] = useState(55); // Default 55% for left pane
-  const [isResizing, setIsResizing] = useState(false);
-  const [resizeStartX, setResizeStartX] = useState(0);
-  const [resizeStartWidth, setResizeStartWidth] = useState(55);
+  // Removed leftPaneWidth and resize functionality for fixed layout
   
   // Search pane state management
   const [isSearchPaneOpen, setIsSearchPaneOpen] = useState(false);
@@ -1870,45 +1886,7 @@ function TestChatComponent(props?: TestChatProps) {
   const isChatEmpty = messages.length === 0;
   const inputPosition = isChatEmpty && !hasInteracted && !activeSessionId ? "center" : "bottom";
 
-  // Mouse event handlers for resizable divider
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsResizing(true);
-    setResizeStartX(e.clientX);
-    setResizeStartWidth(leftPaneWidth);
-  }, [leftPaneWidth]);
-
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (!isResizing) return;
-    
-    const deltaX = e.clientX - resizeStartX;
-    const containerWidth = window.innerWidth;
-    const deltaPercent = (deltaX / containerWidth) * 100;
-    const newWidth = Math.max(30, Math.min(70, resizeStartWidth + deltaPercent)); // Constrain between 30% and 70%
-    
-    setLeftPaneWidth(newWidth);
-  }, [isResizing, resizeStartX, resizeStartWidth]);
-
-  const handleMouseUp = useCallback(() => {
-    setIsResizing(false);
-  }, []);
-
-  // Add mouse event listeners for resizing
-  useEffect(() => {
-    if (isResizing) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      document.body.style.cursor = 'col-resize';
-      document.body.style.userSelect = 'none';
-      
-      return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-        document.body.style.cursor = '';
-        document.body.style.userSelect = '';
-      };
-    }
-  }, [isResizing, handleMouseMove, handleMouseUp]);
+  // Removed mouse event handlers for fixed layout
 
   // Effect to handle artifact streaming
   useEffect(() => {
@@ -4034,11 +4012,11 @@ User Request: ${input.trim()}`;
                       className="w-full text-left flex flex-col items-start ai-response-text mb-4 relative"
                       style={{ color: '#FCFCFC', maxWidth: '100%', overflowWrap: 'break-word', wordBreak: 'break-word' }}
                     >
-                      {msg.webSources && msg.webSources.length > 0 && (
-                        <>
-                          <WebSourcesCarousel sources={msg.webSources} />
-                          <div style={{ height: '1.5rem' }} />
-                        </>
+                      {/* Image Carousel - Show above AI response when images are available */}
+                      {carouselImages.length > 0 && (
+                        <div className="mb-4">
+                          <ImageCarousel images={carouselImages} />
+                        </div>
                       )}
                       
                       {isStoppedMsg ? (
@@ -4127,6 +4105,24 @@ User Request: ${input.trim()}`;
                               <path d="M3 3v5h5"></path>
                             </svg>
                           </button>
+
+                          {/* Source button - only show when search results are available */}
+                          {searchResults.length > 0 && (
+                            <button
+                              onClick={() => {
+                                setIsSearchPaneOpen(true);
+                                setActiveMode('search');
+                                setActiveTab('Sources');
+                              }}
+                              className="flex items-center justify-center w-8 h-8 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
+                              aria-label="View Sources"
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <path d="M21 21l-4.35-4.35"></path>
+                              </svg>
+                            </button>
+                          )}
                         </div>
                       )}
                     </motion.div>
@@ -4196,7 +4192,7 @@ User Request: ${input.trim()}`;
         className="min-h-screen flex flex-col px-4 sm:px-4 md:px-8 lg:px-0 transition-all duration-300" 
         style={{ 
           background: '#161618',
-          width: (isArtifactMode || isSearchPaneOpen) ? `${leftPaneWidth}%` : '100%'
+          width: isSearchPaneOpen ? 'calc(100% - 350px)' : isArtifactMode ? '55%' : '100%'
         }}
       >
         <GlobalStyles />
@@ -4216,14 +4212,28 @@ User Request: ${input.trim()}`;
           {/* Desktop: Combined wrapper with current behavior */}
           
           {/* Mobile-only: Centered heading */}
-          <div className={`md:hidden fixed left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 w-full max-w-3xl flex flex-col items-center justify-center z-40 transition-opacity duration-500 ${inputPosition === "center" ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
+          <div 
+            className={`md:hidden fixed top-1/2 -translate-y-1/2 max-w-3xl flex flex-col items-center justify-center z-40 transition-opacity duration-500 ${inputPosition === "center" ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+            style={{
+              left: isSearchPaneOpen ? '0' : '50%',
+              width: isSearchPaneOpen ? 'calc(100% - 350px)' : '100%',
+              transform: isSearchPaneOpen ? 'translateY(-50%)' : 'translate(-50%, -50%)'
+            }}
+          >
             <h1 className="text-2xl sm:text-3xl font-normal text-gray-200 text-center whitespace-nowrap">
             Seek and You'll find
           </h1>
           </div>
 
           {/* Mobile-only: Bottom input */}
-          <div className="md:hidden fixed left-1/2 -translate-x-1/2 bottom-0 translate-y-0 w-full max-w-3xl flex flex-col items-center justify-center z-50 px-4 pb-4">
+          <div 
+            className="md:hidden fixed bottom-0 translate-y-0 max-w-3xl flex flex-col items-center justify-center z-50 px-4 pb-4"
+            style={{
+              left: isSearchPaneOpen ? '0' : '50%',
+              width: isSearchPaneOpen ? 'calc(100% - 350px)' : '100%',
+              transform: isSearchPaneOpen ? undefined : 'translateX(-50%)'
+            }}
+          >
             {/* Input form for mobile */}
             <form
               className="flex flex-col gap-2 rounded-2xl shadow-lg py-2 w-full px-4 pl-4 sm:px-6 md:px-8 lg:pl-4 lg:pr-0 mb-3 bg-[#232323] border border-white/20"
@@ -4430,10 +4440,10 @@ User Request: ${input.trim()}`;
               inputPosition === "center" ? "top-1/2 -translate-y-1/2" : "bottom-0 translate-y-0"
             }`}
             style={{
-              left: (isArtifactMode || isSearchPaneOpen) ? '0' : '50%',
-              width: (isArtifactMode || isSearchPaneOpen) ? `${leftPaneWidth}%` : '100%',
+              left: isSearchPaneOpen ? '0' : isArtifactMode ? '0' : '50%',
+              width: isSearchPaneOpen ? 'calc(100% - 350px)' : isArtifactMode ? '55%' : '100%',
               maxWidth: '48rem',
-              transform: (isArtifactMode || isSearchPaneOpen)
+              transform: (isSearchPaneOpen || isArtifactMode)
                 ? undefined
                 : (inputPosition === 'center' ? 'translate(-50%, -50%)' : 'translateX(-50%)'),
             }}
@@ -4718,8 +4728,14 @@ User Request: ${input.trim()}`;
 
         {/* Fixed Footer Bar Behind Input */}
         <div
-          className={`fixed left-0 right-0 bottom-0 z-40 transition-opacity duration-300 ${isChatEmpty && !hasInteracted ? 'opacity-0' : 'opacity-100'}`}
-          style={{ height: `calc(${inputBarHeight}px + env(safe-area-inset-bottom, 0px))`, background: '#161618', pointerEvents: 'none' }}
+          className={`fixed bottom-0 z-40 transition-opacity duration-300 ${isChatEmpty && !hasInteracted ? 'opacity-0' : 'opacity-100'}`}
+          style={{ 
+            height: `calc(${inputBarHeight}px + env(safe-area-inset-bottom, 0px))`, 
+            background: '#161618', 
+            pointerEvents: 'none',
+            left: '0',
+            width: isSearchPaneOpen ? 'calc(100% - 350px)' : isArtifactMode ? '55%' : '100%'
+          }}
           aria-hidden="true"
         />
 
@@ -4752,26 +4768,14 @@ User Request: ${input.trim()}`;
       
 
 
-      {/* Resizable Divider */}
-      {(isArtifactMode || isSearchPaneOpen) && (
-        <div
-          className="fixed top-0 bottom-0 bg-gray-600 hover:bg-gray-500 cursor-col-resize z-[10001] transition-colors"
-          style={{ 
-            left: `${leftPaneWidth}%`, 
-            width: "2px",
-            transform: 'translateX(-2px)' // Center the divider on the boundary
-          }}
-          onMouseDown={handleMouseDown}
-        />
-      )}
+
 
       {/* Search Pane - Right Pane Split Screen */}
       {isSearchPaneOpen && (
         <div 
           className="fixed top-0 right-0 bottom-0 z-[10000] bg-[#161618] border-l border-gray-700" 
           style={{ 
-            width: `${100 - leftPaneWidth}%`,
-            left: `${leftPaneWidth}%`
+            width: '350px'
           }}
         >
           <div className="h-full flex flex-col">
@@ -4811,26 +4815,23 @@ User Request: ${input.trim()}`;
               <div className="flex-1 flex flex-col">
                 {/* Tab Navigation */}
                 <div className="flex border-b border-gray-700 px-6 pt-6">
-                  {['Sources', 'Images', 'Videos'].map((tab) => (
+                  {['Sources'].map((tab) => (
                     <button
                       key={tab}
                       onClick={() => setActiveTab(tab)}
-                      disabled={tab === 'Videos' && videoSources.length === 0}
                       className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
                         activeTab === tab 
                           ? 'text-white border-white' 
-                          : tab === 'Videos' && videoSources.length === 0
-                          ? 'text-gray-500 border-transparent cursor-not-allowed'
                           : 'text-gray-400 border-transparent hover:text-gray-200'
                       }`}
                     >
-                      {`${tab}${tab === 'Videos' ? ` (${videoSources.length})` : ''}`}
+                      {tab}
                     </button>
                   ))}
                 </div>
 
                 {/* Tab Content */}
-                <div className="flex-1 px-4 py-4 overflow-y-auto custom-scrollbar">
+                <div className="flex-1 px-4 py-4 overflow-y-auto scrollbar-none" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                   {activeTab === 'Sources' && (
                     <div className="space-y-4">
                       {textSources.map((result, index) => (
@@ -4869,50 +4870,6 @@ User Request: ${input.trim()}`;
                       ))}
                     </div>
                   )}
-                  
-                  {activeTab === 'Images' && (
-                    carouselImages.length > 0 ? (
-                      <ImageCarousel images={carouselImages} />
-                    ) : (
-                      <div className="flex items-center justify-center h-full">
-                        <p className="text-gray-400">No images found for this search.</p>
-                      </div>
-                    )
-                  )}
-
-                  {activeTab === 'Videos' && (
-                    <div className="space-y-4">
-                      {videoSources.map((result, index) => (
-                        <motion.div
-                          key={result.id || index}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.3, delay: index * 0.05 }}
-                          className="bg-transparent p-4 rounded-lg border border-gray-800/60 transition-colors max-w-3xl mx-auto"
-                        >
-                          <a
-                            href={result.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="block"
-                            onClick={() => setSelectedSource(result.url)}
-                          >
-                            <div className="flex items-center gap-3 mb-2">
-                              {result.favicon && (
-                                <img src={result.favicon} alt="" className="w-4 h-4 rounded-full" />
-                              )}
-                              <span className="text-xs text-gray-400 truncate">
-                                {extractDomain(result.url)}
-                              </span>
-                            </div>
-                            <h3 className="font-semibold text-white mb-1.5 hover:text-blue-400 transition-colors">
-                              {result.title}
-                            </h3>
-                          </a>
-                        </motion.div>
-                      ))}
-                    </div>
-                  )}
                 </div>
               </div>
             )}
@@ -4925,8 +4882,8 @@ User Request: ${input.trim()}`;
         <div 
           className="fixed top-0 right-0 bottom-0 z-[10000] bg-[#161618] border-l border-gray-700" 
           style={{ 
-            width: `${100 - leftPaneWidth}%`,
-            left: `${leftPaneWidth}%`
+            width: '45%',
+            left: '55%'
           }}
         >
           <ArtifactViewer
