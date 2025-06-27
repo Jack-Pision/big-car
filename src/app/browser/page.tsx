@@ -9,6 +9,7 @@ import rehypeRaw from 'rehype-raw';
 import 'katex/dist/katex.min.css';
 import ImageCarousel from '@/components/ImageCarousel';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
+import WebSourcesPanel from '@/components/WebSourcesPanel';
 
 import { useRouter, useSearchParams } from 'next/navigation';
 
@@ -41,7 +42,7 @@ const BrowserPageComponent = () => {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [aiResponse, setAiResponse] = useState<AIResponse | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState('Sources');
+  const [activeTab, setActiveTab] = useState<'Sources' | 'Images' | 'Videos'>('Sources');
   
   // State for different source types
   const [textSources, setTextSources] = useState<SearchResult[]>([]);
@@ -539,19 +540,22 @@ Do NOT use emojis or any other unnecessary characters.`;
                   {/* Tab Navigation */}
                   <div className="flex border-b border-gray-700 px-6 pt-6">
                     {['Sources', 'Images', 'Videos'].map((tab) => (
-                <button
+                      <button
                         key={tab}
-                        onClick={() => setActiveTab(tab)}
+                        onClick={() => setActiveTab(tab as 'Sources' | 'Images' | 'Videos')}
                         disabled={tab === 'Videos' && videoSources.length === 0}
                         className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
                           activeTab === tab 
-                            ? 'text-white border-white' 
+                            ? (tab === 'Sources' ? 'text-cyan-400 border-cyan-400' : 'text-white border-white')
                             : tab === 'Videos' && videoSources.length === 0
                             ? 'text-gray-500 border-transparent cursor-not-allowed'
                             : 'text-gray-400 border-transparent hover:text-gray-200'
                         }`}
                       >
-                        {`${tab}${tab === 'Videos' ? ` (${videoSources.length})` : ''}`}
+                        {tab === 'Sources' 
+                          ? `Sources (${textSources.length})` 
+                          : `${tab}${tab === 'Videos' ? ` (${videoSources.length})` : ''}`
+                        }
                       </button>
                     ))}
                   </div>
@@ -559,42 +563,10 @@ Do NOT use emojis or any other unnecessary characters.`;
                   {/* Tab Content */}
                   <div className={`flex-1 px-4 py-4 ${searchResults.length > 0 || (activeTab === 'Images' && carouselImages.length > 0) ? 'overflow-y-auto custom-scrollbar' : 'overflow-hidden'}`}>
                     {activeTab === 'Sources' && (
-                      <div className="space-y-4">
-                        {textSources.map((result, index) => (
-                    <motion.div
-                            key={result.id || index}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.3, delay: index * 0.05 }}
-                            className="bg-transparent p-4 rounded-lg border border-gray-800/60 transition-colors max-w-3xl mx-auto"
-                          >
-                            <a
-                              href={result.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="block"
-                              onClick={() => setSelectedSource(result.url)}
-                            >
-                              <div className="flex items-center gap-3 mb-2">
-                                {result.favicon && (
-                                  <img src={result.favicon} alt="" className="w-4 h-4 rounded-full" />
-                                )}
-                                <span className="text-xs text-gray-400 truncate">
-                                  {extractDomain(result.url)}
-                                </span>
-                                {index < 3 && (
-                                  <span className="flex-shrink-0 ml-auto bg-gray-700 text-gray-200 text-xs w-5 h-5 flex items-center justify-center rounded-full">
-                                    {index + 1}
-                                  </span>
-              )}
-            </div>
-                              <h3 className="font-semibold text-white mb-1.5 hover:text-blue-400 transition-colors">
-                                {result.title}
-                              </h3>
-                            </a>
-          </motion.div>
-                        ))}
-        </div>
+                      <WebSourcesPanel 
+                        sources={textSources} 
+                        onSourceClick={(url) => setSelectedSource(url)} 
+                      />
                     )}
                     
                     {activeTab === 'Images' && (
@@ -603,19 +575,22 @@ Do NOT use emojis or any other unnecessary characters.`;
                       ) : (
                         <div className="flex items-center justify-center h-full">
                           <p className="text-gray-400">No images found for this search.</p>
-            </div>
+                        </div>
                       )
                     )}
 
                     {activeTab === 'Videos' && (
-                      <div className="space-y-4">
+                      <div className="space-y-3">
+                        <div className="border-b border-gray-700 pb-2 mb-3">
+                          <h2 className="text-xs font-normal text-white">Videos</h2>
+                        </div>
                         {videoSources.map((result, index) => (
-            <motion.div
+                          <motion.div
                             key={result.id || index}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.3, delay: index * 0.05 }}
-                            className="bg-transparent p-4 rounded-lg border border-gray-800/60 transition-colors max-w-3xl mx-auto"
+                            className="bg-[#2C2C2E] p-2.5 rounded border border-gray-700 transition-colors max-w-3xl mx-auto"
                           >
                             <a
                               href={result.url}
@@ -624,24 +599,30 @@ Do NOT use emojis or any other unnecessary characters.`;
                               className="block"
                               onClick={() => setSelectedSource(result.url)}
                             >
-                              <div className="flex items-center gap-3 mb-2">
+                              <div className="flex items-center gap-2 mb-1.5">
+                                <span className="bg-gray-700 text-xs text-white w-5 h-5 flex items-center justify-center rounded-full flex-shrink-0">
+                                  {index + 1}
+                                </span>
                                 {result.favicon && (
-                                  <img src={result.favicon} alt="" className="w-4 h-4 rounded-full" />
+                                  <img src={result.favicon} alt="" className="w-3.5 h-3.5 rounded-full" />
                                 )}
-                                <span className="text-xs text-gray-400 truncate">
+                                <span className="text-[10px] text-gray-400 truncate">
                                   {extractDomain(result.url)}
                                 </span>
-                        </div>
-                              <h3 className="font-semibold text-white mb-1.5 hover:text-blue-400 transition-colors">
-                            {result.title}
+                              </div>
+                              <h3 className="font-normal text-xs text-white mb-1 hover:text-blue-400 transition-colors line-clamp-2">
+                                {result.title}
                               </h3>
+                              <p className="text-[9px] text-gray-300 italic line-clamp-1">
+                                {result.snippet || "Video content"}
+                              </p>
                             </a>
-                    </motion.div>
-                  ))}
+                          </motion.div>
+                        ))}
                       </div>
                     )}
+                  </div>
                 </div>
-              </div>
               )}
             </div>
           </Panel>
