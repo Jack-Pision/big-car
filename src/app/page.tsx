@@ -2195,6 +2195,9 @@ Do NOT use emojis or any other unnecessary characters.`;
       setWebContextData(contextData);
       setSearchStatus('idle');
       
+      // Open search pane now that we have search results
+      setIsSearchPaneOpen(true);
+      
       // Step 2: Get AI response
       await getFinalAnswer(searchQuery, contextData, sessionId, userMessageId);
       
@@ -3649,10 +3652,9 @@ User Request: ${input.trim()}`;
     setActiveMode(newMode);
     setActiveButton(newMode);
     
-    // Open/close search pane based on mode
-    if (newMode === 'search') {
-      setIsSearchPaneOpen(true);
-    } else {
+    // Only close search pane when switching to chat mode
+    // Don't open search pane immediately when switching to search mode
+    if (newMode === 'chat') {
       setIsSearchPaneOpen(false);
     }
   }
@@ -4218,11 +4220,11 @@ User Request: ${input.trim()}`;
           
           {/* Mobile-only: Centered heading */}
           <div 
-            className={`md:hidden fixed top-1/2 -translate-y-1/2 max-w-3xl flex flex-col items-center justify-center z-40 transition-opacity duration-500 ${inputPosition === "center" ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+            className={`md:hidden absolute top-1/2 -translate-y-1/2 max-w-3xl flex flex-col items-center justify-center z-40 transition-opacity duration-500 ${inputPosition === "center" ? "opacity-100" : "opacity-0 pointer-events-none"}`}
             style={{
-              left: isSearchPaneOpen ? '0' : '50%',
-              width: isSearchPaneOpen ? 'calc(100% - 350px)' : '100%',
-              transform: isSearchPaneOpen ? 'translateY(-50%)' : 'translate(-50%, -50%)'
+              left: '50%',
+              width: '100%',
+              transform: 'translate(-50%, -50%)'
             }}
           >
             <h1 className="text-2xl sm:text-3xl font-normal text-gray-200 text-center whitespace-nowrap">
@@ -4232,11 +4234,11 @@ User Request: ${input.trim()}`;
 
           {/* Mobile-only: Bottom input */}
           <div 
-            className="md:hidden fixed bottom-0 translate-y-0 max-w-3xl flex flex-col items-center justify-center z-50 px-4 pb-4"
+            className="md:hidden absolute bottom-0 translate-y-0 max-w-3xl flex flex-col items-center justify-center z-50 px-4 pb-4"
             style={{
-              left: isSearchPaneOpen ? '0' : '50%',
-              width: isSearchPaneOpen ? 'calc(100% - 350px)' : '100%',
-              transform: isSearchPaneOpen ? undefined : 'translateX(-50%)'
+              left: '50%',
+              width: '100%',
+              transform: 'translateX(-50%)'
             }}
           >
             {/* Input form for mobile */}
@@ -4441,16 +4443,14 @@ User Request: ${input.trim()}`;
 
           {/* Desktop: Combined wrapper with current behavior */}
           <div
-            className={`hidden md:flex fixed flex-col w-full max-w-3xl items-center justify-center z-50 transition-all duration-500 ease-in-out ${
+            className={`hidden md:flex absolute flex-col w-full max-w-3xl items-center justify-center z-50 transition-all duration-500 ease-in-out ${
               inputPosition === "center" ? "top-1/2 -translate-y-1/2" : "bottom-0 translate-y-0"
             }`}
             style={{
-              left: isSearchPaneOpen ? '0' : isArtifactMode ? '0' : '50%',
-              width: isSearchPaneOpen ? 'calc(100% - 350px)' : isArtifactMode ? '55%' : '100%',
+              left: '50%',
+              width: '100%',
               maxWidth: '48rem',
-              transform: (isSearchPaneOpen || isArtifactMode)
-                ? undefined
-                : (inputPosition === 'center' ? 'translate(-50%, -50%)' : 'translateX(-50%)'),
+              transform: inputPosition === 'center' ? 'translate(-50%, -50%)' : 'translateX(-50%)',
             }}
           >
             {/* Heading with fade animation - show on desktop when centered */}
