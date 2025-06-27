@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { signOut } from '@/lib/auth';
 import { X, LogOut, User, Shield, HelpCircle } from 'lucide-react';
@@ -11,6 +11,7 @@ interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   user?: {
+    id: string;
     email: string;
     user_metadata?: {
       full_name?: string;
@@ -19,8 +20,12 @@ interface SettingsModalProps {
   onSignOut: () => void;
 }
 
+
+
 export default function SettingsModal({ isOpen, onClose, user, onSignOut }: SettingsModalProps) {
   const [isLoading, setIsLoading] = useState(false);
+
+
 
   const handleSignOut = async () => {
     setIsLoading(true);
@@ -35,6 +40,8 @@ export default function SettingsModal({ isOpen, onClose, user, onSignOut }: Sett
       setIsLoading(false);
     }
   };
+
+
 
   return (
     <AnimatePresence>
@@ -66,7 +73,7 @@ export default function SettingsModal({ isOpen, onClose, user, onSignOut }: Sett
             animate={{ opacity: 1, scale: 1, x: 0 }}
             exit={{ opacity: 0, scale: 0.95, x: 50 }}
             transition={{ duration: 0.3, ease: "easeOut" }}
-            className="relative w-full max-w-sm"
+            className="relative w-full max-w-md"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Main Container */}
@@ -115,6 +122,8 @@ export default function SettingsModal({ isOpen, onClose, user, onSignOut }: Sett
                   </div>
                 </div>
               )}
+
+
 
               {/* Settings Options */}
                 <div className="space-y-2 mb-6">

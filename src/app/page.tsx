@@ -55,6 +55,7 @@ import { uploadAndAnalyzeImage, uploadImageToSupabase, analyzeImageWithNVIDIA, I
 import toast from 'react-hot-toast';
 import ReasoningDisplay from '@/components/ReasoningDisplay';
 import ImageCarousel from '@/components/ImageCarousel';
+import { EnhancedMarkdownRenderer } from '@/components/EnhancedMarkdownRenderer';
 
 // Define a type that includes all possible query types (including the ones in SCHEMAS and 'conversation')
 type QueryType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversation' | 'reasoning';
@@ -1834,6 +1835,8 @@ function TestChatComponent(props?: TestChatProps) {
   const [liveReasoning, setLiveReasoning] = useState('');
   const [currentReasoningMessageId, setCurrentReasoningMessageId] = useState<string | null>(null);
   
+
+
   // Artifact streaming states
   const [artifactStreamingContent, setArtifactStreamingContent] = useState<string>('');
   const [isArtifactStreaming, setIsArtifactStreaming] = useState(false);
@@ -2490,7 +2493,8 @@ Please provide a comprehensive answer that directly addresses this question usin
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
-    
+    const userMessageId = uuidv4(); // Declare at the top
+
     // Handle image analysis if we have selected files
     if (selectedFiles.length > 0) {
       const file = selectedFiles[0];
@@ -2500,7 +2504,6 @@ Please provide a comprehensive answer that directly addresses this question usin
         const currentActiveSessionId = await ensureActiveSession('Image uploaded and analyzed');
         
         // 1. IMMEDIATELY show user message with image (with shining effect)
-        const userMessageId = uuidv4();
         const userMessage: LocalMessage = {
           role: 'user',
           content: input.trim(), // Include any text the user typed
@@ -2942,10 +2945,9 @@ User Request: ${input.trim()}`;
       return;
     }
 
+
+
     // If we get here, we're in default chat mode
-    let userMessageId = '';
-
-
     try {
     if (!input.trim() || isLoading || isAiResponding) return;
 
@@ -2954,10 +2956,8 @@ User Request: ${input.trim()}`;
 
     if (!hasInteracted) setHasInteracted(true);
       
-
-
     setIsAiResponding(true);
-      setIsLoading(true);
+    setIsLoading(true);
     if (showHeading) setShowHeading(false);
 
     // Always use conversation type for default chat instead of classifying
@@ -2970,17 +2970,13 @@ User Request: ${input.trim()}`;
     const newAbortController = new AbortController();
     setAbortController(newAbortController);
 
-      let userMessageId = uuidv4();
-      const userMessageForDisplay: LocalMessage = {
+    const userMessageForDisplay: LocalMessage = {
       role: "user" as const,
       content: input,
-      id: userMessageId,
+      id: userMessageId, // Use the userMessageId from the top of handleSend
       timestamp: Date.now(),
       isProcessed: true // Mark the user message as processed
     };
-    
-    // Ensure we're using the final ID from the message object
-    userMessageId = userMessageForDisplay.id!;
 
 
     setMessages((prev) => [...prev, userMessageForDisplay]);
@@ -4192,6 +4188,8 @@ User Request: ${input.trim()}`;
     );
   };
 
+
+
                 return (
     <>
       <div 
@@ -4336,6 +4334,7 @@ User Request: ${input.trim()}`;
                     {/* Think tab */}
                     <button
                       type="button"
+                      onClick={() => handleButtonClick('reasoning')}
                       className={`
                         flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200 
                         ${activeButton === 'reasoning' 
@@ -4347,7 +4346,6 @@ User Request: ${input.trim()}`;
                         color: activeButton === 'reasoning' ? '#FCFCFC' : 'rgba(252, 252, 252, 0.6)',
                         borderColor: activeButton === 'reasoning' ? '#FCFCFC' : 'transparent'
                       }}
-                      onClick={() => handleButtonClick('reasoning')}
                     >
                       <svg 
                         width="16" 
@@ -4364,6 +4362,8 @@ User Request: ${input.trim()}`;
                         <path d="M15.7 15.7c4.52-4.54 6.54-9.87 4.5-11.9-2.03-2.04-7.36-.02-11.9 4.5-4.52 4.54-6.54 9.87-4.5 11.9 2.03 2.04 7.36.02 11.9-4.5z"/>
                       </svg>
                     </button>
+
+
                   </div>
 
                   {/* Right group: Plus, Send */}
@@ -4546,15 +4546,15 @@ User Request: ${input.trim()}`;
                       onClick={() => handleButtonClick('artifact')}
                     >
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                        <line x1="9" y1="9" x2="15" y2="9"></line>
-                        <line x1="9" y1="13" x2="15" y2="13"></line>
+                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
                       </svg>
                     </button>
 
                     {/* Think tab */}
                     <button
                       type="button"
+                      onClick={() => handleButtonClick('reasoning')}
                       className={`
                         flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200 
                         ${activeButton === 'reasoning' 
@@ -4566,7 +4566,6 @@ User Request: ${input.trim()}`;
                         color: activeButton === 'reasoning' ? '#FCFCFC' : 'rgba(252, 252, 252, 0.6)',
                         borderColor: activeButton === 'reasoning' ? '#FCFCFC' : 'transparent'
                       }}
-                      onClick={() => handleButtonClick('reasoning')}
                     >
                       <svg 
                         width="16" 
@@ -4583,6 +4582,8 @@ User Request: ${input.trim()}`;
                         <path d="M15.7 15.7c4.52-4.54 6.54-9.87 4.5-11.9-2.03-2.04-7.36-.02-11.9 4.5-4.52 4.54-6.54 9.87-4.5 11.9 2.03 2.04 7.36.02 11.9-4.5z"/>
                       </svg>
                     </button>
+
+
               </div>
 
                   {/* Right group: Plus, Send */}
@@ -4646,7 +4647,7 @@ User Request: ${input.trim()}`;
           {/* Conversation and other UI below */}
           <div className={`w-full max-w-3xl mx-auto flex flex-col gap-4 items-center justify-center z-10 pt-12 pb-4 ${isArtifactMode ? 'px-4 sm:px-6' : ''}`}>
             {messages.map((msg, i) => {
-              // Assistant responses: artifacts first, then reasoning, then default chat
+              // Assistant responses: artifacts first, then reasoning, then agent, then default chat
               if (msg.role === 'assistant') {
                 if (msg.contentType === 'artifact') {
                   return renderArtifactMessage(msg, i);
@@ -4654,6 +4655,7 @@ User Request: ${input.trim()}`;
                 if (msg.contentType === 'reasoning') {
                   return renderReasoningMessage(msg, i);
                 }
+
                 return renderDefaultChatMessage(msg, i);
               }
               // Search UI messages removed - will be replaced with browser mode integration
@@ -4943,6 +4945,8 @@ User Request: ${input.trim()}`;
           />
         </div>
       )}
+
+
     </>
   );
 }

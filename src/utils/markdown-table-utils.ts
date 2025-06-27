@@ -1,3 +1,4 @@
+
 /**
  * Utility functions for enhancing markdown table rendering and processing
  */
