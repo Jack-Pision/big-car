@@ -3838,7 +3838,6 @@ User Request: ${input.trim()}`;
                             <button
                               onClick={() => {
                                 setIsSearchPaneOpen(true);
-                                setActiveMode('search');
                                 setActiveTab('Sources');
                               }}
                               className="flex items-center justify-center w-8 h-8 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
@@ -3920,7 +3919,7 @@ User Request: ${input.trim()}`;
         style={{ 
           background: '#161618',
           width: isArtifactMode ? '55%' : '100%',
-          marginRight: isSearchPaneOpen && !isArtifactMode ? '296px' : undefined // 280px pane + 16px gap
+          // Left chat should not shrink when search pane is open, so no margin adjustment here
         }}
       >
         <GlobalStyles />
