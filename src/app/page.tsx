@@ -48,7 +48,6 @@ import { Message as ConversationMessage } from "@/utils/conversation-context";
 import { filterAIThinking } from '../utils/content-filter';
 import ThinkingButton from '@/components/ThinkingButton';
 import { ArtifactViewer } from '@/components/ArtifactViewer';
-import { SearchChat } from '@/components/SearchChat';
 import { type ArtifactData } from '@/utils/artifact-utils';
 import { uploadAndAnalyzeImage, uploadImageToSupabase, analyzeImageWithNVIDIA, ImageUploadResult } from '@/lib/image-upload-service';
 import toast from 'react-hot-toast';
@@ -1667,9 +1666,9 @@ function detectAndCleanAdvancedStructure(content: string): {
 // Add prompt handler functions after the BASE_SYSTEM_PROMPT and before the TestChat component
 
 const getThinkPrompt = (basePrompt: string) => {
-  return `IMPORTANT: You MUST structure your response as: <think>your reasoning here</think>your final answer here
+  return `You are Tehom AI, an advanced and thoughtful assistant designed for deep reasoning, clear explanation, and insightful analysis. You think carefully before responding, consider multiple perspectives, and help users understand not just the answer, but the reasoning behind it. You communicate in a natural, human-like tone that feels intelligent, calm, and genuinely helpful. You often use analogies, examples, and counterpoints to make complex ideas easier to grasp, and you're not afraid to explore ambiguity when needed. Your goal is to guide users toward clarity and understanding, uncover hidden assumptions, and bring depth to every conversation. Always respond in markdown format to keep your output clean, readable, and well-structured.
 
-Always show your chain of thoughts/reasoning step by step before final answer, think step by step then answer.You are Tehom AI, an advanced and thoughtful assistant designed for deep reasoning, clear explanation, and insightful analysis. You think carefully before responding, consider multiple perspectives, and help users understand not just the answer, but the reasoning behind it. You communicate in a natural, human-like tone that feels intelligent, calm, and genuinely helpful. You often use analogies, examples, and counterpoints to make complex ideas easier to grasp, and you're not afraid to explore ambiguity when needed. Your goal is to guide users toward clarity and understanding, uncover hidden assumptions, and bring depth to every conversation. You always respond in markdown format to keep your output clean, readable, and well-structured.`;
+When responding, think through the problem step by step, considering multiple angles and potential complications before providing your final answer.`;
 };
 
 
@@ -1798,25 +1797,29 @@ function TestChatComponent(props?: TestChatProps) {
   
   // Filter sources into text and video categories (from browser mode)
   useEffect(() => {
-    if (searchResults?.length) {
-      const videos = searchResults.filter(result => 
-        result.url.includes('youtube.com') || 
-        result.url.includes('vimeo.com') ||
-        result.url.includes('youtu.be')
-      );
-      const texts = searchResults.filter(result => 
-        !result.url.includes('youtube.com') && 
-        !result.url.includes('vimeo.com') &&
-        !result.url.includes('youtu.be')
-      );
-      setVideoSources(videos);
-      setTextSources(texts);
-    } else {
-      setVideoSources([]);
-      setTextSources([]);
-    }
-  }, [searchResults]);
-  
+    const filterSources = () => {
+      if (searchResults?.length) {
+        const videos = searchResults.filter(result => 
+          result.url.includes('youtube.com') || 
+          result.url.includes('vimeo.com') ||
+          result.url.includes('youtu.be')
+        );
+        const texts = searchResults.filter(result => 
+          !result.url.includes('youtube.com') && 
+          !result.url.includes('vimeo.com') &&
+          !result.url.includes('youtu.be')
+        );
+        setVideoSources(videos);
+        setTextSources(texts);
+      } else {
+        setVideoSources([]);
+        setTextSources([]);
+      }
+    };
+
+    filterSources();
+  }, [searchResults, setVideoSources, setTextSources]); // Added missing dependencies
+
   // Extract images from search results for the carousel
   const carouselImages = useMemo(() => {
     if (!searchResults?.length) return [];
@@ -1858,6 +1861,26 @@ function TestChatComponent(props?: TestChatProps) {
     }
   };
 
+  // Helper function to get appropriate icon for source URL
+  const getSourceIcon = (url: string, favicon?: string): string => {
+    if (!url) return '/icons/web-icon.svg';
+    
+    const lowerUrl = url.toLowerCase();
+    
+    // Check for specific site types
+    if (lowerUrl.includes('reddit.com')) return '/icons/reddit-icon.svg';
+    if (lowerUrl.includes('github.com')) return '/icons/github-icon.svg';
+    if (lowerUrl.includes('wikipedia.org')) return '/icons/web-icon.svg'; // Use web icon for Wikipedia
+    
+    // If favicon is available and valid, use it
+    if (favicon && favicon.startsWith('http')) {
+      return favicon;
+    }
+    
+    // Default to web icon
+    return '/icons/web-icon.svg';
+  };
+
   const [emptyBoxes, setEmptyBoxes] = useState<string[]>([]);
   const [showPulsingDot, setShowPulsingDot] = useState(false);
   
@@ -1874,6 +1897,12 @@ function TestChatComponent(props?: TestChatProps) {
   // Artifact streaming states
   const [artifactStreamingContent, setArtifactStreamingContent] = useState<string>('');
   const [isArtifactStreaming, setIsArtifactStreaming] = useState(false);
+  
+  // Drag and resize states for artifact viewer
+  const [artifactViewerWidth, setArtifactViewerWidth] = useState(45); // Percentage width
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStartX, setDragStartX] = useState(0);
+  const [dragStartWidth, setDragStartWidth] = useState(45);
 
   // Additional missing state variables
   const [showHeading, setShowHeading] = useState(true);
@@ -1903,6 +1932,47 @@ function TestChatComponent(props?: TestChatProps) {
   // Computed values
   const isChatEmpty = messages.length === 0;
   const inputPosition = isChatEmpty && !hasInteracted && !activeSessionId ? "center" : "bottom";
+  
+  // Drag handlers for artifact viewer
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true);
+    setDragStartX(e.clientX);
+    setDragStartWidth(artifactViewerWidth);
+    e.preventDefault();
+  };
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!isDragging) return;
+    
+    const deltaX = e.clientX - dragStartX;
+    const windowWidth = window.innerWidth;
+    const deltaPercent = (deltaX / windowWidth) * 100;
+    
+    // Calculate new width (dragging left increases width, right decreases)
+    const newWidth = Math.max(20, Math.min(80, dragStartWidth - deltaPercent));
+    setArtifactViewerWidth(newWidth);
+  }, [isDragging, dragStartX, dragStartWidth]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  // Add mouse event listeners for dragging
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+      
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      };
+    }
+  }, [isDragging, handleMouseMove, handleMouseUp]);
 
   // Removed mouse event handlers for fixed layout
 
@@ -1912,7 +1982,24 @@ function TestChatComponent(props?: TestChatProps) {
     if (isArtifactStreaming && !isArtifactMode && artifactContent) {
       setIsArtifactMode(true);
     }
+
+    // Cleanup function
+    return () => {
+      if (isArtifactStreaming) {
+        setIsArtifactStreaming(false);
+        setArtifactStreamingContent('');
+      }
+    };
   }, [isArtifactStreaming, isArtifactMode, artifactContent]);
+
+  // Effect to handle abort controller cleanup
+  useEffect(() => {
+    return () => {
+      if (abortController) {
+        abortController.abort();
+      }
+    };
+  }, [abortController]);
 
   // Effect to load the active session (from URL hash, props, or saved state)
   useEffect(() => {
@@ -2117,7 +2204,292 @@ function TestChatComponent(props?: TestChatProps) {
   };
 
   // Function to save messages with explicit session ID (bypasses React state timing issues)
-  // Search functionality has been moved to SearchChat component
+  // Build contextual system prompt for browser chat (from browser mode)
+  const buildContextualSystemPrompt = (webContext: any) => {
+    return `You are Tehom AI, an exceptionally intelligent and articulate AI assistant that transforms complex web information into clear, actionable insights. Your specialty is synthesizing multiple sources into comprehensive, naturally-flowing responses that feel like getting expert advice from a knowledgeable friend.
+
+Your mission is to analyze, synthesize, and present web content in a way that's both deeply informative and refreshingly human. You're not just summarizing—you're connecting dots, revealing patterns, and providing the kind of nuanced understanding that comes from truly comprehending the material.
+
+Core Methodology:
+1.  Think like an analyst, write like a storyteller: Dive deep into the sources, identify key themes and contradictions, then weave them into a coherent narrative.
+2.  Lead with insight: Start with the most important findings, then build your case with supporting details.
+3.  Connect the dots: Highlight relationships between different sources, emerging patterns, and implications the user might not have considered.
+4.  Address nuance: When sources disagree or information is uncertain, explore why that might be and what it means for the user.
+
+Execution Rules:
+- Start strong: Jump straight into your key finding or most important insight. Do not use introductory filler like "Based on the sources provided." Start with impact.
+- Organize by insight, not by source: Group related information thematically. Use conversational transitions like "What's particularly interesting is..." "This aligns with..." "However, there's a twist..."
+- Provide evidence: Include specific details like numbers, quotes, and examples that bring your points to life.
+- Acknowledge complexity: Use phrases like "It's not that simple though..." or "The reality is more nuanced..."
+- Handle conflicting information: Always identify contradictions and explain possible reasons. Highlight gaps in available information.
+- Explain the 'so what': Connect findings to broader implications. Offer perspective on what this means for the user's specific question.
+
+Citation Format:
+- Use ONLY the exact URLs provided in the source data above. Do not make up, modify, or create new URLs.
+- Place citations at the end of sentences or paragraphs, separated by a space, NOT inline.
+- Use the platform/domain name as clickable links, like [TechCrunch](https://techcrunch.com/article) or [MIT News](https://news.mit.edu/study).
+- Extract the platform name from the domain (e.g., "techcrunch.com" → "TechCrunch", "nytimes.com" → "New York Times", "forbes.com" → "Forbes").
+- Write your content naturally, then add the source attribution at the end of the relevant sentence or paragraph.
+- **CRITICAL**: The URL in your link must match exactly one of the URLs listed in the source data above.
+
+Tone and Style:
+- Human, not robotic: Use contractions, varied sentence lengths, and natural phrasing.
+- Confident but not arrogant: You know your stuff, but you're honest about limitations.
+- Conversational but substantive: Maintain a natural flow without sacrificing depth.
+- Engaging but focused: Keep it interesting while staying on-target.
+- No emojis or unnecessary characters.
+
+Core Principles:
+- Comprehensive: Cover all major angles relevant to the user's question.
+- Accurate: Represent sources faithfully without oversimplifying.
+- Relevant: Everything you include should directly serve the user's query.
+- Clear: Explain complex topics simply without talking down to the user.
+- Actionable: When appropriate, help the user understand what to do with this information.
+
+${webContext?.hasSearchResults 
+  ? `Current Task: You're analyzing the query "${webContext.query}" using ${webContext.sourcesCount} web sources. Each source contains optimized content up to 6,000 characters. The user wants a comprehensive answer that goes beyond surface-level summary—they want understanding, context, and insight.`
+  : 'No web sources available. Provide general assistance while maintaining your analytical, insight-driven approach.'}
+
+Remember: The user's question is your north star. Everything should serve that purpose. Quality over quantity. Uncertainty handled well builds trust. Your goal isn't just to inform, but to genuinely help the user understand and make better decisions.
+
+Transform information into understanding. Make the complex clear. Turn data into wisdom.
+Do NOT use emojis or any other unnecessary characters.`;
+  };
+
+  // Handle search and AI response (integrated from browser mode)
+  const handleSearchAndAI = async (searchQuery: string, sessionId: string, userMessageId: string) => {
+    setIsSearching(true);
+    setSearchError(null);
+    setSearchResults([]);
+    setWebContextData(null);
+    setSelectedSource(null);
+    setSearchStatus('searching');
+    
+    try {
+      // Step 1: Search with Exa API
+      const response = await fetch('/api/exa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: searchQuery, enhanced: true }),
+      });
+      
+      if (!response.ok) throw new Error('Failed to fetch search results');
+      
+      const data = await response.json();
+      const sources = data.sources || [];
+      setSearchResults(sources);
+      
+      // Create web context data for AI
+      const contextData = {
+        hasSearchResults: true,
+        query: searchQuery,
+        sourcesCount: sources.length,
+        hasEnhancedContent: !!data.enhanced,
+        enhancedData: data.enhanced,
+        sources: sources,
+        mode: 'browser_chat',
+        modelConfig: {
+          temperature: 0.8,
+          top_p: 0.95,
+          max_tokens: 8000,
+          repetition_penalty: 1.2,
+          presence_penalty: 0.4,
+          frequency_penalty: 0.3
+        }
+      };
+      setWebContextData(contextData);
+      setSearchStatus('idle');
+      
+      // Open search pane now that we have search results
+      setIsSearchPaneOpen(true);
+      
+      // Step 2: Get AI response
+      await getFinalAnswer(searchQuery, contextData, sessionId, userMessageId);
+      
+    } catch (error: any) {
+      setSearchError(error.message || 'An error occurred while searching.');
+      setSearchStatus('error');
+      setIsLoading(false);
+      setIsAiResponding(false);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // Get final AI answer (from browser mode)
+  const getFinalAnswer = async (userQuestion: string, webContext: any, sessionId: string, userMessageId: string) => {
+    try {
+      // Prepare user message with web sources
+      let userMessageContent = userQuestion;
+      
+      if (webContext && webContext.hasSearchResults && webContext.sources) {
+        let sourceTexts = '';
+        
+        if (webContext.enhancedData && webContext.enhancedData.full_content) {
+          sourceTexts = Object.entries(webContext.enhancedData.full_content).map(([sourceId, data]: [string, any], index: number) => {
+            const sourceInfo = webContext.sources.find((s: any) => s.id === sourceId) || webContext.sources[index];
+            return `Source [${index + 1}]: ${sourceInfo?.url || 'Unknown URL'}
+Title: ${sourceInfo?.title || 'Unknown Title'}
+Content: ${data.text || 'No content available'}`;
+          }).join('\n\n---\n\n');
+        } else {
+          sourceTexts = webContext.sources.map((source: any, index: number) => (
+            `Source [${index + 1}]: ${source.url}
+Title: ${source.title}
+Content: ${source.text || source.snippet || 'No content available'}`
+          )).join('\n\n---\n\n');
+        }
+        
+        const urlMapping = webContext.sources.map((source: any, index: number) => 
+          `Source ${index + 1}: ${source.url}`
+        ).join('\n');
+        
+        sourceTexts += `\n\nAVAILABLE SOURCE URLs:\n${urlMapping}\n\nIMPORTANT: When creating links, use ONLY the exact URLs listed above. Do not make up or modify URLs.`;
+        
+        userMessageContent = `Please answer the following question based on the provided web sources. Focus your response on the user's specific question and use the web content to provide accurate, relevant information.
+
+---
+
+${sourceTexts}
+
+---
+
+User Question: ${userQuestion}
+
+Please provide a comprehensive answer that directly addresses this question using the information from the sources above.`;
+      }
+      
+      const messages = [
+        { role: 'system', content: buildContextualSystemPrompt(webContext) },
+        { role: 'user', content: userMessageContent }
+      ];
+      
+      const modelParameters = webContext?.modelConfig || {
+        temperature: 0.8,
+        top_p: 0.95,
+        max_tokens: 64000,
+        repetition_penalty: 1.2,
+        presence_penalty: 0.3,
+        frequency_penalty: 0.3
+      };
+      
+      // Create AI message placeholder
+      const aiMessageId = uuidv4();
+      const aiMessage: LocalMessage = {
+        role: 'assistant',
+        id: aiMessageId,
+        content: '',
+        timestamp: Date.now(),
+        parentId: userMessageId,
+        isStreaming: true,
+        isProcessed: false,
+        contentType: 'search',
+        webSources: webContext.sources,
+        imageUrls: (webContext.sources || []).filter((src: any) => src.image).map((src: any) => src.image),
+      };
+      
+      setMessages(prev => [...prev, aiMessage]);
+      
+      const response = await fetch('/api/nvidia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages,
+          mode: 'browser_chat',
+          stream: true,
+          ...modelParameters
+        })
+      });
+      
+      if (!response.ok) throw new Error('Failed to get response');
+      
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('Failed to get reader');
+      
+      let accumulatedContent = '';
+      let buffer = '';
+      const decoder = new TextDecoder();
+      
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const jsonStr = line.slice(6);
+              if (jsonStr.trim() === '[DONE]') continue;
+              
+              const data = JSON.parse(jsonStr);
+              const content = data.choices?.[0]?.delta?.content || '';
+              
+              if (content) {
+                accumulatedContent += content;
+                
+                setMessages(prev => prev.map(m => 
+                  m.id === aiMessageId 
+                    ? { ...m, content: accumulatedContent, isStreaming: true }
+                    : m
+                ));
+              }
+            } catch (e) {
+              console.warn('Failed to parse SSE chunk:', line);
+            }
+          }
+        }
+      }
+      
+      // Mark as complete
+      setMessages(prev => prev.map(m => 
+        m.id === aiMessageId 
+          ? { ...m, content: accumulatedContent, isStreaming: false, isProcessed: true }
+          : m
+      ));
+      
+      // Save AI message
+      const finalMessage: LocalMessage = {
+        role: 'assistant',
+        id: aiMessageId,
+        content: accumulatedContent,
+        timestamp: Date.now(),
+        parentId: userMessageId,
+        isStreaming: false,
+        isProcessed: true,
+        contentType: 'search',
+        webSources: webContext.sources,
+        imageUrls: (webContext.sources || []).filter((src: any) => src.image).map((src: any) => src.image),
+      };
+      
+      try {
+        await saveMessageInstantly(sessionId, finalMessage);
+        console.log('[Search Mode] AI message saved instantly');
+      } catch (error) {
+        console.error('[Search Mode] Failed to save AI message:', error);
+      }
+      
+    } catch (error) {
+      console.error('Error in getFinalAnswer:', error);
+      
+      const errorMessage: LocalMessage = {
+        role: 'assistant',
+        id: uuidv4(),
+        content: 'Error: Could not fetch response.',
+        timestamp: Date.now(),
+        parentId: userMessageId,
+        isStreaming: false,
+        isProcessed: true
+      };
+      
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+      setIsAiResponding(false);
+    }
+  };
 
   const saveMessagesOnQueryCompleteWithSessionId = async (currentMessages: LocalMessage[], explicitSessionId: string) => {
     if (!explicitSessionId || !user || currentMessages.length === 0) return;
@@ -2389,11 +2761,45 @@ function TestChatComponent(props?: TestChatProps) {
     // Regular text handling (no images)
     if (!input.trim()) return;
 
-    // Search mode is now handled by the SearchChat component
-    if (activeMode === 'search') {
-      // Search mode uses the standalone SearchChat component
-      return;
+      // Search mode - integrated browser functionality
+  if (activeMode === 'search') {
+    if (!input.trim()) return;
+    
+    // Ensure we have an active session
+    const currentActiveSessionId = await ensureActiveSession(input.trim());
+    
+    if (!hasInteracted) setHasInteracted(true);
+    if (showHeading) setShowHeading(false);
+    
+    // Add user message to chat
+    const userMessageId = uuidv4();
+    const userMessage: LocalMessage = { 
+      role: 'user',
+      id: userMessageId,
+      content: input,
+      timestamp: Date.now(),
+      isProcessed: true
+    };
+    
+    setMessages(prev => [...prev, userMessage]);
+    
+    // Save user message instantly
+    try {
+      await saveMessageInstantly(currentActiveSessionId, userMessage);
+      console.log('[Search Mode] User message saved instantly');
+    } catch (error) {
+      console.error('[Search Mode] Failed to instantly save user message:', error);
     }
+    
+    setInput('');
+    setIsLoading(true);
+    setIsAiResponding(true);
+    
+    // Execute search and AI response
+    await handleSearchAndAI(input.trim(), currentActiveSessionId, userMessageId);
+    
+    return;
+  }
 
     // Check if we're in artifact mode (only by button click, no auto-triggering)
     if (activeButton === 'artifact') {
@@ -2744,11 +3150,13 @@ User Request: ${input.trim()}`;
 
       const apiPayload: any = {
         messages: formattedMessages,
-        temperature: 0.7,        // OPTIMIZATION 3: Increased from 0.6 for faster initial responses
-        max_tokens: activeButton === 'reasoning' ? 15000 : 4096, // 15,000 tokens for Think mode, 4096 for default chat
-        top_p: 0.9,
-        frequency_penalty: 0.2,  // OPTIMIZATION 3: Decreased from 0.5 
-        presence_penalty: 0.2,   // OPTIMIZATION 3: Decreased from 0.8
+        temperature: activeButton === 'reasoning' ? 0.6 : 0.7,        // Qwen3 recommended 0.6 for thinking mode
+        max_tokens: activeButton === 'reasoning' ? 32768 : 4096,      // Qwen3 recommended 32768 for thinking mode
+        top_p: activeButton === 'reasoning' ? 0.95 : 0.9,            // Qwen3 recommended 0.95 for thinking mode
+        top_k: activeButton === 'reasoning' ? 20 : undefined,        // Qwen3 recommended 20 for thinking mode
+        min_p: activeButton === 'reasoning' ? 0 : undefined,         // Qwen3 recommended 0 for thinking mode
+        frequency_penalty: activeButton === 'reasoning' ? 0 : 0.2,   // Qwen3 recommended 0 for thinking mode
+        presence_penalty: activeButton === 'reasoning' ? 0 : 0.2,    // Qwen3 recommended 0 for thinking mode
       };
       
 
@@ -3249,7 +3657,7 @@ User Request: ${input.trim()}`;
     >
       <div className="flex items-center gap-3">
         <div className="flex-1 min-w-0">
-          <h3 className="text-lg truncate" style={{ color: '#FCFCFC' }}>{title}</h3>
+          <h3 className="text-lg truncate" style={{ color: "#FCFCFC", lineHeight: "1.2" }}>{title}</h3>
           <div className="flex items-center gap-4 text-xs text-gray-400 mt-1">
             {isStreaming && (
               <div className="flex items-center gap-2">
@@ -3375,7 +3783,7 @@ User Request: ${input.trim()}`;
     }
   }
 
-  const handleRetry = (originalQuery: string) => {
+  const handleRetryMessage = (originalQuery: string) => {
     setInput(originalQuery);
     // Clear the last assistant message if it exists
     setMessages(prev => {
@@ -3388,7 +3796,7 @@ User Request: ${input.trim()}`;
   };
 
   // Function to handle copying content to clipboard
-  const handleCopy = (content: string | any) => {
+  const handleCopyContent = (content: string | any) => {
     // Check if content is an object (for structured data), and stringify it
     const textToCopy = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
     
@@ -3417,7 +3825,7 @@ User Request: ${input.trim()}`;
     });
   };
 
-  const TypingIndicator = () => (
+  const LoadingIndicator = () => (
     <motion.div
       key="typing-indicator"
       initial={{ opacity: 0, y: 10 }}
@@ -3483,8 +3891,8 @@ User Request: ${input.trim()}`;
           <>
             {/* Completed Artifact with Preview Card */}
             <div 
-              className="w-full rounded-2xl border shadow-lg p-3 mb-2 cursor-pointer transition-all duration-300 ease-in-out" 
-              style={{ backgroundColor: '#1a1a1a', borderColor: '#333333' }}
+              className="w-full sm:max-w-sm rounded-2xl border shadow-lg px-3 mb-4 cursor-pointer transition-all duration-300 ease-in-out flex items-center gap-3" 
+              style={{ backgroundColor: "#1a1a1a", borderColor: "#333333", height: "48px", alignItems: "center" }}
                 onClick={() => {
                   // Clean the structured content before passing to artifact viewer
                   const cleanedArtifact = {
@@ -3495,30 +3903,25 @@ User Request: ${input.trim()}`;
                   setIsArtifactMode(true);
                 }}
             >
-              <div className="flex items-center gap-3">
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-lg truncate" style={{ color: '#FCFCFC' }}>
-                    {msg.structuredContent ? msg.structuredContent.title : (msg.title || "Generating Artifact...")}
-                    {msg.isStreaming && (
-                      <span className="inline-block ml-2 w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></span>
-                    )}
-                  </h3>
-                  <div className="flex items-center gap-4 text-xs text-gray-400 mt-1">
-                    {msg.isStreaming && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-cyan-400">Writing...</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-              </div>
+              {/* Artifact Icon */}
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="9" y1="9" x2="15" y2="9"></line>
+                <line x1="9" y1="15" x2="15" y2="15"></line>
+              </svg>
+              <h3 className="text-sm font-normal truncate flex-1 leading-tight" style={{ color: "#FCFCFC", margin: 0, padding: 0 }}>
+                {msg.structuredContent ? msg.structuredContent.title : "Drafting document"}
+              </h3>
+              {msg.isStreaming && (
+                <span className="inline-block w-2 h-2 bg-cyan-400 rounded-full animate-pulse flex-shrink-0" />
+              )}
+            </div>
 
             {/* Action buttons for completed artifact */}
             {msg.isProcessed && (
               <div className="w-full flex justify-start gap-2 mt-2 relative z-50">
                     <button 
-                  onClick={() => handleCopy(cleanArtifactContent(msg.structuredContent.content))}
+                  onClick={() => handleCopyContent(cleanArtifactContent(msg.structuredContent.content))}
                   className="flex items-center justify-center w-8 h-8 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
                   aria-label="Copy artifact content"
                 >
@@ -3565,7 +3968,7 @@ User Request: ${input.trim()}`;
                       }
                       
                       if (userMsg) {
-                        handleRetry(userMsg.content);
+                        handleRetryMessage(userMsg.content);
                       } else {
                         console.error('Could not find a user message to retry');
                       }
@@ -3588,8 +3991,8 @@ User Request: ${input.trim()}`;
           <>
             {/* Streaming Artifact - show clean content in artifact viewer style */}
             <div 
-              className="w-full rounded-2xl border shadow-lg p-3 mb-2 cursor-pointer transition-all duration-300 ease-in-out" 
-              style={{ backgroundColor: '#1a1a1a', borderColor: '#333333' }}
+              className="w-full sm:max-w-sm rounded-2xl border shadow-lg px-3 mb-4 cursor-pointer transition-all duration-300 ease-in-out flex items-center gap-3" 
+              style={{ backgroundColor: "#1a1a1a", borderColor: "#333333", height: "48px", alignItems: "center" }}
                 onClick={() => {
                   // For streaming artifacts, create temporary structured content with cleaned content
                   const tempArtifact = {
@@ -3607,27 +4010,22 @@ User Request: ${input.trim()}`;
                   setIsArtifactMode(true);
                 }}
             >
-              <div className="flex items-center gap-3">
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-lg truncate" style={{ color: '#FCFCFC' }}>
-                    {msg.title || "Generating Artifact..."}
-                    {msg.isStreaming && (
-                      <span className="inline-block ml-2 w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></span>
-                    )}
-                  </h3>
-                  <div className="flex items-center gap-4 text-xs text-gray-400 mt-1">
-                    {msg.isStreaming && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-cyan-400">Writing...</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
+              {/* Artifact Icon */}
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="9" y1="9" x2="15" y2="9"></line>
+                <line x1="9" y1="15" x2="15" y2="15"></line>
+              </svg>
+              <h3 className="text-sm font-normal truncate flex-1 leading-tight" style={{ color: "#FCFCFC", margin: 0, padding: 0 }}>
+                "Drafting document"
+              </h3>
+              {msg.isStreaming && (
+                <span className="inline-block w-2 h-2 bg-cyan-400 rounded-full animate-pulse flex-shrink-0" />
+              )}
             </div>
             
             {/* Streaming Content Display */}
-            {msg.content && msg.content.trim() && (
+            {false && msg.content && msg.content.trim() && (
               <div className="mt-4 p-4 bg-gray-900/50 rounded-lg border border-gray-700 w-full">
                 <div className="flex items-center gap-2 mb-3">
                   <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
@@ -3647,7 +4045,7 @@ User Request: ${input.trim()}`;
             {cleanContent && cleanContent.trim().length > 0 && (
                         <div className="w-full flex justify-start gap-2 mt-2 relative z-50">
                           <button
-                  onClick={() => handleCopy(cleanContent)}
+                                        onClick={() => handleCopyContent(cleanContent)}
                             className="flex items-center justify-center w-8 h-8 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
                   aria-label="Copy artifact content"
                           >
@@ -3671,7 +4069,7 @@ User Request: ${input.trim()}`;
                                 }
                                 
                                 if (userMsg) {
-                                  handleRetry(userMsg.content);
+                                  handleRetryMessage(userMsg.content);
                                 } else {
                                   console.error('Could not find a user message to retry');
                                 }
@@ -3745,6 +4143,27 @@ User Request: ${input.trim()}`;
                           />
                         </div>
                       )}
+
+                      {/* Standalone Source button - appears right after carousel for search mode with images */}
+                      {msg.contentType === "search" && msg.imageUrls && msg.imageUrls.length > 0 && (
+                        <div className="w-full flex justify-end mb-3 relative z-[60]">
+                          <button
+                            onClick={() => {
+                              setIsSearchPaneOpen(true);
+                              setActiveMode("search");
+                              setActiveTab("Sources");
+                            }}
+                            className="flex items-center justify-center gap-1 h-8 px-3 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all text-sm focus:outline-none"
+                            aria-label="View Sources"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <circle cx="12" cy="12" r="10" />
+                              <path d="M2 12h20M12 2a15.3 15.3 0 0 1 0 20M12 2a15.3 15.3 0 0 0 0 20" />
+                            </svg>
+                            <span className="leading-none">Source</span>
+                          </button>
+                        </div>
+                      )}
                       
                       {isStoppedMsg ? (
                         <span className="text-xs text-white italic font-light mb-2">[Response stopped by user]</span>
@@ -3752,7 +4171,7 @@ User Request: ${input.trim()}`;
                         <div className="w-full max-w-full overflow-hidden" style={{ minHeight: showTypingIndicator ? '2.5rem' : 'auto' }}>
                           {/* Single ReactMarkdown renderer for both streaming and final states */}
                           {showTypingIndicator ? (
-                            <TypingIndicator />
+                            <LoadingIndicator />
                           ) : (
                             finalContent.trim().length > 0 && (
                             <ReactMarkdown 
@@ -3760,19 +4179,19 @@ User Request: ${input.trim()}`;
                                 rehypePlugins={[rehypeRaw, rehypeKatex]} 
                               className="research-output"
                               components={{
-                                  h1: ({ children }) => (<h1 className="text-xl md:text-3xl font-bold mb-6 mt-8 border-b border-cyan-500/30 pb-3" style={{ color: '#FCFCFC' }}>{children}</h1>),
-                                  h2: ({ children }) => (<h2 className="text-lg md:text-2xl font-semibold mb-4 mt-8 flex items-center gap-2" style={{ color: '#FCFCFC' }}>{children}</h2>),
-                                  h3: ({ children }) => (<h3 className="text-base md:text-xl font-semibold mb-3 mt-6" style={{ color: '#FCFCFC' }}>{children}</h3>),
-                                  p: ({ children }) => (<p className="leading-relaxed mb-4 text-sm" style={{ color: '#FCFCFC' }}>{children}</p>),
+                                  h1: ({ children }) => (<h1 className="text-xl md:text-3xl font-bold mb-6 mt-8 border-b border-cyan-500/30 pb-3" style={{ color: "#FCFCFC", lineHeight: "1.2" }}>{children}</h1>),
+                                  h2: ({ children }) => (<h2 className="text-lg md:text-2xl font-semibold mb-4 mt-8 flex items-center gap-2" style={{ color: "#FCFCFC", lineHeight: "1.2" }}>{children}</h2>),
+                                  h3: ({ children }) => (<h3 className="text-base md:text-xl font-semibold mb-3 mt-6" style={{ color: "#FCFCFC", lineHeight: "1.2" }}>{children}</h3>),
+                                  p: ({ children }) => (<p className="leading-relaxed mb-4 text-sm" style={{ color: "#FCFCFC", lineHeight: "1.2" }}>{children}</p>),
                                   ul: ({ children }) => (<ul className="space-y-2 mb-4 ml-4">{children}</ul>),
-                                  li: ({ children }) => (<li className="flex items-start gap-2" style={{ color: '#FCFCFC' }}><span className="text-cyan-400 mt-1.5 text-xs">●</span><span className="flex-1">{children}</span></li>),
+                                  li: ({ children }) => (<li className="flex items-start gap-2" style={{ color: "#FCFCFC", lineHeight: "1.2" }}><span className="text-cyan-400 mt-1.5 text-xs">●</span><span className="flex-1">{children}</span></li>),
                                   ol: ({ children }) => (<ol className="space-y-2 mb-4 ml-4 list-decimal list-inside">{children}</ol>),
-                                  strong: ({ children }) => (<strong className="font-semibold" style={{ color: '#FCFCFC' }}>{children}</strong>),
+                                  strong: ({ children }) => (<strong className="font-semibold" style={{ color: "#FCFCFC", lineHeight: "1.2" }}>{children}</strong>),
                                   table: ({ children }) => (<div className="overflow-x-auto mb-6 max-w-full scrollbar-thin"><table className="border-collapse" style={{ tableLayout: 'auto', width: 'auto' }}>{children}</table></div>),
                                   thead: ({ children }) => <thead className="">{children}</thead>,
-                                  th: ({ children }) => (<th className="px-3 md:px-4 py-2 md:py-3 text-left font-semibold border-b-2 border-gray-600 text-xs md:text-sm" style={{ color: '#FCFCFC' }}>{children}</th>),
-                                  td: ({ children }) => (<td className="px-3 md:px-4 py-2 md:py-3 border-b border-gray-700 text-xs md:text-sm" style={{ color: '#FCFCFC' }}>{children}</td>),
-                                  blockquote: ({ children }) => (<blockquote className="border-l-4 border-cyan-500 pl-4 py-2 rounded-r-lg mb-4 italic" style={{ background: 'transparent', color: '#FCFCFC' }}>{children}</blockquote>),
+                                  th: ({ children }) => (<th className="px-3 md:px-4 py-1 md:py-3 text-left font-semibold border-b-2 border-gray-600 text-xs md:text-sm" style={{ color: "#FCFCFC", lineHeight: "1.2" }}>{children}</th>),
+                                  td: ({ children }) => (<td className="px-3 md:px-4 py-1 md:py-3 border-b border-gray-700 text-xs md:text-sm" style={{ color: "#FCFCFC", lineHeight: "1.2" }}>{children}</td>),
+                                  blockquote: ({ children }) => (<blockquote className="border-l-4 border-cyan-500 pl-4 py-1 rounded-r-lg mb-4 italic" style={{ background: 'transparent', color: '#FCFCFC' }}>{children}</blockquote>),
                                   code: ({ children, className }) => {
                                   const isInline = !className;
                                     return isInline
@@ -3790,9 +4209,9 @@ User Request: ${input.trim()}`;
                   
                       {/* Action buttons for text content */}
                       {msg.isProcessed && !isStoppedMsg && (
-                        <div className="w-full flex justify-start gap-2 mt-2 relative z-50">
+                        <div className="w-full flex justify-start gap-2 mt-2 relative z-[60]">
                           <button
-                            onClick={() => handleCopy(finalContent)}
+                            onClick={() => handleCopyContent(finalContent)}
                             className="flex items-center justify-center w-8 h-8 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
                             aria-label="Copy response"
                           >
@@ -3816,7 +4235,7 @@ User Request: ${input.trim()}`;
                                 }
                                 
                                 if (userMsg) {
-                                  handleRetry(userMsg.content);
+                                  handleRetryMessage(userMsg.content);
                                 } else {
                                   console.error('Could not find a user message to retry');
                                 }
@@ -3833,22 +4252,26 @@ User Request: ${input.trim()}`;
                             </svg>
                           </button>
 
-                          {/* Source button - only show when search results are available */}
-                          {searchResults.length > 0 && (
+{/* Source button - only show for search mode outputs without images */}
+                          {msg.contentType === "search" && (!msg.imageUrls || msg.imageUrls.length === 0) && (
                             <button
                               onClick={() => {
                                 setIsSearchPaneOpen(true);
-                                setActiveTab('Sources');
+                                setActiveMode("search");
+                                setActiveTab("Sources");
                               }}
-                              className="flex items-center justify-center w-8 h-8 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
+                              className="flex items-center justify-center gap-1 h-8 px-3 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all text-sm focus:outline-none"
                               aria-label="View Sources"
                             >
+                              {/* Globe/world icon SVG */}
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <circle cx="11" cy="11" r="8"></circle>
-                                <path d="M21 21l-4.35-4.35"></path>
+                                <circle cx="12" cy="12" r="10" />
+                                <path d="M2 12h20M12 2a15.3 15.3 0 0 1 0 20M12 2a15.3 15.3 0 0 0 0 20" />
                               </svg>
+                              <span className="leading-none">Source</span>
                             </button>
                           )}
+                       
                         </div>
                       )}
                     </motion.div>
@@ -3879,7 +4302,7 @@ User Request: ${input.trim()}`;
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, ease: 'easeOut' }}
           className="w-full text-left flex flex-col items-start ai-response-text mb-4 relative"
-          style={{ color: '#FCFCFC' }}
+          style={{ color: "#FCFCFC", lineHeight: "1.2" }}
         >
           {/* Live reasoning box - during streaming */}
           {currentReasoningMessageId === msg.id && liveReasoning && (
@@ -3918,16 +4341,16 @@ User Request: ${input.trim()}`;
         className="min-h-screen flex flex-col px-4 sm:px-4 md:px-8 lg:px-0 transition-all duration-300" 
         style={{ 
           background: '#161618',
-          width: isArtifactMode ? '55%' : '100%',
-          // Left chat should not shrink when search pane is open, so no margin adjustment here
+          width: isArtifactMode ? `${100 - artifactViewerWidth}%` : '100%',
+          marginRight: isSearchPaneOpen && !isArtifactMode ? '296px' : undefined // 280px pane + 16px gap
         }}
       >
         <GlobalStyles />
       {/* Single Header: always visible on all devices - constrained to left pane when right pane is open */}
       <header 
-        className="fixed top-0 left-0 z-50 bg-[#161618] shadow-md shadow-black/30 lg:shadow-none h-14 flex items-center px-4"
+        className="fixed top-0 left-0 z-50 bg-[#161618] border-b border-gray-600/50 h-14 flex items-center px-4"
         style={{
-          width: isArtifactMode ? '55%' : '100%'
+          width: isArtifactMode ? `${100 - artifactViewerWidth}%` : '100%'
         }}
       >
         <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
@@ -3966,13 +4389,13 @@ User Request: ${input.trim()}`;
           >
             {/* Input form for mobile */}
             <form
-              className="flex flex-col gap-2 rounded-2xl shadow-lg py-2 w-full px-4 pl-4 sm:px-6 md:px-8 lg:pl-4 lg:pr-0 mb-3 bg-[#232323] border border-white/20"
+              className="flex flex-col gap-2 rounded-2xl shadow-lg py-1 w-full px-4 pl-4 sm:px-6 md:px-8 lg:pl-4 lg:pr-0 mb-3 bg-[#232323] border border-white/20"
               style={{ boxShadow: '0 4px 32px 0 rgba(0,0,0,0.32)' }}
               onSubmit={handleSend}
             >
               {/* Image Preview inside input box */}
               {(selectedFiles.length > 0 || imagePreviewUrls.length > 0) && (
-                <div className="w-full px-2 py-2">
+                <div className="w-full px-2 py-1">
                   <div className="flex gap-2 flex-wrap">
                     {selectedFiles.map((file, index) => (
                       <div key={index} className="relative">
@@ -4170,9 +4593,9 @@ User Request: ${input.trim()}`;
               inputPosition === "center" ? "top-1/2 -translate-y-1/2" : "bottom-0 translate-y-0"
             }`}
             style={{
-              left: '50%',
-              width: '100%',
-              maxWidth: '48rem',
+              left: isArtifactMode ? `${(100 - artifactViewerWidth) / 2}%` : '50%',
+              width: isArtifactMode ? `${100 - artifactViewerWidth}%` : '100%',
+              maxWidth: isArtifactMode ? 'none' : '48rem',
               transform: inputPosition === 'center' ? 'translate(-50%, -50%)' : 'translateX(-50%)',
             }}
           >
@@ -4185,13 +4608,13 @@ User Request: ${input.trim()}`;
 
             {/* Input form for desktop */}
             <form
-              className="flex flex-col gap-2 rounded-2xl shadow-lg py-2 w-full px-4 pl-4 sm:px-6 md:px-8 lg:pl-4 lg:pr-0 mb-3 bg-[#232323] border border-white/20"
+              className="flex flex-col gap-2 rounded-2xl shadow-lg py-1 w-full px-4 pl-4 sm:px-6 md:px-8 lg:pl-4 lg:pr-0 mb-3 bg-[#232323] border border-white/20"
               style={{ boxShadow: '0 4px 32px 0 rgba(0,0,0,0.32)' }}
               onSubmit={handleSend}
             >
               {/* Image Preview inside input box */}
               {(selectedFiles.length > 0 || imagePreviewUrls.length > 0) && (
-                <div className="w-full px-2 py-2">
+                <div className="w-full px-2 py-1">
                   <div className="flex gap-2 flex-wrap">
                     {selectedFiles.map((file, index) => (
                       <div key={index} className="relative">
@@ -4462,7 +4885,7 @@ User Request: ${input.trim()}`;
             background: '#161618', 
             pointerEvents: 'none',
             left: '0',
-            width: isArtifactMode ? '55%' : '100%',
+            width: isArtifactMode ? `${100 - artifactViewerWidth}%` : '100%',
             marginRight: isSearchPaneOpen && !isArtifactMode ? '296px' : undefined
           }}
           aria-hidden="true"
@@ -4502,21 +4925,21 @@ User Request: ${input.trim()}`;
       {/* Search Pane - Right Edge Corner */}
       {isSearchPaneOpen && (
         <div 
-          className="fixed top-0 bottom-0 right-0 z-[10000] bg-[#161618]" 
+          className="fixed top-14 bottom-0 right-0 z-50 bg-[#161618] border-l border-gray-600/50" 
           style={{ 
             width: '280px'
           }}
         >
           <div className="h-full flex flex-col">
             {/* Search Pane Header */}
-            <div className="flex items-center justify-between px-4 py-4">
+            <div className="flex items-center justify-between px-4 h-14">
               {/* Tab Navigation moved into header */}
               <div className="flex">
                 {['Sources'].map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
-                    className={`px-4 py-2 text-sm font-medium transition-colors ${
+                    className={`px-4 py-1 text-sm font-medium transition-colors ${
                       activeTab === tab 
                         ? 'text-white' 
                         : 'text-gray-400 hover:text-gray-200'
@@ -4558,18 +4981,18 @@ User Request: ${input.trim()}`;
                 )}
               </div>
             ) : (
-              <div className="flex-1 flex flex-col">
+              <div className="flex-1 flex flex-col" style={{ height: 'calc(100vh - 7rem)' }}>
                 {/* Tab Content */}
-                <div className="flex-1 px-4 py-4 overflow-y-auto scrollbar-none" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                <div className="flex-1 px-4 py-4 overflow-y-auto scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', height: '100%' }}>
                   {activeTab === 'Sources' && (
-                    <div className="space-y-4">
+                    <div className="space-y-2 pb-4">
                       {textSources.map((result, index) => (
                         <motion.div
                           key={result.id || index}
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.3, delay: index * 0.05 }}
-                          className="bg-transparent p-4 rounded-lg transition-colors max-w-3xl mx-auto"
+                          className="bg-transparent p-2 rounded-lg transition-colors border-l-2 border-gray-500/50"
                         >
                           <a
                             href={result.url}
@@ -4578,22 +5001,33 @@ User Request: ${input.trim()}`;
                             className="block"
                             onClick={() => setSelectedSource(result.url)}
                           >
-                            <div className="flex items-center gap-3 mb-2">
-                              {result.favicon && (
-                                <img src={result.favicon} alt="" className="w-4 h-4 rounded-full" />
-                              )}
+                            <div className="flex items-center gap-2 mb-1">
+                              <img 
+                                src={getSourceIcon(result.url, result.favicon)} 
+                                alt="" 
+                                className="w-4 h-4 rounded-sm flex-shrink-0"
+                                onError={(e) => {
+                                  // Fallback to web icon if image fails to load
+                                  e.currentTarget.src = '/icons/web-icon.svg';
+                                }}
+                              />
                               <span className="text-xs text-gray-400 truncate">
                                 {extractDomain(result.url)}
                               </span>
                               {index < 3 && (
-                                <span className="flex-shrink-0 ml-auto bg-gray-700 text-gray-200 text-xs w-5 h-5 flex items-center justify-center rounded-full">
+                                <span className="flex-shrink-0 ml-auto bg-gray-700 text-gray-200 text-xs w-4 h-4 flex items-center justify-center rounded-full">
                                   {index + 1}
                                 </span>
                               )}
                             </div>
-                            <h3 className="font-semibold text-white mb-1.5 hover:text-blue-400 transition-colors">
+                            <h3 className="font-normal text-white text-sm mb-1 hover:text-blue-400 transition-colors line-clamp-2">
                               {result.title}
                             </h3>
+                            {result.snippet && (
+                              <p className="text-xs text-gray-400 line-clamp-2">
+                                {result.snippet}
+                              </p>
+                            )}
                           </a>
                         </motion.div>
                       ))}
@@ -4611,10 +5045,18 @@ User Request: ${input.trim()}`;
         <div 
           className="fixed top-0 right-0 bottom-0 z-[10000] bg-[#161618] border-l border-gray-700" 
           style={{ 
-            width: '45%',
-            left: '55%'
+            width: `${artifactViewerWidth}%`,
+            left: `${100 - artifactViewerWidth}%`
           }}
         >
+          {/* Drag Handle */}
+          <div
+            className="absolute left-0 top-0 bottom-0 w-1 bg-gray-600/30 hover:bg-gray-500/50 cursor-col-resize z-50 group"
+            onMouseDown={handleMouseDown}
+          >
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-1 h-8 bg-gray-400/60 rounded-full group-hover:bg-gray-300/80 transition-colors" />
+          </div>
+          
           <ArtifactViewer
             artifact={artifactContent}
             onClose={() => {
@@ -4632,20 +5074,6 @@ User Request: ${input.trim()}`;
         </div>
       )}
 
-      {/* Search Chat - Full Screen Mode */}
-      {activeMode === 'search' && activeSessionId && user && (
-        <div className="fixed inset-0 z-[10000] bg-[#161618]">
-          <SearchChat
-            sessionId={activeSessionId}
-            userId={user.id}
-            onClose={() => {
-              setActiveMode('chat');
-              setIsSearchPaneOpen(false);
-            }}
-          />
-        </div>
-      )}
-
 
     </>
   );
@@ -4657,4 +5085,4 @@ export default function TestChat() {
       <TestChatComponent />
     </AuthProvider>
   );
-} 
+}

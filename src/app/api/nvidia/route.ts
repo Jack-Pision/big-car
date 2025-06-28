@@ -14,7 +14,7 @@ function getApiKeyForMode(mode: string): string {
     case 'browser_chat':
       return TEXT_API_KEY3; // Use third key for browser chat mode
     case 'reasoning':
-      return TEXT_API_KEY; // Use original key for reasoning mode
+      return TEXT_API_KEY3; // Changed to use third key for reasoning mode with Qwen
     case 'image_analysis':
       return TEXT_API_KEY2; // Use second key for image analysis
     case 'artifact':
@@ -33,7 +33,7 @@ function getModelForMode(mode: string): string {
     case 'browser_chat':
       return 'deepseek-ai/deepseek-r1-0528'; // Changed back to DeepSeek
     case 'reasoning':
-      return 'deepseek-ai/deepseek-r1'; // Reasoning model with thinking capability
+      return 'qwen/qwen3-235b-a22b'; // Changed to Qwen model for reasoning
     case 'image_analysis':
       return 'mistralai/mistral-large'; // Updated NVIDIA vision model
     case 'artifact':
@@ -141,18 +141,53 @@ async function fetchNvidiaText(messages: any[], options: any = {}) {
   const payload = {
     model: selectedModel,
     messages: enhancedMessages,
-    temperature: options.temperature || (options.mode === 'browser_chat' ? 0.8 : 0.6),
-    top_p: options.top_p || (options.mode === 'browser_chat' ? 0.95 : 0.7),
+    temperature: options.temperature || (
+      options.mode === 'browser_chat' ? 0.8 : 
+      options.mode === 'reasoning' ? 0.6 : // Qwen3 recommended temperature for thinking mode
+      0.6
+    ),
+    top_p: options.top_p || (
+      options.mode === 'browser_chat' ? 0.95 : 
+      options.mode === 'reasoning' ? 0.95 : // Qwen3 recommended top_p for thinking mode
+      0.7
+    ),
+    top_k: options.top_k || (
+      options.mode === 'reasoning' ? 20 : // Qwen3 recommended top_k for thinking mode
+      undefined
+    ),
+    min_p: options.min_p || (
+      options.mode === 'reasoning' ? 0 : // Qwen3 recommended min_p for thinking mode
+      undefined
+    ),
     max_tokens: options.max_tokens || (
       selectedModel.startsWith('deepseek-ai/') ? 16384 : // Increased tokens for deepseek models
-      isArtifact ? 8192 : 8139
+      options.mode === 'artifact' ? 8000 : // Set specific max tokens for artifact mode
+      options.mode === 'reasoning' ? 32768 : // Qwen3 recommended max tokens for thinking mode
+      8139
     ),
-    presence_penalty: options.presence_penalty || (options.mode === 'browser_chat' ? 0.3 : 0.8),
-    frequency_penalty: options.frequency_penalty || (options.mode === 'browser_chat' ? 0.4 : 0.5),
+    presence_penalty: options.presence_penalty || (
+      options.mode === 'browser_chat' ? 0.3 :
+      options.mode === 'artifact' ? 0.4 : // Set specific presence penalty for artifact mode
+      options.mode === 'reasoning' ? 0 : // Qwen3 recommended presence penalty for thinking mode
+      0.8
+    ),
+    frequency_penalty: options.frequency_penalty || (
+      options.mode === 'browser_chat' ? 0.4 :
+      options.mode === 'artifact' ? 0.4 : // Set specific frequency penalty for artifact mode
+      options.mode === 'reasoning' ? 0 : // Qwen3 recommended frequency penalty for thinking mode
+      0.5
+    ),
+    repetition_penalty: options.repetition_penalty || (
+      options.mode === 'artifact' ? 1.2 : // Set specific repetition penalty for artifact mode
+      undefined
+    ),
+    // Only include top_k and min_p if they are defined
+    ...(options.top_k !== undefined && { top_k: options.top_k }),
+    ...(options.min_p !== undefined && { min_p: options.min_p }),
     stream: options.stream !== undefined ? options.stream : true,
     // Add Qwen3 specific parameters for multilingual support
     ...(selectedModel === 'qwen/qwen3-235b-a22b' && {
-      enable_thinking: false, // Disable thinking mode for default chat
+      enable_thinking: options.mode === 'reasoning', // Enable thinking mode for reasoning, disable for others
       language: 'auto', // Auto-detect input language for proper multilingual response
     }),
     // Add browser chat specific parameters
@@ -164,7 +199,7 @@ async function fetchNvidiaText(messages: any[], options: any = {}) {
     // We'll parse JSON from the streaming content instead
   };
   
-  console.log(`[NVIDIA API] Making request - Mode: ${options.mode || 'default'}, Model: ${payload.model}, Artifact: ${isArtifact}, Stream: ${payload.stream}, Max Tokens: ${payload.max_tokens}, API Key: ${options.mode === 'reasoning' ? 'NVIDIA_API_KEY' : options.mode === 'image_analysis' ? 'NVIDIA_API_KEY2' : 'NVIDIA_API_KEY3'}`);
+  console.log(`[NVIDIA API] Making request - Mode: ${options.mode || 'default'}, Model: ${payload.model}, Artifact: ${isArtifact}, Stream: ${payload.stream}, Max Tokens: ${payload.max_tokens}, Enable Thinking: ${payload.enable_thinking}, API Key: ${options.mode === 'reasoning' ? 'NVIDIA_API_KEY3' : options.mode === 'image_analysis' ? 'NVIDIA_API_KEY2' : 'NVIDIA_API_KEY3'}`);
   
   try {
     // Using fetchWithTimeout with increased timeout for NVIDIA API call
@@ -444,6 +479,8 @@ export async function POST(req: NextRequest) {
     const modelParams = {
       temperature: body.temperature || 0.6,
       top_p: body.top_p || 0.95,
+      top_k: body.top_k || undefined,
+      min_p: body.min_p || undefined,
       max_tokens: body.max_tokens || 1000, // Will be increased for artifacts in fetchNvidiaText
       presence_penalty: body.presence_penalty || 0.8,
       frequency_penalty: body.frequency_penalty || 0.5,

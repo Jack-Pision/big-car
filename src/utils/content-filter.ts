@@ -14,8 +14,9 @@ export function filterAIThinking(content: string): string {
   // Apply a multi-stage filtering process for more thorough reasoning removal
   let filteredContent = content;
   
-  // STAGE 1: Remove explicit think tags
-  filteredContent = filteredContent.replace(/<think>[\s\S]*?<\/think>/g, '');
+  // STAGE 1: Preserve think tags for reasoning mode - only remove them for other modes
+  // Note: This should only be called for non-reasoning content
+  // filteredContent = filteredContent.replace(/<think>[\s\S]*?<\/think>/g, '');
   
   // STAGE 2: Handle the specific pattern seen in your example
   // Where reasoning transitions to a proper response starting with a name/title
