@@ -12,6 +12,7 @@ interface ImageCarouselProps {
 const ImageCarousel: React.FC<ImageCarouselProps> = ({ images }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const carouselRef = useRef<HTMLDivElement>(null);
+  const [imageLoaded, setImageLoaded] = useState<{ [key: number]: boolean }>({});
 
   // Skip rendering if no images
   if (!images || images.length === 0) {
@@ -32,10 +33,15 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({ images }) => {
     }
   };
 
+  const handleImageLoad = (index: number) => {
+    setImageLoaded(prev => ({ ...prev, [index]: true }));
+  };
+
   // Scroll to the current image
   useEffect(() => {
     if (carouselRef.current) {
-      const scrollAmount = currentIndex * (240 + 16); // image width + gap
+      const itemWidth = carouselRef.current.offsetWidth;
+      const scrollAmount = currentIndex * (itemWidth + 16); // width + gap
       carouselRef.current.scrollTo({
         left: scrollAmount,
         behavior: 'smooth',
@@ -75,7 +81,7 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({ images }) => {
         {/* Carousel container */}
         <div 
           ref={carouselRef}
-          className="flex overflow-x-auto scrollbar-hide gap-4 pb-2 max-w-full"
+          className="flex overflow-x-auto scrollbar-hide gap-4 pb-2 max-w-full snap-x snap-mandatory"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           {images.map((image, index) => (
@@ -84,33 +90,54 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({ images }) => {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: index * 0.1 }}
-              className="relative flex-shrink-0 cursor-pointer group"
-              style={{ width: '240px', height: '160px' }}
+              className="relative flex-shrink-0 cursor-pointer group snap-center"
+              style={{ 
+                width: 'clamp(200px, 100%, 320px)',
+                aspectRatio: '3/2',
+                minHeight: '160px',
+                maxHeight: '240px'
+              }}
               onClick={() => handleImageClick(image.sourceUrl)}
             >
-              <div className="w-full h-full rounded-lg overflow-hidden border border-gray-700">
-                <img
-                  src={image.url}
-                  alt={image.title}
-                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  onError={(e) => {
-                    // Hide broken images
-                    (e.target as HTMLImageElement).style.display = 'none';
-                    (e.target as HTMLImageElement).parentElement!.classList.add('bg-gray-800');
-                    (e.target as HTMLImageElement).parentElement!.innerHTML += `
-                      <div class="flex items-center justify-center h-full text-gray-500">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                          <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                          <polyline points="21 15 16 10 5 21"></polyline>
-                        </svg>
-                      </div>
-                    `;
-                  }}
-                />
+              <div className="w-full h-full rounded-lg overflow-hidden border border-gray-700 bg-gray-800 relative">
+                {!imageLoaded[index] && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-8 h-8 border-4 border-gray-600 border-t-gray-200 rounded-full animate-spin"></div>
+                  </div>
+                )}
+                <div className="w-full h-full flex items-center justify-center">
+                  <img
+                    src={image.url}
+                    alt={image.title}
+                    className={`max-w-full max-h-full w-auto h-auto object-contain transition-all duration-300 ${
+                      imageLoaded[index] ? 'opacity-100' : 'opacity-0'
+                    } ${!imageLoaded[index] ? 'scale-95' : 'scale-100'} group-hover:scale-105`}
+                    onLoad={() => handleImageLoad(index)}
+                    onError={(e) => {
+                      // Handle broken images with a better fallback
+                      (e.target as HTMLImageElement).style.display = 'none';
+                      const container = (e.target as HTMLImageElement).parentElement!;
+                      if (!container.querySelector('.error-fallback')) {
+                        const fallback = document.createElement('div');
+                        fallback.className = 'error-fallback flex items-center justify-center h-full text-gray-500 bg-gray-800/50';
+                        fallback.innerHTML = `
+                          <div class="flex flex-col items-center gap-2">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                              <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                              <polyline points="21 15 16 10 5 21"></polyline>
+                            </svg>
+                            <span class="text-xs">Failed to load image</span>
+                          </div>
+                        `;
+                        container.appendChild(fallback);
+                      }
+                    }}
+                  />
+                </div>
               </div>
               <div 
-                className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-3 opacity-0 group-hover:opacity-100 transition-opacity"
                 style={{ borderBottomLeftRadius: '0.5rem', borderBottomRightRadius: '0.5rem' }}
               >
                 <p className="text-white text-sm truncate">{image.title}</p>
