@@ -12,7 +12,6 @@ import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 
 import { useRouter, useSearchParams } from 'next/navigation';
 
-import BrowserHistoryModal from '@/components/BrowserHistoryModal';
 import AuthProvider, { useAuth } from '@/components/AuthProvider';
 import { browserHistoryService } from '@/lib/browser-history-service';
 import EmbeddedAIChat from '@/components/EmbeddedAIChat';
@@ -470,16 +469,6 @@ Do NOT use emojis or any other unnecessary characters.`;
           isChatLoading={isChatLoading}
         />
       </div>
-
-      {/* Browser History Modal */}
-      <BrowserHistoryModal
-        isOpen={historyModalOpen}
-        onClose={() => setHistoryModalOpen(false)}
-        onSelectQuery={(selectedQuery) => {
-          setQuery(selectedQuery);
-          handleSearch(selectedQuery);
-        }}
-      />
     </div>
   );
 };
