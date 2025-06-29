@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -24,6 +24,8 @@ const PenModeViewer: React.FC<PenModeViewerProps> = ({
   onDragStart,
   isDragging = false
 }) => {
+  const [showRaw, setShowRaw] = useState(false);
+
   if (isExpanded) {
     // Expanded state - right panel like ArtifactViewer
     return (
@@ -63,19 +65,30 @@ const PenModeViewer: React.FC<PenModeViewerProps> = ({
                 <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
               </svg>
             </button>
+            <button
+              onClick={() => setShowRaw((prev) => !prev)}
+              className="p-2 rounded-lg text-gray-400 hover:bg-gray-700/60 hover:text-gray-200 transition-colors text-sm"
+              title={showRaw ? 'Render Markdown' : 'View Raw'}
+            >
+              {showRaw ? 'Render' : 'Raw'}
+            </button>
           </div>
         </header>
         {/* Content area */}
         <div className="flex-1 overflow-y-auto px-4 pt-6 pb-6 lg:px-6 xl:px-8">
           <div className="max-w-3xl mx-auto w-full">
             {content ? (
-              <ReactMarkdown 
-                remarkPlugins={[remarkGfm, remarkMath]} 
-                rehypePlugins={[rehypeRaw, rehypeKatex]} 
-                className="prose dark:prose-invert max-w-none pen-mode-markdown text-base leading-relaxed"
-              >
-                {content}
-              </ReactMarkdown>
+              showRaw ? (
+                <pre className="whitespace-pre-wrap text-sm leading-relaxed text-gray-200">{content}</pre>
+              ) : (
+                <ReactMarkdown 
+                  remarkPlugins={[remarkGfm, remarkMath]} 
+                  rehypePlugins={[rehypeRaw, rehypeKatex]} 
+                  className="prose dark:prose-invert max-w-none pen-mode-markdown text-base leading-relaxed"
+                >
+                  {content}
+                </ReactMarkdown>
+              )
             ) : (
               <div className="flex items-center justify-center h-64 text-gray-400 italic">
                 Your AI responses will appear here when pen mode is active...
