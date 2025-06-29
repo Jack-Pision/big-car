@@ -3294,51 +3294,32 @@ User Request: ${input.trim()}`;
                 try {
                   const parsed = JSON.parse(data);
                   const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.message?.content || parsed.choices?.[0]?.text || parsed.content || '';
+                  const reasoningContent = parsed.choices?.[0]?.delta?.reasoning_content || '';
+                  
+                  // Handle Qwen3 reasoning content for thinking mode
+                  if (reasoningContent && activeButton === 'reasoning') {
+                    const now = Date.now();
+                    if (now - lastLiveReasoningUpdate > 120) { // throttle to ~8 updates/sec
+                      lastLiveReasoningUpdate = now;
+                      setLiveReasoning(prev => prev + reasoningContent);
+                      setCurrentReasoningMessageId(aiMessageId);
+                    }
+                  }
                   
                   if (delta) {
                     contentBuffer += delta;
                     
-                    // Only extract think content for reasoning mode
-                    if (activeButton === 'reasoning') {
-                      // Separate thinking and main content in real-time for reasoning mode
-                    const { thinkContent, mainContent } = extractThinkContentDuringStream(contentBuffer);
-                    
-                    // Update the existing placeholder AI message with content
+                    // Update the existing placeholder AI message with content for both modes
                     if (aiMessageId) {
                       setMessages((prev) => {
                         return prev.map(msg => 
                           msg.id === aiMessageId 
-                            ? { ...msg, content: mainContent, isStreaming: true }
+                            ? { ...msg, content: contentBuffer, isStreaming: true }
                             : msg
                         );
                       });
                       hasCreatedMessage = true; // Mark as created after first update
                     }
-                    
-                    // Update live thinking display - this goes directly to think box
-                    if (thinkContent && thinkContent.trim().length > 0) {
-                        const now = Date.now();
-                        if (now - lastLiveReasoningUpdate > 120) { // throttle to ~8 updates/sec
-                          lastLiveReasoningUpdate = now;
-                        setLiveReasoning(thinkContent);
-                        setCurrentReasoningMessageId(aiMessageId);
-                        }
-                      }
-                      } else {
-                      // For default chat, use content directly without think processing
-                      if (aiMessageId) {
-                        setMessages((prev) => {
-                          return prev.map(msg => 
-                            msg.id === aiMessageId 
-                              ? { ...msg, content: contentBuffer, isStreaming: true }
-                              : msg
-                          );
-                        });
-                        hasCreatedMessage = true; // Mark as created after first update
-                      }
-                    }
-                    
-
                   }
                 } catch (err) {
                   console.error('Error parsing streaming response:', err);
@@ -3352,32 +3333,32 @@ User Request: ${input.trim()}`;
         // FAST FINAL SAVE - No delays, instant save when streaming completes
         if (aiMessageId) {
           if (activeButton === 'reasoning') {
-            // For reasoning mode, extract and embed think content
-          const { thinkContent: finalThinkContent, mainContent: finalMainContent } = extractThinkContentDuringStream(contentBuffer);
-          
+            // For reasoning mode, combine thinking content with main content
+            const finalThinkingContent = liveReasoning.trim();
+            
             // 1. Update UI immediately (no delays)
-          setMessages((prev) => {
-            return prev.map(msg => 
-              msg.id === aiMessageId 
-                ? { 
-                    ...msg, 
+            setMessages((prev) => {
+              return prev.map(msg => 
+                msg.id === aiMessageId 
+                  ? { 
+                      ...msg, 
                       isStreaming: false,
-                      content: finalThinkContent.trim().length > 0 
-                        ? `<think>${finalThinkContent}</think>${finalMainContent}` 
-                        : finalMainContent,
+                      content: finalThinkingContent.length > 0 
+                        ? `<think>${finalThinkingContent}</think>${contentBuffer}` 
+                        : contentBuffer,
                       contentType: 'reasoning',
                       isProcessed: true,
-                  }
-                : msg
-            );
-          });
-          
+                    }
+                  : msg
+              );
+            });
+            
             // 2. Save final content instantly in background (no setTimeout delays)
             const currentSessionId = sessionIdRef.current;
             if (currentSessionId && aiMessageId) {
-              const finalContent = finalThinkContent.trim().length > 0 
-                ? `<think>${finalThinkContent}</think>${finalMainContent}` 
-                : finalMainContent;
+              const finalContent = finalThinkingContent.length > 0 
+                ? `<think>${finalThinkingContent}</think>${contentBuffer}` 
+                : contentBuffer;
               
               // Use saveMessageInstantly for reliable UPSERT operation
               const completeMessage: LocalMessage = {
