@@ -9,18 +9,6 @@ import { X, Download, Copy, ExternalLink } from 'lucide-react';
 import { ArtifactData } from '@/utils/artifact-utils';
 import toast from 'react-hot-toast';
 
-interface ArtifactData {
-  type: 'document' | 'guide' | 'report' | 'analysis';
-  title: string;
-  content: string;
-  metadata: {
-    wordCount: number;
-    estimatedReadTime: string;
-    category: string;
-    tags: string[];
-  };
-}
-
 interface ArtifactViewerProps {
   artifact: ArtifactData;
   onClose: () => void;

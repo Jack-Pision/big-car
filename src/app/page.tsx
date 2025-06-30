@@ -54,7 +54,7 @@ import toast from 'react-hot-toast';
 import ReasoningDisplay from '@/components/ReasoningDisplay';
 import { EnhancedMarkdownRenderer } from '@/components/EnhancedMarkdownRenderer';
 import ImageCarousel from '@/components/ImageCarousel';
-import { useDynamicGradientMask } from '@/utils/dynamic-gradient-mask';
+
 
 // Define a type that includes all possible query types (including the ones in SCHEMAS and 'conversation')
 type QueryType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversation' | 'reasoning';
