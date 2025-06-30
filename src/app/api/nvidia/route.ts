@@ -441,13 +441,8 @@ export async function POST(req: NextRequest) {
     }
     
     // Limit message content length to reduce token size and response time
-    // Skip truncation for image analysis mode as base64 data needs to be complete
-    const optimizedMessages = body.messages.map((msg: any) => ({
-      ...msg,
-      content: (typeof msg.content === 'string' && msg.content.length > 4000 && mode !== 'image_analysis')
-        ? msg.content.substring(0, 4000) + "..." 
-        : msg.content
-    }));
+    // (Removed 4000 character truncation to allow full prompt content)
+    const optimizedMessages = body.messages;
     
     // Extract any model parameters with reasonable defaults
     const modelParams = {
