@@ -54,6 +54,7 @@ import toast from 'react-hot-toast';
 import ReasoningDisplay from '@/components/ReasoningDisplay';
 import { EnhancedMarkdownRenderer } from '@/components/EnhancedMarkdownRenderer';
 import ImageCarousel from '@/components/ImageCarousel';
+import { ArtifactService } from '../lib/artifact-service';
 
 
 // Define a type that includes all possible query types (including the ones in SCHEMAS and 'conversation')
@@ -856,6 +857,8 @@ interface LocalMessage {
   query?: string; // Add this property for search-ui messages
   isSearchResult?: boolean; // Add this property for search result messages
   title?: string; // Add title for artifact preview cards
+  root_id?: string; // Add root_id for artifact versioning
+  version?: number; // Add version for artifact versioning
 }
 
 // Helper to enforce Advance Search output structure
@@ -2085,12 +2088,41 @@ function TestChatComponent(props?: TestChatProps) {
             isProcessed: true // Mark all loaded messages as processed
           }));
           
+          // Update artifact messages with latest versions from artifacts table
+          const artifactService = ArtifactService.getInstance();
+          const updatedMessages = await Promise.all(
+            processedMessages.map(async (msg) => {
+              // If this is an artifact message with a root_id, fetch the latest version
+              if (msg.contentType === 'artifact' && msg.structuredContent?.root_id) {
+                try {
+                  const latestArtifact = await artifactService.getLatestVersion(msg.structuredContent.root_id);
+                  if (latestArtifact) {
+                    // Update the message with the latest artifact content
+                    return {
+                      ...msg,
+                      content: latestArtifact.content,
+                      structuredContent: {
+                        ...msg.structuredContent,
+                        content: latestArtifact.content,
+                        version: latestArtifact.version,
+                        metadata: latestArtifact.metadata
+                      }
+                    };
+                  }
+                } catch (error) {
+                  console.error('Error fetching latest artifact version:', error);
+                }
+              }
+              return msg;
+            })
+          );
+          
           // ONLY set messages if we're not in the middle of an active conversation
           // This prevents overwriting messages during first message flow
           if (!isAiResponding && !isLoading) {
-          setMessages(processedMessages);
-            setShowHeading(processedMessages.length === 0);
-            setHasInteracted(processedMessages.length > 0);
+            setMessages(updatedMessages);
+            setShowHeading(updatedMessages.length === 0);
+            setHasInteracted(updatedMessages.length > 0);
           }
           
           console.log('[Session Load] Session loaded successfully:', sessionIdToLoad);
@@ -2825,16 +2857,16 @@ Please provide a comprehensive answer that directly addresses this question usin
       // INSTANT SAVE: Save user message immediately
       try {
         await saveMessageInstantly(currentActiveSessionId, userMessage);
-        console.log('[Artifact Mode] User message saved instantly');
+        console.log('[Unified Mode] User message saved instantly');
       } catch (error) {
-        console.error('[Artifact Mode] Failed to instantly save user message:', error);
+        console.error('[Unified Mode] Failed to instantly save user message:', error);
       }
       
       setInput('');
       setIsLoading(true);
       setIsAiResponding(true);
       
-      // Set artifact streaming mode
+      // Set artifact streaming mode for UI display
       setIsArtifactStreaming(true);
       setArtifactStreamingContent('');
 
@@ -2843,24 +2875,10 @@ Please provide a comprehensive answer that directly addresses this question usin
         ? input.trim().substring(0, 50) + '...' 
         : input.trim() || 'Generated Document';
 
-      // Add AI message placeholder with artifact content type
-      const aiMessageId = uuidv4();
-      const aiMessage: LocalMessage = {
-        role: 'assistant',
-        id: aiMessageId,
-        content: '',
-        timestamp: Date.now(),
-        parentId: userMessageId,
-        contentType: 'artifact',
-        title: quickTitle,
-        isStreaming: true,
-        isProcessed: false
-      };
-      
-      setMessages(prev => [...prev, aiMessage]);
-      
-      // Create a temporary artifact data structure for the streaming content
-      const tempArtifact: ArtifactData = {
+      // Open artifact viewer immediately with empty content
+      setArtifactContent({
+        root_id: uuidv4(),
+        version: 1,
         type: 'document',
         title: 'Generating Document...',
         content: '',
@@ -2870,40 +2888,41 @@ Please provide a comprehensive answer that directly addresses this question usin
           category: 'Document',
           tags: ['document']
         }
-      };
-      
-      // Open artifact viewer immediately
-      setArtifactContent(tempArtifact);
+      });
       setIsArtifactMode(true);
 
+      // Create UNIFIED AI message placeholder - same as default chat
+      const aiMessageId = uuidv4();
+      const aiMessage: LocalMessage = {
+        role: 'assistant',
+        id: aiMessageId,
+        content: '',
+        timestamp: Date.now(),
+        parentId: userMessageId,
+        contentType: 'artifact', // Keep for UI routing but use unified rendering
+        title: quickTitle,
+        isStreaming: true,
+        isProcessed: false
+      };
+      
+      setMessages(prev => [...prev, aiMessage]);
+
       try {
-        // Create artifact prompt
-        const artifactPrompt = `You are an AI assistant specialized in creating well-structured documents and content. 
+        // Use BASE SYSTEM PROMPT - SAME AS DEFAULT CHAT
+        const enhancedPrompt = BASE_SYSTEM_PROMPT;
 
-Create a comprehensive, well-formatted document based on the user's request: "${input.trim()}"
-
-Guidelines:
-- Create detailed, informative content
-- Use proper markdown formatting with headers, lists, and emphasis
-- Structure the content logically with clear sections
-- Make it comprehensive and useful
-- Focus on quality and clarity
-- Do not include any thinking tags or meta-commentary
-- Respond only with the document content in markdown format
-
-User Request: ${input.trim()}`;
-
-        // Call NVIDIA API with artifact mode and enhanced prompt
+        // Call NVIDIA API with UNIFIED settings - SAME AS DEFAULT CHAT
         const response = await fetch('/api/nvidia', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             messages: [
-              { role: 'user', content: artifactPrompt }
+              { role: 'system', content: enhancedPrompt },
+              { role: 'user', content: input }
             ],
-            temperature: 0.7,
-            max_tokens: 8192,
-            mode: 'artifact',  // Use dedicated artifact mode
+            temperature: 0.6, // Same as default chat
+            max_tokens: 8192, // Higher for artifacts
+            mode: 'chat', // Use unified chat mode, not separate artifact mode
             stream: true
           })
         });
@@ -2960,17 +2979,17 @@ User Request: ${input.trim()}`;
           reader.releaseLock();
         }
 
-        // Use same lightweight processing as default chat
-        const cleanedContent = cleanArtifactContent(textContent);
+        // Use SAME PROCESSING as default chat
+        const cleanedContent = postProcessAIChatResponse(textContent, true);
 
-        // Create simple structured content for compatibility (minimal metadata)
+        // Create simple structured content for artifact viewer
         const structuredContent = {
           type: 'document' as const,
           title: quickTitle,
-          content: cleanedContent,
+          content: textContent, // Use raw AI output for artifact content
           metadata: {
-            wordCount: cleanedContent.split(' ').length,
-            estimatedReadTime: `${Math.ceil(cleanedContent.split(' ').length / 200)} min read`,
+            wordCount: textContent.split(' ').length,
+            estimatedReadTime: `${Math.ceil(textContent.split(' ').length / 200)} min read`,
             category: 'Document',
             tags: ['document']
           }
@@ -2980,7 +2999,7 @@ User Request: ${input.trim()}`;
         const finalAiMessage: LocalMessage = {
           role: 'assistant',
           id: aiMessageId,
-          content: cleanedContent,
+          content: textContent,
           timestamp: Date.now(),
           parentId: userMessageId,
           contentType: 'artifact',
@@ -2995,27 +3014,31 @@ User Request: ${input.trim()}`;
         ));
         
         // Update artifact viewer with final content
-        setArtifactContent(structuredContent);
+        setArtifactContent({
+          ...structuredContent,
+          root_id: uuidv4(),
+          version: 1
+        });
         setIsArtifactStreaming(false);
         
         // Save final message
         try {
           await saveMessageInstantly(currentActiveSessionId, finalAiMessage);
-          console.log('[Artifact Mode] Final AI message saved instantly');
+          console.log('[Unified Mode] Final AI message saved instantly');
         } catch (error) {
-          console.error('[Artifact Mode] Failed to instantly save AI message:', error);
+          console.error('[Unified Mode] Failed to instantly save AI message:', error);
         }
 
       } catch (error) {
-        console.error('Artifact streaming error:', error);
+        console.error('Unified artifact streaming error:', error);
         
         // Update the AI message with a more helpful error message
         const errorMessage: LocalMessage = {
           role: 'assistant',
           id: aiMessageId,
           content: error instanceof Error && error.message.includes('504') 
-            ? `Sorry, I encountered an error while creating the artifact: API request failed: 504. The artifact generation timed out because it was taking too long. Please try again with a simpler request or try again later.`
-            : `Sorry, I encountered an error while creating the artifact: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            ? `Sorry, I encountered an error while creating the content: API request failed: 504. The request timed out because it was taking too long. Please try again with a simpler request or try again later.`
+            : `Sorry, I encountered an error while creating the content: ${error instanceof Error ? error.message : 'Unknown error'}`,
           timestamp: Date.now(),
           parentId: userMessageId,
           contentType: 'artifact',
@@ -3829,25 +3852,11 @@ User Request: ${input.trim()}`;
     // Removed advanced search logic
   }, [isAiResponding]);
 
-  // Helper function to clean artifact content using same lightweight processing as default chat
-  const cleanArtifactContent = (content: string): string => {
-    if (!content) return '';
-    
-    const { content: rawContent } = cleanAIResponse(content);
-    // Use same processing as default chat - just remove think tags and thinking indicators
-    const cleanContent = rawContent
-      .replace(/<think>[\s\S]*?<\/think>/g, '')
-      .replace(/<thinking-indicator.*?>\n<\/thinking-indicator>\n|<thinking-indicator.*?\/>/g, '')
-      .trim();
-    
-    return cleanContent;
-  };
-
   // Independent artifact message rendering system
   const renderArtifactMessage = (msg: LocalMessage, i: number) => {
-    // Use same lightweight cleaning as default chat
-    const cleanContent = cleanArtifactContent(msg.content);
-    
+    // Use the raw AI markdown for artifacts
+    const rawContent = msg.structuredContent?.content || msg.content;
+
     return (
       <motion.div
         key={msg.id + '-artifact-' + i}
@@ -3864,22 +3873,24 @@ User Request: ${input.trim()}`;
             <div 
               className="w-full sm:max-w-sm rounded-2xl border shadow-lg px-3 mb-4 cursor-pointer transition-all duration-300 ease-in-out flex items-center gap-3" 
               style={{ backgroundColor: "#1a1a1a", borderColor: "#333333", height: "48px", alignItems: "center" }}
-                onClick={() => {
-                  // Use direct content without structured wrapper - create simple artifact for viewer
-                  const simpleArtifact = {
-                    title: msg.structuredContent.title || msg.title || "Generated Document",
-                    type: "document" as const,
-                    content: cleanContent, // Use cleaned content directly
-                    metadata: {
-                      wordCount: cleanContent.split(' ').length,
-                      estimatedReadTime: `${Math.ceil(cleanContent.split(' ').length / 200)} min read`,
-                      category: "Document",
-                      tags: ["document"]
-                    }
-                  };
-                  setArtifactContent(simpleArtifact);
-                  setIsArtifactMode(true);
-                }}
+              onClick={() => {
+                // Use raw content for artifact viewer/editor
+                const simpleArtifact = {
+                  root_id: msg.structuredContent?.root_id || uuidv4(),
+                  version: msg.structuredContent?.version || 1,
+                  title: msg.structuredContent.title || msg.title || "Generated Document",
+                  type: "document" as const,
+                  content: rawContent,
+                  metadata: {
+                    wordCount: rawContent.split(' ').length,
+                    estimatedReadTime: `${Math.ceil(rawContent.split(' ').length / 200)} min read`,
+                    category: "Document",
+                    tags: ["document"]
+                  }
+                };
+                setArtifactContent(simpleArtifact);
+                setIsArtifactMode(true);
+              }}
             >
               {/* Artifact Icon */}
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
@@ -3894,24 +3905,22 @@ User Request: ${input.trim()}`;
                 <span className="inline-block w-2 h-2 bg-cyan-400 rounded-full animate-pulse flex-shrink-0" />
               )}
             </div>
-
-            {/* Action buttons for completed artifact */}
+            {/* Action buttons for completed artifact (copy/download) can use rawContent */}
             {msg.isProcessed && (
               <div className="w-full flex justify-start gap-2 mt-2 relative z-50">
-                    <button 
-                  onClick={() => handleCopyContent(cleanContent)} // Use cleaned content directly
+                <button 
+                  onClick={() => handleCopyContent(rawContent)}
                   className="flex items-center justify-center w-8 h-8 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
                   aria-label="Copy artifact content"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                     <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-              </svg>
-            </button>
-
-            <button
+                  </svg>
+                </button>
+                <button
                   onClick={() => {
-                    const blob = new Blob([cleanContent], { type: 'text/markdown' }); // Use cleaned content directly
+                    const blob = new Blob([rawContent], { type: 'text/markdown' });
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
@@ -3928,149 +3937,15 @@ User Request: ${input.trim()}`;
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                     <polyline points="7,10 12,15 17,10"></polyline>
                     <line x1="12" y1="15" x2="12" y2="3"></line>
-              </svg>
-                </button>
-
-                <button
-                  onClick={() => {
-                    try {
-                      // Find the corresponding user message
-                      const userMsgIndex = messages.findIndex(m => m.id === msg.parentId);
-                      let userMsg = userMsgIndex >= 0 ? messages[userMsgIndex] : 
-                                  messages.find(m => m.role === 'user' && m.timestamp && m.timestamp < (msg.timestamp || Infinity));
-                      
-                      // If we still don't have a user message, use the last one as fallback
-                      if (!userMsg) {
-                        userMsg = [...messages].reverse().find(m => m.role === 'user');
-                      }
-                      
-                      if (userMsg) {
-                        handleRetryMessage(userMsg.content);
-                      } else {
-                        console.error('Could not find a user message to retry');
-                      }
-                    } catch (error) {
-                      console.error('Error handling retry button click:', error);
-                    }
-                  }}
-                  className="flex items-center justify-center w-8 h-8 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
-                  aria-label="Retry artifact generation"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
-                    <path d="M3 3v5h5"></path>
                   </svg>
                 </button>
               </div>
             )}
           </>
-        ) : (
-          <>
-            {/* Streaming Artifact - show clean content in artifact viewer style */}
-            <div 
-              className="w-full sm:max-w-sm rounded-2xl border shadow-lg px-3 mb-4 cursor-pointer transition-all duration-300 ease-in-out flex items-center gap-3" 
-              style={{ backgroundColor: "#1a1a1a", borderColor: "#333333", height: "48px", alignItems: "center" }}
-                onClick={() => {
-                  // Create simple artifact for streaming content
-                  const tempArtifact = {
-                    title: msg.title || "Generated Content",
-                    type: "document" as const,
-                    content: cleanContent, // Use cleaned content directly
-                    metadata: {
-                      wordCount: cleanContent.split(' ').length,
-                      estimatedReadTime: `${Math.ceil(cleanContent.split(' ').length / 200)} min read`,
-                      category: "Document",
-                      tags: ["document"]
-                    }
-                  };
-                  setArtifactContent(tempArtifact);
-                  setIsArtifactMode(true);
-                }}
-            >
-              {/* Artifact Icon */}
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                <line x1="9" y1="9" x2="15" y2="9"></line>
-                <line x1="9" y1="15" x2="15" y2="15"></line>
-              </svg>
-              <h3 className="text-sm font-normal truncate flex-1 leading-tight" style={{ color: "#FCFCFC", margin: 0, padding: 0 }}>
-                "Drafting document"
-              </h3>
-              {msg.isStreaming && (
-                <span className="inline-block w-2 h-2 bg-cyan-400 rounded-full animate-pulse flex-shrink-0" />
-              )}
-            </div>
-            
-            {/* Streaming Content Display */}
-            {false && msg.content && msg.content.trim() && (
-              <div className="mt-4 p-4 bg-gray-900/50 rounded-lg border border-gray-700 w-full">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
-                  <span className="text-sm text-cyan-400">Generating content...</span>
-                </div>
-                <ReactMarkdown 
-                  remarkPlugins={[remarkGfm, remarkMath]} 
-                  rehypePlugins={[rehypeRaw, rehypeKatex]} 
-                  className="prose dark:prose-invert max-w-none text-sm"
-                >
-                  {msg.content}
-                </ReactMarkdown>
-              </div>
-            )}
-            
-            {/* Action buttons for streaming artifact */}
-            {cleanContent && cleanContent.trim().length > 0 && (
-                        <div className="w-full flex justify-start gap-2 mt-2 relative z-50">
-                          <button
-                                        onClick={() => handleCopyContent(cleanContent)} // Use cleaned content directly
-                            className="flex items-center justify-center w-8 h-8 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
-                  aria-label="Copy artifact content"
-                          >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                            </svg>
-                          </button>
-
-                          <button
-                            onClick={() => {
-                              try {
-                                // Find the corresponding user message
-                                const userMsgIndex = messages.findIndex(m => m.id === msg.parentId);
-                                let userMsg = userMsgIndex >= 0 ? messages[userMsgIndex] : 
-                                            messages.find(m => m.role === 'user' && m.timestamp && m.timestamp < (msg.timestamp || Infinity));
-                                
-                                // If we still don't have a user message, use the last one as fallback
-                                if (!userMsg) {
-                                  userMsg = [...messages].reverse().find(m => m.role === 'user');
-                                }
-                                
-                                if (userMsg) {
-                                  handleRetryMessage(userMsg.content);
-                                } else {
-                                  console.error('Could not find a user message to retry');
-                                }
-                              } catch (error) {
-                                console.error('Error handling retry button click:', error);
-                              }
-                            }}
-                            className="flex items-center justify-center w-8 h-8 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
-                            aria-label="Retry artifact generation"
-                          >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
-                              <path d="M3 3v5h5"></path>
-                            </svg>
-                          </button>
-                        </div>
-            )}
-          </>
-                      )}
-                    </motion.div>
-                  );
+        ) : null}
+      </motion.div>
+    );
   };
-                
-  // Search message rendering removed - will be replaced with browser mode integration
 
   // Independent default chat message rendering system
   const renderDefaultChatMessage = (msg: LocalMessage, i: number) => {
@@ -4801,6 +4676,8 @@ User Request: ${input.trim()}`;
                         style={{ color: '#FCFCFC' }}
                         onClick={() => {
                           setArtifactContent({
+                            root_id: msg.structuredContent?.root_id || msg.root_id || uuidv4(),
+                            version: msg.structuredContent?.version || msg.version || 1,
                             title: msg.title || msg.structuredContent?.title || 'Generated Document',
                             type: 'document',
                             content: msg.content,
@@ -5078,6 +4955,81 @@ User Request: ${input.trim()}`;
               }
             }}
             isStreaming={isArtifactStreaming}
+            onContentUpdate={async (newContent: string) => {
+              if (artifactContent) {
+                let updatedArtifact = {
+                  ...artifactContent,
+                  content: newContent,
+                  metadata: {
+                    ...artifactContent.metadata,
+                    wordCount: newContent.split(' ').length,
+                    estimatedReadTime: `${Math.ceil(newContent.split(' ').length / 200)} min read`
+                  }
+                };
+                const artifactService = ArtifactService.getInstance();
+                // If no root_id, this is a new artifact
+                if (!artifactContent.root_id) {
+                  updatedArtifact = {
+                    ...updatedArtifact,
+                    root_id: uuidv4(),
+                    version: 1
+                  };
+                  setArtifactContent(updatedArtifact);
+                  try {
+                    await artifactService.create({ ...updatedArtifact });
+                    // Fetch and set the latest version from Supabase
+                    const latest = await artifactService.getLatestVersion(updatedArtifact.root_id);
+                    if (latest) setArtifactContent(latest);
+                    toast.success('Artifact created and saved to Supabase!');
+                  } catch (error) {
+                    toast.error('Failed to create artifact in Supabase');
+                    console.error('Supabase create error:', error);
+                  }
+                } else {
+                  // Existing artifact, increment version
+                  updatedArtifact = {
+                    ...updatedArtifact,
+                    version: (artifactContent.version || 1) + 1
+                  };
+                  setArtifactContent(updatedArtifact);
+                  try {
+                    await artifactService.saveNewVersion(
+                      artifactContent.root_id,
+                      newContent,
+                      updatedArtifact.metadata
+                    );
+                                          // Fetch and set the latest version from Supabase
+                      const latest = await artifactService.getLatestVersion(artifactContent.root_id);
+                                             if (latest) setArtifactContent(latest);
+                    toast.success('Artifact version saved to Supabase!');
+                  } catch (error) {
+                    toast.error('Failed to save artifact version to Supabase');
+                    console.error('Supabase save error:', error);
+                  }
+                }
+              }
+              if (isArtifactStreaming) {
+                setArtifactStreamingContent(newContent);
+              }
+              setMessages(prev => prev.map(msg => {
+                if (msg.contentType === 'artifact' && msg.content) {
+                  return {
+                    ...msg,
+                    content: newContent,
+                    structuredContent: artifactContent ? {
+                      ...msg.structuredContent,
+                      content: newContent,
+                      metadata: {
+                        ...msg.structuredContent?.metadata,
+                        wordCount: newContent.split(' ').length,
+                        estimatedReadTime: `${Math.ceil(newContent.split(' ').length / 200)} min read`
+                      }
+                    } : msg.structuredContent
+                  };
+                }
+                return msg;
+              }));
+            }}
           />
         </div>
       )}

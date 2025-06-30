@@ -1,6 +1,10 @@
+import { v4 as uuidv4 } from 'uuid';
+
 // Artifact detection and utility functions
 
 export interface ArtifactData {
+  root_id: string;
+  version: number;
   type: 'document' | 'guide' | 'report' | 'analysis';
   title: string;
   content: string;
@@ -166,6 +170,8 @@ export const createArtifactFromRawContent = (content: string, query: string): Ar
   const title = extractTitleFromContent(content, query);
   
   return {
+    root_id: uuidv4(),
+    version: 1,
     type: 'document',
     title: title,
     content: content,

@@ -1,34 +1,183 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
-import { motion } from 'framer-motion';
-import { X, Download, Copy } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, Download, Copy, Edit3, Send, Loader, ToggleLeft, ToggleRight } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { TipTapArtifactEditor } from './TipTapArtifactEditor';
 
 interface ArtifactViewerProps {
   content: string;
   onClose: () => void;
   isStreaming?: boolean;
   title?: string; // Optional title for downloads
+  onContentUpdate?: (newContent: string) => void; // Callback for content updates
 }
+
+interface Selection {
+  text: string;
+  startOffset: number;
+  endOffset: number;
+  x: number;
+  y: number;
+}
+
+interface EditModalProps {
+  isOpen: boolean;
+  selectedText: string;
+  onClose: () => void;
+  onSubmit: (instruction: string) => void;
+  isProcessing: boolean;
+}
+
+const EditModal: React.FC<EditModalProps> = ({ 
+  isOpen, 
+  selectedText, 
+  onClose, 
+  onSubmit,
+  isProcessing 
+}) => {
+  const [instruction, setInstruction] = useState('');
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (isOpen && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isOpen]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (instruction.trim() && !isProcessing) {
+      onSubmit(instruction.trim());
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      handleSubmit(e);
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      onClose();
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-[10001] flex items-center justify-center p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="bg-[#1C1C1E] border border-gray-600 rounded-lg max-w-md w-full p-6 shadow-xl"
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-white">Edit Selected Text</h3>
+          <button
+            onClick={onClose}
+            className="p-1 text-gray-400 hover:text-gray-200 rounded transition-colors"
+            disabled={isProcessing}
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-sm text-gray-300 mb-2">Selected text:</label>
+          <div className="bg-gray-800 rounded p-3 text-sm text-gray-200 max-h-32 overflow-y-auto border border-gray-600">
+            "{selectedText.length > 150 ? selectedText.substring(0, 150) + '...' : selectedText}"
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <label className="block text-sm text-gray-300 mb-2">
+              How would you like to edit this text?
+            </label>
+            <textarea
+              ref={inputRef}
+              value={instruction}
+              onChange={(e) => setInstruction(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="e.g., Make this more concise, Fix grammar, Change tone to formal..."
+              className="w-full h-24 px-3 py-2 bg-gray-800 border border-gray-600 rounded text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent resize-none"
+              disabled={isProcessing}
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              Press Cmd/Ctrl + Enter to submit, Escape to cancel
+            </p>
+          </div>
+
+          <div className="flex items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-gray-400 hover:text-gray-200 transition-colors"
+              disabled={isProcessing}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={!instruction.trim() || isProcessing}
+              className="px-4 py-2 bg-cyan-600 text-white rounded hover:bg-cyan-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {isProcessing ? (
+                <>
+                  <Loader className="w-4 h-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4" />
+                  Edit Text
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </div>
+  );
+};
 
 export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({ 
   content, 
   onClose, 
   isStreaming = false,
-  title = "Document"
+  title = "Document",
+  onContentUpdate
 }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editableContent, setEditableContent] = useState(content);
+  const [lastSavedContent, setLastSavedContent] = useState(content);
+  const [showSave, setShowSave] = useState(false);
+
+  // Update content when prop changes (e.g., loading a new artifact)
+  useEffect(() => {
+    setEditableContent(content);
+    setLastSavedContent(content);
+    setShowSave(false);
+  }, [content]);
+
+  // Show save button if there are unsaved changes
+  useEffect(() => {
+    setShowSave(editableContent !== lastSavedContent);
+  }, [editableContent, lastSavedContent]);
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(content);
+    navigator.clipboard.writeText(editableContent);
     toast.success('Content copied to clipboard!');
   };
 
   const handleDownload = () => {
-    const blob = new Blob([content], { type: 'text/markdown' });
+    const blob = new Blob([editableContent], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -39,93 +188,83 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
     URL.revokeObjectURL(url);
   };
 
+  const handleSave = () => {
+    setLastSavedContent(editableContent);
+    setShowSave(false);
+    if (onContentUpdate) {
+      onContentUpdate(editableContent);
+    }
+    toast.success('Changes saved!');
+  };
+
   return (
     <div className="h-full bg-[#161618] flex flex-col relative">
-      {/* Floating Action Buttons */}
-      <div className="absolute top-4 right-4 flex items-center gap-2 z-50">
-        {/* Copy content */}
-        <button
-          onClick={handleCopy}
-          className="p-2 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded-lg transition-colors"
-          title="Copy content"
-        >
-          <Copy className="w-4 h-4" />
-        </button>
-
-        {/* Download markdown */}
-        <button
-          onClick={handleDownload}
-          className="p-2 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded-lg transition-colors"
-          title="Download as Markdown"
-        >
-          <Download className="w-4 h-4" />
-        </button>
-
-        {/* Close button */}
-        <button
-          onClick={onClose}
-          className="p-2 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded-lg transition-colors"
-          title="Close"
-        >
-          <X className="w-4 h-4" />
-        </button>
-      </div>
-
-      {/* Content Area - Uses EXACT same rendering as default chat */}
-      <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent px-4 pt-12 pb-6 lg:px-6 xl:px-8">
-        <div className="max-w-3xl mx-auto w-full">
-          {!content ? (
-            // Show loading state when content is empty
-            <div className="flex flex-col items-center justify-center h-64">
-              <div className="flex items-center space-x-3 mb-4">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400"></div>
-                <span className="text-xl font-medium text-gray-300">AI is responding...</span>
-              </div>
-              <p className="text-gray-400 text-center max-w-md">
-                Your content is being generated in real-time.
-              </p>
-              <div className="mt-6 flex items-center space-x-2">
-                <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce"></div>
-                <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce delay-100"></div>
-                <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce delay-200"></div>
-              </div>
-            </div>
-          ) : (
-            <div className="w-full max-w-full overflow-hidden">
-              {/* Use EXACT same ReactMarkdown setup as default chat */}
-              <ReactMarkdown 
-                remarkPlugins={[remarkGfm, remarkMath]} 
-                rehypePlugins={[rehypeRaw, rehypeKatex]} 
-                className="research-output"
-                components={{
-                  h1: ({ children }) => (<h1 className="text-xl md:text-3xl font-bold mb-6 mt-8 border-b border-cyan-500/30 pb-3" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}>{children}</h1>),
-                  h2: ({ children }) => (<h2 className="text-lg md:text-2xl font-semibold mb-4 mt-8 flex items-center gap-2" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}>{children}</h2>),
-                  h3: ({ children }) => (<h3 className="text-base md:text-xl font-semibold mb-3 mt-6" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}>{children}</h3>),
-                  h4: ({ children }) => (<h4 className="text-base md:text-lg font-semibold mb-2 mt-4" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}>{children}</h4>),
-                  p: ({ children }) => (<p className="leading-relaxed mb-4 text-base" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}>{children}</p>),
-                  ul: ({ children }) => (<ul className="space-y-2 mb-4 ml-4">{children}</ul>),
-                  li: ({ children }) => (<li className="flex items-start gap-2" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}><span className="text-cyan-400 mt-1.5 text-xs">●</span><span className="flex-1">{children}</span></li>),
-                  ol: ({ children }) => (<ol className="space-y-2 mb-4 ml-4 list-decimal list-inside">{children}</ol>),
-                  strong: ({ children }) => (<strong className="font-semibold" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}>{children}</strong>),
-                  table: ({ children }) => (<div className="overflow-x-auto mb-6 max-w-full scrollbar-thin"><table className="border-collapse" style={{ tableLayout: 'auto', width: 'auto' }}>{children}</table></div>),
-                  thead: ({ children }) => <thead className="">{children}</thead>,
-                  th: ({ children }) => (<th className="px-3 md:px-4 py-1 md:py-3 text-left font-semibold border-b-2 border-gray-600 text-xs md:text-sm" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}>{children}</th>),
-                  td: ({ children }) => (<td className="px-3 md:px-4 py-1 md:py-3 border-b border-gray-700 text-xs md:text-sm" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}>{children}</td>),
-                  blockquote: ({ children }) => (<blockquote className="border-l-4 border-cyan-500 pl-4 py-1 rounded-r-lg mb-4 italic" style={{ background: 'transparent', color: 'var(--text-primary)' }}>{children}</blockquote>),
-                  code: ({ children, className }) => {
-                    const isInline = !className;
-                    return isInline
-                      ? (<code className="px-2 py-1 rounded text-xs font-mono" style={{ background: 'var(--code-bg)', color: 'var(--code-text)' }}>{children}</code>)
-                      : (<code className="block p-4 rounded-lg overflow-x-auto text-xs font-mono mb-4" style={{ background: 'var(--code-bg)', color: 'var(--code-text)' }}>{children}</code>);
-                  }
-                }}
-              >
-                {content}
-              </ReactMarkdown>
-            </div>
+      {/* Header Bar */}
+      <div className="flex items-center justify-between px-6 pt-4 pb-2 bg-[#161618] rounded-t-lg border-b border-gray-700">
+        <div className="text-lg font-semibold text-white truncate max-w-[60%]">{title}</div>
+        <div className="flex items-center gap-2 z-50">
+          {/* Save button (only if there are unsaved changes) */}
+          {showSave && (
+            <button
+              onClick={handleSave}
+              className="p-2 bg-white text-gray-900 rounded-full shadow hover:bg-gray-100 transition-colors"
+              title="Save changes"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </button>
           )}
+          {/* Copy content */}
+          <button
+            onClick={handleCopy}
+            className="p-2 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded-lg transition-colors"
+            title="Copy content"
+          >
+            <Copy className="w-4 h-4" />
+          </button>
+          {/* Download markdown */}
+          <button
+            onClick={handleDownload}
+            className="p-2 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded-lg transition-colors"
+            title="Download as Markdown"
+          >
+            <Download className="w-4 h-4" />
+          </button>
+          {/* Close button */}
+          <button
+            onClick={onClose}
+            className="p-2 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded-lg transition-colors"
+            title="Close"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
       </div>
+      {/* Content Area - Only TipTap Editor */}
+      <div className="w-full max-w-full flex-1 overflow-y-auto px-6 pt-4 pb-8 hide-scrollbar">
+        <TipTapArtifactEditor
+          content={editableContent}
+          onContentUpdate={(newContent) => {
+            setEditableContent(newContent);
+          }}
+          isStreaming={isStreaming}
+        />
+      </div>
+      <style jsx global>{`
+        .hide-scrollbar {
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        /* Extra padding inside the editor content area for polish */
+        .tiptap-editor-container .ProseMirror {
+          padding-left: 0.5rem;
+          padding-right: 0.5rem;
+        }
+      `}</style>
     </div>
   );
 };

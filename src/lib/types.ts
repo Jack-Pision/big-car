@@ -50,6 +50,7 @@ export interface Artifact {
   id?: string;
   user_id?: string;
   session_id?: string | null; // optional association to a chat session
+  root_id: string; // Groups all versions of the same artifact
   title: string;
   content: string;
   type: 'document' | 'guide' | 'report' | 'analysis';

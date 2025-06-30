@@ -126,4 +126,23 @@ export class ArtifactService {
 
     return data as Artifact;
   }
+
+  /*
+   * Fetch the latest version of an artifact by root_id
+   */
+  async getLatestVersion(rootId: string): Promise<Artifact | null> {
+    const { data, error } = await supabase
+      .from('artifacts')
+      .select('*')
+      .eq('root_id', rootId)
+      .order('version', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error) {
+      console.error('[ArtifactService] getLatestVersion() error:', error);
+      return null;
+    }
+    return data as Artifact;
+  }
 } 
