@@ -79,21 +79,6 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
           </select>
         )}
 
-        {/* Raw content toggle - only show when not streaming */}
-        {!isStreaming && (
-          <button
-            onClick={() => setShowRawContent(!showRawContent)}
-            className={`px-3 py-2 text-xs font-medium rounded-lg transition-colors backdrop-blur-sm ${
-              showRawContent 
-                ? 'bg-cyan-600/80 text-white hover:bg-cyan-500' 
-                : 'bg-gray-800/80 text-gray-400 hover:text-gray-200 hover:bg-gray-700'
-            }`}
-            title={showRawContent ? "Hide raw markdown" : "Show raw markdown"}
-          >
-            Raw
-          </button>
-        )}
-
         {/* Copy content */}
         <button
           onClick={handleCopy}
@@ -189,21 +174,6 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
                   </ReactMarkdown>
                 </div>
               </div>
-
-              {/* Raw markdown content - shown below main content when not streaming */}
-              {!isStreaming && showRawContent && (
-                <div className="mt-8 pt-6 border-t border-gray-700">
-                  <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-sm font-medium text-gray-300">Raw Markdown Source</h3>
-                      <span className="text-xs text-gray-500">Toggle with Raw button above</span>
-                    </div>
-                    <pre className="whitespace-pre-wrap text-sm text-gray-300 font-mono leading-relaxed overflow-auto max-h-[50vh] scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent">
-                      {displayContent}
-                    </pre>
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </div>
