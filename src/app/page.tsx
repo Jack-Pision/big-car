@@ -4790,7 +4790,36 @@ User Request: ${input.trim()}`;
               // Assistant responses: artifacts first, then reasoning, then agent, then default chat
               if (msg.role === 'assistant') {
                 if (msg.contentType === 'artifact') {
-                  return renderArtifactMessage(msg, i);
+                  // Show a minimal preview card in chat for artifact messages
+                  return (
+                    <div
+                      key={msg.id + '-artifact-preview'}
+                      className="w-full flex justify-start items-center mb-4"
+                    >
+                      <button
+                        className="flex items-center gap-3 px-4 py-3 rounded-2xl border border-gray-700 bg-[#18181a] hover:bg-gray-800 transition-colors shadow-md cursor-pointer min-w-[180px] max-w-xs"
+                        style={{ color: '#FCFCFC' }}
+                        onClick={() => {
+                          setArtifactContent({
+                            title: msg.title || msg.structuredContent?.title || 'Generated Document',
+                            type: 'document',
+                            content: msg.content,
+                            metadata: msg.structuredContent?.metadata || {}
+                          });
+                          setIsArtifactMode(true);
+                        }}
+                      >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+                          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                          <line x1="9" y1="9" x2="15" y2="9"></line>
+                          <line x1="9" y1="15" x2="15" y2="15"></line>
+                        </svg>
+                        <span className="font-medium text-sm truncate flex-1">
+                          {msg.isStreaming ? 'Writing artifact' : 'Preview artifact'}
+                        </span>
+                      </button>
+                    </div>
+                  );
                 }
                 if (msg.contentType === 'reasoning') {
                   return renderReasoningMessage(msg, i);
@@ -5037,7 +5066,8 @@ User Request: ${input.trim()}`;
           </div>
           
           <ArtifactViewer
-            artifact={artifactContent}
+            content={isArtifactStreaming ? artifactStreamingContent : (artifactContent?.content || '')}
+            title={artifactContent?.title || 'Document'}
             onClose={() => {
               setIsArtifactMode(false);
               setArtifactContent(null);
@@ -5048,7 +5078,6 @@ User Request: ${input.trim()}`;
               }
             }}
             isStreaming={isArtifactStreaming}
-            streamingContent={artifactStreamingContent}
           />
         </div>
       )}

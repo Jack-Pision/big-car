@@ -83,36 +83,6 @@ function generateCacheKey(messages: any[], options: any = {}): string {
   });
 }
 
-// Helper function to detect if this is an artifact generation request
-function isArtifactRequest(messages: any[]): boolean {
-  if (!messages || messages.length === 0) return false;
-  
-  const lastMessage = messages[messages.length - 1];
-  if (!lastMessage || !lastMessage.content) return false;
-  
-  const content = lastMessage.content.toLowerCase();
-  
-  // Check for artifact-related keywords in the prompt
-  const artifactKeywords = [
-    'create a document',
-    'write a guide',
-    'generate a report',
-    'create an essay',
-    'write an article',
-    'create a tutorial',
-    'generate content',
-    'artifact',
-    'document generation',
-    'respond with valid json',
-    'json format',
-    'structured output'
-  ];
-  
-  return artifactKeywords.some(keyword => content.includes(keyword));
-}
-
-
-
 // Update the fetchNvidiaText function to use caching and handle timeouts better
 async function fetchNvidiaText(messages: any[], options: any = {}) {
   // Generate a cache key for this request
@@ -130,12 +100,9 @@ async function fetchNvidiaText(messages: any[], options: any = {}) {
     });
   }
   
-  // No longer enhance messages for artifact requests - use them directly
+  // Use messages as-is, no artifact detection or enhancement
   const enhancedMessages = messages;
-  
-  // Check if this is an artifact request - if so, remove response_format to avoid compatibility issues
-  const isArtifact = isArtifactRequest(messages);
-  
+
   // If not in cache or expired, make the API call
   const selectedModel = getModelForMode(options.mode || 'default');
   const payload = {
@@ -144,48 +111,46 @@ async function fetchNvidiaText(messages: any[], options: any = {}) {
     temperature: options.temperature || 0.6,
     top_p: options.top_p || 0.95,
     max_tokens: options.max_tokens || (
-      options.mode === 'artifact' ? 8000 : // Set specific max_tokens for artifact mode
-      options.mode === 'reasoning' ? 32768 : // Set higher max_tokens for reasoning mode
-      options.mode === 'browser_chat' ? 8000 : // Set specific max_tokens for browser chat mode
+      options.mode === 'artifact' ? 8000 : // Still allow explicit artifact mode for UI
+      options.mode === 'reasoning' ? 32768 :
+      options.mode === 'browser_chat' ? 8000 :
       1000
     ),
     presence_penalty: options.presence_penalty || (
-      options.mode === 'artifact' ? 0.4 : // Set specific presence penalty for artifact mode
-      options.mode === 'reasoning' ? 0 : // Set specific presence penalty for reasoning mode
+      options.mode === 'artifact' ? 0.4 :
+      options.mode === 'reasoning' ? 0 :
       0.8
     ),
     frequency_penalty: options.frequency_penalty || (
-      options.mode === 'artifact' ? 0.4 : // Set specific frequency penalty for artifact mode
-      options.mode === 'reasoning' ? 0 : // Set specific frequency penalty for reasoning mode
+      options.mode === 'artifact' ? 0.4 :
+      options.mode === 'reasoning' ? 0 :
       0.5
     ),
     repetition_penalty: options.repetition_penalty || (
-      options.mode === 'artifact' ? 1.2 : // Set specific repetition penalty for artifact mode
+      options.mode === 'artifact' ? 1.2 :
       undefined
     ),
-    // Only include top_k and min_p if they are defined
     ...(options.top_k !== undefined && { top_k: options.top_k }),
     ...(options.min_p !== undefined && { min_p: options.min_p }),
-    // Add chat_template_kwargs for DeepSeek reasoning mode (thinking disabled)
     ...(options.mode === 'reasoning' && { 
       chat_template_kwargs: { thinking: false } 
     }),
     stream: options.stream !== undefined ? options.stream : true,
   };
-  
-  console.log(`[NVIDIA API] Making request - Mode: ${options.mode || 'default'}, Model: ${payload.model}, Artifact: ${isArtifact}, Stream: ${payload.stream}, Max Tokens: ${payload.max_tokens}, API Key: ${options.mode === 'reasoning' ? 'NVIDIA_API_KEY3' : options.mode === 'image_analysis' ? 'NVIDIA_API_KEY2' : 'NVIDIA_API_KEY3'}`);
+
+  console.log(`[NVIDIA API] Making request - Mode: ${options.mode || 'default'}, Model: ${payload.model}, Stream: ${payload.stream}, Max Tokens: ${payload.max_tokens}, API Key: ${options.mode === 'reasoning' ? 'NVIDIA_API_KEY3' : options.mode === 'image_analysis' ? 'NVIDIA_API_KEY2' : 'NVIDIA_API_KEY3'}`);
   
   try {
-    // Using fetchWithTimeout with increased timeout for NVIDIA API call
-  const res = await fetchWithTimeout('https://integrate.api.nvidia.com/v1/chat/completions', {
+    // Use a single timeout for all requests (e.g., 30 seconds)
+    const res = await fetchWithTimeout('https://integrate.api.nvidia.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-      'Authorization': `Bearer ${getApiKeyForMode(options.mode || 'default')}`,
+        'Authorization': `Bearer ${getApiKeyForMode(options.mode || 'default')}`,
         'Content-Type': 'application/json; charset=utf-8',
         'Accept': 'text/event-stream; charset=utf-8',
       },
       body: JSON.stringify(payload),
-    }, isArtifact ? 29000 : 25000); // 29-second timeout for artifacts, 25-second for regular chats
+    }, 30000); // 30-second timeout for all
 
     if (!res.ok) {
       const errorText = await res.text();
@@ -228,56 +193,21 @@ async function fetchNvidiaText(messages: any[], options: any = {}) {
     
     // For streaming responses, we just return the stream
     if (payload.stream) {
-    return res;
+      return res;
     }
     
-    // For non-streaming responses, cache the result
-    const responseData = await res.text();
-    apiCache.set(cacheKey, { data: responseData, timestamp: Date.now() });
-    
-    return new Response(responseData, {
+    // For non-streaming, cache the response
+    const data = await res.text();
+    apiCache.set(cacheKey, { data, timestamp: Date.now() });
+    return new Response(data, {
       headers: {
         'Content-Type': 'application/json',
-        'Cache-Control': 'max-age=900' // 15 minutes
+        'Cache-Control': 'max-age=900'
       }
     });
   } catch (err: any) {
-    console.error('Error in fetchNvidiaText:', err);
-    const isTimeout = err.message.includes('timed out');
-    
-    // Create a fallback response for timeouts
-    if (isTimeout) {
-      const fallbackResponse = JSON.stringify({
-        error: 'Gateway Timeout: The AI service took too long to respond. Please try again with a simpler query.',
-        details: err.message,
-        choices: [
-          {
-            message: {
-              content: "I apologize, but the request took too long to process. Please try a simpler query or try again later."
-            }
-          }
-        ]
-      });
-      
-      // Don't cache timeout errors as they may be temporary
-      return new Response(fallbackResponse, {
-        status: 504,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-    
-    // For other errors, create a generic error response
-    const errorResponse = JSON.stringify({
-      error: 'Failed to process request',
-      details: err.message
-    });
-    
-    // Cache the error to prevent repeated failures
-    if (!payload.stream) {
-      apiCache.set(cacheKey, { data: errorResponse, timestamp: Date.now() });
-    }
-    
-    return new Response(errorResponse, {
+    console.error('Nvidia API fetch error:', err);
+    return new Response(JSON.stringify({ error: err.message || 'Unknown error' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
     });
