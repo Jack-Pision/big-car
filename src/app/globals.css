@@ -390,9 +390,6 @@ body {
   }
 }
 
-html, body {
-}
-
 /* === KaTeX Math Rendering Enhancements === */
 .markdown-body .katex-display {
   display: block;
@@ -1308,6 +1305,7 @@ textarea::-webkit-scrollbar-thumb,
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 /* Prose text size for all modes */
