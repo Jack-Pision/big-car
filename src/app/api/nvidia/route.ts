@@ -14,7 +14,7 @@ function getApiKeyForMode(mode: string): string {
     case 'browser_chat':
       return TEXT_API_KEY3; // Use third key for browser chat mode
     case 'reasoning':
-      return TEXT_API_KEY3; // Changed to use third key for reasoning mode with Qwen
+      return TEXT_API_KEY3; // Use third key for reasoning mode with DeepSeek
     case 'image_analysis':
       return TEXT_API_KEY2; // Use second key for image analysis
     case 'artifact':
@@ -33,7 +33,7 @@ function getModelForMode(mode: string): string {
     case 'browser_chat':
       return 'deepseek-ai/deepseek-r1-0528'; // Changed back to DeepSeek
     case 'reasoning':
-      return 'qwen/qwen3-235b-a22b'; // Changed to Qwen model for reasoning
+      return 'deepseek-ai/deepseek-r1-0528'; // Changed to DeepSeek model for reasoning
     case 'image_analysis':
       return 'mistralai/mistral-large'; // Updated NVIDIA vision model
     case 'artifact':
@@ -166,9 +166,9 @@ async function fetchNvidiaText(messages: any[], options: any = {}) {
     // Only include top_k and min_p if they are defined
     ...(options.top_k !== undefined && { top_k: options.top_k }),
     ...(options.min_p !== undefined && { min_p: options.min_p }),
-    // Add chat_template_kwargs for Qwen3 thinking mode
+    // Add chat_template_kwargs for DeepSeek reasoning mode (thinking disabled)
     ...(options.mode === 'reasoning' && { 
-      chat_template_kwargs: { thinking: true } 
+      chat_template_kwargs: { thinking: false } 
     }),
     stream: options.stream !== undefined ? options.stream : true,
   };

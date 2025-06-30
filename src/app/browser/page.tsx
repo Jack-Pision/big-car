@@ -412,7 +412,7 @@ Do NOT use emojis or any other unnecessary characters.`;
   };
 
   return (
-    <div className="h-screen" style={{ backgroundColor: '#161618', fontFamily: 'Inter, sans-serif' }}>
+    <div className="h-screen" style={{ backgroundColor: '#161618', fontFamily: 'var(--system-fonts)' }}>
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-[#161618] h-14 flex items-center px-4">
         <div className="flex items-center gap-2">

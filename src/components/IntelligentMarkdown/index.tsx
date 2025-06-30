@@ -1,6 +1,8 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { motion } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import { MarkdownRenderer } from '../../utils/markdown-utils';
@@ -57,7 +59,7 @@ const IntelligentMarkdown: React.FC<IntelligentMarkdownProps> = ({
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Detect code blocks, JSON blocks, and tables
-  const detectSpecialBlocks = useCallback((text: string): SpecialBlock[] => {
+  const detectSpecialBlocks = (text: string): SpecialBlock[] => {
     const blocks: SpecialBlock[] = [];
     
     // Detect code blocks
@@ -168,7 +170,7 @@ const IntelligentMarkdown: React.FC<IntelligentMarkdownProps> = ({
     }
     
     return blocks;
-  }, []);
+  };
 
   // Process content with intelligent handling
   useEffect(() => {
@@ -270,11 +272,13 @@ const IntelligentMarkdown: React.FC<IntelligentMarkdownProps> = ({
 
   return (
     <div className="w-full markdown-body text-left flex flex-col items-start ai-response-text">
-      <MarkdownRenderer
-        content={displayContent}
-        userQuery={userQuery}
-        context={context}
-      />
+      <div>
+        <MarkdownRenderer
+          content={displayContent}
+          userQuery={userQuery}
+          context={context}
+        />
+      </div>
     </div>
   );
 };

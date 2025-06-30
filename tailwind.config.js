@@ -9,7 +9,7 @@ module.exports = {
   theme: {
     extend: {
       fontSize: {
-        'base': '14px',
+        'base': '16px',
       },
       colors: {
         background: '#FFFFFF',

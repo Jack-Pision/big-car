@@ -107,7 +107,7 @@ const ThinkingButton: React.FC<ThinkingButtonProps> = ({ content, isLive = false
           </div>
           
           {/* Title text */}
-          <span className="font-medium text-sm flex-1" style={{ color: '#FCFCFC' }}>
+          <span className="font-medium text-base flex-1" style={{ color: 'var(--text-primary)' }}>
             {isLive ? 'Thinking' : 'Thoughts'}
           </span>
           
@@ -136,8 +136,8 @@ const ThinkingButton: React.FC<ThinkingButtonProps> = ({ content, isLive = false
             }}
           >
             <div 
-              className="text-sm leading-relaxed select-text research-output"
-              style={{ color: '#FCFCFC' }}
+              className="text-base leading-relaxed select-text research-output"
+              style={{ color: 'var(--text-primary)' }}
             >
               <ReactMarkdown 
                 remarkPlugins={[remarkGfm, remarkMath]} 
@@ -158,7 +158,7 @@ const ThinkingButton: React.FC<ThinkingButtonProps> = ({ content, isLive = false
               scrollBehavior: isLive ? 'smooth' : 'auto'
             }}
           >
-            <div className="text-sm leading-relaxed select-text research-output" style={{ color: '#FCFCFC' }}>
+            <div className="text-base leading-relaxed select-text research-output" style={{ color: 'var(--text-primary)' }}>
               <ReactMarkdown 
                 remarkPlugins={[remarkGfm, remarkMath]} 
                 rehypePlugins={[rehypeRaw, rehypeKatex]}

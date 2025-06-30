@@ -54,6 +54,7 @@ import toast from 'react-hot-toast';
 import ReasoningDisplay from '@/components/ReasoningDisplay';
 import { EnhancedMarkdownRenderer } from '@/components/EnhancedMarkdownRenderer';
 import ImageCarousel from '@/components/ImageCarousel';
+import { useDynamicGradientMask } from '@/utils/dynamic-gradient-mask';
 
 // Define a type that includes all possible query types (including the ones in SCHEMAS and 'conversation')
 type QueryType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversation' | 'reasoning';
@@ -2959,20 +2960,19 @@ User Request: ${input.trim()}`;
           reader.releaseLock();
         }
 
-        // Create structured content for the artifact
-        const cleanedContent = textContent.replace(/<\/?think>/g, '').trim();
-        const wordCount = cleanedContent.split(' ').length;
-        const estimatedReadTime = Math.ceil(wordCount / 200);
+        // Use same lightweight processing as default chat
+        const cleanedContent = cleanArtifactContent(textContent);
 
+        // Create simple structured content for compatibility (minimal metadata)
         const structuredContent = {
           type: 'document' as const,
           title: quickTitle,
           content: cleanedContent,
           metadata: {
-            wordCount: wordCount,
-            estimatedReadTime: `${estimatedReadTime} min read`,
-            category: 'AI Generated Document',
-            tags: ['document', 'ai-generated']
+            wordCount: cleanedContent.split(' ').length,
+            estimatedReadTime: `${Math.ceil(cleanedContent.split(' ').length / 200)} min read`,
+            category: 'Document',
+            tags: ['document']
           }
         };
 
@@ -3296,7 +3296,7 @@ User Request: ${input.trim()}`;
                   const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.message?.content || parsed.choices?.[0]?.text || parsed.content || '';
                   const reasoningContent = parsed.choices?.[0]?.delta?.reasoning_content || '';
                   
-                  // Handle Qwen3 reasoning content for thinking mode
+                  // Handle DeepSeek reasoning content for thinking mode
                   if (reasoningContent && activeButton === 'reasoning') {
                     const now = Date.now();
                     if (now - lastLiveReasoningUpdate > 120) { // throttle to ~8 updates/sec
@@ -3829,33 +3829,23 @@ User Request: ${input.trim()}`;
     // Removed advanced search logic
   }, [isAiResponding]);
 
-  // Helper function to clean artifact content by removing all thinking tags
+  // Helper function to clean artifact content using same lightweight processing as default chat
   const cleanArtifactContent = (content: string): string => {
     if (!content) return '';
     
-    let result = content;
+    const { content: rawContent } = cleanAIResponse(content);
+    // Use same processing as default chat - just remove think tags and thinking indicators
+    const cleanContent = rawContent
+      .replace(/<think>[\s\S]*?<\/think>/g, '')
+      .replace(/<thinking-indicator.*?>\n<\/thinking-indicator>\n|<thinking-indicator.*?\/>/g, '')
+      .trim();
     
-    // Remove any leading/trailing code fences
-    result = result.replace(/^```[a-zA-Z]*\n/, '').replace(/```$/, '');
-    
-    // Remove all <think>...</think> tags completely
-    result = result.replace(/<think>[\s\S]*?<\/think>/g, '');
-    
-    // Remove any <think-live></think-live> markers
-    result = result.replace(/<think-live><\/think-live>/g, '');
-    
-    // Remove any thinking indicators
-    result = result.replace(/<thinking-indicator.*?>\n<\/thinking-indicator>\n|<thinking-indicator.*?\/>/g, '');
-    
-    // Clean up extra whitespace that might be left behind
-    result = result.replace(/\n\s*\n\s*\n/g, '\n\n').trim();
-    
-    return result;
+    return cleanContent;
   };
 
   // Independent artifact message rendering system
   const renderArtifactMessage = (msg: LocalMessage, i: number) => {
-    // Clean the content to remove all thinking tags for artifacts
+    // Use same lightweight cleaning as default chat
     const cleanContent = cleanArtifactContent(msg.content);
     
     return (
@@ -3875,12 +3865,19 @@ User Request: ${input.trim()}`;
               className="w-full sm:max-w-sm rounded-2xl border shadow-lg px-3 mb-4 cursor-pointer transition-all duration-300 ease-in-out flex items-center gap-3" 
               style={{ backgroundColor: "#1a1a1a", borderColor: "#333333", height: "48px", alignItems: "center" }}
                 onClick={() => {
-                  // Clean the structured content before passing to artifact viewer
-                  const cleanedArtifact = {
-                    ...msg.structuredContent,
-                    content: cleanArtifactContent(msg.structuredContent.content)
+                  // Use direct content without structured wrapper - create simple artifact for viewer
+                  const simpleArtifact = {
+                    title: msg.structuredContent.title || msg.title || "Generated Document",
+                    type: "document" as const,
+                    content: cleanContent, // Use cleaned content directly
+                    metadata: {
+                      wordCount: cleanContent.split(' ').length,
+                      estimatedReadTime: `${Math.ceil(cleanContent.split(' ').length / 200)} min read`,
+                      category: "Document",
+                      tags: ["document"]
+                    }
                   };
-                  setArtifactContent(cleanedArtifact);
+                  setArtifactContent(simpleArtifact);
                   setIsArtifactMode(true);
                 }}
             >
@@ -3902,7 +3899,7 @@ User Request: ${input.trim()}`;
             {msg.isProcessed && (
               <div className="w-full flex justify-start gap-2 mt-2 relative z-50">
                     <button 
-                  onClick={() => handleCopyContent(cleanArtifactContent(msg.structuredContent.content))}
+                  onClick={() => handleCopyContent(cleanContent)} // Use cleaned content directly
                   className="flex items-center justify-center w-8 h-8 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
                   aria-label="Copy artifact content"
                 >
@@ -3914,12 +3911,11 @@ User Request: ${input.trim()}`;
 
             <button
                   onClick={() => {
-                    const cleanedContent = cleanArtifactContent(msg.structuredContent.content);
-                    const blob = new Blob([cleanedContent], { type: 'text/markdown' });
+                    const blob = new Blob([cleanContent], { type: 'text/markdown' }); // Use cleaned content directly
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
-                    a.download = `${msg.structuredContent.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.md`;
+                    a.download = `${(msg.structuredContent.title || msg.title || 'document').replace(/[^a-z0-9]/gi, '_').toLowerCase()}.md`;
                     document.body.appendChild(a);
                     a.click();
                     document.body.removeChild(a);
@@ -3975,16 +3971,16 @@ User Request: ${input.trim()}`;
               className="w-full sm:max-w-sm rounded-2xl border shadow-lg px-3 mb-4 cursor-pointer transition-all duration-300 ease-in-out flex items-center gap-3" 
               style={{ backgroundColor: "#1a1a1a", borderColor: "#333333", height: "48px", alignItems: "center" }}
                 onClick={() => {
-                  // For streaming artifacts, create temporary structured content with cleaned content
+                  // Create simple artifact for streaming content
                   const tempArtifact = {
                     title: msg.title || "Generated Content",
                     type: "document" as const,
-                    content: cleanContent,
+                    content: cleanContent, // Use cleaned content directly
                     metadata: {
                       wordCount: cleanContent.split(' ').length,
                       estimatedReadTime: `${Math.ceil(cleanContent.split(' ').length / 200)} min read`,
-                      category: "", // placeholder category
-                      tags: [] // placeholder tags
+                      category: "Document",
+                      tags: ["document"]
                     }
                   };
                   setArtifactContent(tempArtifact);
@@ -4026,7 +4022,7 @@ User Request: ${input.trim()}`;
             {cleanContent && cleanContent.trim().length > 0 && (
                         <div className="w-full flex justify-start gap-2 mt-2 relative z-50">
                           <button
-                                        onClick={() => handleCopyContent(cleanContent)}
+                                        onClick={() => handleCopyContent(cleanContent)} // Use cleaned content directly
                             className="flex items-center justify-center w-8 h-8 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
                   aria-label="Copy artifact content"
                           >
@@ -4097,7 +4093,7 @@ User Request: ${input.trim()}`;
                 
                 if (showPulsingDot && i === messages.length -1 ) setShowPulsingDot(false);
                 const showTypingIndicator = msg.role === 'assistant' && finalContent.trim().length === 0 && !msg.isProcessed;
-                
+
                 return (
                   <React.Fragment key={msg.id + '-fragment-' + i}>
                     {/* Main AI response content - Industry Standard Single Renderer */}
@@ -4155,34 +4151,36 @@ User Request: ${input.trim()}`;
                             <LoadingIndicator />
                           ) : (
                             finalContent.trim().length > 0 && (
-                            <ReactMarkdown 
-                                remarkPlugins={[remarkGfm, remarkMath]} 
-                                rehypePlugins={[rehypeRaw, rehypeKatex]} 
-                              className="research-output"
-                              components={{
-                                  h1: ({ children }) => (<h1 className="text-xl md:text-3xl font-bold mb-6 mt-8 border-b border-cyan-500/30 pb-3" style={{ color: "#FCFCFC", lineHeight: "1.2" }}>{children}</h1>),
-                                  h2: ({ children }) => (<h2 className="text-lg md:text-2xl font-semibold mb-4 mt-8 flex items-center gap-2" style={{ color: "#FCFCFC", lineHeight: "1.2" }}>{children}</h2>),
-                                  h3: ({ children }) => (<h3 className="text-base md:text-xl font-semibold mb-3 mt-6" style={{ color: "#FCFCFC", lineHeight: "1.2" }}>{children}</h3>),
-                                  p: ({ children }) => (<p className="leading-relaxed mb-4 text-sm" style={{ color: "#FCFCFC", lineHeight: "1.2" }}>{children}</p>),
-                                  ul: ({ children }) => (<ul className="space-y-2 mb-4 ml-4">{children}</ul>),
-                                  li: ({ children }) => (<li className="flex items-start gap-2" style={{ color: "#FCFCFC", lineHeight: "1.2" }}><span className="text-cyan-400 mt-1.5 text-xs">●</span><span className="flex-1">{children}</span></li>),
-                                  ol: ({ children }) => (<ol className="space-y-2 mb-4 ml-4 list-decimal list-inside">{children}</ol>),
-                                  strong: ({ children }) => (<strong className="font-semibold" style={{ color: "#FCFCFC", lineHeight: "1.2" }}>{children}</strong>),
-                                  table: ({ children }) => (<div className="overflow-x-auto mb-6 max-w-full scrollbar-thin"><table className="border-collapse" style={{ tableLayout: 'auto', width: 'auto' }}>{children}</table></div>),
-                                  thead: ({ children }) => <thead className="">{children}</thead>,
-                                  th: ({ children }) => (<th className="px-3 md:px-4 py-1 md:py-3 text-left font-semibold border-b-2 border-gray-600 text-xs md:text-sm" style={{ color: "#FCFCFC", lineHeight: "1.2" }}>{children}</th>),
-                                  td: ({ children }) => (<td className="px-3 md:px-4 py-1 md:py-3 border-b border-gray-700 text-xs md:text-sm" style={{ color: "#FCFCFC", lineHeight: "1.2" }}>{children}</td>),
-                                  blockquote: ({ children }) => (<blockquote className="border-l-4 border-cyan-500 pl-4 py-1 rounded-r-lg mb-4 italic" style={{ background: 'transparent', color: '#FCFCFC' }}>{children}</blockquote>),
-                                  code: ({ children, className }) => {
-                                  const isInline = !className;
-                                    return isInline
-                                      ? (<code className="px-2 py-1 rounded text-xs font-mono" style={{ background: 'rgba(55, 65, 81, 0.5)', color: '#FCFCFC' }}>{children}</code>)
-                                      : (<code className="block p-4 rounded-lg overflow-x-auto text-xs font-mono mb-4" style={{ background: 'rgba(17, 24, 39, 0.8)', color: '#FCFCFC' }}>{children}</code>);
-                                  }
-                                }}
-                              >
-                                {finalContent}
-                            </ReactMarkdown>
+                            <div style={{ position: 'relative' }}>
+                              <ReactMarkdown 
+                                  remarkPlugins={[remarkGfm, remarkMath]} 
+                                  rehypePlugins={[rehypeRaw, rehypeKatex]} 
+                                className="research-output"
+                                components={{
+                                    h1: ({ children }) => (<h1 className="text-xl md:text-3xl font-bold mb-6 mt-8 border-b border-cyan-500/30 pb-3" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}>{children}</h1>),
+                                    h2: ({ children }) => (<h2 className="text-lg md:text-2xl font-semibold mb-4 mt-8 flex items-center gap-2" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}>{children}</h2>),
+                                    h3: ({ children }) => (<h3 className="text-base md:text-xl font-semibold mb-3 mt-6" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}>{children}</h3>),
+                                    p: ({ children }) => (<p className="leading-relaxed mb-4 text-base" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}>{children}</p>),
+                                    ul: ({ children }) => (<ul className="space-y-2 mb-4 ml-4">{children}</ul>),
+                                    li: ({ children }) => (<li className="flex items-start gap-2" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}><span className="text-cyan-400 mt-1.5 text-xs">●</span><span className="flex-1">{children}</span></li>),
+                                    ol: ({ children }) => (<ol className="space-y-2 mb-4 ml-4 list-decimal list-inside">{children}</ol>),
+                                    strong: ({ children }) => (<strong className="font-semibold" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}>{children}</strong>),
+                                    table: ({ children }) => (<div className="overflow-x-auto mb-6 max-w-full scrollbar-thin"><table className="border-collapse" style={{ tableLayout: 'auto', width: 'auto' }}>{children}</table></div>),
+                                    thead: ({ children }) => <thead className="">{children}</thead>,
+                                    th: ({ children }) => (<th className="px-3 md:px-4 py-1 md:py-3 text-left font-semibold border-b-2 border-gray-600 text-xs md:text-sm" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}>{children}</th>),
+                                    td: ({ children }) => (<td className="px-3 md:px-4 py-1 md:py-3 border-b border-gray-700 text-xs md:text-sm" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}>{children}</td>),
+                                    blockquote: ({ children }) => (<blockquote className="border-l-4 border-cyan-500 pl-4 py-1 rounded-r-lg mb-4 italic" style={{ background: 'transparent', color: 'var(--text-primary)' }}>{children}</blockquote>),
+                                    code: ({ children, className }) => {
+                                    const isInline = !className;
+                                      return isInline
+                                        ? (<code className="px-2 py-1 rounded text-xs font-mono" style={{ background: 'var(--code-bg)', color: 'var(--code-text)' }}>{children}</code>)
+                                        : (<code className="block p-4 rounded-lg overflow-x-auto text-xs font-mono mb-4" style={{ background: 'var(--code-bg)', color: 'var(--code-text)' }}>{children}</code>);
+                                    }
+                                  }}
+                                >
+                                  {finalContent}
+                              </ReactMarkdown>
+                            </div>
                             )
                           )}
                         </div>

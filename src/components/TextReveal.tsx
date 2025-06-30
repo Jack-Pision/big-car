@@ -1,11 +1,11 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
-import rehypeSanitize from 'rehype-sanitize';
-import parse from 'html-react-parser';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { processWebCitations, WebSource, WEB_CITATION_REGEX } from '@/utils/source-utils';
 import { processMarkdownWithTables } from '@/utils/markdown-table-utils';
 import { cleanMarkdown, markdownComponents as sharedMarkdownComponents } from '@/utils/markdown-utils';
@@ -155,7 +155,7 @@ const TextReveal: React.FC<TextRevealProps> = ({
         <ReactMarkdown
           components={Object.keys(markdownComponents).length ? markdownComponents : sharedMarkdownComponents}
           remarkPlugins={[remarkGfm, remarkMath]}
-          rehypePlugins={[rehypeKatex, rehypeSanitize]}
+          rehypePlugins={[rehypeKatex, rehypeRaw]}
         >
           {processedText}
         </ReactMarkdown>
@@ -171,7 +171,7 @@ const TextReveal: React.FC<TextRevealProps> = ({
       <ReactMarkdown
         components={Object.keys(markdownComponents).length ? markdownComponents : sharedMarkdownComponents}
         remarkPlugins={[remarkGfm, remarkMath]}
-        rehypePlugins={[rehypeKatex, rehypeSanitize]}
+        rehypePlugins={[rehypeKatex, rehypeRaw]}
       >
         {processedText}
       </ReactMarkdown>
@@ -257,272 +257,37 @@ const TextReveal: React.FC<TextRevealProps> = ({
   }
 
   return (
-    <div className={`w-full markdown-body ${className}`}>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.3 }}
-        className="w-full max-w-full overflow-hidden"
-      >
-        <div 
-          ref={markdownContainerRef}
-          className="web-citations-container markdown-body"
-        >
-          {renderedContent}
-        </div>
-      </motion.div>
+    <div className={`w-full ${className}`}>
+      <div ref={markdownContainerRef} className="markdown-body">
+        {renderedContent}
+      </div>
       
-      {/* Add styles for web citations */}
-      <style jsx global>{`
-        .web-citation {
-          display: inline-flex;
-          align-items: center;
-          margin-left: 4px;
-          text-decoration: none;
-        }
-        .citation-icon {
-          width: 16px;
-          height: 16px;
-          margin-left: 2px;
-          vertical-align: middle;
-        }
-        .citation-badge {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 12px;
-          font-weight: 600;
-          background-color: #222;
-          color: white !important;
-          border-radius: 50%;
-          width: 18px;
-          height: 18px;
-          margin-left: 2px;
-          text-decoration: none;
-          vertical-align: super;
-          line-height: 1;
-          padding: 2px;
-        }
-        .citation-badge:hover {
-          background-color: #444;
-        }
-        .web-citations-container .markdown-body {
-          color: inherit;
-          font-size: inherit;
-          line-height: inherit;
-        }
-        
-        /* Styling for missing section notifications */
+      {/* Custom styles for missing sections */}
+      <style jsx>{`
         .missing-section {
-          padding: 12px 16px;
-          margin: 16px 0;
-          border-radius: 8px;
-          font-style: italic;
-          color: #f0f0f0;
-          font-size: 0.9rem;
-          text-align: center;
-        }
-        .intro-missing {
-          background-color: rgba(59, 130, 246, 0.2);
-          border-left: 4px solid #3b82f6;
-        }
-        .table-missing {
-          background-color: rgba(236, 72, 153, 0.2);
-          border-left: 4px solid #ec4899;
-        }
-        .conclusion-missing {
-          background-color: rgba(234, 179, 8, 0.2);
-          border-left: 4px solid #eab308;
-        }
-        
-        /* Enhanced styling for markdown headers and lists */
-        .markdown-body {
-          color: #fff;
-          line-height: 1.6;
-        }
-        .markdown-body h1 {
-          font-size: 1.9rem;
-          font-weight: 700;
-          margin-top: 2rem;
-          margin-bottom: 1.2rem;
-          color: #f0f0f0;
-        }
-        .markdown-body h2 {
-          font-size: 1.6rem;
-          font-weight: 700;
-          margin-top: 2rem;
-          margin-bottom: 1rem;
-          border-bottom: none;
-          color: #f0f0f0;
-          padding-bottom: 0.3rem;
-        }
-        .markdown-body h3 {
-          font-size: 1.4rem;
-          margin-top: 1.5rem;
-          margin-bottom: 0.8rem;
-          font-weight: 600;
-          color: #f0f0f0;
-        }
-        .markdown-body ul {
-          margin-left: 1.5rem;
-          margin-bottom: 1.5rem;
-          list-style-type: disc;
-        }
-        .markdown-body ul ul {
-          margin-top: 0.5rem;
-          margin-bottom: 0.5rem;
-        }
-        .markdown-body li {
-          margin-bottom: 0.7rem;
-          line-height: 1.6;
-        }
-        .markdown-body li::marker {
-          color: #aaa;
-        }
-        .markdown-body li strong {
-          color: #eaeaea;
-          font-weight: 600;
-        }
-        .markdown-body p {
-          margin-bottom: 1.2rem;
-          line-height: 1.6;
-        }
-        .markdown-body p + ul {
-          margin-top: -0.5rem;
-        }
-        .markdown-body strong {
-          font-weight: 600;
-          color: #f0f0f0;
-        }
-        /* Additional spacing to match the example */
-        .markdown-body h2 + ul {
-          margin-top: 1rem;
-        }
-        .markdown-body > ul:last-child {
-          margin-bottom: 0.5rem;
-        }
-        /* Ensure proper spacing between sections */
-        .markdown-body h2:not(:first-child) {
-          margin-top: 2.5rem;
-        }
-        /* Table styles for summary tables */
-        .markdown-body table {
-          border-collapse: collapse;
-          width: 100%;
-          max-width: 42rem;
-          margin: 1rem 0;
-          font-size: 0.95rem;
-          background: linear-gradient(to bottom, #1c1c20, #18181b);
-          color: #e5e7eb;
+          padding: 1rem;
+          border: 1px dashed #4b5563;
           border-radius: 0.5rem;
-          overflow: hidden;
-          box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.3);
-          table-layout: fixed;
-        }
-        .markdown-body th,
-        .markdown-body td {
-          border: none;
-          border-bottom: 1px solid #27272a;
-          padding: 8px 14px;
-          text-align: left;
-          font-size: 0.95rem;
-          font-weight: 400;
-          word-break: break-word;
-          overflow-wrap: break-word;
-          vertical-align: top;
-        }
-        .markdown-body th {
-          background-color: #232323;
-          font-weight: 600;
-          font-size: 1rem;
-          color: #fafafa;
-          border-bottom: 2px solid #3d3d46;
-        }
-        .markdown-body tr:last-child td {
-          border-bottom: none;
-        }
-        .markdown-body tr {
-          background: none;
-        }
-        .markdown-body tr:nth-child(even) {
-          background-color: rgba(255, 255, 255, 0.03);
-        }
-        .markdown-body tr:hover {
-          background-color: rgba(255, 255, 255, 0.05);
-        }
-        
-        /* Additional styling for better general content formatting */
-        .markdown-body blockquote {
-          border-left: 4px solid #404040;
-          padding-left: 1rem;
-          margin: 1.5rem 0;
-          color: #d0d0d0;
+          background: rgba(75, 85, 99, 0.1);
+          color: #9ca3af;
           font-style: italic;
-        }
-        
-        .markdown-body code {
-          background-color: rgba(110, 118, 129, 0.4);
-          border-radius: 3px;
-          font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
-          font-size: 0.9em;
-          padding: 0.2em 0.4em;
-        }
-        
-        .markdown-body pre {
-          background-color: rgba(20, 20, 20, 0.8);
-          border-radius: 6px;
-          overflow: auto;
-          padding: 16px;
+          text-align: center;
           margin: 1rem 0;
         }
         
-        .markdown-body pre code {
-          background-color: transparent;
-          padding: 0;
-          font-size: 0.9em;
-          line-height: 1.5;
-          display: block;
-          overflow-x: auto;
+        .intro-missing {
+          border-color: #3b82f6;
+          background: rgba(59, 130, 246, 0.1);
         }
         
-        /* Ensure important terms in text stand out */
-        .markdown-body em {
-          color: #e0e0e0;
-          font-style: italic;
+        .table-missing {
+          border-color: #10b981;
+          background: rgba(16, 185, 129, 0.1);
         }
         
-        /* Improve general readability of paragraph text */
-        .markdown-body p {
-          line-height: 1.7;
-          margin-bottom: 1.2rem;
-        }
-        
-        /* Special styling for key terms in text */
-        .markdown-body strong em, 
-        .markdown-body em strong {
-          color: #f0f0f0;
-          font-style: italic;
-          font-weight: 600;
-          text-decoration: underline;
-          text-decoration-thickness: from-font;
-          text-underline-offset: 2px;
-        }
-        
-        /* Additional styles for ordered lists to match unordered lists */
-        .markdown-body ol {
-          margin-left: 1.5rem;
-          margin-bottom: 1.5rem;
-          list-style-type: decimal;
-        }
-        
-        .markdown-body ol li {
-          margin-bottom: 0.7rem;
-          line-height: 1.6;
-          padding-left: 0.5rem;
-        }
-        
-        .markdown-body ol li::marker {
-          color: #aaa;
+        .conclusion-missing {
+          border-color: #f59e0b;
+          background: rgba(245, 158, 11, 0.1);
         }
       `}</style>
     </div>

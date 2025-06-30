@@ -79,7 +79,7 @@ const PenModeViewer: React.FC<PenModeViewerProps> = ({
           <div className="max-w-3xl mx-auto w-full">
             {content ? (
               showRaw ? (
-                <pre className="whitespace-pre-wrap text-sm leading-relaxed text-gray-200">{content}</pre>
+                <pre className="whitespace-pre-wrap text-base leading-relaxed text-gray-200">{content}</pre>
               ) : (
                 <ReactMarkdown 
                   remarkPlugins={[remarkGfm, remarkMath]} 
