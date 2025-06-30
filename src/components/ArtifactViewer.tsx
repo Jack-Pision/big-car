@@ -29,6 +29,9 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
     versions && versions.length > 0 ? versions.length - 1 : 0
   );
 
+  // State to track raw view toggle
+  const [showRawContent, setShowRawContent] = useState(false);
+
   // Determine which artifact data to display (selected version or single artifact)
   const artifactData = versions && versions.length > 0 ? versions[selectedVersionIndex] : artifact;
 
@@ -75,6 +78,19 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
             ))}
           </select>
         )}
+
+        {/* Raw content toggle */}
+        <button
+          onClick={() => setShowRawContent(!showRawContent)}
+          className={`px-3 py-2 text-xs font-medium rounded-lg transition-colors backdrop-blur-sm ${
+            showRawContent 
+              ? 'bg-cyan-600/80 text-white hover:bg-cyan-500' 
+              : 'bg-gray-800/80 text-gray-400 hover:text-gray-200 hover:bg-gray-700'
+          }`}
+          title={showRawContent ? "Show rendered view" : "Show raw content"}
+        >
+          Raw
+        </button>
 
         {/* Copy content */}
         <button
@@ -137,39 +153,53 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
                 </div>
               </div>
 
-              {/* Document content with dynamic gradient mask */}
+              {/* Document content with conditional rendering */}
               <div className="w-full max-w-full overflow-hidden" style={{ position: 'relative' }}>
-                <div>
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm, remarkMath]}
-                    rehypePlugins={[rehypeRaw, rehypeKatex]}
-                    className="prose prose-invert max-w-none text-base"
-                    components={{
-                      h1: ({ children }) => (<h1 className="text-xl md:text-3xl font-bold mb-6 mt-8 border-b border-cyan-500/30 pb-3" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}>{children}</h1>),
-                      h2: ({ children }) => (<h2 className="text-lg md:text-2xl font-semibold mb-4 mt-8 flex items-center gap-2" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}>{children}</h2>),
-                      h3: ({ children }) => (<h3 className="text-base md:text-xl font-semibold mb-3 mt-6" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}>{children}</h3>),
-                      h4: ({ children }) => (<h4 className="text-base md:text-lg font-semibold mb-2 mt-4" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}>{children}</h4>),
-                      p: ({ children }) => (<p className="leading-relaxed mb-4 text-base" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}>{children}</p>),
-                      ul: ({ children }) => (<ul className="space-y-2 mb-4 ml-4">{children}</ul>),
-                      li: ({ children }) => (<li className="flex items-start gap-2" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}><span className="text-cyan-400 mt-1.5 text-xs">●</span><span className="flex-1">{children}</span></li>),
-                      ol: ({ children }) => (<ol className="space-y-2 mb-4 ml-4 list-decimal list-inside">{children}</ol>),
-                      strong: ({ children }) => (<strong className="font-semibold" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}>{children}</strong>),
-                      table: ({ children }) => (<div className="overflow-x-auto mb-6 max-w-full scrollbar-thin"><table className="border-collapse" style={{ tableLayout: 'auto', width: 'auto' }}>{children}</table></div>),
-                      thead: ({ children }) => <thead className="">{children}</thead>,
-                      th: ({ children }) => (<th className="px-3 md:px-4 py-1 md:py-3 text-left font-semibold border-b-2 border-gray-600 text-xs md:text-sm" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}>{children}</th>),
-                      td: ({ children }) => (<td className="px-3 md:px-4 py-1 md:py-3 border-b border-gray-700 text-xs md:text-sm" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}>{children}</td>),
-                      blockquote: ({ children }) => (<blockquote className="border-l-4 border-cyan-500 pl-4 py-1 rounded-r-lg mb-4 italic" style={{ background: 'transparent', color: 'var(--text-primary)' }}>{children}</blockquote>),
-                      code: ({ children, className }) => {
-                        const isInline = !className;
-                        return isInline
-                          ? (<code className="px-2 py-1 rounded text-xs font-mono" style={{ background: 'var(--code-bg)', color: 'var(--code-text)' }}>{children}</code>)
-                          : (<code className="block p-4 rounded-lg overflow-x-auto text-xs font-mono mb-4" style={{ background: 'var(--code-bg)', color: 'var(--code-text)' }}>{children}</code>);
-                      }
-                    }}
-                  >
-                    {displayContent}
-                  </ReactMarkdown>
-                </div>
+                {showRawContent ? (
+                  // Raw content view
+                  <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-sm font-medium text-gray-300">Raw Content</h3>
+                      <span className="text-xs text-gray-500">Markdown Source</span>
+                    </div>
+                    <pre className="whitespace-pre-wrap text-sm text-gray-300 font-mono leading-relaxed overflow-auto max-h-[70vh] scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent">
+                      {displayContent}
+                    </pre>
+                  </div>
+                ) : (
+                  // Rendered markdown view
+                  <div>
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm, remarkMath]}
+                      rehypePlugins={[rehypeRaw, rehypeKatex]}
+                      className="prose prose-invert max-w-none text-base"
+                      components={{
+                        h1: ({ children }) => (<h1 className="text-xl md:text-3xl font-bold mb-6 mt-8 border-b border-cyan-500/30 pb-3" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}>{children}</h1>),
+                        h2: ({ children }) => (<h2 className="text-lg md:text-2xl font-semibold mb-4 mt-8 flex items-center gap-2" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}>{children}</h2>),
+                        h3: ({ children }) => (<h3 className="text-base md:text-xl font-semibold mb-3 mt-6" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}>{children}</h3>),
+                        h4: ({ children }) => (<h4 className="text-base md:text-lg font-semibold mb-2 mt-4" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}>{children}</h4>),
+                        p: ({ children }) => (<p className="leading-relaxed mb-4 text-base" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}>{children}</p>),
+                        ul: ({ children }) => (<ul className="space-y-2 mb-4 ml-4">{children}</ul>),
+                        li: ({ children }) => (<li className="flex items-start gap-2" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}><span className="text-cyan-400 mt-1.5 text-xs">●</span><span className="flex-1">{children}</span></li>),
+                        ol: ({ children }) => (<ol className="space-y-2 mb-4 ml-4 list-decimal list-inside">{children}</ol>),
+                        strong: ({ children }) => (<strong className="font-semibold" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}>{children}</strong>),
+                        table: ({ children }) => (<div className="overflow-x-auto mb-6 max-w-full scrollbar-thin"><table className="border-collapse" style={{ tableLayout: 'auto', width: 'auto' }}>{children}</table></div>),
+                        thead: ({ children }) => <thead className="">{children}</thead>,
+                        th: ({ children }) => (<th className="px-3 md:px-4 py-1 md:py-3 text-left font-semibold border-b-2 border-gray-600 text-xs md:text-sm" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}>{children}</th>),
+                        td: ({ children }) => (<td className="px-3 md:px-4 py-1 md:py-3 border-b border-gray-700 text-xs md:text-sm" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}>{children}</td>),
+                        blockquote: ({ children }) => (<blockquote className="border-l-4 border-cyan-500 pl-4 py-1 rounded-r-lg mb-4 italic" style={{ background: 'transparent', color: 'var(--text-primary)' }}>{children}</blockquote>),
+                        code: ({ children, className }) => {
+                          const isInline = !className;
+                          return isInline
+                            ? (<code className="px-2 py-1 rounded text-xs font-mono" style={{ background: 'var(--code-bg)', color: 'var(--code-text)' }}>{children}</code>)
+                            : (<code className="block p-4 rounded-lg overflow-x-auto text-xs font-mono mb-4" style={{ background: 'var(--code-bg)', color: 'var(--code-text)' }}>{children}</code>);
+                        }
+                      }}
+                    >
+                      {displayContent}
+                    </ReactMarkdown>
+                  </div>
+                )}
               </div>
             </div>
           )}
