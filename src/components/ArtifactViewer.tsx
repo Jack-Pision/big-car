@@ -247,11 +247,6 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
       <div className="w-full max-w-full flex-1 overflow-y-auto px-6 pt-4 pb-8 hide-scrollbar">
         <TipTapArtifactEditor
           content={editableContent}
-          onContentUpdate={(newContent) => {
-            setEditableContent(newContent);
-          }}
-          isStreaming={isStreaming}
-          rawMode={true}
         />
       </div>
       <style jsx global>{`
