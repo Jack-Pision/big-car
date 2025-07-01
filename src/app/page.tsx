@@ -3756,10 +3756,9 @@ Do NOT use emojis or any other unnecessary characters.`;
 
 
   const handleButtonClick = (key: string) => {
-    setActiveButton(prev => (prev === key ? null : key));
+    setActiveButton(key); // Only one mode active at a time
     if (key === 'artifact') {
       setIsArtifactMode(true);
-      // If no artifact content, show a placeholder
       if (!artifactContent) {
         setArtifactContent({
           root_id: 'temp',
@@ -3775,6 +3774,8 @@ Do NOT use emojis or any other unnecessary characters.`;
           }
         });
       }
+    } else {
+      setIsArtifactMode(false);
     }
   };
 
@@ -3793,13 +3794,9 @@ Do NOT use emojis or any other unnecessary characters.`;
 
   function handleModeSwitch(newMode: 'chat' | 'search') {
     setActiveMode(newMode);
-    setActiveButton(newMode);
-    
-    // Only close search pane when switching to chat mode
-    // Don't open search pane immediately when switching to search mode
+    setActiveButton(newMode); // Only one mode active at a time
     if (newMode === 'chat') {
       setIsSearchPaneOpen(false);
-      // Clear any search results so image carousel is reset when leaving search mode
       setSearchResults([]);
       setTextSources([]);
       setVideoSources([]);
