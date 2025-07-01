@@ -9,6 +9,7 @@ import { X, Download, Copy, Edit3, Send, Loader, ToggleLeft, ToggleRight, Pen } 
 import toast from 'react-hot-toast';
 import { TipTapArtifactEditor } from './TipTapArtifactEditor';
 import { ArtifactV2Service } from '../lib/artifact-v2-service';
+import { marked } from 'marked';
 
 interface ArtifactViewerProps {
   artifactId: string;
@@ -200,6 +201,7 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
     }
     toast.success('Changes saved!');
     await ArtifactV2Service.update(artifactId, { content_markdown: editableContent });
+    setIsEditing(false);
   };
 
   // Focus the editor when prompt is dismissed
@@ -211,8 +213,19 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
     <div className="h-full bg-[#161618] flex flex-col relative" style={{ fontSize: '16px', lineHeight: 1.6 }}>
       {/* Header Bar */}
       <div className="flex items-center justify-end px-6 pt-4 pb-2 bg-[#161618] rounded-t-lg gap-3" style={{ fontSize: '20px', fontWeight: 700, marginBottom: '16px' }}>
+        {/* Edit button */}
+        {!isEditing && (
+          <button
+            onClick={() => setIsEditing(true)}
+            className="header-btn"
+            title="Edit"
+            style={{ width: 36, height: 36 }}
+          >
+            <Edit3 className="w-5 h-5" />
+          </button>
+        )}
         {/* Save button (only if there are unsaved changes) */}
-        {showSave && (
+        {isEditing && showSave && (
           <button
             onClick={handleSave}
             className="header-btn"
@@ -252,18 +265,25 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
           <X className="w-5 h-5" />
         </button>
       </div>
-      {/* Content Area - Only TipTap Editor */}
+      {/* Content Area */}
       <div className="w-full max-w-[800px] flex-1 overflow-y-auto px-6 pt-4 pb-8 hide-scrollbar relative" style={{ padding: '24px 24px 16px 24px', margin: '0 auto' }}>
-        <TipTapArtifactEditor
-          content={editableContent}
-          onContentUpdate={(newContent) => {
-            setEditableContent(newContent);
-          }}
-          isStreaming={isStreaming}
-          rawMode={true}
-          shouldFocus={shouldFocus}
-          onDidFocus={() => setShouldFocus(false)}
-        />
+        {isEditing ? (
+          <TipTapArtifactEditor
+            content={editableContent}
+            onContentUpdate={(newContent) => {
+              setEditableContent(newContent);
+            }}
+            isStreaming={isStreaming}
+            rawMode={true}
+            shouldFocus={shouldFocus}
+            onDidFocus={() => setShouldFocus(false)}
+          />
+        ) : (
+          <div
+            className="markdown-body"
+            dangerouslySetInnerHTML={{ __html: marked.parse(content) }}
+          />
+        )}
       </div>
       <style jsx global>{`
         .header-btn {
