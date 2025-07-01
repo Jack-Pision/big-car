@@ -4001,7 +4001,7 @@ Do NOT use emojis or any other unnecessary characters.`;
                     >
                       {/* Image Carousel – show only when this assistant message has images */}
                       {msg.imageUrls && msg.imageUrls.length > 0 && (
-                        <div className="mb-4 w-full max-w-full overflow-hidden">
+                        <div className="mt-2 mb-2 w-full max-w-full overflow-hidden">
                           <ImageCarousel
                             images={msg.imageUrls.map((url) => {
                               const matchingSource = (msg.webSources || []).find((s: any) => s.image === url) || {};
@@ -4168,7 +4168,7 @@ Do NOT use emojis or any other unnecessary characters.`;
             <>
               {/* Image Carousel for Answer tab */}
               {msg.imageUrls && msg.imageUrls.length > 0 && (
-                <div className="mb-4 w-full max-w-full overflow-hidden">
+                <div className="mt-2 mb-2 w-full max-w-full overflow-hidden">
                   <ImageCarousel
                     images={msg.imageUrls.map((url) => {
                       const matchingSource = (msg.webSources || []).find((s: any) => s.image === url) || {};
