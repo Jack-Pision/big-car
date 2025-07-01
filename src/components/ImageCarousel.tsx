@@ -51,8 +51,6 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({ images }) => {
 
   return (
     <div className="relative w-full mb-8 max-w-full overflow-hidden">
-      <h3 className="text-lg font-medium mb-4" style={{ color: '#FCFCFC' }}>Images</h3>
-      
       <div className="relative max-w-full overflow-hidden">
         {/* Navigation buttons */}
         {images.length > 1 && (
