@@ -1513,7 +1513,6 @@ body ::selection {
 
 .tiptap-editor-container .ProseMirror ul li::before {
   content: "●";
-  color: var(--text-primary);
   position: absolute;
   left: -1rem;
   font-size: 0.75rem;
