@@ -5,7 +5,7 @@
 
 /* CSS Variables for ChatGPT-inspired colors */
 :root {
-  --text-primary: #ECECF1;    /* Main text - ChatGPT output color */
+  --text-primary: #D1D5DB;    /* Main text - softer gray for dark backgrounds */
   --text-secondary: #8E8EA0;  /* Secondary text */
   --text-muted: #6B7280;      /* Muted text */
   --link-color: #2563EB;      /* Links */
