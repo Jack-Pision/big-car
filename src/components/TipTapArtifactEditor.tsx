@@ -18,7 +18,10 @@ import Placeholder from '@tiptap/extension-placeholder';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Edit3, Send, Loader, X } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { marked } from 'marked';
+import { remark } from 'remark';
+import remarkHtml from 'remark-html';
+import remarkGfm from 'remark-gfm';
+import remarkBreaks from 'remark-breaks';
 
 interface TipTapArtifactEditorProps {
   content: string;
@@ -150,76 +153,19 @@ const EditModal: React.FC<EditModalProps> = ({
   );
 };
 
-// Streaming-safe markdown to HTML conversion
-const markdownToHTML = (markdown: string): string => {
+// Robust markdown to HTML conversion using remark
+const markdownToHTML = async (markdown: string): Promise<string> => {
   if (!markdown) return '';
-  
   try {
-    // Clean up common streaming artifacts first
-    let cleanedMarkdown = markdown;
-    
-    // Remove stray asterisks that appear at end of sentences/paragraphs
-    cleanedMarkdown = cleanedMarkdown.replace(/\*+\s*$/gm, '');
-    cleanedMarkdown = cleanedMarkdown.replace(/\*+(\s*[.!?])/g, '$1');
-    
-    // Fix missing spaces between words (common streaming issue)
-    // Look for patterns where lowercase letter + uppercase letter = missing space
-    cleanedMarkdown = cleanedMarkdown.replace(/([a-z])([A-Z])/g, '$1 $2');
-    
-    // Fix missing spaces after punctuation
-    cleanedMarkdown = cleanedMarkdown.replace(/([.!?;:,])([A-Za-z])/g, '$1 $2');
-    
-    // Fix missing spaces around common word boundaries
-    cleanedMarkdown = cleanedMarkdown.replace(/(\w)(ground-based)/g, '$1 $2');
-    cleanedMarkdown = cleanedMarkdown.replace(/(\w)(surface)/g, '$1 $2');
-    cleanedMarkdown = cleanedMarkdown.replace(/(\w)(system)/g, '$1 $2');
-    cleanedMarkdown = cleanedMarkdown.replace(/(\w)(medium)/g, '$1 $2');
-    cleanedMarkdown = cleanedMarkdown.replace(/(\w)(data)/g, '$1 $2');
-    cleanedMarkdown = cleanedMarkdown.replace(/(\w)(campaigns)/g, '$1 $2');
-    cleanedMarkdown = cleanedMarkdown.replace(/(\w)(rovers)/g, '$1 $2');
-    cleanedMarkdown = cleanedMarkdown.replace(/(ventures)(\w)/g, '$1 $2');
-    cleanedMarkdown = cleanedMarkdown.replace(/(exited)(\w)/g, '$1 $2');
-    cleanedMarkdown = cleanedMarkdown.replace(/(entering)(\w)/g, '$1 $2');
-    cleanedMarkdown = cleanedMarkdown.replace(/(initiated)(\w)/g, '$1 $2');
-    cleanedMarkdown = cleanedMarkdown.replace(/(paving)(\w)/g, '$1 $2');
-    cleanedMarkdown = cleanedMarkdown.replace(/(modern-day)(\w)/g, '$1 $2');
-    
-    // Configure marked for streaming content
-    marked.setOptions({
-      breaks: true,
-      gfm: true,
-    });
-    
-    // Use marked to convert to HTML
-    const html = marked.parse(cleanedMarkdown) as string;
-    
-    // Post-process the HTML to fix any remaining issues
-    let processedHtml = html;
-    
-    // Remove any remaining stray asterisks from HTML
-    processedHtml = processedHtml.replace(/\*+/g, '');
-    
-    // Fix spacing issues in HTML content
-    processedHtml = processedHtml.replace(/([a-z])([A-Z])/g, '$1 $2');
-    
-    // Handle task lists
-    processedHtml = processedHtml.replace(/<li>\s*\[([x\s])\]\s*(.*?)<\/li>/gi, (match: string, checked: string, text: string) => {
-      const isChecked = checked.toLowerCase() === 'x';
-      return `<li data-type="taskItem" data-checked="${isChecked}">${text.trim()}</li>`;
-    });
-    
-    // Ensure proper table structure
-    const finalHtml = processedHtml.replace(/<table>/g, '<table>').replace(/<\/table>/g, '</table>');
-    
-    return finalHtml;
+    const file = await remark()
+      .use(remarkGfm)
+      .use(remarkBreaks)
+      .use(remarkHtml)
+      .process(markdown);
+    return String(file);
   } catch (error) {
     console.error('Markdown parsing error:', error);
-    // Fallback with space preservation
-    let fallbackContent = markdown;
-    // Clean up asterisks and fix spacing in fallback too
-    fallbackContent = fallbackContent.replace(/\*+/g, '');
-    fallbackContent = fallbackContent.replace(/([a-z])([A-Z])/g, '$1 $2');
-    return `<p>${fallbackContent.replace(/\n/g, '<br>')}</p>`;
+    return `<p>${markdown.replace(/\n/g, '<br>')}</p>`;
   }
 };
 
@@ -342,6 +288,16 @@ export const TipTapArtifactEditor: React.FC<TipTapArtifactEditorProps> = ({
   const [selectedText, setSelectedText] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [editPosition, setEditPosition] = useState({ x: 0, y: 0 });
+  const [htmlContent, setHtmlContent] = useState('');
+
+  // Convert markdown to HTML using remark (async)
+  useEffect(() => {
+    let cancelled = false;
+    markdownToHTML(content).then(html => {
+      if (!cancelled) setHtmlContent(html);
+    });
+    return () => { cancelled = true; };
+  }, [content]);
 
   const editor = useEditor({
     extensions: [
@@ -391,7 +347,7 @@ export const TipTapArtifactEditor: React.FC<TipTapArtifactEditorProps> = ({
         placeholder: 'Content will appear here...',
       }),
     ],
-    content: markdownToHTML(content),
+    content: htmlContent,
     editable: true,
     onUpdate: ({ editor }) => {
       if (onContentUpdate && !isStreaming) {
@@ -407,7 +363,6 @@ export const TipTapArtifactEditor: React.FC<TipTapArtifactEditorProps> = ({
         const selectedText = editor.state.doc.textBetween(from, to);
         if (selectedText.trim().length > 2) {
           setSelectedText(selectedText.trim());
-          
           // Get selection position for floating button
           const element = editor.view.dom;
           if (element) {
@@ -416,7 +371,6 @@ export const TipTapArtifactEditor: React.FC<TipTapArtifactEditorProps> = ({
               const range = selection.getRangeAt(0);
               const rect = range.getBoundingClientRect();
               const containerRect = element.getBoundingClientRect();
-              
               setEditPosition({
                 x: rect.left + rect.width / 2 - containerRect.left,
                 y: rect.bottom - containerRect.top + 8

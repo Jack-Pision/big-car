@@ -209,36 +209,36 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
               onClick={handleSave}
               className="p-2 bg-white text-gray-900 rounded-full shadow hover:bg-gray-100 transition-colors"
               title="Save changes"
-            >
+          >
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
             </button>
-          )}
-          {/* Copy content */}
-          <button
-            onClick={handleCopy}
+        )}
+        {/* Copy content */}
+        <button
+          onClick={handleCopy}
             className="p-2 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded-lg transition-colors"
-            title="Copy content"
-          >
+          title="Copy content"
+        >
             <Copy className="w-4 h-4" />
-          </button>
-          {/* Download markdown */}
-          <button
-            onClick={handleDownload}
+        </button>
+        {/* Download markdown */}
+        <button
+          onClick={handleDownload}
             className="p-2 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded-lg transition-colors"
-            title="Download as Markdown"
-          >
+          title="Download as Markdown"
+        >
             <Download className="w-4 h-4" />
-          </button>
+        </button>
           {/* Close button */}
-          <button
-            onClick={onClose}
+        <button
+          onClick={onClose}
             className="p-2 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded-lg transition-colors"
-            title="Close"
-          >
+          title="Close"
+        >
             <X className="w-4 h-4" />
-          </button>
+        </button>
         </div>
       </div>
       {/* Content Area - Only TipTap Editor */}
@@ -268,4 +268,4 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
       `}</style>
     </div>
   );
-};
+}; 
