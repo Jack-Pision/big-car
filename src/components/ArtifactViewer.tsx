@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Download, Copy, Edit3, Send, Loader, ToggleLeft, ToggleRight, Pen } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { TipTapArtifactEditor } from './TipTapArtifactEditor';
-import { ArtifactV2Service } from '../lib/artifact-v2-service';
+import { LocalArtifactV2Service as ArtifactV2Service } from '../lib/local-storage-service';
 import { marked } from 'marked';
 
 interface ArtifactViewerProps {
