@@ -4541,12 +4541,11 @@ Do NOT use emojis or any other unnecessary characters.`;
                     {/* Artifact tab */}
                     <button
                       type="button"
+                      disabled={activeMode === 'search'}
                       className={`
                         flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 
-                        ${activeButton === 'artifact' 
-                          ? 'border' 
-                          : 'hover:brightness-150'
-                        }
+                        ${activeButton === 'artifact' ? 'border' : 'hover:brightness-150'}
+                        ${activeMode === 'search' ? 'opacity-50 pointer-events-none' : ''}
                       `}
                       style={{ 
                         color: activeButton === 'artifact' ? '#FCFCFC' : 'rgba(252, 252, 252, 0.6)',
@@ -4564,29 +4563,19 @@ Do NOT use emojis or any other unnecessary characters.`;
                     {/* Think tab */}
                     <button
                       type="button"
-                      onClick={() => handleButtonClick('reasoning')}
+                      disabled={activeMode === 'search'}
                       className={`
                         flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 
-                        ${activeButton === 'reasoning' 
-                          ? 'border' 
-                          : 'hover:brightness-150'
-                        }
+                        ${activeButton === 'reasoning' ? 'border' : 'hover:brightness-150'}
+                        ${activeMode === 'search' ? 'opacity-50 pointer-events-none' : ''}
                       `}
                       style={{ 
                         color: activeButton === 'reasoning' ? '#FCFCFC' : 'rgba(252, 252, 252, 0.6)',
                         borderColor: activeButton === 'reasoning' ? '#FCFCFC' : 'transparent'
                       }}
+                      onClick={() => handleButtonClick('reasoning')}
                     >
-                      <svg 
-                        width="20" 
-                        height="20" 
-                        viewBox="0 0 24 24" 
-                        fill="none" 
-                        stroke="currentColor" 
-                        strokeWidth="2" 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round"
-                      >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <circle cx="12" cy="12" r="1"/>
                         <path d="M20.2 20.2c2.04-2.03.02-7.36-4.5-11.9-4.54-4.52-9.87-6.54-11.9-4.5-2.04 2.03-.02 7.36 4.5 11.9 4.54 4.52 9.87 6.54 11.9 4.5z"/>
                         <path d="M15.7 15.7c4.52-4.54 6.54-9.87 4.5-11.9-2.03-2.04-7.36-.02-11.9 4.5-4.52 4.54-6.54 9.87-4.5 11.9 2.03 2.04 7.36.02 11.9-4.5z"/>
@@ -4596,12 +4585,13 @@ Do NOT use emojis or any other unnecessary characters.`;
                     {/* Cube toggle button */}
                     <button
                       type="button"
-                      className={`flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 ${activeButton === 'cube' ? 'border' : 'hover:brightness-150'}`}
+                      disabled={activeMode === 'search'}
+                      className={`flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 ${activeButton === 'cube' ? 'border' : 'hover:brightness-150'} ${activeMode === 'search' ? 'opacity-50 pointer-events-none' : ''}`}
                       style={{ color: activeButton === 'cube' ? '#FCFCFC' : 'rgba(252, 252, 252, 0.6)', borderColor: activeButton === 'cube' ? '#FCFCFC' : 'transparent' }}
                       aria-label="Toggle Cube Mode"
                       onClick={() => handleButtonClick('cube')}
                     >
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
                         <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
                         <line x1="12" y1="22.08" x2="12" y2="12" />
@@ -4773,12 +4763,11 @@ Do NOT use emojis or any other unnecessary characters.`;
                     {/* Artifact tab */}
                     <button
                       type="button"
+                      disabled={activeMode === 'search'}
                       className={`
                         flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 
-                        ${activeButton === 'artifact' 
-                          ? 'border' 
-                          : 'hover:brightness-150'
-                        }
+                        ${activeButton === 'artifact' ? 'border' : 'hover:brightness-150'}
+                        ${activeMode === 'search' ? 'opacity-50 pointer-events-none' : ''}
                       `}
                       style={{ 
                         color: activeButton === 'artifact' ? '#FCFCFC' : 'rgba(252, 252, 252, 0.6)',
@@ -4796,29 +4785,19 @@ Do NOT use emojis or any other unnecessary characters.`;
                     {/* Think tab */}
                     <button
                       type="button"
-                      onClick={() => handleButtonClick('reasoning')}
+                      disabled={activeMode === 'search'}
                       className={`
                         flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 
-                        ${activeButton === 'reasoning' 
-                          ? 'border' 
-                          : 'hover:brightness-150'
-                        }
+                        ${activeButton === 'reasoning' ? 'border' : 'hover:brightness-150'}
+                        ${activeMode === 'search' ? 'opacity-50 pointer-events-none' : ''}
                       `}
                       style={{ 
                         color: activeButton === 'reasoning' ? '#FCFCFC' : 'rgba(252, 252, 252, 0.6)',
                         borderColor: activeButton === 'reasoning' ? '#FCFCFC' : 'transparent'
                       }}
+                      onClick={() => handleButtonClick('reasoning')}
                     >
-                      <svg 
-                        width="20" 
-                        height="20" 
-                        viewBox="0 0 24 24" 
-                        fill="none" 
-                        stroke="currentColor" 
-                        strokeWidth="2" 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round"
-                      >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <circle cx="12" cy="12" r="1"/>
                         <path d="M20.2 20.2c2.04-2.03.02-7.36-4.5-11.9-4.54-4.52-9.87-6.54-11.9-4.5-2.04 2.03-.02 7.36 4.5 11.9 4.54 4.52 9.87 6.54 11.9 4.5z"/>
                         <path d="M15.7 15.7c4.52-4.54 6.54-9.87 4.5-11.9-2.03-2.04-7.36-.02-11.9 4.5-4.52 4.54-6.54 9.87-4.5 11.9 2.03 2.04 7.36.02 11.9-4.5z"/>
@@ -4828,12 +4807,13 @@ Do NOT use emojis or any other unnecessary characters.`;
                     {/* Cube toggle button */}
                     <button
                       type="button"
-                      className={`flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 ${activeButton === 'cube' ? 'border' : 'hover:brightness-150'}`}
+                      disabled={activeMode === 'search'}
+                      className={`flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 ${activeButton === 'cube' ? 'border' : 'hover:brightness-150'} ${activeMode === 'search' ? 'opacity-50 pointer-events-none' : ''}`}
                       style={{ color: activeButton === 'cube' ? '#FCFCFC' : 'rgba(252, 252, 252, 0.6)', borderColor: activeButton === 'cube' ? '#FCFCFC' : 'transparent' }}
                       aria-label="Toggle Cube Mode"
                       onClick={() => handleButtonClick('cube')}
                     >
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
                         <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
                         <line x1="12" y1="22.08" x2="12" y2="12" />
