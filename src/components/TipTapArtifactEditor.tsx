@@ -150,35 +150,76 @@ const EditModal: React.FC<EditModalProps> = ({
   );
 };
 
-// Enhanced markdown to HTML conversion using marked library
+// Streaming-safe markdown to HTML conversion
 const markdownToHTML = (markdown: string): string => {
   if (!markdown) return '';
   
   try {
-    // Configure marked for better compatibility with TipTap
+    // Clean up common streaming artifacts first
+    let cleanedMarkdown = markdown;
+    
+    // Remove stray asterisks that appear at end of sentences/paragraphs
+    cleanedMarkdown = cleanedMarkdown.replace(/\*+\s*$/gm, '');
+    cleanedMarkdown = cleanedMarkdown.replace(/\*+(\s*[.!?])/g, '$1');
+    
+    // Fix missing spaces between words (common streaming issue)
+    // Look for patterns where lowercase letter + uppercase letter = missing space
+    cleanedMarkdown = cleanedMarkdown.replace(/([a-z])([A-Z])/g, '$1 $2');
+    
+    // Fix missing spaces after punctuation
+    cleanedMarkdown = cleanedMarkdown.replace(/([.!?;:,])([A-Za-z])/g, '$1 $2');
+    
+    // Fix missing spaces around common word boundaries
+    cleanedMarkdown = cleanedMarkdown.replace(/(\w)(ground-based)/g, '$1 $2');
+    cleanedMarkdown = cleanedMarkdown.replace(/(\w)(surface)/g, '$1 $2');
+    cleanedMarkdown = cleanedMarkdown.replace(/(\w)(system)/g, '$1 $2');
+    cleanedMarkdown = cleanedMarkdown.replace(/(\w)(medium)/g, '$1 $2');
+    cleanedMarkdown = cleanedMarkdown.replace(/(\w)(data)/g, '$1 $2');
+    cleanedMarkdown = cleanedMarkdown.replace(/(\w)(campaigns)/g, '$1 $2');
+    cleanedMarkdown = cleanedMarkdown.replace(/(\w)(rovers)/g, '$1 $2');
+    cleanedMarkdown = cleanedMarkdown.replace(/(ventures)(\w)/g, '$1 $2');
+    cleanedMarkdown = cleanedMarkdown.replace(/(exited)(\w)/g, '$1 $2');
+    cleanedMarkdown = cleanedMarkdown.replace(/(entering)(\w)/g, '$1 $2');
+    cleanedMarkdown = cleanedMarkdown.replace(/(initiated)(\w)/g, '$1 $2');
+    cleanedMarkdown = cleanedMarkdown.replace(/(paving)(\w)/g, '$1 $2');
+    cleanedMarkdown = cleanedMarkdown.replace(/(modern-day)(\w)/g, '$1 $2');
+    
+    // Configure marked for streaming content
     marked.setOptions({
-      breaks: true, // Enable line breaks
-      gfm: true, // GitHub Flavored Markdown
+      breaks: true,
+      gfm: true,
     });
     
-    // Use marked to convert markdown to HTML (synchronous)
-    const html = marked.parse(markdown) as string;
+    // Use marked to convert to HTML
+    const html = marked.parse(cleanedMarkdown) as string;
     
-    // Post-process for TipTap-specific needs
-    // Handle task lists (marked might not handle these perfectly)
-    const processedHtml = html.replace(/<li>\s*\[([x\s])\]\s*(.*?)<\/li>/gi, (match: string, checked: string, text: string) => {
+    // Post-process the HTML to fix any remaining issues
+    let processedHtml = html;
+    
+    // Remove any remaining stray asterisks from HTML
+    processedHtml = processedHtml.replace(/\*+/g, '');
+    
+    // Fix spacing issues in HTML content
+    processedHtml = processedHtml.replace(/([a-z])([A-Z])/g, '$1 $2');
+    
+    // Handle task lists
+    processedHtml = processedHtml.replace(/<li>\s*\[([x\s])\]\s*(.*?)<\/li>/gi, (match: string, checked: string, text: string) => {
       const isChecked = checked.toLowerCase() === 'x';
       return `<li data-type="taskItem" data-checked="${isChecked}">${text.trim()}</li>`;
     });
     
-    // Ensure proper table structure for TipTap
+    // Ensure proper table structure
     const finalHtml = processedHtml.replace(/<table>/g, '<table>').replace(/<\/table>/g, '</table>');
     
     return finalHtml;
   } catch (error) {
     console.error('Markdown parsing error:', error);
-    // Fallback: return as plain text wrapped in paragraph
-    return `<p>${markdown.replace(/\n/g, '<br>')}</p>`;
+    // Fallback with space preservation
+    let fallbackContent = markdown;
+    // Clean up asterisks and fix spacing in fallback too
+    fallbackContent = fallbackContent.replace(/\*+/g, '');
+    fallbackContent = fallbackContent.replace(/([a-z])([A-Z])/g, '$1 $2');
+    return `<p>${fallbackContent.replace(/\n/g, '<br>')}</p>`;
   }
 };
 

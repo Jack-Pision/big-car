@@ -2937,6 +2937,8 @@ Please provide a comprehensive answer that directly addresses this question usin
         }
 
         let textContent = '';
+        let wordBuffer = '';
+        const wordBoundaryRegex = /[ \n.,;:!?]/;
 
         try {
           while (true) {
@@ -2956,17 +2958,27 @@ Please provide a comprehensive answer that directly addresses this question usin
                   const content = parsed.choices?.[0]?.delta?.content;
                   
                   if (content) {
-                    textContent += content;
-                    
-                    // Update the streaming content in the artifact viewer
-                    setArtifactStreamingContent(textContent);
-                    
-                    // Update the AI message in real-time with artifact content
-                    setMessages(prev => prev.map(msg => 
-                      msg.id === aiMessageId 
-                        ? { ...msg, content: textContent, isStreaming: true }
-                        : msg
-                    ));
+                    wordBuffer += content;
+                    // Check for word boundaries in the buffer
+                    let lastBoundary = -1;
+                    for (let i = 0; i < wordBuffer.length; i++) {
+                      if (wordBoundaryRegex.test(wordBuffer[i])) {
+                        lastBoundary = i;
+                      }
+                    }
+                    if (lastBoundary !== -1) {
+                      // Move up to the last boundary to textContent
+                      textContent += wordBuffer.slice(0, lastBoundary + 1);
+                      wordBuffer = wordBuffer.slice(lastBoundary + 1);
+                      // Update the streaming content in the artifact viewer
+                      setArtifactStreamingContent(textContent);
+                      // Update the AI message in real-time with artifact content
+                      setMessages(prev => prev.map(msg => 
+                        msg.id === aiMessageId 
+                          ? { ...msg, content: textContent, isStreaming: true }
+                          : msg
+                      ));
+                    }
                   }
                 } catch (parseError) {
                   // Continue streaming even if individual chunks fail to parse
@@ -2974,6 +2986,16 @@ Please provide a comprehensive answer that directly addresses this question usin
                 }
               }
             }
+          }
+          // After streaming is done, flush any remaining buffer
+          if (wordBuffer.length > 0) {
+            textContent += wordBuffer;
+            setArtifactStreamingContent(textContent);
+            setMessages(prev => prev.map(msg => 
+              msg.id === aiMessageId 
+                ? { ...msg, content: textContent, isStreaming: true }
+                : msg
+            ));
           }
         } finally {
           reader.releaseLock();
