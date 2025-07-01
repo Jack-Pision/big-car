@@ -4,6 +4,8 @@ import { smartCache } from './smart-cache';
 
 const CACHE_KEY_ALL = 'ARTIFACTS_ALL';
 
+// IMPORTANT: When serving artifact content via API routes, always set 'Content-Type: application/json; charset=utf-8' in the response headers to prevent encoding issues on Vercel/GitHub.
+
 export class ArtifactService {
   private static instance: ArtifactService;
 
