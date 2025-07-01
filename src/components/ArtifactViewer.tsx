@@ -5,7 +5,7 @@ import rehypeRaw from 'rehype-raw';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Download, Copy, Edit3, Send, Loader, ToggleLeft, ToggleRight } from 'lucide-react';
+import { X, Download, Copy, Edit3, Send, Loader, ToggleLeft, ToggleRight, Pen } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { TipTapArtifactEditor } from './TipTapArtifactEditor';
 
@@ -158,8 +158,9 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
   const [editableContent, setEditableContent] = useState(content);
   const [lastSavedContent, setLastSavedContent] = useState(content);
   const [showSave, setShowSave] = useState(false);
+  const [shouldFocus, setShouldFocus] = useState(false);
 
-  // Update content when prop changes (e.g., loading a new artifact)
+  // Only update editable content when content prop changes
   useEffect(() => {
     setEditableContent(content);
     setLastSavedContent(content);
@@ -197,52 +198,58 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
     toast.success('Changes saved!');
   };
 
+  // Focus the editor when prompt is dismissed
+  const handlePromptClick = () => {
+    setShouldFocus(true);
+  };
+
   return (
-    <div className="h-full bg-[#161618] flex flex-col relative">
+    <div className="h-full bg-[#161618] flex flex-col relative" style={{ fontSize: '16px', lineHeight: 1.6 }}>
       {/* Header Bar */}
-      <div className="flex items-center justify-between px-6 pt-4 pb-2 bg-[#161618] rounded-t-lg border-b border-gray-700">
-        <div className="text-lg font-semibold text-white truncate max-w-[60%]">{title}</div>
-        <div className="flex items-center gap-2 z-50">
-          {/* Save button (only if there are unsaved changes) */}
-          {showSave && (
-            <button
-              onClick={handleSave}
-              className="p-2 bg-white text-gray-900 rounded-full shadow hover:bg-gray-100 transition-colors"
-              title="Save changes"
+      <div className="flex items-center justify-end px-6 pt-4 pb-2 bg-[#161618] rounded-t-lg gap-3" style={{ fontSize: '20px', fontWeight: 700, marginBottom: '16px' }}>
+        {/* Save button (only if there are unsaved changes) */}
+        {showSave && (
+          <button
+            onClick={handleSave}
+            className="header-btn"
+            title="Save changes"
+            style={{ width: 36, height: 36 }}
           >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
-            </button>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          </button>
         )}
         {/* Copy content */}
         <button
           onClick={handleCopy}
-            className="p-2 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded-lg transition-colors"
+          className="header-btn"
           title="Copy content"
+          style={{ width: 36, height: 36 }}
         >
-            <Copy className="w-4 h-4" />
+          <Copy className="w-5 h-5" />
         </button>
         {/* Download markdown */}
         <button
           onClick={handleDownload}
-            className="p-2 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded-lg transition-colors"
+          className="header-btn"
           title="Download as Markdown"
+          style={{ width: 36, height: 36 }}
         >
-            <Download className="w-4 h-4" />
+          <Download className="w-5 h-5" />
         </button>
-          {/* Close button */}
+        {/* Close button */}
         <button
           onClick={onClose}
-            className="p-2 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded-lg transition-colors"
+          className="header-btn"
           title="Close"
+          style={{ width: 36, height: 36 }}
         >
-            <X className="w-4 h-4" />
+          <X className="w-5 h-5" />
         </button>
-        </div>
       </div>
       {/* Content Area - Only TipTap Editor */}
-      <div className="w-full max-w-full flex-1 overflow-y-auto px-6 pt-4 pb-8 hide-scrollbar">
+      <div className="w-full max-w-[800px] flex-1 overflow-y-auto px-6 pt-4 pb-8 hide-scrollbar relative" style={{ padding: '24px 24px 16px 24px', margin: '0 auto' }}>
         <TipTapArtifactEditor
           content={editableContent}
           onContentUpdate={(newContent) => {
@@ -250,9 +257,24 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
           }}
           isStreaming={isStreaming}
           rawMode={true}
+          shouldFocus={shouldFocus}
+          onDidFocus={() => setShouldFocus(false)}
         />
       </div>
       <style jsx global>{`
+        .header-btn {
+          width: 36px;
+          height: 36px;
+          border-radius: 9999px;
+          background: transparent;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: background 0.2s;
+        }
+        .header-btn:hover {
+          background: rgba(55, 65, 81, 0.6); /* gray-700/60 */
+        }
         .hide-scrollbar {
           scrollbar-width: none;
           -ms-overflow-style: none;
@@ -264,6 +286,13 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
         .tiptap-editor-container .ProseMirror {
           padding-left: 0.5rem;
           padding-right: 0.5rem;
+        }
+        @keyframes fadeOut {
+          from { opacity: 1; }
+          to { opacity: 0; }
+        }
+        .animate-fadeOut {
+          animation: fadeOut 0.4s forwards;
         }
       `}</style>
     </div>

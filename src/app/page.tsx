@@ -1795,6 +1795,9 @@ function TestChatComponent(props?: TestChatProps) {
   const [searchStatus, setSearchStatus] = useState<'idle' | 'searching' | 'error'>('idle');
   const [selectedSource, setSelectedSource] = useState<string | null>(null);
   
+  // Search message tab navigation state (for individual search results)
+  const [searchMessageTabs, setSearchMessageTabs] = useState<{[messageId: string]: 'Answer' | 'Sources'}>({});
+  
   // Filter sources into text and video categories
   const [textSources, setTextSources] = useState<SearchResult[]>([]);
   const [videoSources, setVideoSources] = useState<SearchResult[]>([]);
@@ -2257,13 +2260,6 @@ Execution Rules:
 - Handle conflicting information: Always identify contradictions and explain possible reasons. Highlight gaps in available information.
 - Explain the 'so what': Connect findings to broader implications. Offer perspective on what this means for the user's specific question.
 
-Citation Format:
-- Use ONLY the exact URLs provided in the source data above. Do not make up, modify, or create new URLs.
-- Place citations at the end of sentences or paragraphs, separated by a space, NOT inline.
-- Use the platform/domain name as clickable links, like [TechCrunch](https://techcrunch.com/article) or [MIT News](https://news.mit.edu/study).
-- Extract the platform name from the domain (e.g., "techcrunch.com" → "TechCrunch", "nytimes.com" → "New York Times", "forbes.com" → "Forbes").
-- Write your content naturally, then add the source attribution at the end of the relevant sentence or paragraph.
-- **CRITICAL**: The URL in your link must match exactly one of the URLs listed in the source data above.
 
 Tone and Style:
 - Human, not robotic: Use contractions, varied sentence lengths, and natural phrasing.
@@ -2889,7 +2885,7 @@ Please provide a comprehensive answer that directly addresses this question usin
           tags: ['document']
         }
       });
-      setIsArtifactMode(true);
+      setIsArtifactMode(true); // Ensure right pane is open for every artifact message
 
       // Create UNIFIED AI message placeholder - same as default chat
       const aiMessageId = uuidv4();
@@ -2970,14 +2966,14 @@ Please provide a comprehensive answer that directly addresses this question usin
                       // Move up to the last boundary to textContent
                       textContent += wordBuffer.slice(0, lastBoundary + 1);
                       wordBuffer = wordBuffer.slice(lastBoundary + 1);
-                      // Update the streaming content in the artifact viewer
-                      setArtifactStreamingContent(textContent);
-                      // Update the AI message in real-time with artifact content
-                      setMessages(prev => prev.map(msg => 
-                        msg.id === aiMessageId 
-                          ? { ...msg, content: textContent, isStreaming: true }
-                          : msg
-                      ));
+                    // Update the streaming content in the artifact viewer
+                    setArtifactStreamingContent(textContent);
+                    // Update the AI message in real-time with artifact content
+                    setMessages(prev => prev.map(msg => 
+                      msg.id === aiMessageId 
+                        ? { ...msg, content: textContent, isStreaming: true }
+                        : msg
+                    ));
                     }
                   }
                 } catch (parseError) {
@@ -3779,6 +3775,25 @@ Please provide a comprehensive answer that directly addresses this question usin
 
   const handleButtonClick = (key: string) => {
     setActiveButton(prev => (prev === key ? null : key));
+    if (key === 'artifact') {
+      setIsArtifactMode(true);
+      // If no artifact content, show a placeholder
+      if (!artifactContent) {
+        setArtifactContent({
+          root_id: uuidv4(),
+          version: 1,
+          type: 'document',
+          title: 'Artifact Output',
+          content: '',
+          metadata: {
+            wordCount: 0,
+            estimatedReadTime: '1 minute',
+            category: 'Document',
+            tags: ['document']
+          }
+        });
+      }
+    }
   };
 
   // Add helper function to convert LocalMessage[] to ConversationMessage[] by type casting
@@ -4018,26 +4033,7 @@ Please provide a comprehensive answer that directly addresses this question usin
                         </div>
                       )}
 
-                      {/* Standalone Source button - appears right after carousel for search mode with images */}
-                      {msg.contentType === "search" && msg.imageUrls && msg.imageUrls.length > 0 && (
-                        <div className="w-full flex justify-end mb-3 relative z-[60]">
-                          <button
-                            onClick={() => {
-                              setIsSearchPaneOpen(true);
-                              setActiveMode("search");
-                              setActiveTab("Sources");
-                            }}
-                            className="flex items-center justify-center gap-1 h-8 px-3 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all text-sm focus:outline-none"
-                            aria-label="View Sources"
-                          >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <circle cx="12" cy="12" r="10" />
-                              <path d="M2 12h20M12 2a15.3 15.3 0 0 1 0 20M12 2a15.3 15.3 0 0 0 0 20" />
-                            </svg>
-                            <span className="leading-none">Source</span>
-                          </button>
-                        </div>
-                      )}
+
                       
                       {isStoppedMsg ? (
                         <span className="text-xs text-white italic font-light mb-2">[Response stopped by user]</span>
@@ -4128,26 +4124,230 @@ Please provide a comprehensive answer that directly addresses this question usin
                             </svg>
                           </button>
 
-{/* Source button - only show for search mode outputs without images */}
-                          {msg.contentType === "search" && (!msg.imageUrls || msg.imageUrls.length === 0) && (
-                            <button
-                              onClick={() => {
-                                setIsSearchPaneOpen(true);
-                                setActiveMode("search");
-                                setActiveTab("Sources");
-                              }}
-                              className="flex items-center justify-center gap-1 h-8 px-3 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all text-sm focus:outline-none"
-                              aria-label="View Sources"
-                            >
-                              {/* Globe/world icon SVG */}
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <circle cx="12" cy="12" r="10" />
-                                <path d="M2 12h20M12 2a15.3 15.3 0 0 1 0 20M12 2a15.3 15.3 0 0 0 0 20" />
-                              </svg>
-                              <span className="leading-none">Source</span>
-                            </button>
-                          )}
+
                        
+                        </div>
+                      )}
+                    </motion.div>
+                  </React.Fragment>
+                );
+  };
+
+  // Search message renderer with tab navigation
+  const renderSearchMessage = (msg: LocalMessage, i: number) => {
+    const { content: rawContent } = cleanAIResponse(msg.content);
+    const cleanContent = rawContent
+      .replace(/<think>[\s\S]*?<\/think>/g, '')
+      .replace(/<thinking-indicator.*?>\n<\/thinking-indicator>\n|<thinking-indicator.*?\/>/g, '')
+      .trim();
+    
+    const processedContent = msg.isStreaming 
+      ? smartBufferStreamingContent(cleanContent)
+      : cleanContent;
+    
+    // Replace links/URLs with citation markers for search mode
+    let processedContentForCitations = replaceLinksWithCitations(processedContent, msg.webSources || []);
+    const finalContent = makeCitationsClickable(processedContentForCitations, msg.webSources || []);
+    const currentTab = searchMessageTabs[msg.id || ''] || 'Answer';
+    const hasWebSources = msg.webSources && msg.webSources.length > 0;
+    
+    if (showPulsingDot && i === messages.length - 1) setShowPulsingDot(false);
+    const showTypingIndicator = msg.role === 'assistant' && finalContent.trim().length === 0 && !msg.isProcessed;
+
+    return (
+      <React.Fragment key={msg.id + '-search-fragment-' + i}>
+        <motion.div
+          key={msg.id + '-search-' + i}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
+          className="w-full text-left flex flex-col items-start ai-response-text mb-4 relative"
+          style={{ color: '#FCFCFC', maxWidth: '100%', overflowWrap: 'break-word', wordBreak: 'break-word' }}
+        >
+          {/* Tab Navigation for Search Results */}
+          {msg.isProcessed && hasWebSources && (
+            <div className="w-full mb-4">
+              <div className="flex border-b border-gray-700">
+                            <button
+                  onClick={() => setSearchMessageTabs(prev => ({ ...prev, [msg.id || '']: 'Answer' }))}
+                  className={`px-4 py-2 text-base font-medium transition-colors border-b-2 ${
+                    currentTab === 'Answer' 
+                      ? 'text-white border-cyan-500' 
+                      : 'text-gray-400 hover:text-gray-200 border-transparent'
+                  }`}
+                >
+                  Answer
+                </button>
+                <button
+                  onClick={() => setSearchMessageTabs(prev => ({ ...prev, [msg.id || '']: 'Sources' }))}
+                  className={`px-4 py-2 text-base font-medium transition-colors border-b-2 ${
+                    currentTab === 'Sources' 
+                      ? 'text-white border-cyan-500' 
+                      : 'text-gray-400 hover:text-gray-200 border-transparent'
+                  }`}
+                >
+                  Sources {hasWebSources && `(${msg.webSources.length})`}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Tab Content */}
+          {currentTab === 'Answer' ? (
+            <>
+              {/* Image Carousel for Answer tab */}
+              {msg.imageUrls && msg.imageUrls.length > 0 && (
+                <div className="mb-4 w-full max-w-full overflow-hidden">
+                  <ImageCarousel
+                    images={msg.imageUrls.map((url) => {
+                      const matchingSource = (msg.webSources || []).find((s: any) => s.image === url) || {};
+                      return {
+                        url,
+                        title: matchingSource.title || '',
+                        sourceUrl: matchingSource.url || ''
+                      };
+                    })}
+                  />
+                </div>
+              )}
+
+              {/* AI Response Content */}
+              <div className="w-full max-w-full overflow-hidden" style={{ minHeight: showTypingIndicator ? '2.5rem' : 'auto' }}>
+                {showTypingIndicator ? (
+                  <LoadingIndicator />
+                ) : (
+                  finalContent.trim().length > 0 && (
+                    <div style={{ position: 'relative' }}>
+                      <ReactMarkdown 
+                        remarkPlugins={[remarkGfm, remarkMath]} 
+                        rehypePlugins={[rehypeRaw, rehypeKatex]} 
+                        className="research-output"
+                        components={{
+                          h1: ({ children }) => (<h1 className="text-xl md:text-3xl font-bold mb-6 mt-8 border-b border-cyan-500/30 pb-3" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}>{children}</h1>),
+                          h2: ({ children }) => (<h2 className="text-lg md:text-2xl font-semibold mb-4 mt-8 flex items-center gap-2" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}>{children}</h2>),
+                          h3: ({ children }) => (<h3 className="text-base md:text-xl font-semibold mb-3 mt-6" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}>{children}</h3>),
+                          p: ({ children }) => (<p className="leading-relaxed mb-4 text-base" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}>{children}</p>),
+                          ul: ({ children }) => (<ul className="space-y-2 mb-4 ml-4">{children}</ul>),
+                          li: ({ children }) => (<li className="flex items-start gap-2" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}><span className="text-cyan-400 mt-1.5 text-xs">●</span><span className="flex-1">{children}</span></li>),
+                          ol: ({ children }) => (<ol className="space-y-2 mb-4 ml-4 list-decimal list-inside">{children}</ol>),
+                          strong: ({ children }) => (<strong className="font-semibold" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}>{children}</strong>),
+                          table: ({ children }) => (<div className="overflow-x-auto mb-6 max-w-full scrollbar-thin"><table className="border-collapse" style={{ tableLayout: 'auto', width: 'auto' }}>{children}</table></div>),
+                          thead: ({ children }) => <thead className="">{children}</thead>,
+                          th: ({ children }) => (<th className="px-3 md:px-4 py-1 md:py-3 text-left font-semibold border-b-2 border-gray-600 text-xs md:text-sm" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}>{children}</th>),
+                          td: ({ children }) => (<td className="px-3 md:px-4 py-1 md:py-3 border-b border-gray-700 text-xs md:text-sm" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}>{children}</td>),
+                          blockquote: ({ children }) => (<blockquote className="border-l-4 border-cyan-500 pl-4 py-1 rounded-r-lg mb-4 italic" style={{ background: 'transparent', color: 'var(--text-primary)' }}>{children}</blockquote>),
+                          code: ({ children, className }) => {
+                            const isInline = !className;
+                            return isInline
+                              ? (<code className="px-2 py-1 rounded text-xs font-mono" style={{ background: 'var(--code-bg)', color: 'var(--code-text)' }}>{children}</code>)
+                              : (<code className="block p-4 rounded-lg overflow-x-auto text-xs font-mono mb-4" style={{ background: 'var(--code-bg)', color: 'var(--code-text)' }}>{children}</code>);
+                          }
+                        }}
+                      >
+                        {finalContent}
+                      </ReactMarkdown>
+                    </div>
+                  )
+                )}
+              </div>
+            </>
+          ) : (
+            /* Sources Tab Content */
+            <div className="w-full">
+              {hasWebSources ? (
+                <div className="space-y-3">
+                  {msg.webSources.map((source: any, index: number) => (
+                    <motion.div
+                      key={source.id || index}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: index * 0.05 }}
+                      className="w-full flex items-center py-2 min-h-[48px] hover:bg-neutral-800/40 rounded-lg transition-colors px-5"
+                      style={{ border: 'none', boxShadow: 'none', marginBottom: '2px' }}
+                    >
+                      {/* Main content (favicon/domain, title, snippet) */}
+                      <div className="flex-1 min-w-0 flex flex-col justify-center">
+                        {/* Favicon + Domain row, above title/snippet */}
+                        <div className="flex items-center mb-0.5">
+                          <img
+                            src={getSourceIcon(source.url, source.favicon)}
+                            alt=""
+                            className="w-7 h-7 rounded-full object-cover bg-white border border-gray-700 flex-shrink-0"
+                            style={{ marginRight: '16px' }}
+                            onError={e => { e.currentTarget.src = '/icons/web-icon.svg'; }}
+                          />
+                          <span className="text-base text-gray-400 truncate" style={{ maxWidth: '140px' }}>
+                            {extractDomain(source.url)}
+                          </span>
+                        </div>
+                        <a
+                          href={source.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block"
+                          style={{ textDecoration: 'none' }}
+                        >
+                          <div className="font-bold text-base text-white leading-tight mb-0.5 hover:text-cyan-400 transition-colors truncate" style={{ lineHeight: '1.25', fontWeight: 700 }}>
+                            {source.title}
+                          </div>
+                          {source.snippet && (
+                            <div className="text-base text-gray-300 leading-snug line-clamp-2" style={{ lineHeight: '1.35', fontWeight: 400 }}>
+                              {source.snippet}
+                            </div>
+                          )}
+                        </a>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-400">
+                  <p>No sources available for this search.</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Action buttons */}
+          {msg.isProcessed && currentTab === 'Answer' && (
+            <div className="w-full flex justify-start gap-2 mt-4 relative z-[60]">
+              <button
+                onClick={() => handleCopyContent(finalContent)}
+                className="flex items-center justify-center w-8 h-8 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
+                aria-label="Copy response"
+              >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                              </svg>
+                            </button>
+              
+              <button
+                onClick={() => {
+                  try {
+                    const userMsgIndex = messages.findIndex(m => m.id === msg.parentId);
+                    let userMsg = userMsgIndex >= 0 ? messages[userMsgIndex] : 
+                                messages.find(m => m.role === 'user' && m.timestamp && m.timestamp < (msg.timestamp || Infinity));
+                    
+                    if (!userMsg) {
+                      userMsg = [...messages].reverse().find(m => m.role === 'user');
+                    }
+                    
+                    if (userMsg) {
+                      handleRetryMessage(userMsg.content);
+                    }
+                  } catch (error) {
+                    console.error('Error handling retry button click:', error);
+                  }
+                }}
+                className="flex items-center justify-center w-8 h-8 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
+                aria-label="Retry with different response"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                  <path d="M3 3v5h5"></path>
+                </svg>
+              </button>
                         </div>
                       )}
                     </motion.div>
@@ -4224,7 +4424,7 @@ Please provide a comprehensive answer that directly addresses this question usin
         <GlobalStyles />
       {/* Single Header: always visible on all devices - constrained to left pane when right pane is open */}
       <header 
-        className="fixed top-0 left-0 z-50 bg-[#161618] border-b border-gray-600/50 h-14 flex items-center px-4"
+        className="fixed top-0 left-0 z-50 bg-[#161618] h-14 flex items-center px-4"
         style={{
           width: isArtifactMode ? `${100 - artifactViewerWidth}%` : '100%'
         }}
@@ -4244,7 +4444,7 @@ Please provide a comprehensive answer that directly addresses this question usin
           
           {/* Mobile-only: Centered heading */}
           <div 
-            className={`md:hidden absolute top-1/2 -translate-y-1/2 max-w-3xl flex flex-col items-center justify-center z-40 transition-opacity duration-500 ${inputPosition === "center" ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+            className={`md:hidden absolute top-1/2 -translate-y-1/2 max-w-4xl flex flex-col items-center justify-center z-40 transition-opacity duration-500 ${inputPosition === "center" ? "opacity-100" : "opacity-0 pointer-events-none"}`}
             style={{
               left: '50%',
               width: '100%',
@@ -4258,7 +4458,7 @@ Please provide a comprehensive answer that directly addresses this question usin
 
           {/* Mobile-only: Bottom input */}
           <div 
-            className="md:hidden fixed bottom-0 left-1/2 -translate-x-1/2 translate-y-0 w-full max-w-3xl flex flex-col items-center justify-center z-50 px-4 pb-4"
+            className="md:hidden fixed bottom-0 left-1/2 -translate-x-1/2 translate-y-0 w-full max-w-4xl flex flex-col items-center justify-center z-50 px-4 pb-4"
             style={{
               width: '100%'
             }}
@@ -4313,24 +4513,24 @@ Please provide a comprehensive answer that directly addresses this question usin
                         if (!isLoading) handleSend(e);
                       }
                     }}
-                    className="w-full border-none outline-none bg-transparent px-2 py-1 text-gray-200 text-sm placeholder-gray-500 resize-none overflow-auto self-center rounded-lg"
+                    className="w-full border-none outline-none bg-transparent px-2 py-1 text-gray-200 text-[16px] placeholder-gray-500 resize-none overflow-auto self-center rounded-lg"
                     placeholder="Ask anything..."
             disabled={isLoading}
             rows={1}
-                    style={{ maxHeight: '96px', minHeight: '40px', lineHeight: '1.5' }}
+                    style={{ maxHeight: '96px', minHeight: '56px', lineHeight: '1.5' }}
                   />
                 </div>
 
                 {/* Actions row */}
                 <div className="flex flex-row w-full items-center justify-between gap-2">
                   {/* Left group: Tab bar with Search, Artifact, Think */}
-                  <div className="flex flex-row items-center rounded-lg p-1" style={{ backgroundColor: '#161618' }}>
+                  <div className="flex flex-row items-center rounded-lg p-1 mb-1" style={{ backgroundColor: '#161618' }}>
                     {/* Search tab */}
                     <button
                       type="button"
                       onClick={() => handleModeSwitch(activeMode === 'search' ? 'chat' : 'search')}
                       className={`
-                        flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200 
+                        flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 
                         ${activeMode === 'search' 
                           ? 'border' 
                           : 'hover:brightness-150'
@@ -4341,7 +4541,7 @@ Please provide a comprehensive answer that directly addresses this question usin
                         borderColor: activeMode === 'search' ? '#FCFCFC' : 'transparent'
                       }}
                     >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <circle cx="11" cy="11" r="8"></circle>
                         <path d="m21 21-4.35-4.35"></path>
                       </svg>
@@ -4351,7 +4551,7 @@ Please provide a comprehensive answer that directly addresses this question usin
                     <button
                       type="button"
                       className={`
-                        flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200 
+                        flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 
                         ${activeButton === 'artifact' 
                           ? 'border' 
                           : 'hover:brightness-150'
@@ -4363,7 +4563,7 @@ Please provide a comprehensive answer that directly addresses this question usin
                       }}
                       onClick={() => handleButtonClick('artifact')}
                     >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
                         <line x1="9" y1="9" x2="15" y2="9"></line>
                         <line x1="9" y1="13" x2="15" y2="13"></line>
@@ -4375,7 +4575,7 @@ Please provide a comprehensive answer that directly addresses this question usin
                       type="button"
                       onClick={() => handleButtonClick('reasoning')}
                       className={`
-                        flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200 
+                        flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 
                         ${activeButton === 'reasoning' 
                           ? 'border' 
                           : 'hover:brightness-150'
@@ -4387,8 +4587,8 @@ Please provide a comprehensive answer that directly addresses this question usin
                       }}
                     >
                       <svg 
-                        width="16" 
-                        height="16" 
+                        width="20" 
+                        height="20" 
                         viewBox="0 0 24 24" 
                         fill="none" 
                         stroke="currentColor" 
@@ -4406,14 +4606,14 @@ Please provide a comprehensive answer that directly addresses this question usin
                   </div>
 
                   {/* Right group: Plus, Send */}
-                  <div className="flex flex-row gap-2 items-center ml-auto">
+                  <div className="flex flex-row gap-2 items-center ml-auto p-1 mb-1">
                     {/* Plus button */}
                     <button 
                       type="button" 
                       className="p-2 rounded-full text-gray-300 hover:brightness-150 transition flex items-center justify-center flex-shrink-0"
                       style={{ 
-                        width: "36px", 
-                        height: "36px",
+                        width: "40px", 
+                        height: "40px",
                         backgroundColor: '#161618'
                       }}
                       onClick={handlePlusClick}
@@ -4422,7 +4622,7 @@ Please provide a comprehensive answer that directly addresses this question usin
                       {isUploadingImage ? (
                         <div className="w-4 h-4 border-2 border-gray-300 border-t-transparent rounded-full animate-spin"></div>
                       ) : (
-                        <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                           <line x1="12" y1="5" x2="12" y2="19" />
                           <line x1="5" y1="12" x2="19" y2="12" />
                         </svg>
@@ -4442,17 +4642,17 @@ Please provide a comprehensive answer that directly addresses this question usin
                     <button
                       type={isAiResponding ? "button" : "submit"}
                       className="rounded-full bg-gray-200 hover:bg-white transition flex items-center justify-center flex-shrink-0"
-                      style={{ width: "36px", height: "36px", pointerEvents: isLoading && !isAiResponding ? 'none' : 'auto' }}
+                      style={{ width: "40px", height: "40px", pointerEvents: isLoading && !isAiResponding ? 'none' : 'auto' }}
                       onClick={isAiResponding ? handleStopAIResponse : undefined}
                       disabled={isLoading && !isAiResponding}
                       aria-label={isAiResponding ? "Stop AI response" : "Send"}
                     >
                       {isAiResponding ? (
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                           <rect x="7" y="7" width="10" height="10" rx="2" fill="#374151" />
                         </svg>
                       ) : (
-                        <svg width="16" height="16" fill="none" stroke="#374151" strokeWidth="2.5" viewBox="0 0 24 24">
+                        <svg width="20" height="20" fill="none" stroke="#374151" strokeWidth="2.5" viewBox="0 0 24 24">
                           <path d="M12 19V5M5 12l7-7 7 7" />
                         </svg>
                       )}
@@ -4465,13 +4665,13 @@ Please provide a comprehensive answer that directly addresses this question usin
 
           {/* Desktop: Combined wrapper with current behavior */}
           <div
-            className={`hidden md:flex fixed flex-col w-full max-w-3xl items-center justify-center z-50 transition-all duration-500 ease-in-out ${
+            className={`hidden md:flex fixed flex-col w-full max-w-4xl items-center justify-center z-50 transition-all duration-500 ease-in-out ${
               inputPosition === "center" ? "top-1/2 -translate-y-1/2" : "bottom-0 translate-y-0"
             }`}
             style={{
               left: isArtifactMode ? `${(100 - artifactViewerWidth) / 2}%` : '50%',
               width: isArtifactMode ? `${100 - artifactViewerWidth}%` : '100%',
-              maxWidth: isArtifactMode ? 'none' : '48rem',
+              maxWidth: isArtifactMode ? 'none' : '56rem',
               transform: inputPosition === 'center' ? 'translate(-50%, -50%)' : 'translateX(-50%)',
             }}
           >
@@ -4484,7 +4684,7 @@ Please provide a comprehensive answer that directly addresses this question usin
 
             {/* Input form for desktop */}
             <form
-              className="flex flex-col gap-2 rounded-2xl shadow-lg py-1 w-full px-4 pl-4 sm:px-6 md:px-8 lg:pl-4 lg:pr-0 mb-3 bg-[#232323] border border-white/20"
+              className="flex flex-col gap-2 rounded-2xl shadow-lg py-1 w-full px-4 mb-3 bg-[#232323] border border-white/20"
               style={{ boxShadow: '0 4px 32px 0 rgba(0,0,0,0.32)' }}
               onSubmit={handleSend}
             >
@@ -4532,24 +4732,24 @@ Please provide a comprehensive answer that directly addresses this question usin
                         if (!isLoading) handleSend(e);
                       }
                     }}
-                    className="w-full border-none outline-none bg-transparent px-2 py-1 text-gray-200 text-sm placeholder-gray-500 resize-none overflow-auto self-center rounded-lg"
+                    className="w-full border-none outline-none bg-transparent px-2 py-1 text-gray-200 text-[16px] placeholder-gray-500 resize-none overflow-auto self-center rounded-lg"
                     placeholder="Ask anything..."
                     disabled={isLoading}
                     rows={1}
-                    style={{ maxHeight: '96px', minHeight: '40px', lineHeight: '1.5' }}
+                    style={{ maxHeight: '96px', minHeight: '56px', lineHeight: '1.5' }}
                   />
                 </div>
 
                 {/* Actions row */}
                 <div className="flex flex-row w-full items-center justify-between gap-2">
                   {/* Left group: Tab bar with Search, Artifact, Think */}
-                  <div className="flex flex-row items-center rounded-lg p-1" style={{ backgroundColor: '#161618' }}>
+                  <div className="flex flex-row items-center rounded-lg p-1 mb-1" style={{ backgroundColor: '#161618' }}>
                     {/* Search tab */}
                     <button
                       type="button"
                       onClick={() => handleModeSwitch(activeMode === 'search' ? 'chat' : 'search')}
                       className={`
-                        flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200 
+                        flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 
                         ${activeMode === 'search' 
                           ? 'border' 
                           : 'hover:brightness-150'
@@ -4560,7 +4760,7 @@ Please provide a comprehensive answer that directly addresses this question usin
                         borderColor: activeMode === 'search' ? '#FCFCFC' : 'transparent'
                       }}
                     >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <circle cx="11" cy="11" r="8"></circle>
                         <path d="m21 21-4.35-4.35"></path>
                       </svg>
@@ -4570,7 +4770,7 @@ Please provide a comprehensive answer that directly addresses this question usin
                     <button
                       type="button"
                       className={`
-                        flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200 
+                        flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 
                         ${activeButton === 'artifact' 
                           ? 'border' 
                           : 'hover:brightness-150'
@@ -4582,7 +4782,7 @@ Please provide a comprehensive answer that directly addresses this question usin
                       }}
                       onClick={() => handleButtonClick('artifact')}
                     >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
                         <polyline points="14 2 14 8 20 8"></polyline>
                       </svg>
@@ -4593,7 +4793,7 @@ Please provide a comprehensive answer that directly addresses this question usin
                       type="button"
                       onClick={() => handleButtonClick('reasoning')}
                       className={`
-                        flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200 
+                        flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 
                         ${activeButton === 'reasoning' 
                           ? 'border' 
                           : 'hover:brightness-150'
@@ -4605,8 +4805,8 @@ Please provide a comprehensive answer that directly addresses this question usin
                       }}
                     >
                       <svg 
-                        width="16" 
-                        height="16" 
+                        width="20" 
+                        height="20" 
                         viewBox="0 0 24 24" 
                         fill="none" 
                         stroke="currentColor" 
@@ -4624,14 +4824,14 @@ Please provide a comprehensive answer that directly addresses this question usin
               </div>
 
                   {/* Right group: Plus, Send */}
-                  <div className="flex flex-row gap-2 items-center ml-auto pr-4">
+                  <div className="flex flex-row gap-2 items-center ml-auto p-1 mb-1">
                     {/* Plus button */}
                     <button 
                       type="button" 
                       className="p-2 rounded-full text-gray-300 hover:brightness-150 transition flex items-center justify-center flex-shrink-0"
                       style={{ 
-                        width: "36px", 
-                        height: "36px",
+                        width: "40px", 
+                        height: "40px",
                         backgroundColor: '#161618'
                       }}
                       onClick={handlePlusClick}
@@ -4640,7 +4840,7 @@ Please provide a comprehensive answer that directly addresses this question usin
                       {isUploadingImage ? (
                         <div className="w-4 h-4 border-2 border-gray-300 border-t-transparent rounded-full animate-spin"></div>
                       ) : (
-                      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                 <line x1="12" y1="5" x2="12" y2="19" />
                 <line x1="5" y1="12" x2="19" y2="12" />
               </svg>
@@ -4660,17 +4860,17 @@ Please provide a comprehensive answer that directly addresses this question usin
             <button
                       type={isAiResponding ? "button" : "submit"}
                       className="rounded-full bg-gray-200 hover:bg-white transition flex items-center justify-center flex-shrink-0"
-                      style={{ width: "36px", height: "36px", pointerEvents: isLoading && !isAiResponding ? 'none' : 'auto' }}
+                      style={{ width: "40px", height: "40px", pointerEvents: isLoading && !isAiResponding ? 'none' : 'auto' }}
                       onClick={isAiResponding ? handleStopAIResponse : undefined}
                       disabled={isLoading && !isAiResponding}
                       aria-label={isAiResponding ? "Stop AI response" : "Send"}
                     >
                       {isAiResponding ? (
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                           <rect x="7" y="7" width="10" height="10" rx="2" fill="#374151" />
               </svg>
                       ) : (
-                        <svg width="16" height="16" fill="none" stroke="#374151" strokeWidth="2.5" viewBox="0 0 24 24">
+                        <svg width="20" height="20" fill="none" stroke="#374151" strokeWidth="2.5" viewBox="0 0 24 24">
                           <path d="M12 19V5M5 12l7-7 7 7" />
                         </svg>
                       )}
@@ -4682,9 +4882,9 @@ Please provide a comprehensive answer that directly addresses this question usin
       </div>
 
           {/* Conversation and other UI below */}
-          <div className={`w-full max-w-3xl mx-auto flex flex-col gap-4 items-center justify-center z-10 pt-12 pb-4 ${isArtifactMode ? 'px-4 sm:px-6' : ''}`}>
+          <div className={`w-full max-w-4xl mx-auto flex flex-col gap-4 items-center justify-center z-10 pt-12 pb-4 ${isArtifactMode ? 'px-4 sm:px-6' : ''}`}>
             {messages.map((msg, i) => {
-              // Assistant responses: artifacts first, then reasoning, then agent, then default chat
+              // Assistant responses: artifacts first, then search, then reasoning, then default chat
               if (msg.role === 'assistant') {
                 if (msg.contentType === 'artifact') {
                   // Show a minimal preview card in chat for artifact messages
@@ -4720,6 +4920,9 @@ Please provide a comprehensive answer that directly addresses this question usin
                     </div>
                   );
                 }
+                if (msg.contentType === 'search') {
+                  return renderSearchMessage(msg, i);
+                }
                 if (msg.contentType === 'reasoning') {
                   return renderReasoningMessage(msg, i);
                 }
@@ -4731,10 +4934,10 @@ Please provide a comprehensive answer that directly addresses this question usin
                 return (
                 <div
                   key={msg.id + '-user-' + i}
-                  className="w-full flex justify-end items-start gap-3 mb-4"
+                  className="w-full flex justify-end items-center gap-3 mb-4"
                 >
                   {/* User message bubble - dynamic width */}
-                  <div className="flex flex-col items-end max-w-[85%] min-w-[100px]">
+                  <div className="flex flex-col items-end max-w-[600px] min-w-[100px]">
                     {/* Image previews if any */}
                     {msg.imageUrls && msg.imageUrls.map((url, index) => (
                       <img 
@@ -4746,32 +4949,27 @@ Please provide a comprehensive answer that directly addresses this question usin
                         }`}
                       />
                     ))}
-                    
                     {/* Message content bubble */}
                     <div
-                      className="px-4 py-3 rounded-2xl text-sm leading-relaxed"
+                      className="px-6 py-4 rounded-2xl text-base leading-relaxed text-left bg-[#232323] text-white"
                       style={{ 
-                        color: '#FCFCFC',
-                        backgroundColor: '#212121',
-                        borderBottomRightRadius: '8px', // Smaller radius for the corner near avatar
                         wordWrap: 'break-word',
-                        overflowWrap: 'break-word'
+                        overflowWrap: 'break-word',
                       }}
                     >
                       {msg.content}
                     </div>
                   </div>
-                  
                   {/* User profile avatar */}
-                  <div className="flex-shrink-0">
+                  <div className="flex-shrink-0 ml-3 flex items-center justify-center">
                     {user?.user_metadata?.avatar_url ? (
                       <img
                         src={user.user_metadata.avatar_url}
                         alt="User avatar"
-                        className="w-8 h-8 rounded-full"
+                        className="w-10 h-10 rounded-full"
                       />
                     ) : (
-                      <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-base font-medium">
                         {user?.user_metadata?.full_name?.charAt(0) || user?.email?.charAt(0).toUpperCase() || 'U'}
                       </div>
                     )}
@@ -4918,7 +5116,7 @@ Please provide a comprehensive answer that directly addresses this question usin
                                   e.currentTarget.src = '/icons/web-icon.svg';
                                 }}
                               />
-                              <span className="text-xs text-gray-400 truncate">
+                              <span className="text-base text-gray-400 truncate">
                                 {extractDomain(result.url)}
                               </span>
                               {index < 3 && (
@@ -4931,7 +5129,7 @@ Please provide a comprehensive answer that directly addresses this question usin
                               {result.title}
                             </h3>
                             {result.snippet && (
-                              <p className="text-xs text-gray-400 line-clamp-2">
+                              <p className="text-base text-gray-300 leading-snug line-clamp-2">
                                 {result.snippet}
                               </p>
                             )}
@@ -5067,4 +5265,34 @@ export default function TestChat() {
       <TestChatComponent />
     </AuthProvider>
   );
+}
+
+// Add this helper function near the top or with other helpers:
+function replaceLinksWithCitations(content: string, sources: any[]): string {
+  if (!content || !Array.isArray(sources) || sources.length === 0) return content;
+  let idx = 0;
+  // Replace Markdown links [text](url) and bare URLs
+  // Markdown links
+  content = content.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, (match: string, text: string, url: string) => {
+    const sourceIdx = sources.findIndex((s: any) => s.url === url);
+    if (sourceIdx !== -1) {
+      return `${text} [${sourceIdx + 1}]`;
+    } else if (idx < sources.length) {
+      return `${text} [${++idx}]`;
+    } else {
+      return text;
+    }
+  });
+  // Bare URLs
+  content = content.replace(/(https?:\/\/[^\s)]+)/g, (url: string) => {
+    const sourceIdx = sources.findIndex((s: any) => s.url === url);
+    if (sourceIdx !== -1) {
+      return `[${sourceIdx + 1}]`;
+    } else if (idx < sources.length) {
+      return `[${++idx}]`;
+    } else {
+      return '';
+    }
+  });
+  return content;
 }

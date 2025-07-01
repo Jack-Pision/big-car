@@ -57,7 +57,9 @@ body {
   }
 
   .message-bubble {
-    @apply max-w-[80%] rounded-lg p-4 shadow-sm animate-slide-up;
+    @apply max-w-[80%] rounded-[20px] px-6 py-5 shadow-sm animate-slide-up;
+    font-size: 16px;
+    line-height: 1.6;
   }
 
   .user-message {
@@ -69,14 +71,15 @@ body {
   }
 
   .chat-input-container {
-    @apply fixed bottom-0 left-0 right-0 bg-background border-t border-input-border p-4 z-50;
-    padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+    @apply fixed bottom-0 left-0 right-0 bg-background border-t border-input-border p-6 z-50;
+    padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
   }
 
   .chat-input {
     @apply w-full rounded-lg border border-input-border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent;
     min-height: 40px;
     max-height: 96px;
+    font-size: 16px;
     line-height: 1.5;
   }
 
@@ -84,16 +87,34 @@ body {
     @apply absolute right-6 bottom-6 p-2 rounded-full bg-blue-500 text-white hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors;
   }
 
-  /* Floating input card enhancements */
+  .send-button svg {
+    width: 20px;
+    height: 20px;
+  }
+
   .floating-input-card {
     @apply bg-[#232323] rounded-2xl shadow-lg w-full max-w-[600px] mx-auto flex items-center px-4 py-2 gap-2 sm:gap-3 mb-6 transition-all duration-200 focus-within:ring-2 focus-within:ring-white/20 border border-white/20;
+    font-size: 16px;
   }
+
   .input-action-btn {
     @apply w-9 h-9 flex items-center justify-center rounded-full border border-gray-200 bg-white hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/20;
   }
+
+  .input-action-btn svg {
+    width: 20px;
+    height: 20px;
+  }
+
   .send-btn {
     @apply w-10 h-10 flex items-center justify-center rounded-full bg-black text-white hover:bg-neutral-800 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black/30;
   }
+
+  .send-btn svg {
+    width: 20px;
+    height: 20px;
+  }
+
   .main-heading {
     @apply text-2xl md:text-3xl font-medium text-neutral-900 text-center mb-6 mt-8 md:mt-16 select-none;
   }
@@ -524,7 +545,7 @@ textarea::-webkit-scrollbar-thumb,
   padding: 0;
   border-radius: 0;
   font-size: inherit;
-}
+} 
 
 /* Professional Research Output Styling */
 .research-output {
@@ -1308,6 +1329,14 @@ textarea::-webkit-scrollbar-thumb,
   line-clamp: 2;
 }
 
+.line-clamp-3 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+}
+
 /* Prose text size for all modes */
 .prose {
   @apply text-base;
@@ -1413,6 +1442,14 @@ body ::selection {
   padding: 0;
   margin: 0;
   cursor: text;
+  min-height: 120px;
+  position: relative;
+}
+
+.tiptap-editor-container .ProseMirror:empty::after {
+  content: '';
+  display: block;
+  min-height: 12em;
 }
 
 .tiptap-editor-container .ProseMirror h1 {
@@ -1605,30 +1642,21 @@ body ::selection {
   border-radius: 0.25rem;
 }
 
-/* Placeholder */
+/* TipTap Google Docs-like placeholder styling */
 .tiptap-editor-container .ProseMirror p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
-  float: left;
-  color: #adb5bd;
+  color: #888;
+  font-size: 16px;
+  font-style: normal;
   pointer-events: none;
   height: 0;
+  display: block;
+  position: absolute;
+  left: 0;
+  top: 0;
+  white-space: pre-line;
 }
 
-/* Selection styles */
-.tiptap-editor-container .ProseMirror ::selection {
-  background: rgba(34, 211, 238, 0.3);
-}
-
-.tiptap-editor-container .ProseMirror ::-moz-selection {
-  background: rgba(34, 211, 238, 0.3);
-}
-
-/* Focus styles */
-.tiptap-editor-container .ProseMirror:focus {
-  outline: none;
-}
-
-/* Ensure proper cursor behavior */
-.tiptap-editor-container .ProseMirror * {
-  cursor: inherit;
+.tiptap-editor-container .ProseMirror p.is-editor-empty:first-child {
+  position: relative;
 }

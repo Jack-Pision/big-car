@@ -18,16 +18,15 @@ import Placeholder from '@tiptap/extension-placeholder';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Edit3, Send, Loader, X } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { remark } from 'remark';
-import remarkHtml from 'remark-html';
-import remarkGfm from 'remark-gfm';
-import remarkBreaks from 'remark-breaks';
+import { marked } from 'marked';
 
 interface TipTapArtifactEditorProps {
   content: string;
   onContentUpdate?: (newContent: string) => void;
   isStreaming?: boolean;
   rawMode?: boolean; // When true, skip markdown-to-HTML conversion for artifact mode
+  shouldFocus?: boolean;
+  onDidFocus?: () => void;
 }
 
 interface EditModalProps {
@@ -153,18 +152,34 @@ const EditModal: React.FC<EditModalProps> = ({
   );
 };
 
-// Robust markdown to HTML conversion using remark
-const markdownToHTML = async (markdown: string): Promise<string> => {
+// Enhanced markdown to HTML conversion using marked library
+const markdownToHTML = (markdown: string): string => {
   if (!markdown) return '';
+  
   try {
-    const file = await remark()
-      .use(remarkGfm)
-      .use(remarkBreaks)
-      .use(remarkHtml)
-      .process(markdown);
-    return String(file);
+    // Configure marked for better compatibility with TipTap
+    marked.setOptions({
+      breaks: true, // Enable line breaks
+      gfm: true, // GitHub Flavored Markdown
+    });
+    
+    // Use marked to convert markdown to HTML (synchronous)
+    const html = marked.parse(markdown) as string;
+    
+    // Post-process for TipTap-specific needs
+    // Handle task lists (marked might not handle these perfectly)
+    const processedHtml = html.replace(/<li>\s*\[([x\s])\]\s*(.*?)<\/li>/gi, (match: string, checked: string, text: string) => {
+      const isChecked = checked.toLowerCase() === 'x';
+      return `<li data-type="taskItem" data-checked="${isChecked}">${text.trim()}</li>`;
+    });
+    
+    // Ensure proper table structure for TipTap
+    const finalHtml = processedHtml.replace(/<table>/g, '<table>').replace(/<\/table>/g, '</table>');
+    
+    return finalHtml;
   } catch (error) {
     console.error('Markdown parsing error:', error);
+    // Fallback: return as plain text wrapped in paragraph
     return `<p>${markdown.replace(/\n/g, '<br>')}</p>`;
   }
 };
@@ -282,22 +297,14 @@ export const TipTapArtifactEditor: React.FC<TipTapArtifactEditorProps> = ({
   content,
   onContentUpdate,
   isStreaming = false,
-  rawMode = false
+  rawMode = false,
+  shouldFocus = false,
+  onDidFocus
 }) => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedText, setSelectedText] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [editPosition, setEditPosition] = useState({ x: 0, y: 0 });
-  const [htmlContent, setHtmlContent] = useState('');
-
-  // Convert markdown to HTML using remark (async)
-  useEffect(() => {
-    let cancelled = false;
-    markdownToHTML(content).then(html => {
-      if (!cancelled) setHtmlContent(html);
-    });
-    return () => { cancelled = true; };
-  }, [content]);
 
   const editor = useEditor({
     extensions: [
@@ -344,10 +351,11 @@ export const TipTapArtifactEditor: React.FC<TipTapArtifactEditorProps> = ({
       TextStyle,
       CharacterCount,
       Placeholder.configure({
-        placeholder: 'Content will appear here...',
+        placeholder: 'Start writing...',
+        emptyEditorClass: 'tiptap-placeholder',
       }),
     ],
-    content: htmlContent,
+    content: markdownToHTML(content),
     editable: true,
     onUpdate: ({ editor }) => {
       if (onContentUpdate && !isStreaming) {
@@ -363,6 +371,7 @@ export const TipTapArtifactEditor: React.FC<TipTapArtifactEditorProps> = ({
         const selectedText = editor.state.doc.textBetween(from, to);
         if (selectedText.trim().length > 2) {
           setSelectedText(selectedText.trim());
+          
           // Get selection position for floating button
           const element = editor.view.dom;
           if (element) {
@@ -371,6 +380,7 @@ export const TipTapArtifactEditor: React.FC<TipTapArtifactEditorProps> = ({
               const range = selection.getRangeAt(0);
               const rect = range.getBoundingClientRect();
               const containerRect = element.getBoundingClientRect();
+              
               setEditPosition({
                 x: rect.left + rect.width / 2 - containerRect.left,
                 y: rect.bottom - containerRect.top + 8
@@ -488,6 +498,13 @@ Edited text:`;
     }
   };
 
+  useEffect(() => {
+    if (shouldFocus && editor) {
+      editor.commands.focus('end');
+      if (onDidFocus) onDidFocus();
+    }
+  }, [shouldFocus, editor, onDidFocus]);
+
   if (!editor) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -550,7 +567,7 @@ Edited text:`;
           outline: none;
           color: var(--text-primary);
           line-height: 1.6;
-          font-size: 14px;
+          font-size: 16px;
         }
         
         .tiptap-editor-container .ProseMirror h1 {
@@ -688,6 +705,12 @@ Edited text:`;
 
         .tiptap-editor-container .ProseMirror li::marker {
           color: var(--text-primary);
+        }
+
+        .tiptap-placeholder {
+          color: #888;
+          font-style: normal;
+          pointer-events: none;
         }
       `}</style>
     </div>
