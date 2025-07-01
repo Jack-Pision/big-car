@@ -54,14 +54,16 @@ import ReasoningDisplay from '@/components/ReasoningDisplay';
 import { EnhancedMarkdownRenderer } from '@/components/EnhancedMarkdownRenderer';
 import ImageCarousel from '@/components/ImageCarousel';
 import { ArtifactV2Service, type ArtifactV2 } from '@/lib/artifact-v2-service';
+import MindMapDisplay, { type MindMapData } from '@/components/MindMapDisplay';
+import { extractMindMapJson, isMindMapRequest } from '@/utils/mindmap-utils';
 
 
 // Define a type that includes all possible query types (including the ones in SCHEMAS and 'conversation')
-type QueryType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversation' | 'reasoning';
+type QueryType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversation' | 'reasoning' | 'mind_map';
 
 // Define types for query classification and content display
 type QueryClassificationType = keyof typeof SCHEMAS;
-type ContentDisplayType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversation' | 'reasoning';
+type ContentDisplayType = 'tutorial' | 'comparison' | 'informational_summary' | 'conversation' | 'reasoning' | 'mind_map';
 
 // Search result interface (from browser mode)
 interface SearchResult {
@@ -1668,7 +1670,67 @@ function detectAndCleanAdvancedStructure(content: string): {
 
 // Add prompt handler functions after the BASE_SYSTEM_PROMPT and before the TestChat component
 
-const getThinkPrompt = (basePrompt: string) => {
+const getThinkPrompt = (basePrompt: string, userQuery?: string) => {
+  // Check if the user is requesting a mind map using the utility function
+  const isMindMapRequestDetected = userQuery && isMindMapRequest(userQuery);
+
+  if (isMindMapRequestDetected) {
+    return `You are Tehom AI, an advanced assistant specialized in creating interactive mind maps. When a user requests a mind map, you should think through the topic carefully and then respond with ONLY a valid JSON object that follows this exact structure:
+
+{
+  "title": "Main Topic Title",
+  "description": "Brief description of the mind map",
+  "center_node": {
+    "id": "center",
+    "label": "Central Concept",
+    "description": "Brief description of the central concept"
+  },
+  "branches": [
+    {
+      "id": "branch1",
+      "label": "Primary Branch 1",
+      "description": "Description of this branch",
+      "color": "#3B82F6",
+      "children": [
+        {
+          "id": "child1",
+          "label": "Sub-concept 1",
+          "description": "Description of sub-concept"
+        },
+        {
+          "id": "child2", 
+          "label": "Sub-concept 2",
+          "description": "Description of sub-concept"
+        }
+      ]
+    },
+    {
+      "id": "branch2",
+      "label": "Primary Branch 2", 
+      "description": "Description of this branch",
+      "color": "#10B981",
+      "children": [
+        {
+          "id": "child3",
+          "label": "Sub-concept 3",
+          "description": "Description of sub-concept"
+        }
+      ]
+    }
+  ]
+}
+
+Guidelines for mind map creation:
+- Create 3-6 main branches from the center
+- Each branch should have 2-5 children maximum
+- Use different colors for branches: #3B82F6 (blue), #10B981 (green), #F59E0B (amber), #EF4444 (red), #8B5CF6 (purple), #EC4899 (pink)
+- Keep labels concise (1-4 words)
+- Make descriptions informative but brief
+- Ensure the mind map captures the key aspects of the requested topic
+
+Think through the topic structure first, then respond with ONLY the JSON - no additional text or markdown.`;
+  }
+
   return `You are Tehom AI, an advanced and thoughtful assistant designed for deep reasoning, clear explanation, and insightful analysis. You think carefully before responding, consider multiple perspectives, and help users understand not just the answer, but the reasoning behind it. You communicate in a natural, human-like tone that feels intelligent, calm, and genuinely helpful. You often use analogies, examples, and counterpoints to make complex ideas easier to grasp, and you're not afraid to explore ambiguity when needed. Your goal is to guide users toward clarity and understanding, uncover hidden assumptions, and bring depth to every conversation. Always respond in markdown format to keep your output clean, readable, and well-structured.
 
 When responding, think through the problem step by step, considering multiple angles and potential complications before providing your final answer.`;
@@ -3154,7 +3216,7 @@ Do NOT use emojis or any other unnecessary characters.`;
 
       if (activeButton === 'reasoning') {
         // Use specialized Think prompt for reasoning mode
-        turnSpecificSystemPrompt = getThinkPrompt(BASE_SYSTEM_PROMPT);
+        turnSpecificSystemPrompt = getThinkPrompt(BASE_SYSTEM_PROMPT, input);
       } else {
         // Use base prompt for all other modes (default chat, search, artifact)
         turnSpecificSystemPrompt = BASE_SYSTEM_PROMPT;
@@ -3682,6 +3744,14 @@ Do NOT use emojis or any other unnecessary characters.`;
       return null; // This should never be reached since artifacts use renderArtifactMessage
     }
 
+    // Check for mind map content first (for AI assistant messages)
+    if (msg.role === 'assistant') {
+      const mindMapData = extractMindMapJson(msg.content);
+      if (mindMapData) {
+        return <MindMapDisplay data={mindMapData} />;
+      }
+    }
+
     // Check for Vision Mode messages (messages with imageUrls)
     if (msg.imageUrls && msg.imageUrls.length > 0) {
       // Route Vision Mode messages through renderDefaultChatMessage for consistent rendering
@@ -3708,6 +3778,8 @@ Do NOT use emojis or any other unnecessary characters.`;
           );
         case 'reasoning':
           return <ReasoningDisplay data={msg.structuredContent as string} />;
+        case 'mind_map':
+          return <MindMapDisplay data={msg.structuredContent as MindMapData} />;
         default:
           if (typeof msg.structuredContent === 'string') {
             return <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex]} className="prose dark:prose-invert max-w-none">{msg.structuredContent}</ReactMarkdown>;
@@ -3744,6 +3816,7 @@ Do NOT use emojis or any other unnecessary characters.`;
             } else if (parsed.main_title && parsed.sections) {
               return <InformationalSummaryDisplay data={parsed as InformationalSummaryData} />;
             }
+            // Mind map detection is now handled earlier in the function
           }
           return <pre className="bg-neutral-900 text-white rounded p-4 overflow-x-auto"><code>{JSON.stringify(parsed, null, 2)}</code></pre>;
         } catch (e) {}
@@ -3769,22 +3842,22 @@ Do NOT use emojis or any other unnecessary characters.`;
       } else {
         setActiveMode('chat');
       }
-      if (key === 'artifact') {
-        setIsArtifactMode(true);
-        if (!artifactContent) {
-          setArtifactContent({
+    if (key === 'artifact') {
+      setIsArtifactMode(true);
+      if (!artifactContent) {
+        setArtifactContent({
             root_id: 'temp',
-            version: 1,
-            type: 'document',
-            title: 'Artifact Output',
-            content: '',
-            metadata: {
-              wordCount: 0,
-              estimatedReadTime: '1 minute',
-              category: 'Document',
-              tags: ['document']
-            }
-          });
+          version: 1,
+          type: 'document',
+          title: 'Artifact Output',
+          content: '',
+          metadata: {
+            wordCount: 0,
+            estimatedReadTime: '1 minute',
+            category: 'Document',
+            tags: ['document']
+          }
+        });
         }
       } else {
         setIsArtifactMode(false);
@@ -4341,15 +4414,13 @@ Do NOT use emojis or any other unnecessary characters.`;
     const { content: rawContent } = cleanAIResponse(msg.content);
     const cleanContent = rawContent.replace(/<thinking-indicator.*?>\n<\/thinking-indicator>\n|<thinking-indicator.*?\/>/g, '');
 
-    // Extract and show thinking content in the Think box if present
-    const { processedContent, thinkBlocks } = processThinkTags(cleanContent);
-    let thinkingContentToShow = '';
-    if (thinkBlocks.length > 0) {
-      thinkingContentToShow = thinkBlocks[0].content;
-    }
-
     // Remove all <think>...</think> tags for the main output
     const mainMarkdownContent = cleanContent.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+
+    // Check if the content is a mind map JSON response using the utility
+    const mindMapData = extractMindMapJson(mainMarkdownContent);
+    const isMindMapResponse = !!mindMapData;
+
     const finalContent = makeCitationsClickable(mainMarkdownContent, msg.webSources || []);
 
                 return (
@@ -4361,30 +4432,20 @@ Do NOT use emojis or any other unnecessary characters.`;
           className="w-full text-left flex flex-col items-start ai-response-text mb-4 relative"
           style={{ color: "#FCFCFC", lineHeight: "1.2" }}
         >
-          {/* Live reasoning box - during streaming */}
-          {currentReasoningMessageId === msg.id && liveReasoning && (
-            <ThinkingButton content={liveReasoning} isLive={true} mode="reasoning" />
-          )}
-
-          {/* Always show thinking content in Think mode - either from think blocks or extracted reasoning */}
-          {currentReasoningMessageId !== msg.id && thinkingContentToShow && (
-            <ThinkingButton 
-              key={`${msg.id}-think-consistent`} 
-              content={thinkingContentToShow} 
-              isLive={false} 
-              mode="reasoning" 
-            />
-          )}
-
-          {/* Render the full markdown output as the final answer */}
-          {finalContent.trim().length > 0 &&
+          {/* Render mind map if detected, otherwise render markdown */}
+          {isMindMapResponse && mindMapData ? (
+            <div className="w-full mt-4">
+              <MindMapDisplay data={mindMapData} />
+            </div>
+          ) : (
+            finalContent.trim().length > 0 &&
             renderDefaultChatMessage({
               ...msg,
               content: msg.isStreaming
                 ? smartBufferStreamingContent(finalContent.replace(/<!-- think-block-\\d+ -->/g, ''))
                 : finalContent.replace(/<!-- think-block-\\d+ -->/g, '')
             }, i)
-          }
+          )}
         </motion.div>
       </React.Fragment>
     );
@@ -4568,26 +4629,6 @@ Do NOT use emojis or any other unnecessary characters.`;
                         <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
                         <line x1="9" y1="9" x2="15" y2="9"></line>
                         <line x1="9" y1="13" x2="15" y2="13"></line>
-                      </svg>
-                    </button>
-
-                    {/* Think tab */}
-                    <button
-                      type="button"
-                      className={`
-                        flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 
-                        ${activeButton === 'reasoning' ? 'border' : 'hover:brightness-150'}
-                      `}
-                      style={{ 
-                        color: activeButton === 'reasoning' ? '#FCFCFC' : 'rgba(252, 252, 252, 0.6)',
-                        borderColor: activeButton === 'reasoning' ? '#FCFCFC' : 'transparent'
-                      }}
-                      onClick={() => handleButtonClick('reasoning')}
-                    >
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="12" cy="12" r="1"/>
-                        <path d="M20.2 20.2c2.04-2.03.02-7.36-4.5-11.9-4.54-4.52-9.87-6.54-11.9-4.5-2.04 2.03-.02 7.36 4.5 11.9 4.54 4.52 9.87 6.54 11.9 4.5z"/>
-                        <path d="M15.7 15.7c4.52-4.54 6.54-9.87 4.5-11.9-2.03-2.04-7.36-.02-11.9 4.5-4.52 4.54-6.54 9.87-4.5 11.9 2.03 2.04 7.36.02 11.9-4.5z"/>
                       </svg>
                     </button>
 
@@ -4785,26 +4826,6 @@ Do NOT use emojis or any other unnecessary characters.`;
                         <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
                         <line x1="9" y1="9" x2="15" y2="9"></line>
                         <line x1="9" y1="13" x2="15" y2="13"></line>
-                      </svg>
-                    </button>
-
-                    {/* Think tab */}
-                    <button
-                      type="button"
-                      className={`
-                        flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 
-                        ${activeButton === 'reasoning' ? 'border' : 'hover:brightness-150'}
-                      `}
-                      style={{ 
-                        color: activeButton === 'reasoning' ? '#FCFCFC' : 'rgba(252, 252, 252, 0.6)',
-                        borderColor: activeButton === 'reasoning' ? '#FCFCFC' : 'transparent'
-                      }}
-                      onClick={() => handleButtonClick('reasoning')}
-                    >
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="12" cy="12" r="1"/>
-                        <path d="M20.2 20.2c2.04-2.03.02-7.36-4.5-11.9-4.54-4.52-9.87-6.54-11.9-4.5-2.04 2.03-.02 7.36 4.5 11.9 4.54 4.52 9.87 6.54 11.9 4.5z"/>
-                        <path d="M15.7 15.7c4.52-4.54 6.54-9.87 4.5-11.9-2.03-2.04-7.36-.02-11.9 4.5-4.52 4.54-6.54 9.87-4.5 11.9 2.03 2.04 7.36.02 11.9-4.5z"/>
                       </svg>
                     </button>
 

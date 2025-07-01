@@ -186,5 +186,54 @@ export const SCHEMAS = {
       }
     },
     required: ["main_title", "sections"]
+  },
+
+  mind_map: {
+    type: "object",
+    properties: {
+      title: {
+        type: "string",
+        description: "The central topic or title of the mind map"
+      },
+      description: {
+        type: "string",
+        description: "Brief description of the mind map topic"
+      },
+      center_node: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          label: { type: "string" },
+          description: { type: "string" }
+        },
+        required: ["id", "label"]
+      },
+      branches: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            id: { type: "string" },
+            label: { type: "string" },
+            description: { type: "string" },
+            color: { type: "string", description: "Hex color for the branch (e.g., #3B82F6)" },
+            children: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  id: { type: "string" },
+                  label: { type: "string" },
+                  description: { type: "string" }
+                },
+                required: ["id", "label"]
+              }
+            }
+          },
+          required: ["id", "label"]
+        }
+      }
+    },
+    required: ["title", "center_node", "branches"]
   }
 }; 

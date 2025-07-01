@@ -268,13 +268,13 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
       {/* Content Area */}
       <div className="w-full max-w-[800px] flex-1 overflow-y-auto px-6 pt-4 pb-8 hide-scrollbar relative" style={{ padding: '24px 24px 16px 24px', margin: '0 auto' }}>
         {isEditing ? (
-          <TipTapArtifactEditor
-            content={editableContent}
-            onContentUpdate={(newContent) => {
-              setEditableContent(newContent);
-            }}
-            isStreaming={isStreaming}
-            rawMode={true}
+        <TipTapArtifactEditor
+          content={editableContent}
+          onContentUpdate={(newContent) => {
+            setEditableContent(newContent);
+          }}
+          isStreaming={isStreaming}
+          rawMode={true}
             shouldFocus={shouldFocus}
             onDidFocus={() => setShouldFocus(false)}
           />
@@ -282,7 +282,7 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
           <div
             className="markdown-body"
             dangerouslySetInnerHTML={{ __html: marked.parse(content) }}
-          />
+        />
         )}
       </div>
       <style jsx global>{`
@@ -321,4 +321,4 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
       `}</style>
     </div>
   );
-};
+}; 

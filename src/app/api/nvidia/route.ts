@@ -31,9 +31,9 @@ function getApiKeyForMode(mode: string): string {
 function getModelForMode(mode: string): string {
   switch (mode) {
     case 'browser_chat':
-      return 'nvidia/llama-3.1-nemotron-ultra-253b-v1'; // Updated to Nemotron model for search mode
+      return 'nvidia/llama-3.1-nemotron-ultra-253b-v1'; // Nemotron for search
     case 'reasoning':
-      return 'deepseek-ai/deepseek-r1-0528'; // Changed to DeepSeek model for reasoning
+      return 'nvidia/llama-3.1-nemotron-ultra-253b-v1'; // Nemotron for think mode
     case 'image_analysis':
       return 'mistralai/mistral-large'; // Updated NVIDIA vision model
     case 'artifact':
