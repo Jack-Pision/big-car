@@ -5297,3 +5297,15 @@ function replaceLinksWithCitations(content: string, sources: any[]): string {
   });
   return content;
 }
+
+// Utility to detect Bengali characters and wrap in a span
+function wrapBengali(children: any) {
+  const bengaliRegex = /[\u0980-\u09FF]/;
+  if (typeof children === 'string' && bengaliRegex.test(children)) {
+    return <span className="bengali-text">{children}</span>;
+  }
+  if (Array.isArray(children)) {
+    return React.Children.map(children, child => wrapBengali(child));
+  }
+  return children;
+}

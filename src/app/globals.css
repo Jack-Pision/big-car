@@ -1661,3 +1661,7 @@ body ::selection {
 .tiptap-editor-container .ProseMirror p.is-editor-empty:first-child {
   position: relative;
 }
+
+.bengali-text {
+  font-family: var(--font-noto-bengali), 'Noto Sans Bengali', sans-serif !important;
+}
