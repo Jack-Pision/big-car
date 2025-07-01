@@ -2169,7 +2169,7 @@ function TestChatComponent(props?: TestChatProps) {
       
       // Only use URL routing if we don't already have an initialSessionId (not on dynamic route)
       if (!initialSessionId && messageContent) {
-        const {session, url} = await createNewSessionWithURL(messageContent);
+        const newSession = await createNewSessionWithURL(messageContent);
         newSessionId = session.id;
         newUrl = url;
       } else {
