@@ -3,7 +3,7 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import TextAlign from '@tiptap/extension-text-align';
 import Image from '@tiptap/extension-image';
-import Table from '@tiptap/extension-table';
+import { Table } from '@tiptap/extension-table';
 import TableRow from '@tiptap/extension-table-row';
 import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
@@ -12,17 +12,19 @@ import TaskItem from '@tiptap/extension-task-item';
 import Link from '@tiptap/extension-link';
 import Highlight from '@tiptap/extension-highlight';
 import Color from '@tiptap/extension-color';
-import TextStyle from '@tiptap/extension-text-style';
+import { TextStyle } from '@tiptap/extension-text-style';
 import CharacterCount from '@tiptap/extension-character-count';
 import Placeholder from '@tiptap/extension-placeholder';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Edit3, Send, Loader, X } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { marked } from 'marked';
 
 interface TipTapArtifactEditorProps {
   content: string;
   onContentUpdate?: (newContent: string) => void;
   isStreaming?: boolean;
+  rawMode?: boolean; // When true, skip markdown-to-HTML conversion for artifact mode
 }
 
 interface EditModalProps {
@@ -148,95 +150,36 @@ const EditModal: React.FC<EditModalProps> = ({
   );
 };
 
-// Enhanced markdown to HTML conversion for TipTap
+// Enhanced markdown to HTML conversion using marked library
 const markdownToHTML = (markdown: string): string => {
   if (!markdown) return '';
   
-  let html = markdown;
-  
-  // Remove horizontal rule lines (---, ***, ___) entirely
-  html = html.replace(/^(---|\*\*\*|___)\s*$/gm, '');
-
-  // Handle code blocks first (to avoid processing them)
-  const codeBlocks: string[] = [];
-  html = html.replace(/```([\s\S]*?)```/g, (match, code) => {
-    const index = codeBlocks.length;
-    codeBlocks.push(`<pre><code>${code.trim()}</code></pre>`);
-    return `__CODE_BLOCK_${index}__`;
-  });
-  
-  // Handle inline code
-  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-  
-  // Handle tables
-  html = html.replace(/\|(.+)\|/g, (match, content) => {
-    const cells = content.split('|').map((cell: string) => cell.trim());
-    const cellTags = cells.map((cell: string) => `<td>${cell}</td>`).join('');
-    return `<tr>${cellTags}</tr>`;
-  });
-  
-  // Wrap table rows in table tags
-  html = html.replace(/(<tr>.*<\/tr>)/g, '<table>$1</table>');
-  
-  // Handle table headers (look for rows followed by separator)
-  html = html.replace(/<table>(<tr>.*<\/tr>)\s*<tr><td>[|\-\s:]+<\/td><\/tr>/g, (match, headerRow) => {
-    const headerCells = headerRow.replace(/<td>/g, '<th>').replace(/<\/td>/g, '</th>');
-    return `<table><thead>${headerCells}</thead><tbody>`;
-  });
-  
-  // Close table bodies
-  html = html.replace(/<\/table>/g, '</tbody></table>');
-  
-  // Handle task lists
-  html = html.replace(/^[\s]*- \[([ x])\] (.+)$/gm, (match, checked, text) => {
-    const isChecked = checked === 'x';
-    return `<li data-type="taskItem" data-checked="${isChecked}">${text}</li>`;
-  });
-  
-  // Handle headings
-  html = html.replace(/^### (.*$)/gm, '<h3>$1</h3>');
-  html = html.replace(/^## (.*$)/gm, '<h2>$1</h2>');
-  html = html.replace(/^# (.*$)/gm, '<h1>$1</h1>');
-  
-  // Handle emphasis
-  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-  html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
-  
-  // Handle links
-  html = html.replace(/!\[([^\]]*)\]\(([^)]*)\)/g, '<img alt="$1" src="$2" />');
-  html = html.replace(/\[([^\]]*)\]\(([^)]*)\)/g, '<a href="$2">$1</a>');
-  
-  // Handle lists
-  html = html.replace(/^[\s]*[\*\-\+] (.+)$/gm, '<li>$1</li>');
-  html = html.replace(/^[\s]*\d+\. (.+)$/gm, '<li>$1</li>');
-  
-  // Wrap consecutive list items
-  html = html.replace(/(<li>.*<\/li>)/g, (match) => {
-    if (!match.includes('<ul>') && !match.includes('<ol>')) {
-      return `<ul>${match}</ul>`;
-    }
-    return match;
-  });
-  
-  // Handle paragraphs
-  html = html.replace(/\n\n/g, '</p><p>');
-  html = html.replace(/\n/g, '<br>');
-  
-  // Wrap in paragraphs
-  if (!html.startsWith('<') && html.trim()) {
-    html = `<p>${html}</p>`;
+  try {
+    // Configure marked for better compatibility with TipTap
+    marked.setOptions({
+      breaks: true, // Enable line breaks
+      gfm: true, // GitHub Flavored Markdown
+    });
+    
+    // Use marked to convert markdown to HTML (synchronous)
+    const html = marked.parse(markdown) as string;
+    
+    // Post-process for TipTap-specific needs
+    // Handle task lists (marked might not handle these perfectly)
+    const processedHtml = html.replace(/<li>\s*\[([x\s])\]\s*(.*?)<\/li>/gi, (match: string, checked: string, text: string) => {
+      const isChecked = checked.toLowerCase() === 'x';
+      return `<li data-type="taskItem" data-checked="${isChecked}">${text.trim()}</li>`;
+    });
+    
+    // Ensure proper table structure for TipTap
+    const finalHtml = processedHtml.replace(/<table>/g, '<table>').replace(/<\/table>/g, '</table>');
+    
+    return finalHtml;
+  } catch (error) {
+    console.error('Markdown parsing error:', error);
+    // Fallback: return as plain text wrapped in paragraph
+    return `<p>${markdown.replace(/\n/g, '<br>')}</p>`;
   }
-  
-  // Clean up empty paragraphs
-  html = html.replace(/<p><\/p>/g, '');
-  html = html.replace(/<p>(<[^>]+>.*<\/[^>]+>)<\/p>/g, '$1');
-  
-  // Restore code blocks
-  codeBlocks.forEach((block, index) => {
-    html = html.replace(`__CODE_BLOCK_${index}__`, block);
-  });
-  
-  return html;
 };
 
 // Enhanced HTML to markdown conversion
@@ -351,7 +294,8 @@ const HTMLToMarkdown = (html: string): string => {
 export const TipTapArtifactEditor: React.FC<TipTapArtifactEditorProps> = ({
   content,
   onContentUpdate,
-  isStreaming = false
+  isStreaming = false,
+  rawMode = false
 }) => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedText, setSelectedText] = useState('');
@@ -408,8 +352,10 @@ export const TipTapArtifactEditor: React.FC<TipTapArtifactEditorProps> = ({
     ],
     content: markdownToHTML(content),
     editable: true,
+    immediatelyRender: false,
     onUpdate: ({ editor }) => {
       if (onContentUpdate && !isStreaming) {
+        // Convert HTML back to markdown to maintain consistent format
         const htmlContent = editor.getHTML();
         const markdownContent = HTMLToMarkdown(htmlContent);
         onContentUpdate(markdownContent);
@@ -449,12 +395,23 @@ export const TipTapArtifactEditor: React.FC<TipTapArtifactEditorProps> = ({
   // Update editor content when prop changes
   useEffect(() => {
     if (editor && !isEditing) {
-      const currentMarkdown = HTMLToMarkdown(editor.getHTML());
-      if (content !== currentMarkdown) {
-        editor.commands.setContent(markdownToHTML(content));
+      if (rawMode) {
+        // In raw mode, convert markdown to HTML for proper rendering
+        const currentText = editor.getText();
+        // Only update if the raw content has actually changed
+        if (content !== currentText) {
+          const htmlContent = markdownToHTML(content);
+          editor.commands.setContent(htmlContent);
+        }
+      } else {
+        // In normal mode, use markdown conversion as before
+        const currentMarkdown = HTMLToMarkdown(editor.getHTML());
+        if (content !== currentMarkdown) {
+          editor.commands.setContent(markdownToHTML(content));
+        }
       }
     }
-  }, [content, editor, isEditing]);
+  }, [content, editor, isEditing, rawMode]);
 
   // Handle edit button click
   const handleEditClick = useCallback(() => {
@@ -521,6 +478,7 @@ Edited text:`;
 
       // Immediately trigger save after AI edit
       if (onContentUpdate) {
+        // Always convert HTML back to markdown to maintain consistent format
         const htmlContent = editor.getHTML();
         const markdownContent = HTMLToMarkdown(htmlContent);
         onContentUpdate(markdownContent);

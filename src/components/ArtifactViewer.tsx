@@ -249,6 +249,7 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
             setEditableContent(newContent);
           }}
           isStreaming={isStreaming}
+          rawMode={true}
         />
       </div>
       <style jsx global>{`
