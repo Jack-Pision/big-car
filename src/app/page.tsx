@@ -4436,8 +4436,7 @@ Do NOT use emojis or any other unnecessary characters.`;
           >
             {/* Input form for mobile */}
             <form
-              className="flex flex-col gap-2 rounded-2xl shadow-lg py-1 w-full px-4 pl-4 sm:px-6 md:px-8 lg:pl-4 lg:pr-0 mb-3 bg-[#232323] border border-white/20"
-              style={{ boxShadow: '0 4px 32px 0 rgba(0,0,0,0.32)' }}
+              className="flex flex-col gap-2 rounded-2xl shadow-lg py-1 w-full px-4 pl-4 sm:px-6 md:px-8 lg:pl-4 lg:pr-0 mb-3 bg-[#232323]"
               onSubmit={handleSend}
             >
               {/* Image Preview inside input box */}
@@ -4655,8 +4654,7 @@ Do NOT use emojis or any other unnecessary characters.`;
 
             {/* Input form for desktop */}
             <form
-              className="flex flex-col gap-2 rounded-2xl shadow-lg py-1 w-full px-4 mb-3 bg-[#232323] border border-white/20"
-              style={{ boxShadow: '0 4px 32px 0 rgba(0,0,0,0.32)' }}
+              className="flex flex-col gap-2 rounded-2xl shadow-lg py-1 w-full px-4 mb-3 bg-[#232323]"
               onSubmit={handleSend}
             >
               {/* Image Preview inside input box */}
