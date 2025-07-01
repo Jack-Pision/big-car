@@ -4418,7 +4418,7 @@ Please provide a comprehensive answer that directly addresses this question usin
         style={{ 
           background: '#161618',
           width: isArtifactMode ? `${100 - artifactViewerWidth}%` : '100%',
-          marginRight: isSearchPaneOpen && !isArtifactMode ? '296px' : undefined // 280px pane + 16px gap
+          marginRight: isSearchPaneOpen && activeMode !== 'search' && !isArtifactMode ? '296px' : undefined // 280px pane + 16px gap
         }}
       >
         <GlobalStyles />
@@ -4426,7 +4426,7 @@ Please provide a comprehensive answer that directly addresses this question usin
       <header 
         className="fixed top-0 left-0 z-50 bg-[#161618] h-14 flex items-center px-4"
         style={{
-          width: isArtifactMode ? `${100 - artifactViewerWidth}%` : '100%'
+          width: isArtifactMode ? `${100 - artifactViewerWidth}%` : (isSearchPaneOpen && activeMode !== 'search' ? 'calc(100% - 296px)' : '100%')
         }}
       >
         <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
@@ -5027,8 +5027,8 @@ Please provide a comprehensive answer that directly addresses this question usin
 
 
 
-      {/* Search Pane - Right Edge Corner */}
-      {(isSearchPaneOpen && (isSearching || searchResults.length > 0 || searchStatus === 'error')) && (
+      {/* Search Pane - Right Edge Corner - Only show when NOT in search mode */}
+      {(isSearchPaneOpen && activeMode !== 'search' && (isSearching || searchResults.length > 0 || searchStatus === 'error')) && (
         <div 
           className="fixed top-14 bottom-0 right-0 z-50 bg-[#161618] border-l border-gray-600/50" 
           style={{ 
