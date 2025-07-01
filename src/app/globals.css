@@ -26,7 +26,7 @@
 }
 
 body {
-  @apply bg-[#161618];
+  @apply bg-[#0A0A0A];
   color: var(--text-primary);
   font-family: var(--system-fonts);
 }

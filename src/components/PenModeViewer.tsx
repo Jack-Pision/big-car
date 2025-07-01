@@ -30,7 +30,7 @@ const PenModeViewer: React.FC<PenModeViewerProps> = ({
     // Expanded state - right panel like ArtifactViewer
     return (
       <div 
-        className="fixed top-0 right-0 bottom-0 z-[10000] bg-[#161618] border-l border-gray-700 flex flex-col" 
+        className="fixed top-0 right-0 bottom-0 z-[10000] bg-[#0A0A0A] border-l border-gray-700 flex flex-col" 
         style={{ 
           width: `${widthPct}%`,
           left: `${100 - widthPct}%`
@@ -43,7 +43,7 @@ const PenModeViewer: React.FC<PenModeViewerProps> = ({
           style={{ zIndex: 10001 }}
         />
         {/* Header aligned with main header */}
-        <header className="flex items-center justify-between h-14 px-4 border-b border-gray-600/50 bg-[#161618]">
+        <header className="flex items-center justify-between h-14 px-4 border-b border-gray-600/50 bg-[#0A0A0A]">
           <div className="flex items-center gap-2">
             <span className="text-lg">✍️</span>
             <h3 className="text-white font-medium">Writing Mode</h3>

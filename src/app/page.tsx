@@ -4394,13 +4394,10 @@ Do NOT use emojis or any other unnecessary characters.`;
       >
         <GlobalStyles />
       {/* Single Header: always visible on all devices - constrained to left pane when right pane is open */}
-      <div
-        className="flex items-center px-4"
+      <header 
+        className="fixed top-0 left-0 z-50 bg-[#0A0A0A] h-14 flex items-center px-4"
         style={{
-          width: isArtifactMode ? `${100 - artifactViewerWidth}%` : (isSearchPaneOpen && activeMode !== 'search' ? 'calc(100% - 296px)' : '100%'),
-          background: 'transparent',
-          zIndex: 10,
-          position: 'relative',
+          width: isArtifactMode ? `${100 - artifactViewerWidth}%` : (isSearchPaneOpen && activeMode !== 'search' ? 'calc(100% - 296px)' : '100%')
         }}
       >
         <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
@@ -4429,21 +4426,13 @@ Do NOT use emojis or any other unnecessary characters.`;
             <span>Share</span>
           </button>
         )}
-      </div>
+      </header>
 
       {/* Conversation area (scrollable) */}
       <div
         ref={scrollRef}
-        className="flex-1 w-full flex flex-col items-center justify-center relative px-4 sm:px-4 md:px-8 lg:px-0 pt-8 chat-container"
-        style={{
-          paddingBottom: '110px', // adjust to match input box height
-          overflowY: 'auto',
-          overscrollBehaviorY: 'contain',
-          position: 'relative',
-          zIndex: 1,
-          background: '#0A0A0A',
-          backdropFilter: 'blur(2px)'
-        }}
+        className="flex-1 overflow-y-auto w-full flex flex-col items-center justify-center relative px-4 sm:px-4 md:px-8 lg:px-0 pt-8"
+          style={{ paddingBottom: `${isChatEmpty && !hasInteracted ? 0 : inputBarHeight + EXTRA_GAP}px` }}
       >
           {/* Mobile: Separate heading (centered) and input (bottom) */}
           {/* Desktop: Combined wrapper with current behavior */}
@@ -4464,11 +4453,9 @@ Do NOT use emojis or any other unnecessary characters.`;
 
           {/* Mobile-only: Bottom input */}
           <div 
-            className="md:hidden fixed bottom-0 left-1/2 -translate-x-1/2 translate-y-0 w-full max-w-4xl flex flex-col items-center justify-center px-4 pb-4"
+            className="md:hidden fixed bottom-0 left-1/2 -translate-x-1/2 translate-y-0 w-full max-w-4xl flex flex-col items-center justify-center z-50 px-4 pb-4"
             style={{
-              width: '100%',
-              zIndex: 9999,
-              position: 'fixed'
+              width: '100%'
             }}
           >
             {/* Input form for mobile */}
@@ -4520,7 +4507,7 @@ Do NOT use emojis or any other unnecessary characters.`;
                         if (!isLoading) handleSend(e);
                       }
                     }}
-                    className="w-full border-none outline-none bg-transparent px-2 py-1 text-gray-200 text-[16px] placeholder-gray-500 resize-none overflow-hidden self-center rounded-lg"
+                    className="w-full border-none outline-none bg-transparent px-2 py-1 text-gray-200 text-[16px] placeholder-gray-500 resize-none overflow-auto self-center rounded-lg"
                     placeholder="Ask anything..."
             disabled={isLoading}
             rows={1}
@@ -4531,7 +4518,7 @@ Do NOT use emojis or any other unnecessary characters.`;
                 {/* Actions row */}
                 <div className="flex flex-row w-full items-center justify-between gap-2">
                   {/* Left group: Tab bar with Search, Artifact, Think */}
-                  <div className="flex flex-row items-center rounded-lg p-1 mb-1" style={{ backgroundColor: '#161618' }}>
+                  <div className="flex flex-row items-center rounded-lg p-1 mb-1" style={{ backgroundColor: '#0A0A0A' }}>
                     {/* Search tab */}
                     <button
                       type="button"
@@ -4621,7 +4608,7 @@ Do NOT use emojis or any other unnecessary characters.`;
                       style={{ 
                         width: "40px", 
                         height: "40px",
-                        backgroundColor: '#161618'
+                        backgroundColor: '#0A0A0A'
                       }}
                       onClick={handlePlusClick}
                       disabled={isUploadingImage}
@@ -4672,7 +4659,7 @@ Do NOT use emojis or any other unnecessary characters.`;
 
           {/* Desktop: Combined wrapper with current behavior */}
           <div
-            className={`hidden md:flex fixed flex-col w-full max-w-4xl items-center justify-center transition-all duration-500 ease-in-out ${
+            className={`hidden md:flex fixed flex-col w-full max-w-4xl items-center justify-center z-50 transition-all duration-500 ease-in-out ${
               inputPosition === "center" ? "top-1/2 -translate-y-1/2" : "bottom-0 translate-y-0"
             }`}
             style={{
@@ -4680,8 +4667,6 @@ Do NOT use emojis or any other unnecessary characters.`;
               width: isArtifactMode ? `${100 - artifactViewerWidth}%` : '100%',
               maxWidth: isArtifactMode ? 'none' : '56rem',
               transform: inputPosition === 'center' ? 'translate(-50%, -50%)' : 'translateX(-50%)',
-              zIndex: 9999,
-              position: 'fixed'
             }}
           >
             {/* Heading with fade animation - show on desktop when centered */}
@@ -4740,7 +4725,7 @@ Do NOT use emojis or any other unnecessary characters.`;
                         if (!isLoading) handleSend(e);
                       }
                     }}
-                    className="w-full border-none outline-none bg-transparent px-2 py-1 text-gray-200 text-[16px] placeholder-gray-500 resize-none overflow-hidden self-center rounded-lg"
+                    className="w-full border-none outline-none bg-transparent px-2 py-1 text-gray-200 text-[16px] placeholder-gray-500 resize-none overflow-auto self-center rounded-lg"
                     placeholder="Ask anything..."
                     disabled={isLoading}
                     rows={1}
@@ -4751,7 +4736,7 @@ Do NOT use emojis or any other unnecessary characters.`;
                 {/* Actions row */}
                 <div className="flex flex-row w-full items-center justify-between gap-2">
                   {/* Left group: Tab bar with Search, Artifact, Think */}
-                  <div className="flex flex-row items-center rounded-lg p-1 mb-1" style={{ backgroundColor: '#161618' }}>
+                  <div className="flex flex-row items-center rounded-lg p-1 mb-1" style={{ backgroundColor: '#0A0A0A' }}>
                     {/* Search tab */}
                     <button
                       type="button"
@@ -4840,7 +4825,7 @@ Do NOT use emojis or any other unnecessary characters.`;
                       style={{ 
                         width: "40px", 
                         height: "40px",
-                        backgroundColor: '#161618'
+                        backgroundColor: '#0A0A0A'
                       }}
                       onClick={handlePlusClick}
                       disabled={isUploadingImage}
@@ -4990,7 +4975,19 @@ Do NOT use emojis or any other unnecessary characters.`;
       </div>
         </div>
 
-
+        {/* Fixed Footer Bar Behind Input */}
+        <div
+          className={`fixed bottom-0 z-40 transition-opacity duration-300 ${isChatEmpty && !hasInteracted ? 'opacity-0' : 'opacity-100'}`}
+          style={{ 
+            height: `calc(${inputBarHeight}px + env(safe-area-inset-bottom, 0px))`, 
+            background: '#0A0A0A', 
+            pointerEvents: 'none',
+            left: '0',
+            width: isArtifactMode ? `${100 - artifactViewerWidth}%` : '100%',
+            marginRight: isSearchPaneOpen && !isArtifactMode ? '296px' : undefined
+          }}
+          aria-hidden="true"
+        />
 
         {/* Overlay for sidebar */}
         {sidebarOpen && (

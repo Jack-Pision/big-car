@@ -50,7 +50,7 @@ export default function SettingsModal({ isOpen, onClose, user, onSignOut }: Sett
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-[#161618] z-[10000] flex items-center justify-center p-6"
+          className="fixed inset-0 bg-[#0A0A0A] z-[10000] flex items-center justify-center p-6"
           onClick={onClose}
         >
           {/* Simple Dark Grid Background */}
