@@ -3756,7 +3756,12 @@ Do NOT use emojis or any other unnecessary characters.`;
 
 
   const handleButtonClick = (key: string) => {
-    setActiveButton(key); // Only one mode active at a time
+    setActiveButton(key);
+    if (key === 'search') {
+      setActiveMode('search');
+    } else {
+      setActiveMode('chat');
+    }
     if (key === 'artifact') {
       setIsArtifactMode(true);
       if (!artifactContent) {
@@ -4544,7 +4549,6 @@ Do NOT use emojis or any other unnecessary characters.`;
                       className={`
                         flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 
                         ${activeButton === 'artifact' ? 'border' : 'hover:brightness-150'}
-                        ${activeMode === 'search' ? 'opacity-50 pointer-events-none' : ''}
                       `}
                       style={{ 
                         color: activeButton === 'artifact' ? '#FCFCFC' : 'rgba(252, 252, 252, 0.6)',
@@ -4562,11 +4566,9 @@ Do NOT use emojis or any other unnecessary characters.`;
                     {/* Think tab */}
                     <button
                       type="button"
-                      disabled={activeMode === 'search'}
                       className={`
                         flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 
                         ${activeButton === 'reasoning' ? 'border' : 'hover:brightness-150'}
-                        ${activeMode === 'search' ? 'opacity-50 pointer-events-none' : ''}
                       `}
                       style={{ 
                         color: activeButton === 'reasoning' ? '#FCFCFC' : 'rgba(252, 252, 252, 0.6)',
@@ -4584,8 +4586,7 @@ Do NOT use emojis or any other unnecessary characters.`;
                     {/* Cube toggle button */}
                     <button
                       type="button"
-                      disabled={activeMode === 'search'}
-                      className={`flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 ${activeButton === 'cube' ? 'border' : 'hover:brightness-150'} ${activeMode === 'search' ? 'opacity-50 pointer-events-none' : ''}`}
+                      className={`flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 ${activeButton === 'cube' ? 'border' : 'hover:brightness-150'}`}
                       style={{ color: activeButton === 'cube' ? '#FCFCFC' : 'rgba(252, 252, 252, 0.6)', borderColor: activeButton === 'cube' ? '#FCFCFC' : 'transparent' }}
                       aria-label="Toggle Cube Mode"
                       onClick={() => handleButtonClick('cube')}
@@ -4762,11 +4763,9 @@ Do NOT use emojis or any other unnecessary characters.`;
                     {/* Artifact tab */}
                     <button
                       type="button"
-                      disabled={activeMode === 'search'}
                       className={`
                         flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 
                         ${activeButton === 'artifact' ? 'border' : 'hover:brightness-150'}
-                        ${activeMode === 'search' ? 'opacity-50 pointer-events-none' : ''}
                       `}
                       style={{ 
                         color: activeButton === 'artifact' ? '#FCFCFC' : 'rgba(252, 252, 252, 0.6)',
@@ -4784,11 +4783,9 @@ Do NOT use emojis or any other unnecessary characters.`;
                     {/* Think tab */}
                     <button
                       type="button"
-                      disabled={activeMode === 'search'}
                       className={`
                         flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 
                         ${activeButton === 'reasoning' ? 'border' : 'hover:brightness-150'}
-                        ${activeMode === 'search' ? 'opacity-50 pointer-events-none' : ''}
                       `}
                       style={{ 
                         color: activeButton === 'reasoning' ? '#FCFCFC' : 'rgba(252, 252, 252, 0.6)',
@@ -4806,8 +4803,7 @@ Do NOT use emojis or any other unnecessary characters.`;
                     {/* Cube toggle button */}
                     <button
                       type="button"
-                      disabled={activeMode === 'search'}
-                      className={`flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 ${activeButton === 'cube' ? 'border' : 'hover:brightness-150'} ${activeMode === 'search' ? 'opacity-50 pointer-events-none' : ''}`}
+                      className={`flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 ${activeButton === 'cube' ? 'border' : 'hover:brightness-150'}`}
                       style={{ color: activeButton === 'cube' ? '#FCFCFC' : 'rgba(252, 252, 252, 0.6)', borderColor: activeButton === 'cube' ? '#FCFCFC' : 'transparent' }}
                       aria-label="Toggle Cube Mode"
                       onClick={() => handleButtonClick('cube')}
