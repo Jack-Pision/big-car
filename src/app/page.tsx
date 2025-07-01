@@ -4414,7 +4414,7 @@ Do NOT use emojis or any other unnecessary characters.`;
                 style: { background: '#232323', color: '#fff' },
               });
             }}
-            className="ml-auto flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-gray-700 transition-colors text-white font-medium"
+            className="ml-auto flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-gray-500/20 transition-colors text-white font-medium"
             style={{ marginLeft: 'auto', fontSize: '1.1rem' }}
             aria-label="Share chat link"
           >
