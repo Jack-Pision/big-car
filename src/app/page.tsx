@@ -2259,7 +2259,6 @@ Execution Rules:
 - Handle conflicting information: Always identify contradictions and explain possible reasons. Highlight gaps in available information.
 - Explain the 'so what': Connect findings to broader implications. Offer perspective on what this means for the user's specific question.
 
-
 Tone and Style:
 - Human, not robotic: Use contractions, varied sentence lengths, and natural phrasing.
 - Confident but not arrogant: You know your stuff, but you're honest about limitations.
@@ -2277,6 +2276,8 @@ Core Principles:
 ${webContext?.hasSearchResults 
   ? `Current Task: You're analyzing the query "${webContext.query}" using ${webContext.sourcesCount} web sources. Each source contains optimized content up to 6,000 characters. The user wants a comprehensive answer that goes beyond surface-level summary—they want understanding, context, and insight.`
   : 'No web sources available. Provide general assistance while maintaining your analytical, insight-driven approach.'}
+
+IMPORTANT: Do NOT include citations, source numbers (like [1], [2], Source 1, etc.), or URLs in your answer. Write a natural, fluent response as if you are an expert summarizing the information. The user will see the sources separately in a dedicated tab.
 
 Remember: The user's question is your north star. Everything should serve that purpose. Quality over quantity. Uncertainty handled well builds trust. Your goal isn't just to inform, but to genuinely help the user understand and make better decisions.
 
@@ -2356,35 +2357,16 @@ Do NOT use emojis or any other unnecessary characters.`;
         if (webContext.enhancedData && webContext.enhancedData.full_content) {
           sourceTexts = Object.entries(webContext.enhancedData.full_content).map(([sourceId, data]: [string, any], index: number) => {
             const sourceInfo = webContext.sources.find((s: any) => s.id === sourceId) || webContext.sources[index];
-            return `Source [${index + 1}]: ${sourceInfo?.url || 'Unknown URL'}
-Title: ${sourceInfo?.title || 'Unknown Title'}
-Content: ${data.text || 'No content available'}`;
+            return `Source [${index + 1}]: ${sourceInfo?.url || 'Unknown URL'}\nTitle: ${sourceInfo?.title || 'Unknown Title'}\nContent: ${data.text || 'No content available'}`;
           }).join('\n\n---\n\n');
         } else {
           sourceTexts = webContext.sources.map((source: any, index: number) => (
-            `Source [${index + 1}]: ${source.url}
-Title: ${source.title}
-Content: ${source.text || source.snippet || 'No content available'}`
+            `Source [${index + 1}]: ${source.url}\nTitle: ${source.title}\nContent: ${source.text || source.snippet || 'No content available'}`
           )).join('\n\n---\n\n');
         }
         
-        const urlMapping = webContext.sources.map((source: any, index: number) => 
-          `Source ${index + 1}: ${source.url}`
-        ).join('\n');
-        
-        sourceTexts += `\n\nAVAILABLE SOURCE URLs:\n${urlMapping}\n\nIMPORTANT: When creating links, use ONLY the exact URLs listed above. Do not make up or modify URLs.`;
-        
-        userMessageContent = `Please answer the following question based on the provided web sources. Focus your response on the user's specific question and use the web content to provide accurate, relevant information.
-
----
-
-${sourceTexts}
-
----
-
-User Question: ${userQuestion}
-
-Please provide a comprehensive answer that directly addresses this question using the information from the sources above.`;
+        // Remove URL mapping and citation instructions from user message
+        userMessageContent = `Please answer the following question based on the provided web sources. Focus your response on the user's specific question and use the web content to provide accurate, relevant information.\n\n---\n\n${sourceTexts}\n\n---\n\nUser Question: ${userQuestion}\n\nPlease provide a comprehensive answer that directly addresses this question using the information from the sources above. Do NOT include citations, source numbers, or URLs in your answer.`;
       }
       
       const messages = [
