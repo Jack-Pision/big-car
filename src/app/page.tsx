@@ -3756,31 +3756,39 @@ Do NOT use emojis or any other unnecessary characters.`;
 
 
   const handleButtonClick = (key: string) => {
-    setActiveButton(key);
-    if (key === 'search') {
-      setActiveMode('search');
-    } else {
+    // If the clicked button is already active, deactivate it and fall back to default chat
+    if (activeButton === key) {
+      setActiveButton(null);
       setActiveMode('chat');
-    }
-    if (key === 'artifact') {
-      setIsArtifactMode(true);
-      if (!artifactContent) {
-        setArtifactContent({
-          root_id: 'temp',
-          version: 1,
-          type: 'document',
-          title: 'Artifact Output',
-          content: '',
-          metadata: {
-            wordCount: 0,
-            estimatedReadTime: '1 minute',
-            category: 'Document',
-            tags: ['document']
-          }
-        });
-      }
-    } else {
       setIsArtifactMode(false);
+    } else {
+      // Switch to the new mode
+      setActiveButton(key);
+      if (key === 'search') {
+        setActiveMode('search');
+      } else {
+        setActiveMode('chat');
+      }
+      if (key === 'artifact') {
+        setIsArtifactMode(true);
+        if (!artifactContent) {
+          setArtifactContent({
+            root_id: 'temp',
+            version: 1,
+            type: 'document',
+            title: 'Artifact Output',
+            content: '',
+            metadata: {
+              wordCount: 0,
+              estimatedReadTime: '1 minute',
+              category: 'Document',
+              tags: ['document']
+            }
+          });
+        }
+      } else {
+        setIsArtifactMode(false);
+      }
     }
   };
 
