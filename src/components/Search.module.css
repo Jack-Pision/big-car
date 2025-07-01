@@ -33,12 +33,11 @@
 }
 
 .step-title {
-  color: #ffffff;
-  -webkit-text-fill-color: #ffffff;
+  color: var(--text-primary);
 }
 
 .step-title-active {
-  color: #ffffff;
+  color: var(--text-primary);
   position: relative;
   overflow: hidden;
 }
@@ -67,8 +66,7 @@
 }
 
 .step-title-completed {
-  color: #ffffff;
-  -webkit-text-fill-color: #ffffff;
+  color: var(--text-primary);
 }
 
 @keyframes shimmerMove {
