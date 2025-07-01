@@ -4387,28 +4387,63 @@ Do NOT use emojis or any other unnecessary characters.`;
       <div 
         className="min-h-screen flex flex-col px-4 sm:px-4 md:px-8 lg:px-0 transition-all duration-300" 
         style={{ 
-          background: '#161618',
+          background: '#0A0A0A',
           width: isArtifactMode ? `${100 - artifactViewerWidth}%` : '100%',
           marginRight: isSearchPaneOpen && activeMode !== 'search' && !isArtifactMode ? '296px' : undefined // 280px pane + 16px gap
         }}
       >
         <GlobalStyles />
       {/* Single Header: always visible on all devices - constrained to left pane when right pane is open */}
-      <header 
-        className="fixed top-0 left-0 z-50 bg-[#161618] h-14 flex items-center px-4"
+      <div
+        className="flex items-center px-4"
         style={{
-          width: isArtifactMode ? `${100 - artifactViewerWidth}%` : (isSearchPaneOpen && activeMode !== 'search' ? 'calc(100% - 296px)' : '100%')
+          width: isArtifactMode ? `${100 - artifactViewerWidth}%` : (isSearchPaneOpen && activeMode !== 'search' ? 'calc(100% - 296px)' : '100%'),
+          background: 'transparent',
+          zIndex: 10,
+          position: 'relative',
         }}
       >
         <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
         <img src="/Logo.svg" alt="Logo" className="ml-3" style={{ width: 90, height: 90 }} />
-      </header>
+        {/* Share Button - right corner */}
+        {activeSessionId && (
+          <button
+            onClick={() => {
+              const shareUrl = `${window.location.origin}/chat/${activeSessionId}`;
+              navigator.clipboard.writeText(shareUrl);
+              toast.success('Link copied to clipboard!', {
+                duration: 2000,
+                position: 'top-center',
+                style: { background: '#232323', color: '#fff' },
+              });
+            }}
+            className="ml-auto flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-gray-700 transition-colors text-white font-medium"
+            style={{ marginLeft: 'auto', fontSize: '1.1rem' }}
+            aria-label="Share chat link"
+          >
+            {/* Share icon SVG */}
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 19V5" />
+              <path d="M5 12l7-7 7 7" />
+            </svg>
+            <span>Share</span>
+          </button>
+        )}
+      </div>
 
       {/* Conversation area (scrollable) */}
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto w-full flex flex-col items-center justify-center relative px-4 sm:px-4 md:px-8 lg:px-0 pt-8"
-          style={{ paddingBottom: `${isChatEmpty && !hasInteracted ? 0 : inputBarHeight + EXTRA_GAP}px` }}
+        className="flex-1 w-full flex flex-col items-center justify-center relative px-4 sm:px-4 md:px-8 lg:px-0 pt-8 chat-container"
+        style={{
+          paddingBottom: '110px', // adjust to match input box height
+          overflowY: 'auto',
+          overscrollBehaviorY: 'contain',
+          position: 'relative',
+          zIndex: 1,
+          background: '#0A0A0A',
+          backdropFilter: 'blur(2px)'
+        }}
       >
           {/* Mobile: Separate heading (centered) and input (bottom) */}
           {/* Desktop: Combined wrapper with current behavior */}
@@ -4429,9 +4464,11 @@ Do NOT use emojis or any other unnecessary characters.`;
 
           {/* Mobile-only: Bottom input */}
           <div 
-            className="md:hidden fixed bottom-0 left-1/2 -translate-x-1/2 translate-y-0 w-full max-w-4xl flex flex-col items-center justify-center z-50 px-4 pb-4"
+            className="md:hidden fixed bottom-0 left-1/2 -translate-x-1/2 translate-y-0 w-full max-w-4xl flex flex-col items-center justify-center px-4 pb-4"
             style={{
-              width: '100%'
+              width: '100%',
+              zIndex: 9999,
+              position: 'fixed'
             }}
           >
             {/* Input form for mobile */}
@@ -4483,7 +4520,7 @@ Do NOT use emojis or any other unnecessary characters.`;
                         if (!isLoading) handleSend(e);
                       }
                     }}
-                    className="w-full border-none outline-none bg-transparent px-2 py-1 text-gray-200 text-[16px] placeholder-gray-500 resize-none overflow-auto self-center rounded-lg"
+                    className="w-full border-none outline-none bg-transparent px-2 py-1 text-gray-200 text-[16px] placeholder-gray-500 resize-none overflow-hidden self-center rounded-lg"
                     placeholder="Ask anything..."
             disabled={isLoading}
             rows={1}
@@ -4635,7 +4672,7 @@ Do NOT use emojis or any other unnecessary characters.`;
 
           {/* Desktop: Combined wrapper with current behavior */}
           <div
-            className={`hidden md:flex fixed flex-col w-full max-w-4xl items-center justify-center z-50 transition-all duration-500 ease-in-out ${
+            className={`hidden md:flex fixed flex-col w-full max-w-4xl items-center justify-center transition-all duration-500 ease-in-out ${
               inputPosition === "center" ? "top-1/2 -translate-y-1/2" : "bottom-0 translate-y-0"
             }`}
             style={{
@@ -4643,6 +4680,8 @@ Do NOT use emojis or any other unnecessary characters.`;
               width: isArtifactMode ? `${100 - artifactViewerWidth}%` : '100%',
               maxWidth: isArtifactMode ? 'none' : '56rem',
               transform: inputPosition === 'center' ? 'translate(-50%, -50%)' : 'translateX(-50%)',
+              zIndex: 9999,
+              position: 'fixed'
             }}
           >
             {/* Heading with fade animation - show on desktop when centered */}
@@ -4701,7 +4740,7 @@ Do NOT use emojis or any other unnecessary characters.`;
                         if (!isLoading) handleSend(e);
                       }
                     }}
-                    className="w-full border-none outline-none bg-transparent px-2 py-1 text-gray-200 text-[16px] placeholder-gray-500 resize-none overflow-auto self-center rounded-lg"
+                    className="w-full border-none outline-none bg-transparent px-2 py-1 text-gray-200 text-[16px] placeholder-gray-500 resize-none overflow-hidden self-center rounded-lg"
                     placeholder="Ask anything..."
                     disabled={isLoading}
                     rows={1}
@@ -4951,19 +4990,7 @@ Do NOT use emojis or any other unnecessary characters.`;
       </div>
         </div>
 
-        {/* Fixed Footer Bar Behind Input */}
-        <div
-          className={`fixed bottom-0 z-40 transition-opacity duration-300 ${isChatEmpty && !hasInteracted ? 'opacity-0' : 'opacity-100'}`}
-          style={{ 
-            height: `calc(${inputBarHeight}px + env(safe-area-inset-bottom, 0px))`, 
-            background: '#161618', 
-            pointerEvents: 'none',
-            left: '0',
-            width: isArtifactMode ? `${100 - artifactViewerWidth}%` : '100%',
-            marginRight: isSearchPaneOpen && !isArtifactMode ? '296px' : undefined
-          }}
-          aria-hidden="true"
-        />
+
 
         {/* Overlay for sidebar */}
         {sidebarOpen && (
