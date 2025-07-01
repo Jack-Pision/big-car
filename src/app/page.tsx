@@ -9,7 +9,6 @@ import Sidebar from '../components/Sidebar';
 import HamburgerMenu from '../components/HamburgerMenu';
 import AuthProvider, { useAuth } from '../components/AuthProvider';
 import { useRouter } from 'next/navigation';
-import { supabase, createSupabaseClient } from '@/lib/supabase-client';
 import { motion, AnimatePresence } from 'framer-motion';
 import TextReveal from '@/components/TextReveal';
 import { WebSource } from '@/utils/source-utils/index';
@@ -54,7 +53,7 @@ import toast from 'react-hot-toast';
 import ReasoningDisplay from '@/components/ReasoningDisplay';
 import { EnhancedMarkdownRenderer } from '@/components/EnhancedMarkdownRenderer';
 import ImageCarousel from '@/components/ImageCarousel';
-import { ArtifactV2Service, type ArtifactV2 } from '../lib/artifact-v2-service';
+import { ArtifactV2Service, type ArtifactV2 } from '@/lib/artifact-v2-service';
 
 
 // Define a type that includes all possible query types (including the ones in SCHEMAS and 'conversation')
@@ -5029,7 +5028,7 @@ Please provide a comprehensive answer that directly addresses this question usin
 
 
       {/* Search Pane - Right Edge Corner */}
-      {isSearchPaneOpen && (
+      {(isSearchPaneOpen && (isSearching || searchResults.length > 0 || searchStatus === 'error')) && (
         <div 
           className="fixed top-14 bottom-0 right-0 z-50 bg-[#161618] border-l border-gray-600/50" 
           style={{ 
