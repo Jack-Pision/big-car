@@ -3,11 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { Session } from '@/lib/types';
 import {
-  localOptimizedService,
+  optimizedSupabaseService,
   getSessions,
   deleteSession as deleteSessionFromService,
   updateSessionTitle,
-} from '@/lib/local-storage-service';
+} from '@/lib/optimized-supabase-service';
 
 interface SidebarProps {
   open: boolean;
@@ -49,7 +49,7 @@ export default function Sidebar({
     if (open) {
         try {
           // Use optimized service with caching
-          const sessions = await localOptimizedService.getSessions();
+          const sessions = await optimizedSupabaseService.getSessions();
           setSessions(sessions);
         } catch (error) {
           console.error('Error loading sessions:', error);

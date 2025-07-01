@@ -9,6 +9,7 @@ import Sidebar from '../components/Sidebar';
 import HamburgerMenu from '../components/HamburgerMenu';
 import AuthProvider, { useAuth } from '../components/AuthProvider';
 import { useRouter } from 'next/navigation';
+import { supabase, createSupabaseClient } from '@/lib/supabase-client';
 import { motion, AnimatePresence } from 'framer-motion';
 import TextReveal from '@/components/TextReveal';
 import { WebSource } from '@/utils/source-utils/index';
@@ -16,7 +17,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { formatMessagesForApi, enhanceSystemPrompt, buildConversationContext } from '@/utils/conversation-context';
 import { Session } from '@/lib/types';
 import {
-  localOptimizedService,
+  optimizedSupabaseService,
   getSessions as getSessionsFromService,
   getSessionMessages,
   saveSessionMessages,
@@ -27,7 +28,7 @@ import {
   deleteSession,
   saveActiveSessionId,
   getActiveSessionId
-} from '@/lib/local-storage-service';
+} from '@/lib/optimized-supabase-service';
 import { aiResponseCache, cachedAIRequest } from '@/lib/ai-response-cache';
 import { SCHEMAS } from '@/lib/output-schemas';
 import DynamicResponseRenderer from '@/components/DynamicResponseRenderer';
@@ -48,13 +49,12 @@ import { filterAIThinking } from '../utils/content-filter';
 import ThinkingButton from '@/components/ThinkingButton';
 import { ArtifactViewer } from '@/components/ArtifactViewer';
 import { type ArtifactData } from '@/utils/artifact-utils';
-import { analyzeImageWithNVIDIA, ImageUploadResult, uploadAndAnalyzeImage } from '@/lib/local-image-service';
-import { uploadImageToLocal } from '@/lib/local-storage-service';
+import { uploadAndAnalyzeImage, uploadImageToSupabase, analyzeImageWithNVIDIA, ImageUploadResult } from '@/lib/image-upload-service';
 import toast from 'react-hot-toast';
 import ReasoningDisplay from '@/components/ReasoningDisplay';
 import { EnhancedMarkdownRenderer } from '@/components/EnhancedMarkdownRenderer';
 import ImageCarousel from '@/components/ImageCarousel';
-import { LocalArtifactV2Service as ArtifactV2Service, type ArtifactV2 } from '../lib/local-storage-service';
+import { ArtifactV2Service, type ArtifactV2 } from '../lib/artifact-v2-service';
 
 
 // Define a type that includes all possible query types (including the ones in SCHEMAS and 'conversation')
@@ -2085,7 +2085,7 @@ function TestChatComponent(props?: TestChatProps) {
           
           // Get messages and ensure they're marked as processed
           // Use optimized service with caching
-          const sessionMessages = await localOptimizedService.getSessionMessages(sessionIdToLoad);
+          const sessionMessages = await optimizedSupabaseService.getSessionMessages(sessionIdToLoad);
           const processedMessages = sessionMessages.map(msg => ({
             ...msg,
             isProcessed: true // Mark all loaded messages as processed
@@ -2169,12 +2169,12 @@ function TestChatComponent(props?: TestChatProps) {
       
       // Only use URL routing if we don't already have an initialSessionId (not on dynamic route)
       if (!initialSessionId && messageContent) {
-        const newSession = await createNewSessionWithURL(messageContent);
+        const {session, url} = await createNewSessionWithURL(messageContent);
         newSessionId = session.id;
         newUrl = url;
       } else {
         // Fallback to regular session creation
-        const newSession = await localOptimizedService.createNewSession(messageContent);
+        const newSession = await optimizedSupabaseService.createNewSession(messageContent);
         newSessionId = newSession.id;
         
         // Generate URL for dynamic routes
@@ -2183,7 +2183,7 @@ function TestChatComponent(props?: TestChatProps) {
         }
       }
       
-      // Update state and save to localStorage (single call per session)
+      // Update state and save to Supabase (single call per session)
       setActiveSessionId(newSessionId);
       sessionIdRef.current = newSessionId; // Store in ref for immediate access
       await saveActiveSessionId(newSessionId);
@@ -2207,7 +2207,7 @@ function TestChatComponent(props?: TestChatProps) {
     
     try {
       // Use optimized batch saving
-      await localOptimizedService.saveSessionMessages(activeSessionId, currentMessages);
+      await optimizedSupabaseService.saveSessionMessages(activeSessionId, currentMessages);
       
       // Update session title with AI-generated title after first AI response
       const userMessages = currentMessages.filter(msg => msg.role === 'user');
@@ -2221,7 +2221,7 @@ function TestChatComponent(props?: TestChatProps) {
         try {
           // For performance, use simple title generation instead of AI
           const simpleTitle = firstUserMessage.content.split(' ').slice(0, 5).join(' ');
-          await localOptimizedService.updateSessionTitle(
+          await optimizedSupabaseService.updateSessionTitle(
           activeSessionId, 
             simpleTitle.length > 30 ? simpleTitle.substring(0, 30) + '...' : simpleTitle
           );
@@ -2525,7 +2525,7 @@ Please provide a comprehensive answer that directly addresses this question usin
     
     try {
       // Use optimized batch saving
-      await localOptimizedService.saveSessionMessages(explicitSessionId, currentMessages);
+      await optimizedSupabaseService.saveSessionMessages(explicitSessionId, currentMessages);
       
       // Update session title with AI-generated title after first AI response
       const userMessages = currentMessages.filter(msg => msg.role === 'user');
@@ -2539,7 +2539,7 @@ Please provide a comprehensive answer that directly addresses this question usin
         try {
           // For performance, use simple title generation instead of AI
           const simpleTitle = firstUserMessage.content.split(' ').slice(0, 5).join(' ');
-          await localOptimizedService.updateSessionTitle(
+          await optimizedSupabaseService.updateSessionTitle(
             explicitSessionId, 
             simpleTitle.length > 30 ? simpleTitle.substring(0, 30) + '...' : simpleTitle
           );
@@ -2626,7 +2626,7 @@ Please provide a comprehensive answer that directly addresses this question usin
         const userMessage: LocalMessage = {
           role: 'user',
           content: input.trim(), // Include any text the user typed
-          imageUrls: uploadedImageUrls, // Use local URLs for persistence
+          imageUrls: uploadedImageUrls, // Use Supabase URLs for persistence
           id: userMessageId,
           timestamp: Date.now(),
           isProcessed: true
@@ -3547,14 +3547,14 @@ Please provide a comprehensive answer that directly addresses this question usin
       setSelectedFiles([file]);
       setImagePreviewUrls(['']); // Empty string shows loading state
 
-              // Upload to local storage only
-        const uploadResult = await uploadImageToLocal(file);
+      // Upload to Supabase only
+      const uploadResult = await uploadImageToSupabase(file);
       
       if (uploadResult.success && uploadResult.url) {
         // Create preview URL and update state
         const previewUrl = URL.createObjectURL(file);
         setImagePreviewUrls([previewUrl]);
-        setUploadedImageUrls([uploadResult.url]); // Store local URL
+        setUploadedImageUrls([uploadResult.url]); // Store Supabase URL
         
         toast.success('Image uploaded successfully! Click send to analyze.');
       } else {
@@ -5180,9 +5180,9 @@ Please provide a comprehensive answer that directly addresses this question usin
             onContentUpdate={async (newContent: string) => {
               if (artifactContent) {
                 const updatedMetadata = {
-                  ...artifactContent.metadata,
-                  wordCount: newContent.split(' ').length,
-                  estimatedReadTime: `${Math.ceil(newContent.split(' ').length / 200)} min read`
+                    ...artifactContent.metadata,
+                    wordCount: newContent.split(' ').length,
+                    estimatedReadTime: `${Math.ceil(newContent.split(' ').length / 200)} min read`
                 };
                 
                 // If no id, this is a new artifact
@@ -5203,9 +5203,9 @@ Please provide a comprehensive answer that directly addresses this question usin
                         root_id: newArtifact.id!,
                         content: newContent,
                         metadata: updatedMetadata,
-                        version: 1
-                      };
-                      setArtifactContent(updatedArtifact);
+                    version: 1
+                  };
+                  setArtifactContent(updatedArtifact);
                       toast.success('Artifact created and saved!');
                     }
                   } catch (error) {
@@ -5218,7 +5218,7 @@ Please provide a comprehensive answer that directly addresses this question usin
                     const updated = await ArtifactV2Service.update(artifactContent.root_id, {
                       content_markdown: newContent,
                       metadata: updatedMetadata,
-                      version: (artifactContent.version || 1) + 1
+                    version: (artifactContent.version || 1) + 1
                     });
                     
                     if (updated) {
@@ -5227,8 +5227,8 @@ Please provide a comprehensive answer that directly addresses this question usin
                         content: newContent,
                         metadata: updatedMetadata,
                         version: updated.version || (artifactContent.version || 1) + 1
-                      };
-                      setArtifactContent(updatedArtifact);
+                  };
+                  setArtifactContent(updatedArtifact);
                       toast.success('Artifact updated and saved!');
                     }
                   } catch (error) {

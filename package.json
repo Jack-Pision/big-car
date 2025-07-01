@@ -12,7 +12,8 @@
     "@heroicons/react": "^2.2.0",
     "@langchain/core": "^0.3.59",
     "@langchain/openai": "^0.5.13",
-
+    "@supabase/auth-helpers-nextjs": "^0.10.0",
+    "@supabase/supabase-js": "^2.49.4",
     "@tiptap/extension-character-count": "^2.23.1",
     "@tiptap/extension-color": "^2.23.1",
     "@tiptap/extension-highlight": "^2.23.1",

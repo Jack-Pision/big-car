@@ -13,7 +13,7 @@ import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 import AuthProvider, { useAuth } from '@/components/AuthProvider';
-import { localBrowserHistoryService as browserHistoryService } from '@/lib/local-browser-history-service';
+import { browserHistoryService } from '@/lib/browser-history-service';
 import EmbeddedAIChat from '@/components/EmbeddedAIChat';
 
 interface SearchResult {
@@ -68,14 +68,14 @@ const BrowserPageComponent = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Load search results from browser history (local storage cache)
+  // Load search results from browser history (Supabase cache)
   const loadSearchFromHistory = async (searchQuery: string) => {
     try {
       // Search for exact match in browser history
       const exactMatch = await browserHistoryService.findExactQuery(searchQuery);
       
       if (exactMatch && exactMatch.search_results) {
-        console.log('Loading cached search results from local storage');
+        console.log('Loading cached search results from Supabase');
         
         // Handle both old and new data structures
         let sources, enhancedData;

@@ -2,11 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-// Local storage mode - no sign out needed
-const signOut = async () => {
-  // No-op for local storage mode
-  return Promise.resolve();
-};
+import { signOut } from '@/lib/auth';
 import { X, LogOut, User, Shield, HelpCircle } from 'lucide-react';
 import Image from 'next/image';
 import toast from 'react-hot-toast';
