@@ -2906,7 +2906,7 @@ Please provide a comprehensive answer that directly addresses this question usin
       };
       
       setMessages(prev => [...prev, aiMessage]);
-
+      
       try {
         // Use BASE SYSTEM PROMPT - SAME AS DEFAULT CHAT
         const enhancedPrompt = BASE_SYSTEM_PROMPT;
@@ -3856,7 +3856,7 @@ Please provide a comprehensive answer that directly addresses this question usin
   const renderArtifactMessage = (msg: LocalMessage, i: number) => {
     // Use the raw AI markdown for artifacts
     const rawContent = msg.structuredContent?.content || msg.content;
-
+    
     return (
       <motion.div
         key={msg.id + '-artifact-' + i}
@@ -3873,7 +3873,7 @@ Please provide a comprehensive answer that directly addresses this question usin
             <div 
               className="w-full sm:max-w-sm rounded-2xl border shadow-lg px-3 mb-4 cursor-pointer transition-all duration-300 ease-in-out flex items-center gap-3" 
               style={{ backgroundColor: "#1a1a1a", borderColor: "#333333", height: "48px", alignItems: "center" }}
-              onClick={() => {
+                onClick={() => {
                 // Use raw content for artifact viewer/editor
                 const simpleArtifact = {
                   root_id: msg.structuredContent?.root_id || uuidv4(),
@@ -3887,10 +3887,10 @@ Please provide a comprehensive answer that directly addresses this question usin
                     category: "Document",
                     tags: ["document"]
                   }
-                };
+                  };
                 setArtifactContent(simpleArtifact);
-                setIsArtifactMode(true);
-              }}
+                  setIsArtifactMode(true);
+                }}
             >
               {/* Artifact Icon */}
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
@@ -3908,7 +3908,7 @@ Please provide a comprehensive answer that directly addresses this question usin
             {/* Action buttons for completed artifact (copy/download) can use rawContent */}
             {msg.isProcessed && (
               <div className="w-full flex justify-start gap-2 mt-2 relative z-50">
-                <button 
+                    <button 
                   onClick={() => handleCopyContent(rawContent)}
                   className="flex items-center justify-center w-8 h-8 rounded-md bg-neutral-800/50 text-white opacity-80 hover:opacity-100 hover:bg-neutral-800 transition-all"
                   aria-label="Copy artifact content"
@@ -3916,9 +3916,9 @@ Please provide a comprehensive answer that directly addresses this question usin
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                     <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                  </svg>
-                </button>
-                <button
+              </svg>
+            </button>
+            <button
                   onClick={() => {
                     const blob = new Blob([rawContent], { type: 'text/markdown' });
                     const url = URL.createObjectURL(blob);
@@ -3943,8 +3943,8 @@ Please provide a comprehensive answer that directly addresses this question usin
             )}
           </>
         ) : null}
-      </motion.div>
-    );
+                    </motion.div>
+                  );
   };
 
   // Independent default chat message rendering system
@@ -3968,7 +3968,7 @@ Please provide a comprehensive answer that directly addresses this question usin
                 
                 if (showPulsingDot && i === messages.length -1 ) setShowPulsingDot(false);
                 const showTypingIndicator = msg.role === 'assistant' && finalContent.trim().length === 0 && !msg.isProcessed;
-
+                
                 return (
                   <React.Fragment key={msg.id + '-fragment-' + i}>
                     {/* Main AI response content - Industry Standard Single Renderer */}
@@ -4027,34 +4027,34 @@ Please provide a comprehensive answer that directly addresses this question usin
                           ) : (
                             finalContent.trim().length > 0 && (
                             <div style={{ position: 'relative' }}>
-                              <ReactMarkdown 
-                                  remarkPlugins={[remarkGfm, remarkMath]} 
-                                  rehypePlugins={[rehypeRaw, rehypeKatex]} 
-                                className="research-output"
-                                components={{
+                            <ReactMarkdown 
+                                remarkPlugins={[remarkGfm, remarkMath]} 
+                                rehypePlugins={[rehypeRaw, rehypeKatex]} 
+                              className="research-output"
+                              components={{
                                     h1: ({ children }) => (<h1 className="text-xl md:text-3xl font-bold mb-6 mt-8 border-b border-cyan-500/30 pb-3" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}>{children}</h1>),
                                     h2: ({ children }) => (<h2 className="text-lg md:text-2xl font-semibold mb-4 mt-8 flex items-center gap-2" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}>{children}</h2>),
                                     h3: ({ children }) => (<h3 className="text-base md:text-xl font-semibold mb-3 mt-6" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}>{children}</h3>),
                                     p: ({ children }) => (<p className="leading-relaxed mb-4 text-base" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}>{children}</p>),
-                                    ul: ({ children }) => (<ul className="space-y-2 mb-4 ml-4">{children}</ul>),
+                                  ul: ({ children }) => (<ul className="space-y-2 mb-4 ml-4">{children}</ul>),
                                     li: ({ children }) => (<li className="flex items-start gap-2" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}><span className="text-cyan-400 mt-1.5 text-xs">●</span><span className="flex-1">{children}</span></li>),
-                                    ol: ({ children }) => (<ol className="space-y-2 mb-4 ml-4 list-decimal list-inside">{children}</ol>),
+                                  ol: ({ children }) => (<ol className="space-y-2 mb-4 ml-4 list-decimal list-inside">{children}</ol>),
                                     strong: ({ children }) => (<strong className="font-semibold" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}>{children}</strong>),
-                                    table: ({ children }) => (<div className="overflow-x-auto mb-6 max-w-full scrollbar-thin"><table className="border-collapse" style={{ tableLayout: 'auto', width: 'auto' }}>{children}</table></div>),
-                                    thead: ({ children }) => <thead className="">{children}</thead>,
+                                  table: ({ children }) => (<div className="overflow-x-auto mb-6 max-w-full scrollbar-thin"><table className="border-collapse" style={{ tableLayout: 'auto', width: 'auto' }}>{children}</table></div>),
+                                  thead: ({ children }) => <thead className="">{children}</thead>,
                                     th: ({ children }) => (<th className="px-3 md:px-4 py-1 md:py-3 text-left font-semibold border-b-2 border-gray-600 text-xs md:text-sm" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}>{children}</th>),
                                     td: ({ children }) => (<td className="px-3 md:px-4 py-1 md:py-3 border-b border-gray-700 text-xs md:text-sm" style={{ color: "var(--text-primary)", lineHeight: "1.2" }}>{children}</td>),
                                     blockquote: ({ children }) => (<blockquote className="border-l-4 border-cyan-500 pl-4 py-1 rounded-r-lg mb-4 italic" style={{ background: 'transparent', color: 'var(--text-primary)' }}>{children}</blockquote>),
-                                    code: ({ children, className }) => {
-                                    const isInline = !className;
-                                      return isInline
+                                  code: ({ children, className }) => {
+                                  const isInline = !className;
+                                    return isInline
                                         ? (<code className="px-2 py-1 rounded text-xs font-mono" style={{ background: 'var(--code-bg)', color: 'var(--code-text)' }}>{children}</code>)
                                         : (<code className="block p-4 rounded-lg overflow-x-auto text-xs font-mono mb-4" style={{ background: 'var(--code-bg)', color: 'var(--code-text)' }}>{children}</code>);
-                                    }
-                                  }}
-                                >
-                                  {finalContent}
-                              </ReactMarkdown>
+                                  }
+                                }}
+                              >
+                                {finalContent}
+                            </ReactMarkdown>
                             </div>
                             )
                           )}

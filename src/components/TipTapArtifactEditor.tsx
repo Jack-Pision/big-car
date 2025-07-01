@@ -3,7 +3,7 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import TextAlign from '@tiptap/extension-text-align';
 import Image from '@tiptap/extension-image';
-import { Table } from '@tiptap/extension-table';
+import Table from '@tiptap/extension-table';
 import TableRow from '@tiptap/extension-table-row';
 import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
@@ -12,7 +12,7 @@ import TaskItem from '@tiptap/extension-task-item';
 import Link from '@tiptap/extension-link';
 import Highlight from '@tiptap/extension-highlight';
 import Color from '@tiptap/extension-color';
-import { TextStyle } from '@tiptap/extension-text-style';
+import TextStyle from '@tiptap/extension-text-style';
 import CharacterCount from '@tiptap/extension-character-count';
 import Placeholder from '@tiptap/extension-placeholder';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -291,47 +291,410 @@ const HTMLToMarkdown = (html: string): string => {
   return markdown.trim();
 };
 
-export const TipTapArtifactEditor: React.FC<{ content: string }> = ({ content }) => {
-  let htmlContent = '';
-  try {
-    marked.setOptions({ breaks: true, gfm: true });
-    htmlContent = marked.parse(content) as string;
-    if (!htmlContent || typeof htmlContent !== 'string') throw new Error('Invalid HTML');
-  } catch (e: any) {
-    console.error('Markdown conversion failed:', e);
-    // Instead of <pre>, show a user-facing error outside TipTap
-    return <div style={{ color: 'red', padding: 16 }}>Failed to render artifact content.</div>;
-  }
-
-  console.log('Artifact content:', content);
-  console.log('HTML for TipTap:', htmlContent);
+export const TipTapArtifactEditor: React.FC<TipTapArtifactEditorProps> = ({
+  content,
+  onContentUpdate,
+  isStreaming = false,
+  rawMode = false
+}) => {
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedText, setSelectedText] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const [editPosition, setEditPosition] = useState({ x: 0, y: 0 });
 
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
-        bulletList: { HTMLAttributes: { class: 'tiptap-bullet-list' } },
-        orderedList: { HTMLAttributes: { class: 'tiptap-ordered-list' } },
+        bulletList: {
+          HTMLAttributes: {
+            class: 'tiptap-bullet-list',
+          },
+        },
+        orderedList: {
+          HTMLAttributes: {
+            class: 'tiptap-ordered-list',
+          },
+        },
       }),
-      TextAlign.configure({ types: ['heading', 'paragraph'] }),
-      Image.configure({ HTMLAttributes: { class: 'tiptap-image' } }),
-      Table.configure({ resizable: true }),
+      TextAlign.configure({
+        types: ['heading', 'paragraph'],
+      }),
+      Image.configure({
+        HTMLAttributes: {
+          class: 'tiptap-image',
+        },
+      }),
+      Table.configure({
+        resizable: true,
+      }),
       TableRow,
       TableHeader,
       TableCell,
       TaskList,
-      TaskItem.configure({ nested: true }),
-      Link.configure({ openOnClick: false, HTMLAttributes: { class: 'tiptap-link' } }),
-      Highlight.configure({ multicolor: true }),
+      TaskItem.configure({
+        nested: true,
+      }),
+      Link.configure({
+        openOnClick: false,
+        HTMLAttributes: {
+          class: 'tiptap-link',
+        },
+      }),
+      Highlight.configure({
+        multicolor: true,
+      }),
       Color,
       TextStyle,
       CharacterCount,
-      Placeholder.configure({ placeholder: 'Content will appear here...' }),
+      Placeholder.configure({
+        placeholder: 'Content will appear here...',
+      }),
     ],
-    content: htmlContent,
-    editable: false,
-    immediatelyRender: false,
+    content: markdownToHTML(content),
+    editable: true,
+    onUpdate: ({ editor }) => {
+      if (onContentUpdate && !isStreaming) {
+        // Convert HTML back to markdown to maintain consistent format
+        const htmlContent = editor.getHTML();
+        const markdownContent = HTMLToMarkdown(htmlContent);
+        onContentUpdate(markdownContent);
+      }
+    },
+    onSelectionUpdate: ({ editor }) => {
+      const { from, to } = editor.state.selection;
+      if (from !== to && !isStreaming && !isEditing) {
+        const selectedText = editor.state.doc.textBetween(from, to);
+        if (selectedText.trim().length > 2) {
+          setSelectedText(selectedText.trim());
+          
+          // Get selection position for floating button
+          const element = editor.view.dom;
+          if (element) {
+            const selection = window.getSelection();
+            if (selection && selection.rangeCount > 0) {
+              const range = selection.getRangeAt(0);
+              const rect = range.getBoundingClientRect();
+              const containerRect = element.getBoundingClientRect();
+              
+              setEditPosition({
+                x: rect.left + rect.width / 2 - containerRect.left,
+                y: rect.bottom - containerRect.top + 8
+              });
+            }
+          }
+        } else {
+          setSelectedText('');
+        }
+      } else {
+        setSelectedText('');
+      }
+    },
   });
 
-  if (!editor) return <div>Loading editor...</div>;
-  return <EditorContent editor={editor} />;
+  // Update editor content when prop changes
+  useEffect(() => {
+    if (editor && !isEditing) {
+      if (rawMode) {
+        // In raw mode, convert markdown to HTML for proper rendering
+        const currentText = editor.getText();
+        // Only update if the raw content has actually changed
+        if (content !== currentText) {
+          const htmlContent = markdownToHTML(content);
+          editor.commands.setContent(htmlContent);
+        }
+      } else {
+        // In normal mode, use markdown conversion as before
+        const currentMarkdown = HTMLToMarkdown(editor.getHTML());
+        if (content !== currentMarkdown) {
+          editor.commands.setContent(markdownToHTML(content));
+        }
+      }
+    }
+  }, [content, editor, isEditing, rawMode]);
+
+  // Handle edit button click
+  const handleEditClick = useCallback(() => {
+    if (selectedText && !isEditing) {
+      setShowEditModal(true);
+    }
+  }, [selectedText, isEditing]);
+
+  // Perform AI-powered in-place edit
+  const performInPlaceEdit = async (instruction: string) => {
+    if (!selectedText || !editor) return;
+
+    setIsEditing(true);
+    
+    try {
+      const editPrompt = `You are an AI text editor. Your task is to edit the provided text according to the user's instruction. 
+
+IMPORTANT RULES:
+- Return ONLY the edited text, nothing else
+- Do not add explanations, comments, or metadata
+- Preserve the original formatting and structure as much as possible
+- Do not change the meaning unless specifically asked to do so
+
+User Instruction: ${instruction}
+
+Text to edit:
+"""
+${selectedText}
+"""
+
+Edited text:`;
+
+      const response = await fetch('/api/nvidia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [
+            { role: 'user', content: editPrompt }
+          ],
+          temperature: 0.3,
+          max_tokens: 2000,
+          mode: 'chat',
+          stream: false
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const editedText = data.choices?.[0]?.message?.content?.trim();
+      
+      if (!editedText) {
+        throw new Error('No edited text received from API');
+      }
+
+      // Replace selected text in TipTap editor
+      const { from, to } = editor.state.selection;
+      editor.chain().focus().deleteRange({ from, to }).insertContent(editedText).run();
+
+      setSelectedText('');
+      setShowEditModal(false);
+
+      // Immediately trigger save after AI edit
+      if (onContentUpdate) {
+        // Always convert HTML back to markdown to maintain consistent format
+        const htmlContent = editor.getHTML();
+        const markdownContent = HTMLToMarkdown(htmlContent);
+        onContentUpdate(markdownContent);
+      }
+
+      toast.success('Text edited successfully!');
+
+    } catch (error) {
+      console.error('Error editing text:', error);
+      toast.error('Failed to edit text. Please try again.');
+    } finally {
+      setIsEditing(false);
+    }
+  };
+
+  if (!editor) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full max-w-full overflow-hidden relative">
+      {/* Floating Edit Button */}
+      <AnimatePresence>
+        {selectedText && !showEditModal && !isEditing && !isStreaming && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.8, y: -10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: -10 }}
+            onClick={handleEditClick}
+            onMouseDown={e => e.preventDefault()}
+            className="absolute z-40 bg-cyan-600 hover:bg-cyan-700 text-white px-3 py-2 rounded-lg shadow-lg transition-colors flex items-center gap-2 text-sm font-medium"
+            style={{
+              left: `${editPosition.x}px`,
+              top: `${editPosition.y}px`,
+              transform: 'translateX(-50%)'
+            }}
+          >
+            <Edit3 className="w-4 h-4" />
+            Edit with AI
+          </motion.button>
+        )}
+      </AnimatePresence>
+
+      {/* TipTap Editor */}
+      <div className="tiptap-editor-container">
+        <EditorContent 
+          editor={editor} 
+          className="prose prose-invert max-w-none focus:outline-none"
+        />
+      </div>
+
+      {/* Edit Modal */}
+      <AnimatePresence>
+        {showEditModal && (
+          <EditModal
+            isOpen={showEditModal}
+            selectedText={selectedText}
+            onClose={() => {
+              setShowEditModal(false);
+              setSelectedText('');
+            }}
+            onSubmit={performInPlaceEdit}
+            isProcessing={isEditing}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Custom Styles */}
+      <style jsx global>{`
+        .tiptap-editor-container .ProseMirror {
+          outline: none;
+          color: var(--text-primary);
+          line-height: 1.6;
+          font-size: 14px;
+        }
+        
+        .tiptap-editor-container .ProseMirror h1 {
+          font-size: 2rem;
+          font-weight: bold;
+          margin: 2rem 0 1.5rem 0;
+          border-bottom: 1px solid rgba(34, 211, 238, 0.3);
+          padding-bottom: 0.75rem;
+          color: var(--text-primary);
+        }
+        
+        .tiptap-editor-container .ProseMirror h2 {
+          font-size: 1.5rem;
+          font-weight: 600;
+          margin: 1.5rem 0 1rem 0;
+          color: var(--text-primary);
+        }
+        
+        .tiptap-editor-container .ProseMirror h3 {
+          font-size: 1.25rem;
+          font-weight: 600;
+          margin: 1.25rem 0 0.75rem 0;
+          color: var(--text-primary);
+        }
+        
+        .tiptap-editor-container .ProseMirror p {
+          margin: 0 0 1rem 0;
+          color: var(--text-primary);
+          line-height: 1.7;
+        }
+        
+        .tiptap-editor-container .ProseMirror ul,
+        .tiptap-editor-container .ProseMirror ol {
+          margin: 0 0 1rem 1rem;
+          padding: 0;
+        }
+        
+        .tiptap-editor-container .ProseMirror li {
+          margin: 0.5rem 0;
+          color: var(--text-primary);
+        }
+        
+        .tiptap-editor-container .ProseMirror strong {
+          font-weight: 600;
+          color: var(--text-primary);
+        }
+        
+        .tiptap-editor-container .ProseMirror code {
+          background: var(--code-bg);
+          color: var(--code-text);
+          padding: 0.25rem 0.5rem;
+          border-radius: 0.25rem;
+          font-family: monospace;
+          font-size: 0.875rem;
+        }
+        
+        .tiptap-editor-container .ProseMirror pre {
+          background: var(--code-bg);
+          color: var(--code-text);
+          padding: 1rem;
+          border-radius: 0.5rem;
+          overflow-x: auto;
+          margin: 1rem 0;
+        }
+        
+        .tiptap-editor-container .ProseMirror blockquote {
+          border-left: 4px solid rgb(34, 211, 238);
+          padding-left: 1rem;
+          margin: 1rem 0;
+          font-style: italic;
+          color: var(--text-primary);
+        }
+        
+        .tiptap-editor-container .ProseMirror table {
+          border-collapse: collapse;
+          margin: 1rem 0;
+          width: 100%;
+        }
+        
+        .tiptap-editor-container .ProseMirror th,
+        .tiptap-editor-container .ProseMirror td {
+          border: 1px solid #4a5568;
+          padding: 0.5rem 1rem;
+          text-align: left;
+          color: var(--text-primary);
+        }
+        
+        .tiptap-editor-container .ProseMirror th {
+          background: rgba(255, 255, 255, 0.05);
+          font-weight: 600;
+        }
+        
+        .tiptap-editor-container .ProseMirror .tiptap-image {
+          max-width: 100%;
+          height: auto;
+          border-radius: 0.5rem;
+          margin: 1rem 0;
+        }
+        
+        .tiptap-editor-container .ProseMirror .tiptap-link {
+          color: rgb(34, 211, 238);
+          text-decoration: underline;
+        }
+        
+        .tiptap-editor-container .ProseMirror .tiptap-link:hover {
+          color: rgb(56, 189, 248);
+        }
+        
+        /* Selection styles */
+        .tiptap-editor-container .ProseMirror ::selection {
+          background: rgba(34, 211, 238, 0.3);
+        }
+        
+        .tiptap-editor-container .ProseMirror ::-moz-selection {
+          background: rgba(34, 211, 238, 0.3);
+        }
+
+        .tiptap-editor-container .ProseMirror hr {
+          border: none;
+          border-top: 1.5px solid #444;
+          margin: 1.5rem 0;
+          height: 0;
+          background: none;
+        }
+
+        .tiptap-editor-container .ProseMirror h1,
+        .tiptap-editor-container .ProseMirror h2,
+        .tiptap-editor-container .ProseMirror h3,
+        .tiptap-editor-container .ProseMirror h4,
+        .tiptap-editor-container .ProseMirror h5,
+        .tiptap-editor-container .ProseMirror h6 {
+          margin-top: 1.5rem;
+          margin-bottom: 0.75rem;
+        }
+
+        .tiptap-editor-container .ProseMirror li::marker {
+          color: var(--text-primary);
+        }
+      `}</style>
+    </div>
+  );
 }; 
