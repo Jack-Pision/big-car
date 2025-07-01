@@ -4135,19 +4135,8 @@ Please provide a comprehensive answer that directly addresses this question usin
 
   // Search message renderer with tab navigation
   const renderSearchMessage = (msg: LocalMessage, i: number) => {
-    const { content: rawContent } = cleanAIResponse(msg.content);
-    const cleanContent = rawContent
-      .replace(/<think>[\s\S]*?<\/think>/g, '')
-      .replace(/<thinking-indicator.*?>\n<\/thinking-indicator>\n|<thinking-indicator.*?\/>/g, '')
-      .trim();
-    
-    const processedContent = msg.isStreaming 
-      ? smartBufferStreamingContent(cleanContent)
-      : cleanContent;
-    
-    // Replace links/URLs with citation markers for search mode
-    let processedContentForCitations = replaceLinksWithCitations(processedContent, msg.webSources || []);
-    const finalContent = makeCitationsClickable(processedContentForCitations, msg.webSources || []);
+    // Use raw content without any processing for search mode
+    const finalContent = msg.content;
     const currentTab = searchMessageTabs[msg.id || ''] || 'Answer';
     const hasWebSources = msg.webSources && msg.webSources.length > 0;
     

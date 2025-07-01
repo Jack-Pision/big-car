@@ -31,7 +31,7 @@ function getApiKeyForMode(mode: string): string {
 function getModelForMode(mode: string): string {
   switch (mode) {
     case 'browser_chat':
-      return 'deepseek-ai/deepseek-r1-0528'; // Changed back to DeepSeek
+      return 'nvidia/llama-3.1-nemotron-ultra-253b-v1'; // Updated to Nemotron model for search mode
     case 'reasoning':
       return 'deepseek-ai/deepseek-r1-0528'; // Changed to DeepSeek model for reasoning
     case 'image_analysis':
