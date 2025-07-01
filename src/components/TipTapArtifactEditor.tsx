@@ -295,14 +295,16 @@ export const TipTapArtifactEditor: React.FC<{ content: string }> = ({ content })
   let htmlContent = '';
   try {
     marked.setOptions({ breaks: true, gfm: true });
-    // Ensure synchronous conversion
-    // @ts-ignore
-    htmlContent = (typeof marked.parseSync === 'function') ? marked.parseSync(content) : marked.parseInline ? marked.parseInline(content) : marked.parse(content);
+    htmlContent = marked.parse(content) as string;
     if (!htmlContent || typeof htmlContent !== 'string') throw new Error('Invalid HTML');
   } catch (e: any) {
     console.error('Markdown conversion failed:', e);
-    htmlContent = `<pre>${content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>`;
+    // Instead of <pre>, show a user-facing error outside TipTap
+    return <div style={{ color: 'red', padding: 16 }}>Failed to render artifact content.</div>;
   }
+
+  console.log('Artifact content:', content);
+  console.log('HTML for TipTap:', htmlContent);
 
   const editor = useEditor({
     extensions: [
