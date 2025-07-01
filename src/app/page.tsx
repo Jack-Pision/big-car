@@ -4599,9 +4599,10 @@ Do NOT use emojis or any other unnecessary characters.`;
                     {/* Cube toggle button */}
                     <button
                       type="button"
-                      className={`flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 hover:bg-gray-500/20`}
-                      style={{ color: '#FCFCFC' }}
+                      className={`flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 ${activeButton === 'cube' ? 'border' : 'hover:brightness-150'}`}
+                      style={{ color: activeButton === 'cube' ? '#FCFCFC' : 'rgba(252, 252, 252, 0.6)', borderColor: activeButton === 'cube' ? '#FCFCFC' : 'transparent' }}
                       aria-label="Toggle Cube Mode"
+                      onClick={() => handleButtonClick('cube')}
                     >
                       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
@@ -4789,8 +4790,9 @@ Do NOT use emojis or any other unnecessary characters.`;
                       onClick={() => handleButtonClick('artifact')}
                     >
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
-                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="9" y1="9" x2="15" y2="9"></line>
+                        <line x1="9" y1="13" x2="15" y2="13"></line>
                       </svg>
                     </button>
 
@@ -4829,9 +4831,10 @@ Do NOT use emojis or any other unnecessary characters.`;
                     {/* Cube toggle button */}
                     <button
                       type="button"
-                      className={`flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 hover:bg-gray-500/20`}
-                      style={{ color: '#FCFCFC' }}
+                      className={`flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 ${activeButton === 'cube' ? 'border' : 'hover:brightness-150'}`}
+                      style={{ color: activeButton === 'cube' ? '#FCFCFC' : 'rgba(252, 252, 252, 0.6)', borderColor: activeButton === 'cube' ? '#FCFCFC' : 'transparent' }}
                       aria-label="Toggle Cube Mode"
+                      onClick={() => handleButtonClick('cube')}
                     >
                       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
