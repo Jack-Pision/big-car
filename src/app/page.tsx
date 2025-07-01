@@ -9,7 +9,6 @@ import Sidebar from '../components/Sidebar';
 import HamburgerMenu from '../components/HamburgerMenu';
 import AuthProvider, { useAuth } from '../components/AuthProvider';
 import { useRouter } from 'next/navigation';
-import { supabase, createSupabaseClient } from '@/lib/supabase-client';
 import { motion, AnimatePresence } from 'framer-motion';
 import TextReveal from '@/components/TextReveal';
 import { WebSource } from '@/utils/source-utils/index';
@@ -17,7 +16,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { formatMessagesForApi, enhanceSystemPrompt, buildConversationContext } from '@/utils/conversation-context';
 import { Session } from '@/lib/types';
 import {
-  optimizedSupabaseService,
+  localOptimizedService,
   getSessions as getSessionsFromService,
   getSessionMessages,
   saveSessionMessages,
@@ -28,7 +27,7 @@ import {
   deleteSession,
   saveActiveSessionId,
   getActiveSessionId
-} from '@/lib/optimized-supabase-service';
+} from '@/lib/local-storage-service';
 import { aiResponseCache, cachedAIRequest } from '@/lib/ai-response-cache';
 import { SCHEMAS } from '@/lib/output-schemas';
 import DynamicResponseRenderer from '@/components/DynamicResponseRenderer';
@@ -49,12 +48,13 @@ import { filterAIThinking } from '../utils/content-filter';
 import ThinkingButton from '@/components/ThinkingButton';
 import { ArtifactViewer } from '@/components/ArtifactViewer';
 import { type ArtifactData } from '@/utils/artifact-utils';
-import { uploadAndAnalyzeImage, uploadImageToSupabase, analyzeImageWithNVIDIA, ImageUploadResult } from '@/lib/image-upload-service';
+import { analyzeImageWithNVIDIA, ImageUploadResult, uploadAndAnalyzeImage } from '@/lib/local-image-service';
+import { uploadImageToLocal } from '@/lib/local-storage-service';
 import toast from 'react-hot-toast';
 import ReasoningDisplay from '@/components/ReasoningDisplay';
 import { EnhancedMarkdownRenderer } from '@/components/EnhancedMarkdownRenderer';
 import ImageCarousel from '@/components/ImageCarousel';
-import { ArtifactV2Service, type ArtifactV2 } from '../lib/artifact-v2-service';
+import { LocalArtifactV2Service as ArtifactV2Service, type ArtifactV2 } from '../lib/local-storage-service';
 
 
 // Define a type that includes all possible query types (including the ones in SCHEMAS and 'conversation')
@@ -2085,7 +2085,7 @@ function TestChatComponent(props?: TestChatProps) {
           
           // Get messages and ensure they're marked as processed
           // Use optimized service with caching
-          const sessionMessages = await optimizedSupabaseService.getSessionMessages(sessionIdToLoad);
+          const sessionMessages = await localOptimizedService.getSessionMessages(sessionIdToLoad);
           const processedMessages = sessionMessages.map(msg => ({
             ...msg,
             isProcessed: true // Mark all loaded messages as processed
@@ -2174,7 +2174,7 @@ function TestChatComponent(props?: TestChatProps) {
         newUrl = url;
       } else {
         // Fallback to regular session creation
-        const newSession = await optimizedSupabaseService.createNewSession(messageContent);
+        const newSession = await localOptimizedService.createNewSession(messageContent);
         newSessionId = newSession.id;
         
         // Generate URL for dynamic routes
@@ -2183,7 +2183,7 @@ function TestChatComponent(props?: TestChatProps) {
         }
       }
       
-      // Update state and save to Supabase (single call per session)
+      // Update state and save to localStorage (single call per session)
       setActiveSessionId(newSessionId);
       sessionIdRef.current = newSessionId; // Store in ref for immediate access
       await saveActiveSessionId(newSessionId);
@@ -2207,7 +2207,7 @@ function TestChatComponent(props?: TestChatProps) {
     
     try {
       // Use optimized batch saving
-      await optimizedSupabaseService.saveSessionMessages(activeSessionId, currentMessages);
+      await localOptimizedService.saveSessionMessages(activeSessionId, currentMessages);
       
       // Update session title with AI-generated title after first AI response
       const userMessages = currentMessages.filter(msg => msg.role === 'user');
@@ -2221,7 +2221,7 @@ function TestChatComponent(props?: TestChatProps) {
         try {
           // For performance, use simple title generation instead of AI
           const simpleTitle = firstUserMessage.content.split(' ').slice(0, 5).join(' ');
-          await optimizedSupabaseService.updateSessionTitle(
+          await localOptimizedService.updateSessionTitle(
           activeSessionId, 
             simpleTitle.length > 30 ? simpleTitle.substring(0, 30) + '...' : simpleTitle
           );
@@ -2525,7 +2525,7 @@ Please provide a comprehensive answer that directly addresses this question usin
     
     try {
       // Use optimized batch saving
-      await optimizedSupabaseService.saveSessionMessages(explicitSessionId, currentMessages);
+      await localOptimizedService.saveSessionMessages(explicitSessionId, currentMessages);
       
       // Update session title with AI-generated title after first AI response
       const userMessages = currentMessages.filter(msg => msg.role === 'user');
@@ -2539,7 +2539,7 @@ Please provide a comprehensive answer that directly addresses this question usin
         try {
           // For performance, use simple title generation instead of AI
           const simpleTitle = firstUserMessage.content.split(' ').slice(0, 5).join(' ');
-          await optimizedSupabaseService.updateSessionTitle(
+          await localOptimizedService.updateSessionTitle(
             explicitSessionId, 
             simpleTitle.length > 30 ? simpleTitle.substring(0, 30) + '...' : simpleTitle
           );
@@ -2626,7 +2626,7 @@ Please provide a comprehensive answer that directly addresses this question usin
         const userMessage: LocalMessage = {
           role: 'user',
           content: input.trim(), // Include any text the user typed
-          imageUrls: uploadedImageUrls, // Use Supabase URLs for persistence
+          imageUrls: uploadedImageUrls, // Use local URLs for persistence
           id: userMessageId,
           timestamp: Date.now(),
           isProcessed: true
@@ -3547,14 +3547,14 @@ Please provide a comprehensive answer that directly addresses this question usin
       setSelectedFiles([file]);
       setImagePreviewUrls(['']); // Empty string shows loading state
 
-      // Upload to Supabase only
-      const uploadResult = await uploadImageToSupabase(file);
+              // Upload to local storage only
+        const uploadResult = await uploadImageToLocal(file);
       
       if (uploadResult.success && uploadResult.url) {
         // Create preview URL and update state
         const previewUrl = URL.createObjectURL(file);
         setImagePreviewUrls([previewUrl]);
-        setUploadedImageUrls([uploadResult.url]); // Store Supabase URL
+        setUploadedImageUrls([uploadResult.url]); // Store local URL
         
         toast.success('Image uploaded successfully! Click send to analyze.');
       } else {
