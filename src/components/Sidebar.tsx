@@ -8,6 +8,7 @@ import {
   deleteSession as deleteSessionFromService,
   updateSessionTitle,
 } from '@/lib/optimized-supabase-service';
+import { Settings } from 'lucide-react';
 
 interface SidebarProps {
   open: boolean;
@@ -290,10 +291,7 @@ export default function Sidebar({
                       className="p-2 rounded-lg hover:bg-gray-700 transition-colors text-gray-400 hover:text-white"
                       title="Settings"
                     >
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="12" cy="12" r="3"/>
-                        <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"/>
-                      </svg>
+                      <Settings size={18} className="text-gray-400 hover:text-white" />
                     </button>
                   </div>
                 </div>
