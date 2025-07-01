@@ -1,3 +1,7 @@
+// DEPRECATED: All artifact logic has moved to artifact-v2-service.ts and the new artifacts_v2 table.
+// This file is no longer used.
+// All references to 'artifacts' have been updated to 'artifacts_v2' for safety.
+
 import { supabase } from './auth';
 import { Artifact } from './types';
 import { smartCache } from './smart-cache';
@@ -27,7 +31,7 @@ export class ArtifactService {
     if (!user) return [];
 
     const { data, error } = await supabase
-      .from('artifacts')
+      .from('artifacts_v2')
       .select('*')
       .eq('user_id', user.id)
       .order('updated_at', { ascending: false });
@@ -50,7 +54,7 @@ export class ArtifactService {
     if (cached) return cached;
 
     const { data, error } = await supabase
-      .from('artifacts')
+      .from('artifacts_v2')
       .select('*')
       .eq('root_id', rootId) // assuming root_id groups versions
       .order('version', { ascending: true });
@@ -79,7 +83,7 @@ export class ArtifactService {
       updated_at: new Date().toISOString()
     } as Artifact;
 
-    const { data, error } = await supabase.from('artifacts').insert([insertData]).select('*').single();
+    const { data, error } = await supabase.from('artifacts_v2').insert([insertData]).select('*').single();
 
     if (error) {
       console.error('[ArtifactService] create() error:', error);
@@ -111,7 +115,7 @@ export class ArtifactService {
     // Remove id if copying spread of latest
     delete (newArtifact as any).id;
 
-    const { data, error } = await supabase.from('artifacts').insert([{
+    const { data, error } = await supabase.from('artifacts_v2').insert([{
       ...newArtifact,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
@@ -134,7 +138,7 @@ export class ArtifactService {
    */
   async getLatestVersion(rootId: string): Promise<Artifact | null> {
     const { data, error } = await supabase
-      .from('artifacts')
+      .from('artifacts_v2')
       .select('*')
       .eq('root_id', rootId)
       .order('version', { ascending: false })

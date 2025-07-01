@@ -8,8 +8,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Download, Copy, Edit3, Send, Loader, ToggleLeft, ToggleRight, Pen } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { TipTapArtifactEditor } from './TipTapArtifactEditor';
+import { ArtifactV2Service } from '../lib/artifact-v2-service';
 
 interface ArtifactViewerProps {
+  artifactId: string;
   content: string;
   onClose: () => void;
   isStreaming?: boolean;
@@ -148,6 +150,7 @@ const EditModal: React.FC<EditModalProps> = ({
 };
 
 export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({ 
+  artifactId,
   content, 
   onClose, 
   isStreaming = false,
@@ -189,13 +192,14 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
     URL.revokeObjectURL(url);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setLastSavedContent(editableContent);
     setShowSave(false);
     if (onContentUpdate) {
       onContentUpdate(editableContent);
     }
     toast.success('Changes saved!');
+    await ArtifactV2Service.update(artifactId, { content_markdown: editableContent });
   };
 
   // Focus the editor when prompt is dismissed
@@ -297,4 +301,4 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
       `}</style>
     </div>
   );
-}; 
+};

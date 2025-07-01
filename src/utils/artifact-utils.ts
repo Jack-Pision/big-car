@@ -1,5 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 
+// NOTE: Artifact data should now use content_markdown and the new artifacts_v2 table.
+
 // Artifact detection and utility functions
 
 export interface ArtifactData {

@@ -54,7 +54,7 @@ import toast from 'react-hot-toast';
 import ReasoningDisplay from '@/components/ReasoningDisplay';
 import { EnhancedMarkdownRenderer } from '@/components/EnhancedMarkdownRenderer';
 import ImageCarousel from '@/components/ImageCarousel';
-import { ArtifactService } from '../lib/artifact-service';
+import { ArtifactV2Service, type ArtifactV2 } from '../lib/artifact-v2-service';
 
 
 // Define a type that includes all possible query types (including the ones in SCHEMAS and 'conversation')
@@ -2091,22 +2091,22 @@ function TestChatComponent(props?: TestChatProps) {
             isProcessed: true // Mark all loaded messages as processed
           }));
           
-          // Update artifact messages with latest versions from artifacts table
-          const artifactService = ArtifactService.getInstance();
+          // Update artifact messages with latest versions from artifacts_v2 table
           const updatedMessages = await Promise.all(
             processedMessages.map(async (msg) => {
-              // If this is an artifact message with a root_id, fetch the latest version
-              if (msg.contentType === 'artifact' && msg.structuredContent?.root_id) {
+              // If this is an artifact message with an id, fetch the latest version
+              if (msg.contentType === 'artifact' && msg.structuredContent?.id) {
                 try {
-                  const latestArtifact = await artifactService.getLatestVersion(msg.structuredContent.root_id);
+                  const latestArtifact = await ArtifactV2Service.getById(msg.structuredContent.id);
                   if (latestArtifact) {
                     // Update the message with the latest artifact content
                     return {
                       ...msg,
-                      content: latestArtifact.content,
+                      content: latestArtifact.content_markdown,
                       structuredContent: {
                         ...msg.structuredContent,
-                        content: latestArtifact.content,
+                        content: latestArtifact.content_markdown,
+                        id: latestArtifact.id,
                         version: latestArtifact.version,
                         metadata: latestArtifact.metadata
                       }
@@ -2873,7 +2873,7 @@ Please provide a comprehensive answer that directly addresses this question usin
 
       // Open artifact viewer immediately with empty content
       setArtifactContent({
-        root_id: uuidv4(),
+        root_id: 'temp',
         version: 1,
         type: 'document',
         title: 'Generating Document...',
@@ -3034,7 +3034,7 @@ Please provide a comprehensive answer that directly addresses this question usin
         // Update artifact viewer with final content
         setArtifactContent({
           ...structuredContent,
-          root_id: uuidv4(),
+          root_id: 'temp',
           version: 1
         });
         setIsArtifactStreaming(false);
@@ -3780,7 +3780,7 @@ Please provide a comprehensive answer that directly addresses this question usin
       // If no artifact content, show a placeholder
       if (!artifactContent) {
         setArtifactContent({
-          root_id: uuidv4(),
+          root_id: 'temp',
           version: 1,
           type: 'document',
           title: 'Artifact Output',
@@ -3913,7 +3913,7 @@ Please provide a comprehensive answer that directly addresses this question usin
                 onClick={() => {
                 // Use raw content for artifact viewer/editor
                 const simpleArtifact = {
-                  root_id: msg.structuredContent?.root_id || uuidv4(),
+                  root_id: msg.structuredContent?.id || msg.structuredContent?.root_id || 'temp',
                   version: msg.structuredContent?.version || 1,
                   title: msg.structuredContent.title || msg.title || "Generated Document",
                   type: "document" as const,
@@ -4898,7 +4898,7 @@ Please provide a comprehensive answer that directly addresses this question usin
                         style={{ color: '#FCFCFC' }}
                         onClick={() => {
                           setArtifactContent({
-                            root_id: msg.structuredContent?.root_id || msg.root_id || uuidv4(),
+                            root_id: msg.structuredContent?.id || msg.structuredContent?.root_id || msg.root_id || 'temp',
                             version: msg.structuredContent?.version || msg.version || 1,
                             title: msg.title || msg.structuredContent?.title || 'Generated Document',
                             type: 'document',
@@ -5163,6 +5163,7 @@ Please provide a comprehensive answer that directly addresses this question usin
           </div>
           
           <ArtifactViewer
+            artifactId={artifactContent?.root_id || 'temp'}
             content={isArtifactStreaming ? artifactStreamingContent : (artifactContent?.content || '')}
             title={artifactContent?.title || 'Document'}
             onClose={() => {
@@ -5177,54 +5178,61 @@ Please provide a comprehensive answer that directly addresses this question usin
             isStreaming={isArtifactStreaming}
             onContentUpdate={async (newContent: string) => {
               if (artifactContent) {
-                let updatedArtifact = {
-                  ...artifactContent,
-                  content: newContent,
-                  metadata: {
-                    ...artifactContent.metadata,
-                    wordCount: newContent.split(' ').length,
-                    estimatedReadTime: `${Math.ceil(newContent.split(' ').length / 200)} min read`
-                  }
+                const updatedMetadata = {
+                  ...artifactContent.metadata,
+                  wordCount: newContent.split(' ').length,
+                  estimatedReadTime: `${Math.ceil(newContent.split(' ').length / 200)} min read`
                 };
-                const artifactService = ArtifactService.getInstance();
-                // If no root_id, this is a new artifact
-                if (!artifactContent.root_id) {
-                  updatedArtifact = {
-                    ...updatedArtifact,
-                    root_id: uuidv4(),
-                    version: 1
-                  };
-                  setArtifactContent(updatedArtifact);
+                
+                // If no id, this is a new artifact
+                if (!artifactContent.root_id || artifactContent.root_id === 'temp') {
                   try {
-                    await artifactService.create({ ...updatedArtifact });
-                    // Fetch and set the latest version from Supabase
-                    const latest = await artifactService.getLatestVersion(updatedArtifact.root_id);
-                    if (latest) setArtifactContent(latest);
-                    toast.success('Artifact created and saved to Supabase!');
+                    const newArtifact = await ArtifactV2Service.create({
+                      user_id: user!.id,
+                      session_id: activeSessionId || 'unknown',
+                      title: artifactContent.title,
+                      content_markdown: newContent,
+                      metadata: updatedMetadata,
+                      version: 1
+                    });
+                    
+                    if (newArtifact) {
+                      const updatedArtifact = {
+                        ...artifactContent,
+                        root_id: newArtifact.id!,
+                        content: newContent,
+                        metadata: updatedMetadata,
+                        version: 1
+                      };
+                      setArtifactContent(updatedArtifact);
+                      toast.success('Artifact created and saved!');
+                    }
                   } catch (error) {
-                    toast.error('Failed to create artifact in Supabase');
-                    console.error('Supabase create error:', error);
+                    toast.error('Failed to create artifact');
+                    console.error('Artifact create error:', error);
                   }
                 } else {
-                  // Existing artifact, increment version
-                  updatedArtifact = {
-                    ...updatedArtifact,
-                    version: (artifactContent.version || 1) + 1
-                  };
-                  setArtifactContent(updatedArtifact);
+                  // Existing artifact, update it
                   try {
-                    await artifactService.saveNewVersion(
-                      artifactContent.root_id,
-                      newContent,
-                      updatedArtifact.metadata
-                    );
-                                          // Fetch and set the latest version from Supabase
-                      const latest = await artifactService.getLatestVersion(artifactContent.root_id);
-                                             if (latest) setArtifactContent(latest);
-                    toast.success('Artifact version saved to Supabase!');
+                    const updated = await ArtifactV2Service.update(artifactContent.root_id, {
+                      content_markdown: newContent,
+                      metadata: updatedMetadata,
+                      version: (artifactContent.version || 1) + 1
+                    });
+                    
+                    if (updated) {
+                      const updatedArtifact = {
+                        ...artifactContent,
+                        content: newContent,
+                        metadata: updatedMetadata,
+                        version: updated.version || (artifactContent.version || 1) + 1
+                      };
+                      setArtifactContent(updatedArtifact);
+                      toast.success('Artifact updated and saved!');
+                    }
                   } catch (error) {
-                    toast.error('Failed to save artifact version to Supabase');
-                    console.error('Supabase save error:', error);
+                    toast.error('Failed to update artifact');
+                    console.error('Artifact update error:', error);
                   }
                 }
               }
