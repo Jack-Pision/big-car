@@ -7,7 +7,7 @@ import rehypeKatex from 'rehype-katex';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Download, Copy, Edit3, Send, Loader, ToggleLeft, ToggleRight } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { TipTapArtifactEditor } from './TipTapArtifactEditor';
+import dynamic from 'next/dynamic';
 
 interface ArtifactViewerProps {
   content: string;
@@ -146,6 +146,8 @@ const EditModal: React.FC<EditModalProps> = ({
     </div>
   );
 };
+
+const TipTapArtifactEditor = dynamic(() => import('./TipTapArtifactEditor').then(m => m.TipTapArtifactEditor), { ssr: false });
 
 export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({ 
   content, 
