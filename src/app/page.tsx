@@ -4541,7 +4541,6 @@ Do NOT use emojis or any other unnecessary characters.`;
                     {/* Artifact tab */}
                     <button
                       type="button"
-                      disabled={activeMode === 'search'}
                       className={`
                         flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 
                         ${activeButton === 'artifact' ? 'border' : 'hover:brightness-150'}
