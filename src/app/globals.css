@@ -11,7 +11,7 @@
   --link-color: #2563EB;      /* Links */
   --code-bg: #F7F7F8;         /* Code background */
   --code-text: #000000;       /* Code text */
-  --system-fonts: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  --system-fonts: 'Montserrat', system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
 }
 
 /* Hide scrollbar for Chrome, Safari and Opera */

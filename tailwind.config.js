@@ -11,6 +11,9 @@ module.exports = {
       fontSize: {
         'base': '16px',
       },
+      fontFamily: {
+        'sans': ['var(--font-montserrat)', 'Montserrat', 'system-ui', 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],
+      },
       colors: {
         background: '#FFFFFF',
         text: '#1A1A1A',
