@@ -2692,7 +2692,7 @@ Please provide a comprehensive answer that directly addresses this question usin
         }
         
         const reader = analysisResult.stream.getReader();
-        const decoder = new TextDecoder('utf-8');
+        const decoder = new TextDecoder('utf-8', { fatal: false, ignoreBOM: true });
         let contentBuffer = '';
         let firstChunkReceived = false;
 
@@ -2935,13 +2935,14 @@ Please provide a comprehensive answer that directly addresses this question usin
         let textContent = '';
         let wordBuffer = '';
         const wordBoundaryRegex = /[ \n.,;:!?]/;
+        const decoder = new TextDecoder('utf-8', { fatal: false, ignoreBOM: true });
 
         try {
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
 
-            const chunk = new TextDecoder('utf-8', { fatal: false, ignoreBOM: true }).decode(value, { stream: true });
+            const chunk = decoder.decode(value, { stream: true });
             const lines = chunk.split('\n');
 
             for (const line of lines) {
