@@ -4165,7 +4165,7 @@ Please provide a comprehensive answer that directly addresses this question usin
           style={{ color: '#FCFCFC', maxWidth: '100%', overflowWrap: 'break-word', wordBreak: 'break-word' }}
         >
           {/* Tab Navigation for Search Results */}
-          {msg.isProcessed && hasWebSources && (
+          {msg.contentType === 'search' && (
             <div className="w-full mb-4">
               <div className="flex border-b border-gray-700">
                             <button
