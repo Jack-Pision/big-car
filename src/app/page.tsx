@@ -3183,6 +3183,8 @@ IMPORTANT: Format your entire answer using markdown. Use headings, bullet points
 
     // Check if we're in cube mode (task automation)
     if (activeButton === 'cube') {
+      console.log('[Cube Mode] Handling cube mode input:', input);
+      
       // Ensure we have an active session
       const currentActiveSessionId = await ensureActiveSession(input.trim());
 
@@ -3204,7 +3206,7 @@ IMPORTANT: Format your entire answer using markdown. Use headings, bullet points
       
       // Save user message instantly
       try {
-        await debouncedSaveMessage(currentActiveSessionId, userMessage);
+        await saveMessageInstantly(currentActiveSessionId, userMessage);
         console.log('[Cube Mode] User message saved instantly');
       } catch (error) {
         console.error('[Cube Mode] Failed to instantly save user message:', error);
@@ -3214,58 +3216,35 @@ IMPORTANT: Format your entire answer using markdown. Use headings, bullet points
       setIsLoading(true);
       setIsAiResponding(true);
 
-      // Create AI message placeholder for task automation
+      // Create AI message that will trigger TaskAutomation component
       const aiMessageId = uuidv4();
       const aiMessage: LocalMessage = {
         role: 'assistant',
         id: aiMessageId,
-        content: 'Creating task automation plan...',
+        content: 'Starting task automation...', // Placeholder content
         timestamp: Date.now(),
         parentId: userMessageId,
         contentType: 'task_automation',
-        isStreaming: true,
-        isProcessed: false
+        isStreaming: false,
+        isProcessed: true,
+        // Store the original user query for TaskAutomation component
+        query: input.trim()
       };
       
       setMessages(prev => [...prev, aiMessage]);
       
       try {
-        // Save AI placeholder message
-        await debouncedSaveMessage(currentActiveSessionId, aiMessage);
-        console.log('[Cube Mode] AI placeholder message saved');
+        // Save AI message
+        await saveMessageInstantly(currentActiveSessionId, aiMessage);
+        console.log('[Cube Mode] AI message saved for TaskAutomation rendering');
       } catch (error) {
-        console.error('[Cube Mode] Failed to save AI placeholder message:', error);
+        console.error('[Cube Mode] Failed to save AI message:', error);
       }
 
-      // Final completion message
-      const finalAiMessage: LocalMessage = {
-        role: 'assistant',
-        id: aiMessageId,
-        content: `Task automation plan created for: "${input.trim()}"`,
-        timestamp: Date.now(),
-        parentId: userMessageId,
-        contentType: 'task_automation',
-        isStreaming: false,
-        isProcessed: true
-      };
-
-      // Update the AI message as completed
-      setMessages(prev => prev.map(msg => 
-        msg.id === aiMessageId ? finalAiMessage : msg
-      ));
-
-      // Save final message
-      try {
-        await debouncedSaveMessage(currentActiveSessionId, finalAiMessage);
-        console.log('[Cube Mode] Final AI message saved');
-      } catch (error) {
-        console.error('[Cube Mode] Failed to save final AI message:', error);
-      }
-
-      // Complete the interaction
+      // Complete the interaction immediately - TaskAutomation will handle the rest
       setIsLoading(false);
       setIsAiResponding(false);
-      setActiveButton(null); // Reset cube mode
+      console.log('[Cube Mode] Setup complete, TaskAutomation should now trigger');
 
       return;
     }
@@ -4611,6 +4590,20 @@ IMPORTANT: Format your entire answer using markdown. Use headings, bullet points
 
   // Render task automation messages
   const renderTaskAutomationMessage = (msg: LocalMessage, i: number) => {
+    console.log('[Cube Mode] Rendering TaskAutomation for message:', msg);
+    console.log('[Cube Mode] Message role:', msg.role, 'Content:', msg.content, 'Query:', msg.query);
+    
+    // Only render TaskAutomation for assistant messages
+    if (msg.role !== 'assistant') {
+      return (
+        <div className="w-full text-left mb-4 relative text-white">
+          <div className="p-4 rounded-lg bg-neutral-800">
+            {msg.content}
+          </div>
+        </div>
+      );
+    }
+    
     return (
       <React.Fragment key={msg.id + '-task-automation-' + i}>
         <motion.div
@@ -4623,7 +4616,7 @@ IMPORTANT: Format your entire answer using markdown. Use headings, bullet points
         >
           <TaskAutomation
             isVisible={true}
-            userQuery={msg.role === 'user' ? msg.content : ''}
+            userQuery={msg.query || msg.content}
             onTaskComplete={(result) => {
               console.log('[Task Automation] Task completed:', result);
             }}

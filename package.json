@@ -10,7 +10,9 @@
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
-
+    "@langchain/community": "^0.3.47",
+    "@langchain/core": "^0.3.61",
+    "@langchain/openai": "^0.5.16",
     "@supabase/auth-helpers-nextjs": "^0.10.0",
     "@supabase/supabase-js": "^2.49.4",
     "@tiptap/extension-character-count": "^2.23.1",
@@ -41,7 +43,7 @@
     "html-react-parser": "^5.2.5",
     "jsdom": "^26.1.0",
     "katex": "^0.16.22",
-
+    "langchain": "^0.3.29",
     "lucide-react": "^0.511.0",
     "marked": "^16.0.0",
     "markmap-lib": "^0.18.12",

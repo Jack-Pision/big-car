@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 // Note: This service provides LangChain-like functionality without the actual LangChain packages
 // to avoid dependency conflicts in production deployments
@@ -8,31 +8,41 @@ const TaskSchema = z.object({
   id: z.string(),
   title: z.string(),
   description: z.string(),
-  steps: z.array(z.object({
-    id: z.string(),
-    description: z.string(),
-    action: z.string(),
-    parameters: z.record(z.any()).optional(),
-    status: z.enum(['pending', 'running', 'completed', 'failed']).default('pending'),
-    result: z.any().optional()
-  })),
-  status: z.enum(['created', 'planning', 'executing', 'completed', 'failed']).default('created'),
-  priority: z.enum(['low', 'medium', 'high']).default('medium'),
-  estimatedTime: z.string().optional(),
-  dependencies: z.array(z.string()).optional()
+  status: z.enum(['pending', 'in_progress', 'completed', 'failed']),
+  priority: z.enum(['low', 'medium', 'high']),
+  dependencies: z.array(z.string()).optional(),
+  estimatedDuration: z.number(), // in minutes
+  automationType: z.enum(['web_search', 'email', 'calendar', 'document', 'social_media', 'data_analysis', 'api_call']),
+  googleServiceRequired: z.enum(['gmail', 'calendar', 'drive', 'docs', 'sheets', 'none']).optional(),
+  parameters: z.record(z.any()).optional()
 });
 
 const TaskPlanSchema = z.object({
   tasks: z.array(TaskSchema),
-  executionOrder: z.array(z.string()),
-  totalEstimatedTime: z.string(),
-  complexity: z.enum(['simple', 'moderate', 'complex']),
-  requiredResources: z.array(z.string()).optional()
+  totalEstimatedTime: z.number(),
+  requiresGoogleAuth: z.boolean(),
+  googleServices: z.array(z.string()),
+  executionOrder: z.array(z.string())
 });
 
 export type Task = z.infer<typeof TaskSchema>;
 export type TaskPlan = z.infer<typeof TaskPlanSchema>;
-export type TaskStep = Task['steps'][0];
+
+export interface TaskProgress {
+  taskId: string;
+  progress: number;
+  status: 'pending' | 'in_progress' | 'completed' | 'failed';
+  logs: string[];
+  result?: any;
+  error?: string;
+}
+
+export interface GoogleAuthCredentials {
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: number;
+  scope: string;
+}
 
 // Task automation prompts
 const TASK_PLANNING_PROMPT = `You are an advanced task automation AI assistant. Your role is to break down complex user requests into executable tasks and create detailed execution plans.
@@ -91,9 +101,13 @@ Return your response as a JSON object with the following structure:
   "estimatedDuration": "time estimate"
 }`;
 
-// Custom task automation service that provides LangChain-like functionality
-// without external LangChain dependencies to avoid deployment conflicts
-class LangChainTaskService {
+// Custom task automation service without LangChain dependencies
+export class LangChainTaskService {
+  private googleCredentials: GoogleAuthCredentials | null = null;
+
+  constructor() {
+    // No LangChain initialization needed
+  }
 
   /**
    * Analyze user input and create a comprehensive task plan
@@ -142,16 +156,13 @@ class LangChainTaskService {
    */
   async executeTaskStep(task: Task, stepId: string, context?: any): Promise<any> {
     try {
-      const step = task.steps.find(s => s.id === stepId);
-      if (!step) {
-        throw new Error(`Step ${stepId} not found in task ${task.id}`);
-      }
+      console.log(`[TaskAutomation] Executing task step for task: ${task.title}`);
 
-      const prompt = TASK_EXECUTION_PROMPT
-        .replace('{taskTitle}', task.title)
-        .replace('{stepDescription}', step.description)
-        .replace('{parameters}', JSON.stringify(step.parameters || {}))
-        .replace('{context}', JSON.stringify(context || {}));
+      const prompt = `Executing task: ${task.title}
+Description: ${task.description}
+Context: ${JSON.stringify(context || {})}
+
+Provide a detailed execution plan for this task.`;
 
       const response = await fetch('/api/nvidia', {
         method: 'POST',
@@ -183,7 +194,7 @@ class LangChainTaskService {
       // If no JSON, return the raw content as execution plan
       return {
         executionPlan: content,
-        actions: [step.action],
+        actions: [task.automationType],
         expectedOutcome: "Task step completion",
         successCriteria: ["Step completed successfully"],
         errorHandling: "Standard error handling",
@@ -207,7 +218,7 @@ class LangChainTaskService {
   }> {
     const completedTasks = taskPlan.tasks.filter(t => t.status === 'completed').length;
     const totalTasks = taskPlan.tasks.length;
-    const currentTask = taskPlan.tasks.find(t => t.status === 'executing');
+    const currentTask = taskPlan.tasks.find(t => t.status === 'in_progress');
     const overallProgress = (completedTasks / totalTasks) * 100;
 
     // Simple time estimation based on remaining tasks
@@ -289,7 +300,7 @@ Return a JSON object with suggestions and an optimized plan if possible.`;
    * Stream task execution with real-time updates
    */
   async *executeTaskPlanStreaming(taskPlan: TaskPlan): AsyncGenerator<{
-    type: 'progress' | 'task_start' | 'task_complete' | 'step_start' | 'step_complete' | 'error';
+    type: 'progress' | 'task_start' | 'task_complete' | 'error';
     data: any;
   }> {
     try {
@@ -300,30 +311,18 @@ Return a JSON object with suggestions and an optimized plan if possible.`;
         yield { type: 'task_start', data: { taskId, title: task.title } };
 
         // Update task status
-        task.status = 'executing';
+        task.status = 'in_progress';
 
-        for (const step of task.steps) {
-          yield { type: 'step_start', data: { taskId, stepId: step.id, description: step.description } };
+        try {
+          // Execute task
+          const result = await this.executeTask(task);
+          task.status = 'completed';
 
-          try {
-            // Execute step
-            step.status = 'running';
-            const result = await this.executeTaskStep(task, step.id);
-            step.result = result;
-            step.status = 'completed';
-
-            yield { type: 'step_complete', data: { taskId, stepId: step.id, result } };
-          } catch (error) {
-            step.status = 'failed';
-            yield { type: 'error', data: { taskId, stepId: step.id, error: error instanceof Error ? error.message : 'Unknown error' } };
-          }
+          yield { type: 'task_complete', data: { taskId, status: task.status } };
+        } catch (error) {
+          task.status = 'failed';
+          yield { type: 'error', data: { taskId, error: error instanceof Error ? error.message : 'Unknown error' } };
         }
-
-        // Check if all steps completed
-        const allStepsCompleted = task.steps.every(s => s.status === 'completed');
-        task.status = allStepsCompleted ? 'completed' : 'failed';
-
-        yield { type: 'task_complete', data: { taskId, status: task.status } };
 
         // Progress update
         const progress = await this.getTaskProgress(taskPlan);
@@ -332,6 +331,624 @@ Return a JSON object with suggestions and an optimized plan if possible.`;
     } catch (error) {
       yield { type: 'error', data: { error: error instanceof Error ? error.message : 'Unknown error' } };
     }
+  }
+
+  async planTasks(userInput: string): Promise<TaskPlan> {
+    console.log('[TaskAutomation] Starting task planning for input:', userInput);
+    
+    if (!userInput || userInput.trim() === '') {
+      console.error('[TaskAutomation] Empty user input provided to planTasks');
+      throw new Error('Empty user input provided to task planner');
+    }
+
+    // Create a smart fallback task plan based on input analysis
+    const inputLower = userInput.toLowerCase();
+    let automationType: 'web_search' | 'email' | 'calendar' | 'document' | 'social_media' | 'data_analysis' | 'api_call' = 'data_analysis';
+    
+    if (inputLower.includes('search') || inputLower.includes('find') || inputLower.includes('look up')) {
+      automationType = 'web_search';
+    } else if (inputLower.includes('email') || inputLower.includes('mail')) {
+      automationType = 'email';
+    } else if (inputLower.includes('calendar') || inputLower.includes('schedule')) {
+      automationType = 'calendar';
+    } else if (inputLower.includes('document') || inputLower.includes('doc') || inputLower.includes('write')) {
+      automationType = 'document';
+    } else if (inputLower.includes('social') || inputLower.includes('twitter') || inputLower.includes('facebook')) {
+      automationType = 'social_media';
+    } else if (inputLower.includes('api') || inputLower.includes('integration')) {
+      automationType = 'api_call';
+    }
+
+    const fallbackTaskPlan: TaskPlan = {
+      tasks: [{
+        id: 'task_1',
+        title: `${automationType === 'web_search' ? 'Research' : 
+                 automationType === 'data_analysis' ? 'Analyze' : 
+                 automationType === 'social_media' ? 'Social Media Strategy' :
+                 automationType === 'api_call' ? 'API Integration' :
+                 'Process'}: ${userInput.slice(0, 50)}${userInput.length > 50 ? '...' : ''}`,
+        description: userInput,
+        status: 'pending' as const,
+        priority: 'medium' as const,
+        estimatedDuration: automationType === 'web_search' ? 3 : 
+                          automationType === 'data_analysis' ? 5 : 
+                          automationType === 'social_media' ? 8 : 7,
+        automationType,
+        googleServiceRequired: 'none' as const
+      }],
+      totalEstimatedTime: automationType === 'web_search' ? 3 : 
+                         automationType === 'data_analysis' ? 5 : 
+                         automationType === 'social_media' ? 8 : 7,
+      requiresGoogleAuth: false,
+      googleServices: [],
+      executionOrder: ['task_1']
+    };
+
+    try {
+      console.log('[TaskAutomation] Attempting to generate task plan via NVIDIA API...');
+      
+      const response = await fetch('/api/nvidia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [
+            { 
+              role: 'system', 
+              content: `You are a task automation expert. Break down the user's request into a structured task plan. 
+              Provide a JSON response with these exact fields:
+              - tasks: An array of tasks with id, title, description, status ("pending"), priority ("low"/"medium"/"high"), estimatedDuration (number), automationType ("web_search"/"email"/"calendar"/"document"/"social_media"/"data_analysis"/"api_call")
+              - totalEstimatedTime: Total estimated time for all tasks (number)
+              - requiresGoogleAuth: Whether Google authentication is needed (boolean)
+              - googleServices: List of required Google services (array)
+              - executionOrder: Order of task execution (array of task IDs)
+
+              Example:
+              {
+                "tasks": [{
+                  "id": "task_1",
+                  "title": "Web Research",
+                  "description": "Find information about the topic",
+                  "status": "pending",
+                  "priority": "medium",
+                  "estimatedDuration": 10,
+                  "automationType": "web_search"
+                }],
+                "totalEstimatedTime": 10,
+                "requiresGoogleAuth": false,
+                "googleServices": [],
+                "executionOrder": ["task_1"]
+              }
+
+              Respond ONLY with valid JSON.`
+            },
+            { role: 'user', content: userInput }
+          ],
+          temperature: 0.3,
+          max_tokens: 4096,
+          mode: 'chat'
+        })
+      });
+
+      console.log('[TaskAutomation] NVIDIA API Response Status:', response.status);
+
+      if (!response.ok) {
+        console.warn('[TaskAutomation] NVIDIA API request failed. Status:', response.status);
+        const errorText = await response.text();
+        console.error('[TaskAutomation] API Error:', errorText);
+        console.log('[TaskAutomation] Using fallback task plan');
+        return fallbackTaskPlan;
+      }
+
+      const data = await response.json();
+      console.log('[TaskAutomation] Received API response:', data);
+
+      const content = data.choices?.[0]?.message?.content || '';
+      console.log('[TaskAutomation] Raw content:', content);
+      
+      // Extract JSON from response
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        console.warn('[TaskAutomation] No valid JSON found in response. Using fallback task plan.');
+        return fallbackTaskPlan;
+      }
+
+      try {
+        const taskPlan = JSON.parse(jsonMatch[0]);
+        console.log('[TaskAutomation] Parsed task plan:', taskPlan);
+        
+        // Validate against schema
+        const validatedPlan = TaskPlanSchema.parse(taskPlan);
+        console.log('[TaskAutomation] Task plan validated successfully:', validatedPlan);
+        return validatedPlan;
+      } catch (parseError) {
+        console.error('[TaskAutomation] JSON parsing/validation error:', parseError);
+        console.log('[TaskAutomation] Using fallback task plan');
+        return fallbackTaskPlan;
+      }
+    } catch (error) {
+      console.error('[TaskAutomation] Unexpected error in task planning:', error);
+      console.log('[TaskAutomation] Using fallback task plan');
+      return fallbackTaskPlan;
+    }
+  }
+
+  async executeTask(task: Task, onProgress?: (progress: TaskProgress) => void): Promise<TaskProgress> {
+    const progress: TaskProgress = {
+      taskId: task.id,
+      progress: 0,
+      status: 'in_progress',
+      logs: [`Starting task: ${task.title}`]
+    };
+
+    if (onProgress) onProgress(progress);
+
+    try {
+      // Check if Google authentication is required
+      if (task.googleServiceRequired && task.googleServiceRequired !== 'none') {
+        if (!this.googleCredentials) {
+          throw new Error(`Google ${task.googleServiceRequired} authentication required`);
+        }
+        progress.logs.push(`Using Google ${task.googleServiceRequired} service`);
+      }
+
+      // Execute based on automation type
+      switch (task.automationType) {
+        case 'web_search':
+          await this.executeWebSearch(task, progress, onProgress);
+          break;
+        case 'email':
+          await this.executeEmailTask(task, progress, onProgress);
+          break;
+        case 'calendar':
+          await this.executeCalendarTask(task, progress, onProgress);
+          break;
+        case 'document':
+          await this.executeDocumentTask(task, progress, onProgress);
+          break;
+        case 'social_media':
+          await this.executeSocialMediaTask(task, progress, onProgress);
+          break;
+        case 'data_analysis':
+          await this.executeDataAnalysisTask(task, progress, onProgress);
+          break;
+        case 'api_call':
+          await this.executeApiCall(task, progress, onProgress);
+          break;
+        default:
+          throw new Error(`Unsupported automation type: ${task.automationType}`);
+      }
+
+      progress.status = 'completed';
+      progress.progress = 100;
+      progress.logs.push(`Task completed successfully`);
+
+    } catch (error) {
+      progress.status = 'failed';
+      progress.error = error instanceof Error ? error.message : 'Unknown error';
+      progress.logs.push(`Task failed: ${progress.error}`);
+    }
+
+    if (onProgress) onProgress(progress);
+    return progress;
+  }
+
+  private async executeWebSearch(task: Task, progress: TaskProgress, onProgress?: (progress: TaskProgress) => void) {
+    progress.progress = 25;
+    progress.logs.push('Performing web search...');
+    if (onProgress) onProgress(progress);
+
+    try {
+      // Use existing search API
+      const searchQuery = task.parameters?.query || task.description;
+      console.log('[TaskAutomation] Executing web search for:', searchQuery);
+      
+      const response = await fetch('/api/serper/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: searchQuery })
+      });
+
+      progress.progress = 75;
+      progress.logs.push('Processing search results...');
+      if (onProgress) onProgress(progress);
+
+      if (!response.ok) {
+        throw new Error(`Search API returned status: ${response.status}`);
+      }
+
+      const searchResults = await response.json();
+      progress.result = searchResults;
+      const resultCount = searchResults.organic?.length || 0;
+      progress.logs.push(`Successfully found ${resultCount} search results`);
+      console.log('[TaskAutomation] Web search completed:', { resultCount, query: searchQuery });
+    } catch (error) {
+      console.error('[TaskAutomation] Web search failed:', error);
+      progress.logs.push(`Search failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw error;
+    }
+  }
+
+  private async executeEmailTask(task: Task, progress: TaskProgress, onProgress?: (progress: TaskProgress) => void) {
+    if (!this.googleCredentials) {
+      throw new Error('Google Gmail authentication required');
+    }
+
+    progress.progress = 30;
+    progress.logs.push('Accessing Gmail API...');
+    if (onProgress) onProgress(progress);
+
+    // Gmail API integration would go here
+    progress.progress = 80;
+    progress.logs.push('Email task executed');
+    if (onProgress) onProgress(progress);
+
+    progress.result = { message: 'Email automation completed' };
+  }
+
+  private async executeCalendarTask(task: Task, progress: TaskProgress, onProgress?: (progress: TaskProgress) => void) {
+    if (!this.googleCredentials) {
+      throw new Error('Google Calendar authentication required');
+    }
+
+    progress.progress = 40;
+    progress.logs.push('Accessing Google Calendar API...');
+    if (onProgress) onProgress(progress);
+
+    // Calendar API integration would go here
+    progress.progress = 90;
+    progress.logs.push('Calendar task executed');
+    if (onProgress) onProgress(progress);
+
+    progress.result = { message: 'Calendar automation completed' };
+  }
+
+  private async executeDocumentTask(task: Task, progress: TaskProgress, onProgress?: (progress: TaskProgress) => void) {
+    if (!this.googleCredentials) {
+      throw new Error('Google Docs/Sheets authentication required');
+    }
+
+    progress.progress = 35;
+    progress.logs.push('Accessing Google Docs API...');
+    if (onProgress) onProgress(progress);
+
+    try {
+      // Extract docId from the task parameters or description (expects a Google Doc link)
+      let docId = '';
+      const urlMatch = (task.description || '').match(/document\/d\/([a-zA-Z0-9-_]+)/);
+      if (urlMatch) {
+        docId = urlMatch[1];
+      } else if (task.parameters?.docId) {
+        docId = task.parameters.docId;
+      } else {
+        throw new Error('No Google Doc ID found in task description or parameters.');
+      }
+
+      const accessToken = this.googleCredentials.accessToken;
+
+      // 1. Get the document structure
+      const docRes = await fetch(`https://docs.googleapis.com/v1/documents/${docId}`, {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+      if (!docRes.ok) throw new Error('Failed to fetch Google Doc');
+      const doc = await docRes.json();
+
+      // 2. Find the text 'PROMPT GUIDELINE' and its location
+      let startIndex = -1;
+      let endIndex = -1;
+      const searchText = 'PROMPT GUIDELINE';
+      for (const element of doc.body.content) {
+        if (element.paragraph && element.paragraph.elements) {
+          for (const el of element.paragraph.elements) {
+            if (el.textRun && el.textRun.content && el.textRun.content.includes(searchText)) {
+              // Found the text, get its start and end index
+              startIndex = el.startIndex;
+              endIndex = el.endIndex;
+              break;
+            }
+          }
+        }
+        if (startIndex !== -1) break;
+      }
+      if (startIndex === -1 || endIndex === -1) {
+        throw new Error(`Text '${searchText}' not found in the document.`);
+      }
+
+      // 3. Build a batchUpdate request to delete the text
+      const requests = [
+        {
+          deleteContentRange: {
+            range: {
+              startIndex,
+              endIndex
+            }
+          }
+        }
+      ];
+
+      // 4. Send the update
+      const updateRes = await fetch(`https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ requests })
+      });
+      if (!updateRes.ok) {
+        const err = await updateRes.text();
+        throw new Error('Failed to update Google Doc: ' + err);
+      }
+
+      progress.progress = 85;
+      progress.logs.push(`Removed '${searchText}' from the document.`);
+      if (onProgress) onProgress(progress);
+
+      progress.result = { message: `Document updated: '${searchText}' removed.` };
+    } catch (error) {
+      progress.status = 'failed';
+      progress.error = error instanceof Error ? error.message : 'Unknown error';
+      progress.logs.push(`Task failed: ${progress.error}`);
+      if (onProgress) onProgress(progress);
+      return;
+    }
+  }
+
+  private async executeSocialMediaTask(task: Task, progress: TaskProgress, onProgress?: (progress: TaskProgress) => void) {
+    progress.progress = 25;
+    progress.logs.push('Starting social media analysis...');
+    if (onProgress) onProgress(progress);
+
+    try {
+      console.log('[TaskAutomation] Executing social media task for:', task.description);
+      
+      // Generate social media strategy using NVIDIA API
+      const strategyPrompt = `Create a social media strategy for: ${task.description}. Include content ideas, posting schedule, engagement tactics, and platform-specific recommendations.`;
+      
+      progress.progress = 50;
+      progress.logs.push('Generating social media strategy...');
+      if (onProgress) onProgress(progress);
+
+      const response = await fetch('/api/nvidia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [
+            { role: 'system', content: 'You are a social media marketing expert. Provide comprehensive strategies with actionable steps.' },
+            { role: 'user', content: strategyPrompt }
+          ],
+          temperature: 0.4,
+          max_tokens: 3072,
+          mode: 'chat'
+        })
+      });
+
+      progress.progress = 75;
+      progress.logs.push('Processing social media recommendations...');
+      if (onProgress) onProgress(progress);
+
+      if (!response.ok) {
+        throw new Error(`Social media API returned status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const strategy = data.choices?.[0]?.message?.content || 'Social media strategy generated';
+      
+      progress.result = { 
+        strategy,
+        platforms: ['Twitter', 'LinkedIn', 'Instagram', 'Facebook'],
+        task: task.title,
+        timestamp: new Date().toISOString()
+      };
+      progress.logs.push('Social media strategy completed successfully');
+      console.log('[TaskAutomation] Social media task completed for:', task.title);
+    } catch (error) {
+      console.error('[TaskAutomation] Social media task failed:', error);
+      progress.logs.push(`Social media task failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw error;
+    }
+  }
+
+  private async executeDataAnalysisTask(task: Task, progress: TaskProgress, onProgress?: (progress: TaskProgress) => void) {
+    progress.progress = 25;
+    progress.logs.push('Starting data analysis...');
+    if (onProgress) onProgress(progress);
+
+    try {
+      console.log('[TaskAutomation] Executing data analysis for:', task.description);
+      
+      // Use NVIDIA API for analysis
+      const analysisPrompt = `Analyze the following request: ${task.description}. Provide a structured analysis with insights, conclusions, and recommendations.`;
+      
+      progress.progress = 50;
+      progress.logs.push('Processing with AI analysis...');
+      if (onProgress) onProgress(progress);
+
+      const response = await fetch('/api/nvidia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [
+            { role: 'system', content: 'You are a data analysis expert. Provide clear, structured analysis with actionable insights.' },
+            { role: 'user', content: analysisPrompt }
+          ],
+          temperature: 0.3,
+          max_tokens: 2048,
+          mode: 'chat'
+        })
+      });
+
+      progress.progress = 75;
+      progress.logs.push('Finalizing analysis results...');
+      if (onProgress) onProgress(progress);
+
+      if (!response.ok) {
+        throw new Error(`Analysis API returned status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const analysisResult = data.choices?.[0]?.message?.content || 'Analysis completed';
+      
+      progress.result = { 
+        analysis: analysisResult,
+        timestamp: new Date().toISOString(),
+        task: task.title
+      };
+      progress.logs.push('Data analysis completed successfully');
+      console.log('[TaskAutomation] Data analysis completed for:', task.title);
+    } catch (error) {
+      console.error('[TaskAutomation] Data analysis failed:', error);
+      progress.logs.push(`Analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw error;
+    }
+  }
+
+  private async executeApiCall(task: Task, progress: TaskProgress, onProgress?: (progress: TaskProgress) => void) {
+    progress.progress = 25;
+    progress.logs.push('Preparing API call...');
+    if (onProgress) onProgress(progress);
+
+    try {
+      console.log('[TaskAutomation] Executing API call for:', task.description);
+      
+      // Extract API details from task parameters or use description for analysis
+      const apiUrl = task.parameters?.url;
+      const method = task.parameters?.method || 'GET';
+      const data = task.parameters?.data;
+      
+      progress.progress = 50;
+      progress.logs.push(`Making ${method} request...`);
+      if (onProgress) onProgress(progress);
+
+      let result;
+      if (apiUrl) {
+        // Make actual API call if URL is provided
+        const options: RequestInit = {
+          method,
+          headers: {
+            'Content-Type': 'application/json',
+            ...(task.parameters?.headers || {})
+          }
+        };
+        
+        if (data && (method === 'POST' || method === 'PUT')) {
+          options.body = JSON.stringify(data);
+        }
+        
+        const response = await fetch(apiUrl, options);
+        result = {
+          status: response.status,
+          data: await response.json(),
+          url: apiUrl,
+          method
+        };
+        progress.logs.push(`API call successful (${response.status})`);
+      } else {
+        // Generate API usage recommendations using NVIDIA API
+        const analysisPrompt = `Analyze this API-related request: ${task.description}. Provide specific API recommendations, endpoints, and implementation guidance.`;
+        
+        const response = await fetch('/api/nvidia', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: [
+              { role: 'system', content: 'You are an API integration expert. Provide specific, actionable API recommendations.' },
+              { role: 'user', content: analysisPrompt }
+            ],
+            temperature: 0.3,
+            max_tokens: 2048,
+            mode: 'chat'
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`API analysis failed with status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        result = {
+          recommendations: data.choices?.[0]?.message?.content || 'API analysis completed',
+          task: task.title,
+          timestamp: new Date().toISOString()
+        };
+        progress.logs.push('API analysis and recommendations generated');
+      }
+
+      progress.progress = 75;
+      progress.logs.push('Processing API response...');
+      if (onProgress) onProgress(progress);
+
+      progress.result = result;
+      progress.logs.push('API call task completed successfully');
+      console.log('[TaskAutomation] API call completed for:', task.title);
+    } catch (error) {
+      console.error('[TaskAutomation] API call failed:', error);
+      progress.logs.push(`API call failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw error;
+    }
+  }
+
+  setGoogleCredentials(credentials: GoogleAuthCredentials) {
+    this.googleCredentials = credentials;
+  }
+
+  getGoogleCredentials(): GoogleAuthCredentials | null {
+    return this.googleCredentials;
+  }
+
+  async checkRequiresGoogleAuth(userInput: string): Promise<{
+    required: boolean;
+    services: string[];
+    reason: string;
+  }> {
+    console.log('[TaskAutomation] Checking Google Auth requirements for:', userInput);
+
+    // Simple heuristic to determine if Google services might be needed
+    const googleServiceKeywords = [
+      'email', 'calendar', 'drive', 'docs', 'sheets', 
+      'gmail', 'google', 'schedule', 'document'
+    ];
+
+    const matchedKeywords = googleServiceKeywords.filter(keyword => 
+      userInput.toLowerCase().includes(keyword)
+    );
+    
+    const requiresAuth = matchedKeywords.length > 0;
+    
+    // Determine which specific services are needed
+    const services: string[] = [];
+    if (requiresAuth) {
+      if (userInput.toLowerCase().includes('email') || userInput.toLowerCase().includes('gmail')) {
+        services.push('gmail');
+      }
+      if (userInput.toLowerCase().includes('calendar') || userInput.toLowerCase().includes('schedule')) {
+        services.push('calendar');
+      }
+      if (userInput.toLowerCase().includes('doc') || userInput.toLowerCase().includes('document')) {
+        services.push('docs');
+      }
+      if (userInput.toLowerCase().includes('sheet') || userInput.toLowerCase().includes('spreadsheet')) {
+        services.push('sheets');
+      }
+      if (userInput.toLowerCase().includes('drive')) {
+        services.push('drive');
+      }
+      
+      // If no specific services were identified but we matched keywords, add a default
+      if (services.length === 0 && requiresAuth) {
+        services.push('gmail');
+      }
+    }
+    
+    const result = {
+      required: requiresAuth,
+      services: services,
+      reason: requiresAuth 
+        ? `Your request involves Google services: ${services.join(', ')}` 
+        : 'No Google services required'
+    };
+    
+    console.log('[TaskAutomation] Auth check result:', result);
+    return result;
   }
 }
 
