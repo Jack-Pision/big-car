@@ -48,14 +48,12 @@ import { filterAIThinking } from '../utils/content-filter';
 import ThinkingButton from '@/components/ThinkingButton';
 import { ArtifactViewer } from '@/components/ArtifactViewer';
 import { type ArtifactData } from '@/utils/artifact-utils';
-import { uploadAndAnalyzeImage, uploadImageToSupabase, analyzeImageWithNVIDIA, ImageUploadResult } from '@/lib/image-upload-service';
+import { analyzeImageWithNVIDIA, ImageUploadResult } from '@/lib/image-upload-service';
 import toast from 'react-hot-toast';
-import ReasoningDisplay from '@/components/ReasoningDisplay';
 import { EnhancedMarkdownRenderer } from '@/components/EnhancedMarkdownRenderer';
 import ImageCarousel from '@/components/ImageCarousel';
 import { ArtifactV2Service, type ArtifactV2 } from '@/lib/artifact-v2-service';
-import MindMapDisplay, { type MindMapData } from '@/components/MindMapDisplay';
-import { extractMindMapJson, isMindMapRequest } from '@/utils/mindmap-utils';
+// import { isMindMapRequest } from '@/utils/mindmap-utils'; // Removed
 
 
 // Define a type that includes all possible query types (including the ones in SCHEMAS and 'conversation')
@@ -1672,64 +1670,9 @@ function detectAndCleanAdvancedStructure(content: string): {
 
 const getThinkPrompt = (basePrompt: string, userQuery?: string) => {
   // Check if the user is requesting a mind map using the utility function
-  const isMindMapRequestDetected = userQuery && isMindMapRequest(userQuery);
+  // const isMindMapRequestDetected = userQuery && isMindMapRequest(userQuery); // Removed
 
-  if (isMindMapRequestDetected) {
-    return `You are Tehom AI, an advanced assistant specialized in creating interactive mind maps. When a user requests a mind map, you should think through the topic carefully and then respond with ONLY a valid JSON object that follows this exact structure:
-
-{
-  "title": "Main Topic Title",
-  "description": "Brief description of the mind map",
-  "center_node": {
-    "id": "center",
-    "label": "Central Concept",
-    "description": "Brief description of the central concept"
-  },
-  "branches": [
-    {
-      "id": "branch1",
-      "label": "Primary Branch 1",
-      "description": "Description of this branch",
-      "color": "#3B82F6",
-      "children": [
-        {
-          "id": "child1",
-          "label": "Sub-concept 1",
-          "description": "Description of sub-concept"
-        },
-        {
-          "id": "child2", 
-          "label": "Sub-concept 2",
-          "description": "Description of sub-concept"
-        }
-      ]
-    },
-    {
-      "id": "branch2",
-      "label": "Primary Branch 2", 
-      "description": "Description of this branch",
-      "color": "#10B981",
-      "children": [
-        {
-          "id": "child3",
-          "label": "Sub-concept 3",
-          "description": "Description of sub-concept"
-        }
-      ]
-    }
-  ]
-}
-
-Guidelines for mind map creation:
-- Create 3-6 main branches from the center
-- Each branch should have 2-5 children maximum
-- Use different colors for branches: #3B82F6 (blue), #10B981 (green), #F59E0B (amber), #EF4444 (red), #8B5CF6 (purple), #EC4899 (pink)
-- Keep labels concise (1-4 words)
-- Make descriptions informative but brief
-- Ensure the mind map captures the key aspects of the requested topic
-
-Think through the topic structure first, then respond with ONLY the JSON - no additional text or markdown.`;
-  }
+  // Disabled mind map functionality - all mind map related code commented out
 
   return `You are Tehom AI, an advanced and thoughtful assistant designed for deep reasoning, clear explanation, and insightful analysis. You think carefully before responding, consider multiple perspectives, and help users understand not just the answer, but the reasoning behind it. You communicate in a natural, human-like tone that feels intelligent, calm, and genuinely helpful. You often use analogies, examples, and counterpoints to make complex ideas easier to grasp, and you're not afraid to explore ambiguity when needed. Your goal is to guide users toward clarity and understanding, uncover hidden assumptions, and bring depth to every conversation. Always respond in markdown format to keep your output clean, readable, and well-structured.
 
@@ -3100,8 +3043,8 @@ IMPORTANT: Format your entire answer using markdown. Use headings, bullet points
           reader.releaseLock();
         }
 
-        // Use SAME PROCESSING as default chat
-        const cleanedContent = postProcessAIChatResponse(textContent, true);
+        // Skip default chat processing - Milkdown handles raw markdown directly
+        // const cleanedContent = postProcessAIChatResponse(textContent, true);
 
         // Create simple structured content for artifact viewer
         const structuredContent = {
@@ -3653,27 +3596,13 @@ IMPORTANT: Format your entire answer using markdown. Use headings, bullet points
     setIsUploadingImage(true);
 
     try {
-      // Add file to selected files immediately (shows loading state)
-      setSelectedFiles([file]);
-      setImagePreviewUrls(['']); // Empty string shows loading state
-
-      // Upload to Supabase only
-      const uploadResult = await uploadImageToSupabase(file);
-      
-      if (uploadResult.success && uploadResult.url) {
-        // Create preview URL and update state
-        const previewUrl = URL.createObjectURL(file);
-        setImagePreviewUrls([previewUrl]);
-        setUploadedImageUrls([uploadResult.url]); // Store Supabase URL
-        
-        toast.success('Image uploaded successfully! Click send to analyze.');
-      } else {
-        // Remove from selected files if upload failed
-        setSelectedFiles([]);
-        setImagePreviewUrls([]);
-        setUploadedImageUrls([]);
-        toast.error(uploadResult.error || 'Failed to upload image');
-      }
+      // Disable image upload
+      toast.error('Image upload is currently disabled.');
+      setSelectedFiles([]);
+      setImagePreviewUrls([]);
+      setUploadedImageUrls([]);
+      setIsUploadingImage(false);
+      return;
     } catch (error) {
       console.error('Error uploading image:', error);
       setSelectedFiles([]);
@@ -3813,10 +3742,11 @@ IMPORTANT: Format your entire answer using markdown. Use headings, bullet points
 
     // Check for mind map content first (for AI assistant messages)
     if (msg.role === 'assistant') {
-      const mindMapData = extractMindMapJson(msg.content);
-      if (mindMapData) {
-        return <MindMapDisplay data={mindMapData} />;
-      }
+      // Remove mind map specific rendering
+      // const mindMapData = extractMindMapJson(msg.content);
+      // if (mindMapData) {
+      //   return <MindMapDisplay data={mindMapData} />;
+      // }
     }
 
     // Check for Vision Mode messages (messages with imageUrls)
@@ -3844,9 +3774,19 @@ IMPORTANT: Format your entire answer using markdown. Use headings, bullet points
             `${artifactData.metadata?.wordCount || 0} words � ${artifactData.metadata?.estimatedReadTime || '2 minutes'}`
           );
         case 'reasoning':
-          return <ReasoningDisplay data={msg.structuredContent as string} />;
+          // Replace ReasoningDisplay with default markdown rendering
+          return <ReactMarkdown 
+            remarkPlugins={[remarkGfm, remarkMath]} 
+            rehypePlugins={[rehypeRaw, rehypeKatex]} 
+            className="prose dark:prose-invert max-w-none"
+          >{msg.structuredContent as string}</ReactMarkdown>;
         case 'mind_map':
-          return <MindMapDisplay data={msg.structuredContent as MindMapData} />;
+          // Remove mind map specific rendering
+          return <ReactMarkdown 
+            remarkPlugins={[remarkGfm, remarkMath]} 
+            rehypePlugins={[rehypeRaw, rehypeKatex]} 
+            className="prose dark:prose-invert max-w-none"
+          >{msg.structuredContent as string}</ReactMarkdown>;
         default:
           if (typeof msg.structuredContent === 'string') {
             return <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex]} className="prose dark:prose-invert max-w-none">{msg.structuredContent}</ReactMarkdown>;
@@ -4483,36 +4423,25 @@ IMPORTANT: Format your entire answer using markdown. Use headings, bullet points
 
     // Remove all <think>...</think> tags for the main output
     const mainMarkdownContent = cleanContent.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-
-    // Check if the content is a mind map JSON response using the utility
-    const mindMapData = extractMindMapJson(mainMarkdownContent);
-    const isMindMapResponse = !!mindMapData;
+    // Removed mind map JSON detection
+    // const mindMapData = isMindMapJSON(mainMarkdownContent);
+    // const isMindMapResponse = !!mindMapData;
 
     const finalContent = makeCitationsClickable(mainMarkdownContent, msg.webSources || []);
 
-                return (
-      <React.Fragment key={msg.id + '-reasoning-' + i}>
+    return (
+      <React.Fragment key={`msg-${i}`}>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, ease: 'easeOut' }}
-          className="w-full text-left flex flex-col items-start ai-response-text mb-4 relative"
-          style={{ color: "#FCFCFC", lineHeight: "1.2" }}
+          transition={{ duration: 0.3 }}
+          className="w-full"
         >
-          {/* Render mind map if detected, otherwise render markdown */}
-          {isMindMapResponse && mindMapData ? (
-            <div className="w-full mt-4">
-              <MindMapDisplay data={mindMapData} />
-            </div>
-          ) : (
-            finalContent.trim().length > 0 &&
+          {finalContent.trim().length > 0 &&
             renderDefaultChatMessage({
               ...msg,
-              content: msg.isStreaming
-                ? smartBufferStreamingContent(finalContent.replace(/<!-- think-block-\\d+ -->/g, ''))
-                : finalContent.replace(/<!-- think-block-\\d+ -->/g, '')
-            }, i)
-          )}
+              content: finalContent.replace(/<!-- think-block-\d+ -->/g, '')
+            }, i)}
         </motion.div>
       </React.Fragment>
     );
