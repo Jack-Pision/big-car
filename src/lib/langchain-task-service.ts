@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+// Note: This service provides LangChain-like functionality without the actual LangChain packages
+// to avoid dependency conflicts in production deployments
+
 // Task automation schemas
 const TaskSchema = z.object({
   id: z.string(),
@@ -88,6 +91,8 @@ Return your response as a JSON object with the following structure:
   "estimatedDuration": "time estimate"
 }`;
 
+// Custom task automation service that provides LangChain-like functionality
+// without external LangChain dependencies to avoid deployment conflicts
 class LangChainTaskService {
 
   /**
