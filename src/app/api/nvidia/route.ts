@@ -37,7 +37,7 @@ function getModelForMode(mode: string): string {
     case 'image_analysis':
       return 'mistralai/mistral-large'; // Updated NVIDIA vision model
     case 'artifact':
-      return 'qwen/qwen3-235b-a22b'; // Dedicated Qwen model for artifact generation
+      return 'nvidia/llama-3.1-nemotron-ultra-253b-v1'; // Nemotron model for artifact generation
     case 'chat':
     case 'default':
       return 'qwen/qwen3-235b-a22b'; // Qwen model for default chat
