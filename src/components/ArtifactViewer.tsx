@@ -7,7 +7,7 @@ import rehypeKatex from 'rehype-katex';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Download, Copy, Edit3, Send, Loader, ToggleLeft, ToggleRight, Pen } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { TipTapArtifactEditor } from './TipTapArtifactEditor';
+import { MilkdownArtifactEditor } from './MilkdownArtifactEditor';
 import { ArtifactV2Service } from '../lib/artifact-v2-service';
 import { marked } from 'marked';
 
@@ -268,9 +268,9 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
       {/* Content Area */}
       <div className="w-full max-w-[800px] flex-1 overflow-y-auto px-6 pt-4 pb-8 hide-scrollbar relative" style={{ padding: '24px 24px 16px 24px', margin: '0 auto' }}>
         {isEditing ? (
-        <TipTapArtifactEditor
+        <MilkdownArtifactEditor
           content={editableContent}
-          onContentUpdate={(newContent) => {
+          onContentUpdate={(newContent: string) => {
             setEditableContent(newContent);
           }}
           isStreaming={isStreaming}
@@ -281,7 +281,7 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
         ) : (
           <div
             className="markdown-body"
-            dangerouslySetInnerHTML={{ __html: marked.parse(content) }}
+            dangerouslySetInnerHTML={{ __html: marked.parse(content) as string }}
         />
         )}
       </div>
