@@ -54,94 +54,129 @@ export async function POST(req: NextRequest) {
     }
 
     const EXA_API_KEY = process.env.EXA_API_KEY;
+    const EXA_API_KEY2 = process.env.EXA_API_KEY2;
     
-    if (!EXA_API_KEY) {
-      console.error('EXA_API_KEY is not defined in environment variables');
+    if (!EXA_API_KEY || !EXA_API_KEY2) {
+      console.error('One or both EXA API keys are not defined in environment variables');
       return new Response(JSON.stringify({ error: 'Search service configuration error: API key not found' }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' }
       });
     }
 
-    console.log('Starting two-step Exa API process for query:', query);
+    console.log('Starting dual API key Exa search process for query:', query);
 
-    // Step 1: Search for URLs and basic metadata
-    const searchPayload = {
-      query,
-      numResults: 10,
-      useAutoprompt: true
-    };
+    // Step 1: Search for URLs and basic metadata with both API keys in parallel (2 pages each)
+    const searchPayloads = [
+      { query, numResults: 10, offset: 0, useAutoprompt: true },
+      { query, numResults: 10, offset: 10, useAutoprompt: true }
+    ];
 
-    console.log('Step 1: Searching for URLs...');
-
+    // Fetch 2 pages for each API key
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout for two-step process
-    
-    try {
-      // Step 1: Get URLs from search endpoint
-      const searchResponse = await fetch('https://api.exa.ai/search', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': EXA_API_KEY,
-        },
-        body: JSON.stringify(searchPayload),
-        signal: controller.signal
-      });
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
 
-      if (!searchResponse.ok) {
+    try {
+      const allSearchPromises = [
+        ...searchPayloads.map(payload => fetch('https://api.exa.ai/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': EXA_API_KEY },
+          body: JSON.stringify(payload),
+          signal: controller.signal
+        })),
+        ...searchPayloads.map(payload => fetch('https://api.exa.ai/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': EXA_API_KEY2 },
+          body: JSON.stringify(payload),
+          signal: controller.signal
+        }))
+      ];
+      const searchResponses = await Promise.all(allSearchPromises);
+      if (searchResponses.some(r => !r.ok)) {
         clearTimeout(timeoutId);
-        const errorData = await searchResponse.text();
-        console.error('Exa search API error:', errorData);
+        const errorData = await Promise.all(searchResponses.map(r => r.ok ? '' : r.text()));
+        console.error('Exa search API error:', errorData.join(' | '));
         return new Response(JSON.stringify({ error: 'Failed to fetch search results' }), {
-          status: searchResponse.status,
+          status: 500,
           headers: { 'Content-Type': 'application/json' }
         });
       }
-
-      const searchData = await searchResponse.json() as ExaSearchResponse;
-      
-      console.log('Step 1 complete:', {
-        requestId: searchData.requestId,
-        searchType: searchData.resolvedSearchType,
-        resultsFound: searchData.results.length
-      });
-
+      const searchDatas = await Promise.all(searchResponses.map(r => r.json() as Promise<ExaSearchResponse>));
+      // Combine all results, deduplicate by URL
+      const combinedResults: ExaSearchResult[] = [];
+      const existingUrls = new Set<string>();
+      for (const data of searchDatas) {
+        for (const result of data.results) {
+          if (!existingUrls.has(result.url)) {
+            combinedResults.push(result);
+            existingUrls.add(result.url);
+          }
+        }
+      }
+      // No slicing, keep all results
+      const topResults = combinedResults;
       // Extract URLs for contents request
-      const urls = searchData.results.map(result => result.url);
+      const urls = topResults.map(result => result.url);
       
       console.log('Step 2: Fetching contents and summaries for', urls.length, 'URLs...');
 
-      // Step 2: Get summaries from contents endpoint
+      // Step 2: Get summaries from contents endpoint using both API keys for better rate limits
       const contentsPayload = {
         ids: urls,
         summary: true,
-        text: false, // We only want summaries, not full text
+        text: false, // Only fetch summaries, not full text
         highlights: false,
         extras: {
           imageLinks: 5
         }
       };
 
-      const contentsResponse = await fetch('https://api.exa.ai/contents', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': EXA_API_KEY,
-        },
-        body: JSON.stringify(contentsPayload),
-        signal: controller.signal
-      });
+      // Split URLs in half to distribute between the two API keys
+      const halfIndex = Math.ceil(urls.length / 2);
+      const firstHalfUrls = urls.slice(0, halfIndex);
+      const secondHalfUrls = urls.slice(halfIndex);
+
+      const contentsPayload1 = {
+        ...contentsPayload,
+        ids: firstHalfUrls
+      };
+
+      const contentsPayload2 = {
+        ...contentsPayload,
+        ids: secondHalfUrls
+      };
+
+      const [contentsResponse1, contentsResponse2] = await Promise.all([
+        fetch('https://api.exa.ai/contents', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': EXA_API_KEY,
+          },
+          body: JSON.stringify(contentsPayload1),
+          signal: controller.signal
+        }),
+        secondHalfUrls.length > 0 ? fetch('https://api.exa.ai/contents', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': EXA_API_KEY2,
+          },
+          body: JSON.stringify(contentsPayload2),
+          signal: controller.signal
+        }) : Promise.resolve(new Response(JSON.stringify({ results: [] })))
+      ]);
 
       clearTimeout(timeoutId);
 
-      if (!contentsResponse.ok) {
-        const errorData = await contentsResponse.text();
-        console.error('Exa contents API error:', errorData);
+      if (!contentsResponse1.ok || (secondHalfUrls.length > 0 && !contentsResponse2.ok)) {
+        const errorData1 = !contentsResponse1.ok ? await contentsResponse1.text() : '';
+        const errorData2 = secondHalfUrls.length > 0 && !contentsResponse2.ok ? await contentsResponse2.text() : '';
+        console.error('Exa contents API error:', errorData1 || errorData2);
         // Fall back to search results if contents fails
         console.log('Falling back to search results without summaries');
         
-        const fallbackResults: TransformedSearchResult[] = searchData.results.map((result, index) => ({
+        const fallbackResults: TransformedSearchResult[] = topResults.map((result, index) => ({
           id: result.id || (index + 1).toString(),
           title: result.title,
           snippet: result.snippet || 'No summary available',
@@ -159,8 +194,8 @@ export async function POST(req: NextRequest) {
             timestamp: new Date().toISOString(),
             query_processed: query,
             enhanced_mode: enhanced,
-            exa_request_id: searchData.requestId,
-            api_method: 'search_only_fallback',
+            exa_request_id: `${searchDatas[0].requestId},${searchDatas[1].requestId}`,
+            api_method: 'dual_api_search_only_fallback',
             content_retrieval: 'fallback_no_summaries'
           }
         }), {
@@ -168,20 +203,27 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      const contentsData = await contentsResponse.json() as ExaContentsResponse;
+      const contentsData1 = await contentsResponse1.json() as ExaContentsResponse;
+      const contentsData2 = secondHalfUrls.length > 0 ? 
+        await contentsResponse2.json() as ExaContentsResponse : 
+        { requestId: '', results: [] };
       
-      console.log('Step 2 complete:', {
-        requestId: contentsData.requestId,
-        contentsFound: contentsData.results.length,
-        summaryLengths: contentsData.results.map(r => r.summary ? r.summary.length : 0),
-        resultsWithImages: contentsData.results.filter(r => r.image).length,
-        resultsWithFavicons: contentsData.results.filter(r => r.favicon).length
+      // Combine content results
+      const combinedContents = [...contentsData1.results, ...contentsData2.results];
+      
+      console.log('Step 2 complete for both API keys:', {
+        requestId1: contentsData1.requestId,
+        requestId2: contentsData2.requestId || 'N/A',
+        contentsFound: combinedContents.length,
+        summaryLengths: combinedContents.map(r => r.summary ? r.summary.length : 0),
+        resultsWithImages: combinedContents.filter(r => r.image).length,
+        resultsWithFavicons: combinedContents.filter(r => r.favicon).length
       });
 
       // Merge search results with contents data
-      const mergedResults: TransformedSearchResult[] = searchData.results.map((searchResult, index) => {
+      const mergedResults: TransformedSearchResult[] = topResults.map((searchResult, index) => {
         // Find corresponding content by URL
-        const contentResult = contentsData.results.find(content => content.url === searchResult.url);
+        const contentResult = combinedContents.find(content => content.url === searchResult.url);
         
         return {
           id: searchResult.id || (index + 1).toString(),
@@ -198,7 +240,7 @@ export async function POST(req: NextRequest) {
       const contentfulResults = mergedResults.filter(r => r.summary && r.summary.length > 50);
       const totalCharacters = mergedResults.reduce((sum, r) => sum + (r.summary?.length || 0), 0);
 
-      console.log('Two-step process complete - content quality check:', {
+      console.log('Dual API key process complete - content quality check:', {
         totalResults: mergedResults.length,
         contentfulResults: contentfulResults.length,
         totalCharacters,
@@ -208,7 +250,7 @@ export async function POST(req: NextRequest) {
         estimatedTokens: Math.round(totalCharacters / 4),
       });
 
-      // Enhanced data structure for two-step results
+      // Enhanced data structure for dual API key results
       const enhancedData = {
         summaries: mergedResults.reduce((acc: any, result: any, index: number) => {
           const resultId = result.id || (index + 1).toString();
@@ -218,25 +260,25 @@ export async function POST(req: NextRequest) {
               author: null,
               publishedDate: result.timestamp || null,
               score: null,
-              searchType: searchData.resolvedSearchType || 'auto',
+              searchType: searchDatas[0].resolvedSearchType || 'auto',
               summaryLength: (result.summary || '').length
             }
           };
           return acc;
         }, {}),
         search_metadata: {
-          search_request_id: searchData.requestId,
-          contents_request_id: contentsData.requestId,
-          search_type: searchData.resolvedSearchType || 'auto',
+          search_request_id: `${searchDatas[0].requestId},${searchDatas[1].requestId}`,
+          contents_request_id: `${contentsData1.requestId},${contentsData2.requestId || 'N/A'}`,
+          search_type: searchDatas[0].resolvedSearchType || 'auto',
           total_results: mergedResults.length,
           content_available: contentfulResults.length,
           total_characters: totalCharacters,
           estimated_tokens: Math.round(totalCharacters / 4),
           cost_info: {
-            search: searchData.costDollars || null,
-            contents: contentsData.costDollars || null
+            search: (searchDatas[0].costDollars || 0) + (searchDatas[1].costDollars || 0),
+            contents: (contentsData1.costDollars || 0) + (contentsData2.costDollars || 0)
           },
-          optimization: 'two_step_search_and_contents'
+          optimization: 'dual_api_key_search_and_contents'
         }
       };
 
@@ -248,10 +290,9 @@ export async function POST(req: NextRequest) {
           timestamp: new Date().toISOString(),
           query_processed: query,
           enhanced_mode: enhanced,
-          exa_search_request_id: searchData.requestId,
-          exa_contents_request_id: contentsData.requestId,
-          api_method: 'two_step_search_and_contents',
-          content_retrieval: 'reliable_summaries'
+          dual_api: true,
+          exa_request_id: `${searchDatas[0].requestId},${searchDatas[1].requestId}`,
+          api_method: 'dual_api_search_and_contents'
         }
       }), {
         headers: { 'Content-Type': 'application/json' }

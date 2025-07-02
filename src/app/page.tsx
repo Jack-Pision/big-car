@@ -56,6 +56,8 @@ import ImageCarousel from '@/components/ImageCarousel';
 import { ArtifactV2Service, type ArtifactV2 } from '@/lib/artifact-v2-service';
 import MindMapDisplay, { type MindMapData } from '@/components/MindMapDisplay';
 import { extractMindMapJson, isMindMapRequest } from '@/utils/mindmap-utils';
+import TaskAutomation from '@/components/TaskAutomation';
+import CubeIcon from '@/components/CubeIcon';
 
 
 // Define a type that includes all possible query types (including the ones in SCHEMAS and 'conversation')
@@ -1991,6 +1993,37 @@ function TestChatComponent(props?: TestChatProps) {
 
   const isInitialLoadRef = useRef(true);
   const sessionIdRef = useRef<string | null>(null); // Store session ID for immediate access
+  
+  // Prevent multiple simultaneous handleSend calls
+  const isHandlingSend = useRef<boolean>(false);
+  
+  // Debouncing mechanism for saveMessageInstantly to prevent 409 conflicts
+  const saveMessageTimeouts = useRef<Map<string, NodeJS.Timeout>>(new Map());
+
+  // Debouncing mechanism for saveMessageInstantly to prevent 409 conflicts
+  const debouncedSaveMessage = useCallback(async (sessionId: string, message: LocalMessage, delay: number = 100) => {
+    const messageKey = `${sessionId}-${message.id}`;
+    
+    // Clear any existing timeout for this message
+    const existingTimeout = saveMessageTimeouts.current.get(messageKey);
+    if (existingTimeout) {
+      clearTimeout(existingTimeout);
+    }
+    
+    // Set new timeout
+    const timeout = setTimeout(async () => {
+      try {
+        await saveMessageInstantly(sessionId, message);
+        console.log(`[Debounced Save] Message saved: ${message.id}`);
+      } catch (error) {
+        console.error(`[Debounced Save] Failed to save message ${message.id}:`, error);
+      } finally {
+        saveMessageTimeouts.current.delete(messageKey);
+      }
+    }, delay);
+    
+    saveMessageTimeouts.current.set(messageKey, timeout);
+  }, []);
 
   // Constants
   const BASE_HEIGHT = 48;
@@ -2068,6 +2101,15 @@ function TestChatComponent(props?: TestChatProps) {
       }
     };
   }, [abortController]);
+
+  // Cleanup effect for debounced save timeouts
+  useEffect(() => {
+    return () => {
+      // Clear all pending save timeouts on unmount
+      saveMessageTimeouts.current.forEach(timeout => clearTimeout(timeout));
+      saveMessageTimeouts.current.clear();
+    };
+  }, []);
 
   // Effect to load the active session (from URL hash, props, or saved state)
   useEffect(() => {
@@ -2183,7 +2225,8 @@ function TestChatComponent(props?: TestChatProps) {
           
           // ONLY set messages if we're not in the middle of an active conversation
           // This prevents overwriting messages during first message flow
-          if (!isAiResponding && !isLoading) {
+          // But allow setting messages if this is the initial load or if no messages exist yet
+          if ((!isAiResponding && !isLoading) || messages.length === 0) {
             setMessages(updatedMessages);
             setShowHeading(updatedMessages.length === 0);
             setHasInteracted(updatedMessages.length > 0);
@@ -2344,7 +2387,10 @@ IMPORTANT: Do NOT include citations, source numbers (like [1], [2], Source 1, et
 Remember: The user's question is your north star. Everything should serve that purpose. Quality over quantity. Uncertainty handled well builds trust. Your goal isn't just to inform, but to genuinely help the user understand and make better decisions.
 
 Transform information into understanding. Make the complex clear. Turn data into wisdom.
-Do NOT use emojis or any other unnecessary characters.`;
+Do NOT use emojis or any other unnecessary characters.
+
+IMPORTANT: Format your entire answer using markdown. Use headings, bullet points, bold, italics, and other markdown features where appropriate for clarity and readability.
+`;
   };
 
   // Handle search and AI response (integrated from browser mode)
@@ -2628,6 +2674,11 @@ Do NOT use emojis or any other unnecessary characters.`;
     }
   }, [liveReasoning]);
 
+  // Memoize streaming states to prevent infinite re-renders
+  const streamingStates = useMemo(() => {
+    return messages.map(m => m.isStreaming).join(',');
+  }, [messages]);
+
   // Auto-scroll during any AI response or live reasoning (simplified and reliable)
   useEffect(() => {
     let scrollTimeout: NodeJS.Timeout;
@@ -2649,13 +2700,23 @@ Do NOT use emojis or any other unnecessary characters.`;
         clearTimeout(scrollTimeout);
       }
     };
-  }, [messages, isAiResponding, liveReasoning]);
+  }, [streamingStates, isAiResponding, liveReasoning]);
 
 
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
-    const userMessageId = uuidv4(); // Declare at the top
+    
+    // Prevent multiple simultaneous calls
+    if (isHandlingSend.current) {
+      console.log('[HandleSend] Already processing a request, ignoring duplicate call');
+      return;
+    }
+    
+    isHandlingSend.current = true;
+    
+    try {
+      const userMessageId = uuidv4(); // Declare at the top
 
     // Handle image analysis if we have selected files
     if (selectedFiles.length > 0) {
@@ -3120,7 +3181,94 @@ Do NOT use emojis or any other unnecessary characters.`;
       return;
     }
 
+    // Check if we're in cube mode (task automation)
+    if (activeButton === 'cube') {
+      // Ensure we have an active session
+      const currentActiveSessionId = await ensureActiveSession(input.trim());
 
+      if (!hasInteracted) setHasInteracted(true);
+      if (showHeading) setShowHeading(false);
+
+      // Add user message and save instantly
+      const userMessageId = uuidv4();
+      const userMessage: LocalMessage = {
+        role: 'user',
+        id: userMessageId,
+        content: input,
+        timestamp: Date.now(),
+        isProcessed: true,
+        contentType: 'task_automation'
+      };
+      
+      setMessages(prev => [...prev, userMessage]);
+      
+      // Save user message instantly
+      try {
+        await debouncedSaveMessage(currentActiveSessionId, userMessage);
+        console.log('[Cube Mode] User message saved instantly');
+      } catch (error) {
+        console.error('[Cube Mode] Failed to instantly save user message:', error);
+      }
+      
+      setInput('');
+      setIsLoading(true);
+      setIsAiResponding(true);
+
+      // Create AI message placeholder for task automation
+      const aiMessageId = uuidv4();
+      const aiMessage: LocalMessage = {
+        role: 'assistant',
+        id: aiMessageId,
+        content: 'Creating task automation plan...',
+        timestamp: Date.now(),
+        parentId: userMessageId,
+        contentType: 'task_automation',
+        isStreaming: true,
+        isProcessed: false
+      };
+      
+      setMessages(prev => [...prev, aiMessage]);
+      
+      try {
+        // Save AI placeholder message
+        await debouncedSaveMessage(currentActiveSessionId, aiMessage);
+        console.log('[Cube Mode] AI placeholder message saved');
+      } catch (error) {
+        console.error('[Cube Mode] Failed to save AI placeholder message:', error);
+      }
+
+      // Final completion message
+      const finalAiMessage: LocalMessage = {
+        role: 'assistant',
+        id: aiMessageId,
+        content: `Task automation plan created for: "${input.trim()}"`,
+        timestamp: Date.now(),
+        parentId: userMessageId,
+        contentType: 'task_automation',
+        isStreaming: false,
+        isProcessed: true
+      };
+
+      // Update the AI message as completed
+      setMessages(prev => prev.map(msg => 
+        msg.id === aiMessageId ? finalAiMessage : msg
+      ));
+
+      // Save final message
+      try {
+        await debouncedSaveMessage(currentActiveSessionId, finalAiMessage);
+        console.log('[Cube Mode] Final AI message saved');
+      } catch (error) {
+        console.error('[Cube Mode] Failed to save final AI message:', error);
+      }
+
+      // Complete the interaction
+      setIsLoading(false);
+      setIsAiResponding(false);
+      setActiveButton(null); // Reset cube mode
+
+      return;
+    }
 
     // If we get here, we're in default chat mode
     try {
@@ -3565,6 +3713,14 @@ Do NOT use emojis or any other unnecessary characters.`;
       setIsLoading(false);
       setAbortController(null);
     }
+    } catch (error) {
+      console.error('[HandleSend] Error in handleSend:', error);
+      setIsAiResponding(false);
+      setIsLoading(false);
+      setAbortController(null);
+    } finally {
+      isHandlingSend.current = false;
+    }
   }
 
   function handleStopAIResponse() {
@@ -3780,6 +3936,8 @@ Do NOT use emojis or any other unnecessary characters.`;
           return <ReasoningDisplay data={msg.structuredContent as string} />;
         case 'mind_map':
           return <MindMapDisplay data={msg.structuredContent as MindMapData} />;
+        case 'task_automation':
+          return renderTaskAutomationMessage(msg, messages.findIndex(m => m.id === msg.id));
         default:
           if (typeof msg.structuredContent === 'string') {
             return <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex]} className="prose dark:prose-invert max-w-none">{msg.structuredContent}</ReactMarkdown>;
@@ -4451,7 +4609,32 @@ Do NOT use emojis or any other unnecessary characters.`;
     );
   };
 
-
+  // Render task automation messages
+  const renderTaskAutomationMessage = (msg: LocalMessage, i: number) => {
+    return (
+      <React.Fragment key={msg.id + '-task-automation-' + i}>
+        <motion.div
+          key={msg.id + '-task-automation-unified-' + i}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
+          className="w-full text-left flex flex-col items-start ai-response-text mb-4 relative"
+          style={{ color: '#FCFCFC', maxWidth: '100%', overflowWrap: 'break-word' }}
+        >
+          <TaskAutomation
+            isVisible={true}
+            userQuery={msg.role === 'user' ? msg.content : ''}
+            onTaskComplete={(result) => {
+              console.log('[Task Automation] Task completed:', result);
+            }}
+            onError={(error) => {
+              console.error('[Task Automation] Error:', error);
+            }}
+          />
+        </motion.div>
+      </React.Fragment>
+    );
+  };
 
                 return (
     <>
@@ -4466,13 +4649,13 @@ Do NOT use emojis or any other unnecessary characters.`;
         <GlobalStyles />
       {/* Single Header: always visible on all devices - constrained to left pane when right pane is open */}
       <header 
-        className="fixed top-0 left-0 z-50 bg-[#0A0A0A] h-14 flex items-center px-4"
+        className="fixed top-0 left-0 z-50 bg-[#0A0A0A] h-14 flex items-center px-4 text-white"
         style={{
           width: isArtifactMode ? `${100 - artifactViewerWidth}%` : (isSearchPaneOpen && activeMode !== 'search' ? 'calc(100% - 296px)' : '100%')
         }}
       >
         <HamburgerMenu open={sidebarOpen} onClick={() => setSidebarOpen(o => !o)} />
-        <img src="/Logo.svg" alt="Logo" className="ml-3" style={{ width: 90, height: 90 }} />
+        <span className="ml-3 text-2xl font-normal tracking-wide">Tehom AI</span>
         {/* Share Button - right corner */}
         {activeSessionId && (
           <button
