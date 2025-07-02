@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { signOut } from '@/lib/auth';
-import { X, LogOut, User, Shield, HelpCircle } from 'lucide-react';
+import { X, LogOut, User, Shield, HelpCircle, FileText } from 'lucide-react';
 import Image from 'next/image';
 import toast from 'react-hot-toast';
 
@@ -142,6 +142,19 @@ export default function SettingsModal({ isOpen, onClose, user, onSignOut }: Sett
                       <p className="text-sm text-neutral-400">Get help and contact support</p>
                   </div>
                 </button>
+
+                  <a 
+                    href="/terms" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-neutral-700 transition-colors text-left"
+                  >
+                    <FileText size={20} className="text-neutral-400" />
+                    <div>
+                      <p className="font-medium text-neutral-100">Terms of Use</p>
+                      <p className="text-sm text-neutral-400">Read our terms and conditions</p>
+                    </div>
+                  </a>
               </div>
 
               {/* Sign Out Button */}
