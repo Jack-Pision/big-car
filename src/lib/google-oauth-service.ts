@@ -217,25 +217,119 @@ export class GoogleOAuthService {
     return response.json();
   }
 
-  // Check which Google services are accessible with current scopes
+  // Get available Google services based on current scopes
   getAvailableServices(): string[] {
+    const scopeMappings: Record<string, string> = {
+      'https://www.googleapis.com/auth/gmail.modify': 'gmail',
+      'https://www.googleapis.com/auth/calendar': 'calendar',
+      'https://www.googleapis.com/auth/drive': 'drive',
+      'https://www.googleapis.com/auth/documents': 'docs',
+      'https://www.googleapis.com/auth/spreadsheets': 'sheets'
+    };
+
     if (!this.credentials?.scope) return [];
 
-    const scope = this.credentials.scope;
-    const services: string[] = [];
-
-    if (scope.includes('gmail')) services.push('gmail');
-    if (scope.includes('calendar')) services.push('calendar');
-    if (scope.includes('drive')) services.push('drive');
-    if (scope.includes('docs')) services.push('docs');
-    if (scope.includes('sheets')) services.push('sheets');
-
-    return services;
+    return Object.entries(scopeMappings)
+      .filter(([scope]) => this.credentials!.scope.includes(scope))
+      .map(([_, service]) => service);
   }
 
   // Update configuration
   updateConfig(config: Partial<GoogleOAuthConfig>): void {
     this.config = { ...this.config, ...config };
+  }
+
+  // Enhanced scope management
+  async requestAdditionalScopes(additionalScopes: string[]): Promise<GoogleAuthCredentials> {
+    // Generate new auth URL with additional scopes
+    const scopesToAdd = additionalScopes.filter(
+      scope => !this.credentials?.scope.includes(scope)
+    );
+
+    if (scopesToAdd.length === 0) {
+      return this.credentials!;
+    }
+
+    const newScopes = [
+      ...(this.credentials?.scope.split(' ') || []),
+      ...scopesToAdd
+    ];
+
+    const params = new URLSearchParams({
+      client_id: this.config.clientId,
+      redirect_uri: this.config.redirectUri,
+      response_type: 'code',
+      scope: newScopes.join(' '),
+      access_type: 'offline',
+      prompt: 'consent'
+    });
+
+    // Redirect user to new consent screen
+    window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+
+    // This will trigger a page redirect, so this line won't be reached
+    throw new Error('Redirecting to Google OAuth consent screen');
+  }
+
+  // Comprehensive scope validation
+  validateScopes(requiredScopes: string[]): boolean {
+    if (!this.credentials?.scope) return false;
+
+    const currentScopes = this.credentials.scope.split(' ');
+    return requiredScopes.every(scope => 
+      currentScopes.includes(scope)
+    );
+  }
+
+  // Enhanced token refresh with more robust error handling
+  async refreshAccessTokenWithRetry(maxRetries = 3): Promise<GoogleAuthCredentials> {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const response = await fetch('https://oauth2.googleapis.com/token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            client_id: this.config.clientId,
+            client_secret: this.config.clientSecret,
+            refresh_token: this.credentials!.refreshToken,
+            grant_type: 'refresh_token',
+          }),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Token refresh failed: ${errorText}`);
+        }
+
+        const tokenData: GoogleTokenResponse = await response.json();
+        
+        const updatedCredentials: GoogleAuthCredentials = {
+          ...this.credentials!,
+          accessToken: tokenData.access_token,
+          expiresAt: Date.now() + (tokenData.expires_in * 1000),
+        };
+
+        await this.storeCredentials(updatedCredentials);
+        this.credentials = updatedCredentials;
+        
+        return updatedCredentials;
+      } catch (error) {
+        console.error(`Token refresh attempt ${attempt} failed:`, error);
+        
+        if (attempt === maxRetries) {
+          // Final attempt failed, clear credentials
+          this.revokeAccess();
+          throw new Error('Failed to refresh access token after multiple attempts');
+        }
+
+        // Wait before retrying (exponential backoff)
+        await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
+      }
+    }
+
+    throw new Error('Unexpected error in token refresh');
   }
 }
 

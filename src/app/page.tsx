@@ -1835,6 +1835,8 @@ function TestChatComponent(props?: TestChatProps) {
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
   const [activeMode, setActiveMode] = useState<'chat' | 'search'>('chat');
   const [activeButton, setActiveButton] = useState<string | null>(null);
+  const [isTaskAutomationMode, setIsTaskAutomationMode] = useState(false);
+  const [taskAutomationQuery, setTaskAutomationQuery] = useState<string>('');
   const [chatError, setChatError] = useState<string | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
@@ -4002,6 +4004,55 @@ IMPORTANT: Format your entire answer using markdown. Use headings, bullet points
     }
   };
 
+  // Task automation handler
+  const handleTaskAutomation = async () => {
+    if (!input.trim()) {
+      toast.error('Please enter a task to automate', {
+        duration: 2000,
+        position: 'bottom-center',
+        style: {
+          background: '#333',
+          color: '#fff',
+        },
+      });
+      return;
+    }
+
+    const userQuery = input.trim();
+    setTaskAutomationQuery(userQuery);
+    setIsTaskAutomationMode(true);
+    
+    // Create a user message for the task
+    const userMessage: LocalMessage = {
+      role: 'user',
+      content: userQuery,
+      id: `user-${Date.now()}`,
+      timestamp: Date.now(),
+    };
+
+    // Create an assistant message for task automation
+    const assistantMessage: LocalMessage = {
+      role: 'assistant',
+      content: 'Task automation initiated...',
+      id: `assistant-${Date.now()}`,
+      timestamp: Date.now(),
+      query: userQuery, // Store the original query
+    };
+
+    // Add messages to state
+    setMessages(prev => [...prev, userMessage, assistantMessage]);
+    
+    // Clear input
+    setInput('');
+    
+    // Ensure we have an active session
+    const sessionId = await ensureActiveSession(userQuery);
+    
+    // Save messages
+    await debouncedSaveMessage(sessionId, userMessage);
+    await debouncedSaveMessage(sessionId, assistantMessage);
+  };
+
   // Add helper function to convert LocalMessage[] to ConversationMessage[] by type casting
   function convertToConversationMessages(messages: LocalMessage[]): ConversationMessage[] {
     // This filters out search-ui messages and search results since ConversationMessage doesn't support those roles
@@ -4827,6 +4878,19 @@ IMPORTANT: Format your entire answer using markdown. Use headings, bullet points
                       </svg>
                     </button>
 
+                    {/* Task Automation button */}
+                    <button
+                      type="button"
+                      className={`flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 ${isTaskAutomationMode ? 'border' : 'hover:brightness-150'}`}
+                      style={{ color: isTaskAutomationMode ? '#FCFCFC' : 'rgba(252, 252, 252, 0.6)', borderColor: isTaskAutomationMode ? '#FCFCFC' : 'transparent' }}
+                      aria-label="Task Automation"
+                      onClick={handleTaskAutomation}
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                      </svg>
+                    </button>
+
                   </div>
 
                   {/* Right group: Plus, Send */}
@@ -5021,6 +5085,19 @@ IMPORTANT: Format your entire answer using markdown. Use headings, bullet points
                         <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
                         <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
                         <line x1="12" y1="22.08" x2="12" y2="12" />
+                      </svg>
+                    </button>
+
+                    {/* Task Automation button */}
+                    <button
+                      type="button"
+                      className={`flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 ${isTaskAutomationMode ? 'border' : 'hover:brightness-150'}`}
+                      style={{ color: isTaskAutomationMode ? '#FCFCFC' : 'rgba(252, 252, 252, 0.6)', borderColor: isTaskAutomationMode ? '#FCFCFC' : 'transparent' }}
+                      aria-label="Task Automation"
+                      onClick={handleTaskAutomation}
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
                       </svg>
                     </button>
 

@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { GoogleWorkspaceTools, GoogleWorkspaceTool } from './google-workspace-tools';
+import { getGoogleOAuthService } from './google-oauth-service';
 
 // Note: This service provides LangChain-like functionality without the actual LangChain packages
 // to avoid dependency conflicts in production deployments
@@ -933,6 +935,84 @@ Return a JSON object with suggestions and an optimized plan if possible.`;
     
     console.log('[TaskAutomation] Auth check result:', result);
     return result;
+  }
+
+  async getWorkspaceTools(): Promise<GoogleWorkspaceTool[]> {
+    const oauthService = getGoogleOAuthService();
+    
+    // Check if authenticated
+    if (!oauthService.isAuthenticated()) {
+      throw new Error('Not authenticated with Google');
+    }
+
+    const credentials = oauthService.getCredentials();
+    if (!credentials) {
+      throw new Error('No Google credentials available');
+    }
+
+    return GoogleWorkspaceTools.getWorkspaceTools(credentials);
+  }
+
+  async executeToolBasedTask(
+    task: Task, 
+    onProgress?: (progress: TaskProgress) => void
+  ): Promise<TaskProgress> {
+    try {
+      const workspaceTools = await this.getWorkspaceTools();
+      
+      // Find matching tool
+      const matchedTool = workspaceTools.find(tool => 
+        task.automationType.toLowerCase().includes(tool.name.toLowerCase())
+      );
+
+      if (!matchedTool) {
+        throw new Error(`No tool found for task type: ${task.automationType}`);
+      }
+
+      // Check required scopes
+      const oauthService = getGoogleOAuthService();
+      const missingScopes = matchedTool.requiredScopes.filter(
+        scope => !oauthService.validateScopes([scope])
+      );
+
+      if (missingScopes.length > 0) {
+        // Request additional scopes
+        await oauthService.requestAdditionalScopes(missingScopes);
+        throw new Error('Additional scopes required. Redirecting to consent screen.');
+      }
+
+      // Execute tool
+      const result = await matchedTool.execute(
+        task.description, 
+        oauthService.getCredentials()!
+      );
+
+      // Update progress
+      const progress: TaskProgress = {
+        taskId: task.id,
+        progress: 100,
+        status: 'completed',
+        logs: [`Task executed successfully: ${task.title}`],
+        result
+      };
+
+      onProgress?.(progress);
+      return progress;
+
+    } catch (error) {
+      console.error('Tool execution failed:', error);
+      
+      const errorProgress: TaskProgress = {
+        taskId: task.id,
+        progress: 0,
+        status: 'failed',
+        logs: [`Error: ${error instanceof Error ? error.message : 'Unknown error'}`],
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+
+      onProgress?.(errorProgress);
+      return errorProgress;
+    }
   }
 }
 

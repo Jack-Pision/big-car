@@ -4,8 +4,29 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Play, Pause, Square, RotateCcw, Clock, CheckCircle, AlertCircle, Zap, Shield } from 'lucide-react';
 import { LangChainTaskService, Task, TaskPlan, TaskProgress, GoogleAuthCredentials } from '../lib/langchain-task-service';
-import { getGoogleOAuthService } from '../lib/google-oauth-service';
+import { getGoogleOAuthService, DEFAULT_SCOPES } from '../lib/google-oauth-service';
 import GoogleOAuthModal from './GoogleOAuthModal';
+import { GoogleWorkspaceTools } from '@/lib/google-workspace-tools';
+
+type AutomationType = 
+  | 'web_search' 
+  | 'email' 
+  | 'calendar' 
+  | 'document' 
+  | 'social_media' 
+  | 'data_analysis' 
+  | 'api_call'
+  | 'create_document'
+  | 'search_files'
+  | 'create_calendar_event';
+
+interface Task {
+  id: string;
+  title: string;
+  description: string;
+  automationType: AutomationType;
+  googleServiceRequired?: 'gmail' | 'calendar' | 'drive' | 'docs' | 'sheets' | 'none';
+}
 
 interface TaskAutomationProps {
   isVisible: boolean;
@@ -34,6 +55,10 @@ const TaskAutomation: React.FC<TaskAutomationProps> = ({
     reason: string;
   } | null>(null);
   const [showOAuthModal, setShowOAuthModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [availableTools, setAvailableTools] = useState<string[]>([]);
+  const [isGoogleAuthenticated, setIsGoogleAuthenticated] = useState(false);
   
   console.log('[TaskAutomation] Component initialized with props:', { isVisible, userQuery });
 
@@ -43,25 +68,33 @@ const TaskAutomation: React.FC<TaskAutomationProps> = ({
     
     const initializeAndPlan = async () => {
       if (!userQuery || !userQuery.trim() || !isVisible) {
-        console.log('[TaskAutomation] Conditions not met:', { 
-          hasUserQuery: !!userQuery, 
-          queryTrimmed: userQuery?.trim(), 
-          isVisible 
-        });
+        console.log('[TaskAutomation] Early return:', { userQuery, isVisible });
         return;
       }
 
       try {
-        // Initialize OAuth service
-        console.log('[TaskAutomation] Initializing OAuth service...');
-        getGoogleOAuthService();
-        console.log('[TaskAutomation] OAuth service initialized successfully');
+        // Initialize OAuth service if not already initialized
+        let oauthService: any;
+        try {
+          oauthService = getGoogleOAuthService();
+        } catch (e) {
+          // Not initialized, so initialize with config
+          oauthService = getGoogleOAuthService({
+            clientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '',
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+            redirectUri: `${window.location.origin}/auth/google/callback`,
+            scopes: DEFAULT_SCOPES
+          });
+          console.log('[TaskAutomation] OAuth service initialized with config');
+        }
+        console.log('[TaskAutomation] OAuth service ready');
         
         // Start task planning
         console.log('[TaskAutomation] Starting task planning process...');
         await checkAuthAndCreatePlan(userQuery);
       } catch (error) {
         console.error('[TaskAutomation] Initialization failed:', error);
+        setErrorMessage(error instanceof Error ? error.message : 'Failed to initialize task automation');
         onError?.(error instanceof Error ? error.message : 'Failed to initialize task automation');
       }
     };
@@ -69,12 +102,32 @@ const TaskAutomation: React.FC<TaskAutomationProps> = ({
     initializeAndPlan();
   }, [userQuery, isVisible]); // Only re-run when these values change
 
+  useEffect(() => {
+    // Check Google authentication status
+    const checkAuthStatus = async () => {
+      const authenticated = getGoogleOAuthService().isAuthenticated();
+      setIsGoogleAuthenticated(authenticated);
+
+      if (authenticated) {
+        try {
+          const tools = await taskService.getWorkspaceTools();
+          setAvailableTools(tools.map(tool => tool.name));
+        } catch (error) {
+          console.error('Failed to fetch workspace tools:', error);
+        }
+      }
+    };
+
+    checkAuthStatus();
+  }, []);
+
   const checkAuthAndCreatePlan = async (query: string) => {
     console.log('[TaskAutomation] checkAuthAndCreatePlan called with:', query);
     setIsCheckingAuth(true);
     setTaskPlan(null);
     setTaskProgress({});
     setAuthCheckResult(null);
+    setErrorMessage(null);
     
     try {
       console.log('[TaskAutomation] Checking Google Auth requirements...');
@@ -101,7 +154,8 @@ const TaskAutomation: React.FC<TaskAutomationProps> = ({
       // Create task plan
       await createTaskPlan(query);
     } catch (error) {
-      console.error('Error checking auth requirements:', error);
+      console.error('[TaskAutomation] Error checking auth requirements:', error);
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to check authentication requirements');
       onError?.(error instanceof Error ? error.message : 'Failed to check authentication requirements');
     } finally {
       setIsCheckingAuth(false);
@@ -116,8 +170,12 @@ const TaskAutomation: React.FC<TaskAutomationProps> = ({
       const plan = await taskService.planTasks(query);
       console.log('[TaskAutomation] Task plan created successfully:', plan);
       setTaskPlan(plan);
+      if (!plan || !plan.tasks || plan.tasks.length === 0) {
+        setErrorMessage('No tasks were generated for this query.');
+      }
     } catch (error) {
-      console.error('Error creating task plan:', error);
+      console.error('[TaskAutomation] Error creating task plan:', error);
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to create task plan');
       onError?.(error instanceof Error ? error.message : 'Failed to create task plan');
     } finally {
       setIsPlanning(false);
@@ -214,6 +272,87 @@ const TaskAutomation: React.FC<TaskAutomationProps> = ({
 
   const getProgressPercentage = (taskId: string): number => {
     return taskProgress[taskId]?.progress || 0;
+  };
+
+  const handleGoogleAuth = () => {
+    const requiredScopes = [
+      'https://www.googleapis.com/auth/documents',
+      'https://www.googleapis.com/auth/drive',
+      'https://www.googleapis.com/auth/calendar'
+    ];
+    oauthService.requestAdditionalScopes(requiredScopes);
+  };
+
+  const createTask = (taskType: string) => {
+    const newTask: Task = {
+      id: `task_${Date.now()}`,
+      title: `${taskType.replace('_', ' ').toUpperCase()} Task`,
+      description: `Perform ${taskType} operation`,
+      automationType: taskType as AutomationType,
+      googleServiceRequired: taskType.split('_')[0] as any
+    };
+
+    setTasks(prevTasks => [...prevTasks, newTask]);
+    executeTask(newTask);
+  };
+
+  const executeTask = async (task: Task) => {
+    try {
+      const progress = await taskService.executeTask(task, (updatedProgress) => {
+        setTaskProgress(prev => ({
+          ...prev,
+          [task.id]: updatedProgress
+        }));
+      });
+
+      setTaskProgress(prev => ({
+        ...prev,
+        [task.id]: progress
+      }));
+    } catch (error) {
+      console.error('Task execution failed:', error);
+      setTaskProgress(prev => ({
+        ...prev,
+        [task.id]: {
+          taskId: task.id,
+          progress: 0,
+          status: 'failed',
+          logs: [`Error: ${error instanceof Error ? error.message : 'Unknown error'}`],
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }
+      }));
+    }
+  };
+
+  const renderTaskProgress = (taskId: string) => {
+    const progress = taskProgress[taskId];
+    if (!progress) return null;
+
+    return (
+      <div className="mt-2 p-2 bg-gray-100 rounded">
+        <div className="flex justify-between">
+          <span>Status: {progress.status}</span>
+          <span>Progress: {progress.progress}%</span>
+        </div>
+        {progress.logs && (
+          <div className="mt-1 text-sm text-gray-600">
+            {progress.logs.map((log, index) => (
+              <div key={index}>{log}</div>
+            ))}
+          </div>
+        )}
+        {progress.result && (
+          <div className="mt-1 text-sm text-green-600">
+            Result: {JSON.stringify(progress.result, null, 2)}
+          </div>
+        )}
+        {progress.error && (
+          <div className="mt-1 text-sm text-red-600">
+            Error: {progress.error}
+          </div>
+        )}
+      </div>
+    );
   };
 
   if (!isVisible) return null;
@@ -503,6 +642,16 @@ const TaskAutomation: React.FC<TaskAutomationProps> = ({
             </div>
           )}
         </div>
+        {errorMessage && (
+          <div className="bg-red-900/20 border border-red-600/30 rounded-lg p-4 m-4">
+            <span className="text-red-400 font-bold">Error:</span> <span className="text-red-200">{errorMessage}</span>
+          </div>
+        )}
+        {!isPlanning && !isCheckingAuth && !taskPlan && !errorMessage && (
+          <div className="bg-yellow-900/20 border border-yellow-600/30 rounded-lg p-4 m-4">
+            <span className="text-yellow-400 font-bold">No task plan generated.</span>
+          </div>
+        )}
       </div>
 
       {/* Google OAuth Modal */}
