@@ -14,13 +14,13 @@ export default function HamburgerMenu({ open, onClick }: HamburgerMenuProps) {
       tabIndex={0}
     >
       <span className="sr-only">{open ? 'Close menu' : 'Open menu'}</span>
-      <span className="flex items-center justify-center w-6 h-6">
-        {/* New static SVG icon */}
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeLinecap="round" strokeLinejoin="round" height="24" width="24">
-          <desc>
-            Columns 2 Streamline Icon: https://streamlinehq.com
-          </desc>
-          <path d="M3 4a1 1 0 0 1 1 -1h16a1 1 0 0 1 1 1v16a1 1 0 0 1 -1 1H4a1 1 0 0 1 -1 -1zm9 -1v18" strokeWidth="2"></path>
+      <span className="flex items-center justify-center w-8 h-8">
+        {/* Updated static SVG icon to new menu icon */}
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 140" width="32" height="32" fill="none" stroke="currentColor" strokeWidth="12" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="20" y="20" width="40" height="40" rx="12"/>
+          <rect x="80" y="20" width="40" height="40" rx="12"/>
+          <rect x="20" y="80" width="40" height="40" rx="12"/>
+          <rect x="80" y="80" width="40" height="40" rx="12"/>
         </svg>
       </span>
     </button>
