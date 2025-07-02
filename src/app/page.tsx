@@ -56,8 +56,6 @@ import ImageCarousel from '@/components/ImageCarousel';
 import { ArtifactV2Service, type ArtifactV2 } from '@/lib/artifact-v2-service';
 import MindMapDisplay, { type MindMapData } from '@/components/MindMapDisplay';
 import { extractMindMapJson, isMindMapRequest } from '@/utils/mindmap-utils';
-import TaskAutomation from '@/components/TaskAutomation';
-import CubeIcon from '@/components/CubeIcon';
 
 
 // Define a type that includes all possible query types (including the ones in SCHEMAS and 'conversation')
@@ -1835,8 +1833,6 @@ function TestChatComponent(props?: TestChatProps) {
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
   const [activeMode, setActiveMode] = useState<'chat' | 'search'>('chat');
   const [activeButton, setActiveButton] = useState<string | null>(null);
-  const [isTaskAutomationMode, setIsTaskAutomationMode] = useState(false);
-  const [taskAutomationQuery, setTaskAutomationQuery] = useState<string>('');
   const [chatError, setChatError] = useState<string | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
@@ -3183,73 +3179,7 @@ IMPORTANT: Format your entire answer using markdown. Use headings, bullet points
       return;
     }
 
-    // Check if we're in cube mode (task automation)
-    if (activeButton === 'cube') {
-      console.log('[Cube Mode] Handling cube mode input:', input);
-      
-      // Ensure we have an active session
-      const currentActiveSessionId = await ensureActiveSession(input.trim());
 
-      if (!hasInteracted) setHasInteracted(true);
-      if (showHeading) setShowHeading(false);
-
-      // Add user message and save instantly
-      const userMessageId = uuidv4();
-      const userMessage: LocalMessage = {
-        role: 'user',
-        id: userMessageId,
-        content: input,
-        timestamp: Date.now(),
-        isProcessed: true,
-        contentType: 'task_automation'
-      };
-      
-      setMessages(prev => [...prev, userMessage]);
-      
-      // Save user message instantly
-      try {
-        await saveMessageInstantly(currentActiveSessionId, userMessage);
-        console.log('[Cube Mode] User message saved instantly');
-      } catch (error) {
-        console.error('[Cube Mode] Failed to instantly save user message:', error);
-      }
-      
-      setInput('');
-      setIsLoading(true);
-      setIsAiResponding(true);
-
-      // Create AI message that will trigger TaskAutomation component
-      const aiMessageId = uuidv4();
-      const aiMessage: LocalMessage = {
-        role: 'assistant',
-        id: aiMessageId,
-        content: 'Starting task automation...', // Placeholder content
-        timestamp: Date.now(),
-        parentId: userMessageId,
-        contentType: 'task_automation',
-        isStreaming: false,
-        isProcessed: true,
-        // Store the original user query for TaskAutomation component
-        query: input.trim()
-      };
-      
-      setMessages(prev => [...prev, aiMessage]);
-      
-      try {
-        // Save AI message
-        await saveMessageInstantly(currentActiveSessionId, aiMessage);
-        console.log('[Cube Mode] AI message saved for TaskAutomation rendering');
-      } catch (error) {
-        console.error('[Cube Mode] Failed to save AI message:', error);
-      }
-
-      // Complete the interaction immediately - TaskAutomation will handle the rest
-      setIsLoading(false);
-      setIsAiResponding(false);
-      console.log('[Cube Mode] Setup complete, TaskAutomation should now trigger');
-
-      return;
-    }
 
     // If we get here, we're in default chat mode
     try {
@@ -3917,8 +3847,6 @@ IMPORTANT: Format your entire answer using markdown. Use headings, bullet points
           return <ReasoningDisplay data={msg.structuredContent as string} />;
         case 'mind_map':
           return <MindMapDisplay data={msg.structuredContent as MindMapData} />;
-        case 'task_automation':
-          return renderTaskAutomationMessage(msg, messages.findIndex(m => m.id === msg.id));
         default:
           if (typeof msg.structuredContent === 'string') {
             return <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex]} className="prose dark:prose-invert max-w-none">{msg.structuredContent}</ReactMarkdown>;
@@ -4002,55 +3930,6 @@ IMPORTANT: Format your entire answer using markdown. Use headings, bullet points
         setIsArtifactMode(false);
       }
     }
-  };
-
-  // Task automation handler
-  const handleTaskAutomation = async () => {
-    if (!input.trim()) {
-      toast.error('Please enter a task to automate', {
-        duration: 2000,
-        position: 'bottom-center',
-        style: {
-          background: '#333',
-          color: '#fff',
-        },
-      });
-      return;
-    }
-
-    const userQuery = input.trim();
-    setTaskAutomationQuery(userQuery);
-    setIsTaskAutomationMode(true);
-    
-    // Create a user message for the task
-    const userMessage: LocalMessage = {
-      role: 'user',
-      content: userQuery,
-      id: `user-${Date.now()}`,
-      timestamp: Date.now(),
-    };
-
-    // Create an assistant message for task automation
-    const assistantMessage: LocalMessage = {
-      role: 'assistant',
-      content: 'Task automation initiated...',
-      id: `assistant-${Date.now()}`,
-      timestamp: Date.now(),
-      query: userQuery, // Store the original query
-    };
-
-    // Add messages to state
-    setMessages(prev => [...prev, userMessage, assistantMessage]);
-    
-    // Clear input
-    setInput('');
-    
-    // Ensure we have an active session
-    const sessionId = await ensureActiveSession(userQuery);
-    
-    // Save messages
-    await debouncedSaveMessage(sessionId, userMessage);
-    await debouncedSaveMessage(sessionId, assistantMessage);
   };
 
   // Add helper function to convert LocalMessage[] to ConversationMessage[] by type casting
@@ -4639,50 +4518,7 @@ IMPORTANT: Format your entire answer using markdown. Use headings, bullet points
     );
   };
 
-  // Render task automation messages
-  const renderTaskAutomationMessage = (msg: LocalMessage, i: number) => {
-    console.log('[Cube Mode] Rendering TaskAutomation for message:', msg);
-    console.log('[Cube Mode] Message role:', msg.role, 'Content:', msg.content, 'Query:', msg.query);
-    
-    // Only render TaskAutomation for assistant messages
-    if (msg.role !== 'assistant') {
-      return (
-        <div className="w-full text-left mb-4 relative text-white">
-          <div className="p-4 rounded-lg bg-neutral-800">
-            {msg.content}
-          </div>
-        </div>
-      );
-    }
-    
-    // Extract the actual user query from msg.query (stored during cube mode)
-    const actualUserQuery = msg.query || msg.content;
-    console.log('[Cube Mode] Extracted user query for TaskAutomation:', actualUserQuery);
-    
-    return (
-      <React.Fragment key={msg.id + '-task-automation-' + i}>
-        <motion.div
-          key={msg.id + '-task-automation-unified-' + i}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, ease: "easeOut" }}
-          className="w-full text-left flex flex-col items-start ai-response-text mb-4 relative"
-          style={{ color: '#FCFCFC', maxWidth: '100%', overflowWrap: 'break-word' }}
-        >
-          <TaskAutomation
-            isVisible={true}
-            userQuery={actualUserQuery}
-            onTaskComplete={(result) => {
-              console.log('[Task Automation] Task completed:', result);
-            }}
-            onError={(error) => {
-              console.error('[Task Automation] Error:', error);
-            }}
-          />
-        </motion.div>
-      </React.Fragment>
-    );
-  };
+
 
                 return (
     <>
@@ -4875,19 +4711,6 @@ IMPORTANT: Format your entire answer using markdown. Use headings, bullet points
                         <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
                         <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
                         <line x1="12" y1="22.08" x2="12" y2="12" />
-                      </svg>
-                    </button>
-
-                    {/* Task Automation button */}
-                    <button
-                      type="button"
-                      className={`flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 ${isTaskAutomationMode ? 'border' : 'hover:brightness-150'}`}
-                      style={{ color: isTaskAutomationMode ? '#FCFCFC' : 'rgba(252, 252, 252, 0.6)', borderColor: isTaskAutomationMode ? '#FCFCFC' : 'transparent' }}
-                      aria-label="Task Automation"
-                      onClick={handleTaskAutomation}
-                    >
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
                       </svg>
                     </button>
 
@@ -5085,19 +4908,6 @@ IMPORTANT: Format your entire answer using markdown. Use headings, bullet points
                         <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
                         <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
                         <line x1="12" y1="22.08" x2="12" y2="12" />
-                      </svg>
-                    </button>
-
-                    {/* Task Automation button */}
-                    <button
-                      type="button"
-                      className={`flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 ${isTaskAutomationMode ? 'border' : 'hover:brightness-150'}`}
-                      style={{ color: isTaskAutomationMode ? '#FCFCFC' : 'rgba(252, 252, 252, 0.6)', borderColor: isTaskAutomationMode ? '#FCFCFC' : 'transparent' }}
-                      aria-label="Task Automation"
-                      onClick={handleTaskAutomation}
-                    >
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
                       </svg>
                     </button>
 
