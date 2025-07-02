@@ -37,40 +37,37 @@ const TaskAutomation: React.FC<TaskAutomationProps> = ({
   
   console.log('[TaskAutomation] Component initialized with props:', { isVisible, userQuery });
 
-  // Initialize Google OAuth service and immediately start task planning
+  // Single useEffect to handle initialization and task planning
   useEffect(() => {
-    console.log('[TaskAutomation] OAuth useEffect triggered');
-    try {
-      getGoogleOAuthService();
-      console.log('[TaskAutomation] OAuth service initialized successfully');
-    } catch (error) {
-      console.error('Failed to initialize OAuth service:', error);
-    }
-  }, []);
+    console.log('[TaskAutomation] useEffect triggered with:', { userQuery, isVisible });
+    
+    const initializeAndPlan = async () => {
+      if (!userQuery || !userQuery.trim() || !isVisible) {
+        console.log('[TaskAutomation] Conditions not met:', { 
+          hasUserQuery: !!userQuery, 
+          queryTrimmed: userQuery?.trim(), 
+          isVisible 
+        });
+        return;
+      }
 
-  // Check authentication requirements and create task plan
-  useEffect(() => {
-    console.log('[TaskAutomation] Main useEffect triggered with:', { userQuery, isVisible });
-    if (userQuery && userQuery.trim() && isVisible) {
-      console.log('[TaskAutomation] Conditions met, calling checkAuthAndCreatePlan');
-      checkAuthAndCreatePlan(userQuery);
-    } else {
-      console.log('[TaskAutomation] Conditions not met:', { 
-        hasUserQuery: !!userQuery, 
-        queryTrimmed: userQuery?.trim(), 
-        isVisible 
-      });
-    }
-  }, [userQuery, isVisible]);
+      try {
+        // Initialize OAuth service
+        console.log('[TaskAutomation] Initializing OAuth service...');
+        getGoogleOAuthService();
+        console.log('[TaskAutomation] OAuth service initialized successfully');
+        
+        // Start task planning
+        console.log('[TaskAutomation] Starting task planning process...');
+        await checkAuthAndCreatePlan(userQuery);
+      } catch (error) {
+        console.error('[TaskAutomation] Initialization failed:', error);
+        onError?.(error instanceof Error ? error.message : 'Failed to initialize task automation');
+      }
+    };
 
-  // Immediate call on component mount if conditions are met
-  useEffect(() => {
-    console.log('[TaskAutomation] Immediate call useEffect - checking if we should start immediately');
-    if (userQuery && userQuery.trim() && isVisible) {
-      console.log('[TaskAutomation] Immediate start - calling checkAuthAndCreatePlan');
-      checkAuthAndCreatePlan(userQuery);
-    }
-  }, []);
+    initializeAndPlan();
+  }, [userQuery, isVisible]); // Only re-run when these values change
 
   const checkAuthAndCreatePlan = async (query: string) => {
     console.log('[TaskAutomation] checkAuthAndCreatePlan called with:', query);
