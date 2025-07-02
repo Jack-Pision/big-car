@@ -902,48 +902,32 @@ Return a JSON object with suggestions and an optimized plan if possible.`;
   }> {
     console.log('[TaskAutomation] Checking Google Auth requirements for:', userInput);
 
-    // Simple heuristic to determine if Google services might be needed
-    const googleServiceKeywords = [
-      'email', 'calendar', 'drive', 'docs', 'sheets', 
-      'gmail', 'google', 'schedule', 'document'
-    ];
+    // Enhanced keyword detection for Google services
+    const serviceKeywordMap = {
+      'gmail': ['email', 'mail', 'send email', 'inbox', 'compose', 'reply'],
+      'calendar': ['calendar', 'schedule', 'appointment', 'meeting', 'event', 'remind'],
+      'docs': ['document', 'doc', 'write', 'edit document', 'google docs', 'text document'],
+      'sheets': ['spreadsheet', 'sheet', 'excel', 'data entry', 'google sheets', 'table'],
+      'drive': ['drive', 'file', 'upload', 'download', 'share file', 'google drive']
+    };
 
-    const matchedKeywords = googleServiceKeywords.filter(keyword => 
-      userInput.toLowerCase().includes(keyword)
-    );
+    const matchedServices: string[] = [];
+    const inputLower = userInput.toLowerCase();
     
-    const requiresAuth = matchedKeywords.length > 0;
-    
-    // Determine which specific services are needed
-    const services: string[] = [];
-    if (requiresAuth) {
-      if (userInput.toLowerCase().includes('email') || userInput.toLowerCase().includes('gmail')) {
-        services.push('gmail');
-      }
-      if (userInput.toLowerCase().includes('calendar') || userInput.toLowerCase().includes('schedule')) {
-        services.push('calendar');
-      }
-      if (userInput.toLowerCase().includes('doc') || userInput.toLowerCase().includes('document')) {
-        services.push('docs');
-      }
-      if (userInput.toLowerCase().includes('sheet') || userInput.toLowerCase().includes('spreadsheet')) {
-        services.push('sheets');
-      }
-      if (userInput.toLowerCase().includes('drive')) {
-        services.push('drive');
-      }
-      
-      // If no specific services were identified but we matched keywords, add a default
-      if (services.length === 0 && requiresAuth) {
-        services.push('gmail');
+    // Check each service for keyword matches
+    for (const [service, keywords] of Object.entries(serviceKeywordMap)) {
+      if (keywords.some(keyword => inputLower.includes(keyword))) {
+        matchedServices.push(service);
       }
     }
     
+    const requiresAuth = matchedServices.length > 0;
+    
     const result = {
       required: requiresAuth,
-      services: services,
+      services: matchedServices,
       reason: requiresAuth 
-        ? `Your request involves Google services: ${services.join(', ')}` 
+        ? `Your request involves Google services: ${matchedServices.join(', ')}` 
         : 'No Google services required'
     };
     

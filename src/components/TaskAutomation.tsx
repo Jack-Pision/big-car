@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Play, Pause, Square, RotateCcw, Clock, CheckCircle, AlertCircle, Zap, Shield } from 'lucide-react';
 import { LangChainTaskService, Task, TaskPlan, TaskProgress, GoogleAuthCredentials } from '../lib/langchain-task-service';
-import { getGoogleOAuthService, DEFAULT_SCOPES } from '../lib/google-oauth-service';
+import { getGoogleOAuthService } from '../lib/google-oauth-service';
 import GoogleOAuthModal from './GoogleOAuthModal';
 
 interface TaskAutomationProps {
@@ -37,17 +37,12 @@ const TaskAutomation: React.FC<TaskAutomationProps> = ({
   
   console.log('[TaskAutomation] Component initialized with props:', { isVisible, userQuery });
 
-  // Initialize Google OAuth service
+  // Initialize Google OAuth service and immediately start task planning
   useEffect(() => {
+    console.log('[TaskAutomation] OAuth useEffect triggered');
     try {
       getGoogleOAuthService();
       console.log('[TaskAutomation] OAuth service initialized successfully');
-      
-      // Immediately check auth and create plan if we have a query
-      if (userQuery && userQuery.trim() && isVisible) {
-        console.log('[TaskAutomation] Initial check - calling checkAuthAndCreatePlan');
-        checkAuthAndCreatePlan(userQuery);
-      }
     } catch (error) {
       console.error('Failed to initialize OAuth service:', error);
     }
@@ -55,7 +50,7 @@ const TaskAutomation: React.FC<TaskAutomationProps> = ({
 
   // Check authentication requirements and create task plan
   useEffect(() => {
-    console.log('[TaskAutomation] useEffect triggered with:', { userQuery, isVisible });
+    console.log('[TaskAutomation] Main useEffect triggered with:', { userQuery, isVisible });
     if (userQuery && userQuery.trim() && isVisible) {
       console.log('[TaskAutomation] Conditions met, calling checkAuthAndCreatePlan');
       checkAuthAndCreatePlan(userQuery);
@@ -67,6 +62,15 @@ const TaskAutomation: React.FC<TaskAutomationProps> = ({
       });
     }
   }, [userQuery, isVisible]);
+
+  // Immediate call on component mount if conditions are met
+  useEffect(() => {
+    console.log('[TaskAutomation] Immediate call useEffect - checking if we should start immediately');
+    if (userQuery && userQuery.trim() && isVisible) {
+      console.log('[TaskAutomation] Immediate start - calling checkAuthAndCreatePlan');
+      checkAuthAndCreatePlan(userQuery);
+    }
+  }, []);
 
   const checkAuthAndCreatePlan = async (query: string) => {
     console.log('[TaskAutomation] checkAuthAndCreatePlan called with:', query);

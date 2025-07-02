@@ -4604,6 +4604,10 @@ IMPORTANT: Format your entire answer using markdown. Use headings, bullet points
       );
     }
     
+    // Extract the actual user query from msg.query (stored during cube mode)
+    const actualUserQuery = msg.query || msg.content;
+    console.log('[Cube Mode] Extracted user query for TaskAutomation:', actualUserQuery);
+    
     return (
       <React.Fragment key={msg.id + '-task-automation-' + i}>
         <motion.div
@@ -4616,7 +4620,7 @@ IMPORTANT: Format your entire answer using markdown. Use headings, bullet points
         >
           <TaskAutomation
             isVisible={true}
-            userQuery={msg.query || msg.content}
+            userQuery={actualUserQuery}
             onTaskComplete={(result) => {
               console.log('[Task Automation] Task completed:', result);
             }}
