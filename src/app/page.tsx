@@ -53,6 +53,8 @@ import toast from 'react-hot-toast';
 import { EnhancedMarkdownRenderer } from '@/components/EnhancedMarkdownRenderer';
 import ImageCarousel from '@/components/ImageCarousel';
 import { ArtifactV2Service, type ArtifactV2 } from '@/lib/artifact-v2-service';
+import NotionAuthModal from '@/components/NotionAuthModal';
+import { notionOAuth } from '@/lib/notion-oauth';
 // import { isMindMapRequest } from '@/utils/mindmap-utils'; // Removed
 
 
@@ -98,6 +100,49 @@ Response guidelines:
 - End with questions or suggestions when it would help continue the conversation
 
 Remember: You're having a conversation with a human, Be helpful, be human-like, and be genuinely engaging.`;
+
+const CUBE_MODE_SYSTEM_PROMPT = `You are Tehom AI in Cube Mode - a powerful AI agent connected to the user's Notion workspace. You can create, manage, and organize Notion content through natural language commands.
+
+**CRITICAL JSON FORMATTING INSTRUCTIONS:**
+- ALWAYS use VALID JSON for tool call arguments
+- Ensure proper JSON syntax: {"key": "value"}
+- Use double quotes for strings
+- No trailing commas
+- Escape special characters properly
+
+Example Correct JSON:
+- ✅ {"title": "Project Meeting Notes"}
+- ✅ {"block_id": "abc123", "block_data": {"title": "Updated Section"}}
+- ❌ DO NOT USE: {title: "Notes"}, {"title": "Notes",}
+
+Your capabilities:
+- **Page Management**: Create, update, retrieve, and modify pages with rich content
+- **Block-Level Editing**: Add, update, and delete specific blocks within pages
+- **Database Operations**: Create databases, add/update entries, query with filters
+- **Content Search**: Search across the entire workspace
+- **Template Generation**: Create pre-built workflows
+- **Workspace Organization**: Structure content hierarchically
+
+Advanced Features:
+- Precise content editing
+- Database automation
+- Content retrieval
+- Bulk operations
+
+Your approach:
+- Translate user intent into precise Notion operations
+- Use exact, valid JSON for all tool calls
+- Provide clear, structured responses
+- Explain actions taken
+- Share Notion URLs when possible
+
+Templates available:
+- Project Tracker
+- Meeting Notes
+- Task Board
+- Knowledge Base
+
+Remember: Maintain strict JSON formatting for all tool interactions. Proper syntax is CRITICAL for successful execution.`;
 
 interface ProcessedResponse {
   content: string;
@@ -1774,7 +1819,7 @@ function TestChatComponent(props?: TestChatProps) {
   const [showThinkingBox, setShowThinkingBox] = useState(false);
   const [thinkingContent, setThinkingContent] = useState('');
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
-  const [activeMode, setActiveMode] = useState<'chat' | 'search'>('chat');
+  const [activeMode, setActiveMode] = useState<'chat' | 'search' | 'cube'>('chat');
   const [activeButton, setActiveButton] = useState<string | null>(null);
   const [chatError, setChatError] = useState<string | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -1924,8 +1969,38 @@ function TestChatComponent(props?: TestChatProps) {
   const [uploadedImageUrls, setUploadedImageUrls] = useState<string[]>([]);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [imageWaitingForResponse, setImageWaitingForResponse] = useState<string | null>(null);
+  
+    // Notion OAuth states
+  const [isNotionAuthModalOpen, setIsNotionAuthModalOpen] = useState(false);
+  const [isNotionAuthenticated, setIsNotionAuthenticated] = useState(false);
 
+  // Check Notion authentication status on mount
+  useEffect(() => {
+    const checkNotionAuth = () => {
+      const isAuth = notionOAuth.isAuthenticated();
+      setIsNotionAuthenticated(isAuth);
+    };
+    
+    checkNotionAuth();
+    
+    // Listen for storage changes to update auth status
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'notion_oauth_tokens') {
+        checkNotionAuth();
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
+  // Handle successful Notion authentication
+  const handleNotionAuthSuccess = () => {
+    setIsNotionAuthenticated(true);
+    setActiveButton('cube');
+    setActiveMode('cube');
+  };
+  
   // Refs
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const inputBarRef = useRef<HTMLDivElement>(null);
@@ -3286,10 +3361,19 @@ IMPORTANT: Format your entire answer using markdown. Use headings, bullet points
         const apiEndpoint = '/api/nvidia';
         
         // Determine the mode for API key selection
-        const chatMode = activeButton === 'reasoning' ? 'reasoning' : 'chat';
+        const chatMode = activeButton === 'reasoning' ? 'reasoning' : 
+                         activeMode === 'cube' ? 'cube' : 'chat';
         
         // Add mode to the API payload for proper API key selection
         apiPayload.mode = chatMode;
+        
+        // Add Notion access token for cube mode
+        if (chatMode === 'cube') {
+          const notionTokens = notionOAuth.getStoredTokens();
+          if (notionTokens) {
+            apiPayload.access_token = notionTokens.access_token;
+          }
+        }
 
         // Make fresh API call
         console.log(`[Performance] Making fresh API call to ${apiEndpoint} with mode: ${chatMode}`);
@@ -3794,27 +3878,43 @@ IMPORTANT: Format your entire answer using markdown. Use headings, bullet points
           return <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex]} className="prose dark:prose-invert max-w-none">{`Unsupported structured content: ${JSON.stringify(msg.structuredContent)}`}</ReactMarkdown>;
       }
     } else if (msg.content) {
-      const isDefaultChat = (msg.contentType === 'conversation' || msg.contentType === 'reasoning' || (msg.role === 'assistant' && !msg.contentType));
+      let content = msg.content.trim();
+      // Detect Cube Mode tool result message (contains **Tool Result:**)
+      const isCubeTool = content.includes('**Tool Result:**');
+
+      const isDefaultChat = !isCubeTool &&
+        (msg.contentType === 'conversation' || msg.contentType === 'reasoning' || (msg.role === 'assistant' && !msg.contentType));
+
       if (isDefaultChat) {
-        // Display content using standard ReactMarkdown with math rendering support
         return (
           <ReactMarkdown 
             remarkPlugins={[remarkGfm, remarkMath]} 
             rehypePlugins={[rehypeRaw, rehypeKatex]} 
             className="prose dark:prose-invert max-w-none default-chat-markdown"
           >
-            {msg.content}
+            {content}
           </ReactMarkdown>
         );
       }
-      let content = msg.content.trim();
-      if (content.startsWith('```')) {
-        content = content.replace(/^```[a-zA-Z]*\n?/, '').replace(/```$/, '').trim();
+      // For cube tool messages remove prefix lines and parse JSON
+      if (isCubeTool) {
+        // Remove everything up to and including the Tool Result prefix
+        content = content.replace(/^[\s\S]*\*\*Tool Result:\*\*[\s\n]*/, '').trim();
       }
-      let jsonMatch = content.match(/({[\s\S]*}|\[[\s\S]*\])/);
+
+      // Remove code block markers if present
+      content = content.replace(/```[a-zA-Z]*\n?/, '').replace(/```$/, '').trim();
+      // Try to extract JSON from anywhere in the string
+      let jsonMatch = content.match(/({[\s\S]*?})/);
       if (jsonMatch) {
         try {
           const parsed = JSON.parse(jsonMatch[0]);
+          console.log('Parsed tool result:', parsed);
+          if (parsed && typeof parsed === 'object' && (parsed.url || parsed.service || parsed.action || parsed.status)) {
+            const DynamicResponseRenderer = require('../components/DynamicResponseRenderer').default;
+            console.log('Rendering ActionCard with:', parsed);
+            return <DynamicResponseRenderer data={parsed} type={msg.contentType || 'conversation'} />;
+          }
           if (parsed && typeof parsed === 'object') {
             if (parsed.title && parsed.steps) {
               return <TutorialDisplay data={parsed as TutorialData} />;
@@ -3823,12 +3923,13 @@ IMPORTANT: Format your entire answer using markdown. Use headings, bullet points
             } else if (parsed.main_title && parsed.sections) {
               return <InformationalSummaryDisplay data={parsed as InformationalSummaryData} />;
             }
-            // Mind map detection is now handled earlier in the function
           }
           return <pre className="bg-neutral-900 text-white rounded p-4 overflow-x-auto"><code>{JSON.stringify(parsed, null, 2)}</code></pre>;
-        } catch (e) {}
+        } catch (e) {
+          console.error('Failed to parse tool result JSON:', e, content);
+        }
       }
-        return <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex]} className="prose dark:prose-invert max-w-none">{msg.content}</ReactMarkdown>;
+      return <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex]} className="prose dark:prose-invert max-w-none">{content}</ReactMarkdown>;
     }
     return null;
   };
@@ -3846,6 +3947,18 @@ IMPORTANT: Format your entire answer using markdown. Use headings, bullet points
       setActiveButton(key);
       if (key === 'search') {
         setActiveMode('search');
+      } else if (key === 'cube') {
+        // Check if user is authenticated with Notion
+        const isNotionAuthenticated = typeof window !== 'undefined' && 
+          localStorage.getItem('notion_oauth_tokens') !== null;
+        
+        if (isNotionAuthenticated) {
+          setActiveMode('cube');
+        } else {
+          // Show Notion auth modal
+          setIsNotionAuthModalOpen(true);
+          return; // Don't set active button until auth is complete
+        }
       } else {
         setActiveMode('chat');
       }
@@ -4077,6 +4190,28 @@ IMPORTANT: Format your entire answer using markdown. Use headings, bullet points
                 
                 if (showPulsingDot && i === messages.length -1 ) setShowPulsingDot(false);
                 const showTypingIndicator = msg.role === 'assistant' && finalContent.trim().length === 0 && !msg.isProcessed;
+                
+                // Cube Mode Tool Result handling
+                if (msg.content && msg.content.includes('**Tool Result:**')) {
+                  let jsonStr = msg.content
+                    .replace(/^[\s\S]*\*\*Tool Result:\*\*[\s\n]*/, '')
+                    .replace(/```[a-zA-Z]*\n?/, '')
+                    .replace(/```$/, '')
+                    .trim();
+                  try {
+                    const parsed = JSON.parse(jsonStr);
+                    const DynamicResponseRenderer = require('../components/DynamicResponseRenderer').default;
+                    return (
+                      <DynamicResponseRenderer
+                        key={msg.id + '-cube-' + i}
+                        data={parsed}
+                        type={msg.contentType || 'conversation'}
+                      />
+                    );
+                  } catch (e) {
+                    console.error('Cube Tool Result JSON parse failed', e, jsonStr);
+                  }
+                }
                 
                 return (
                   <React.Fragment key={msg.id + '-fragment-' + i}>
@@ -4902,7 +5037,8 @@ IMPORTANT: Format your entire answer using markdown. Use headings, bullet points
 
           {/* Conversation and other UI below */}
           <div className={`w-full max-w-4xl mx-auto flex flex-col gap-4 items-center justify-center z-10 pt-12 pb-4 ${isArtifactMode ? 'px-4 sm:px-6' : ''}`}>
-            {messages.map((msg, i) => {
+            {messages.filter(msg => !(msg.role === 'assistant' && (!msg.content || msg.content.trim() === ''))).map((msg, i) => {
+              console.log('[CUBE MODE DEBUG] activeMode:', activeMode, 'msg:', msg);
               // Assistant responses: artifacts first, then search, then reasoning, then default chat
               if (msg.role === 'assistant') {
                 if (msg.contentType === 'artifact') {
@@ -5281,6 +5417,12 @@ IMPORTANT: Format your entire answer using markdown. Use headings, bullet points
         </div>
       )}
 
+      {/* Notion Auth Modal */}
+      <NotionAuthModal
+        isOpen={isNotionAuthModalOpen}
+        onClose={() => setIsNotionAuthModalOpen(false)}
+        onSuccess={handleNotionAuthSuccess}
+      />
 
     </>
   );
