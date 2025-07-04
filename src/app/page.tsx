@@ -55,7 +55,9 @@ import ImageCarousel from '@/components/ImageCarousel';
 import { ArtifactV2Service, type ArtifactV2 } from '@/lib/artifact-v2-service';
 import NotionAuthModal from '@/components/NotionAuthModal';
 import { notionOAuth } from '@/lib/notion-oauth';
+import { notionIntegration } from '@/lib/notion-integration';
 // import { isMindMapRequest } from '@/utils/mindmap-utils'; // Removed
+import ToolStepRenderer from '../components/ToolStepRenderer';
 
 
 // Define a type that includes all possible query types (including the ones in SCHEMAS and 'conversation')
@@ -101,48 +103,7 @@ Response guidelines:
 
 Remember: You're having a conversation with a human, Be helpful, be human-like, and be genuinely engaging.`;
 
-const CUBE_MODE_SYSTEM_PROMPT = `You are Tehom AI in Cube Mode - a powerful AI agent connected to the user's Notion workspace. You can create, manage, and organize Notion content through natural language commands.
-
-**CRITICAL JSON FORMATTING INSTRUCTIONS:**
-- ALWAYS use VALID JSON for tool call arguments
-- Ensure proper JSON syntax: {"key": "value"}
-- Use double quotes for strings
-- No trailing commas
-- Escape special characters properly
-
-Example Correct JSON:
-- ✅ {"title": "Project Meeting Notes"}
-- ✅ {"block_id": "abc123", "block_data": {"title": "Updated Section"}}
-- ❌ DO NOT USE: {title: "Notes"}, {"title": "Notes",}
-
-Your capabilities:
-- **Page Management**: Create, update, retrieve, and modify pages with rich content
-- **Block-Level Editing**: Add, update, and delete specific blocks within pages
-- **Database Operations**: Create databases, add/update entries, query with filters
-- **Content Search**: Search across the entire workspace
-- **Template Generation**: Create pre-built workflows
-- **Workspace Organization**: Structure content hierarchically
-
-Advanced Features:
-- Precise content editing
-- Database automation
-- Content retrieval
-- Bulk operations
-
-Your approach:
-- Translate user intent into precise Notion operations
-- Use exact, valid JSON for all tool calls
-- Provide clear, structured responses
-- Explain actions taken
-- Share Notion URLs when possible
-
-Templates available:
-- Project Tracker
-- Meeting Notes
-- Task Board
-- Knowledge Base
-
-Remember: Maintain strict JSON formatting for all tool interactions. Proper syntax is CRITICAL for successful execution.`;
+// Remove the old system prompt - the backend now handles this
 
 interface ProcessedResponse {
   content: string;
@@ -1969,7 +1930,7 @@ function TestChatComponent(props?: TestChatProps) {
   const [uploadedImageUrls, setUploadedImageUrls] = useState<string[]>([]);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [imageWaitingForResponse, setImageWaitingForResponse] = useState<string | null>(null);
-  
+
     // Notion OAuth states
   const [isNotionAuthModalOpen, setIsNotionAuthModalOpen] = useState(false);
   const [isNotionAuthenticated, setIsNotionAuthenticated] = useState(false);
@@ -1999,8 +1960,63 @@ function TestChatComponent(props?: TestChatProps) {
     setIsNotionAuthenticated(true);
     setActiveButton('cube');
     setActiveMode('cube');
+    // Don't auto-demo to avoid connection errors
   };
-  
+
+  // Demonstrate enhanced Notion tool calling
+  const demonstrateNotionToolCalling = async () => {
+    try {
+      console.log('[Cube Mode] Demonstrating enhanced tool calling...');
+      
+      // Create a demonstration message showing tool execution
+      const toolResult = await notionIntegration.createWorkspacePage(
+        'Enhanced Tool Demo Page',
+        'This page was created using the enhanced Notion tool calling mechanism with improved tracking and error handling.'
+      );
+
+      // Add the result as a message to show the new UI
+      const newMessage: LocalMessage = {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: JSON.stringify(toolResult),
+        contentType: 'tool_result',
+        timestamp: Date.now(),
+        isProcessed: true
+      };
+
+      setMessages(prev => [...prev, newMessage]);
+      
+      console.log('[Cube Mode] Tool execution demo completed:', toolResult);
+    } catch (error) {
+      console.error('[Cube Mode] Tool execution demo failed:', error);
+      
+      // Show error result
+      const errorMessage: LocalMessage = {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: JSON.stringify({
+          status: 'error',
+          service: 'Notion',
+          action: 'Create Page',
+          error: error instanceof Error ? error.message : String(error),
+          steps: [
+            { label: 'Authenticating', status: 'done' },
+            { label: 'Executing Action', status: 'error', description: error instanceof Error ? error.message : String(error) },
+            { label: 'Finalizing', status: 'pending' }
+          ]
+        }),
+        contentType: 'tool_result',
+        timestamp: Date.now(),
+        isProcessed: true
+      };
+
+      setMessages(prev => [...prev, errorMessage]);
+    }
+  };
+
+  // Function to execute tool calls from AI responses
+  // Note: Old renderToolCall and executeTool functions removed since we now use proper function calling
+
   // Refs
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const inputBarRef = useRef<HTMLDivElement>(null);
@@ -3682,9 +3698,9 @@ IMPORTANT: Format your entire answer using markdown. Use headings, bullet points
     try {
       // Disable image upload
       toast.error('Image upload is currently disabled.');
-      setSelectedFiles([]);
-      setImagePreviewUrls([]);
-      setUploadedImageUrls([]);
+        setSelectedFiles([]);
+        setImagePreviewUrls([]);
+        setUploadedImageUrls([]);
       setIsUploadingImage(false);
       return;
     } catch (error) {
@@ -3818,6 +3834,7 @@ IMPORTANT: Format your entire answer using markdown. Use headings, bullet points
   );
 
   // Fix the renderMessageContent function to use LocalMessage
+
   const renderMessageContent = (msg: LocalMessage) => {
     // Artifact messages are handled by renderArtifactMessage, not here
     if (msg.contentType === 'artifact') {
@@ -3879,12 +3896,78 @@ IMPORTANT: Format your entire answer using markdown. Use headings, bullet points
       }
     } else if (msg.content) {
       let content = msg.content.trim();
-      // Detect Cube Mode tool result message (contains **Tool Result:**)
-      const isCubeTool = content.includes('**Tool Result:**');
 
-      const isDefaultChat = !isCubeTool &&
-        (msg.contentType === 'conversation' || msg.contentType === 'reasoning' || (msg.role === 'assistant' && !msg.contentType));
+      // Detect enhanced tool execution messages early
+      const isEnhancedToolMsg = content.includes('TOOL_PROCESS:') || 
+                               content.includes('TOOL_COMPLETE:') ||
+                               content.includes('TOOL_THINKING:') ||
+                               content.includes('TOOL_PLANNING:');
 
+      // Check for tool execution messages (TOOL_THINKING, TOOL_PLANNING, TOOL_PROCESS, TOOL_COMPLETE)
+      // If we have tool messages and we're in cube mode, use our new ToolStepRenderer
+      if (isEnhancedToolMsg && activeMode === 'cube') {
+        console.log('[Tool Call Parser] Using ToolStepRenderer for tool messages');
+        return <ToolStepRenderer content={content} />;
+      }
+
+      // === Multi-tool card detection ===
+      const toolPattern = /TOOL_(PROCESS|COMPLETE):\s*({[\s\S]*?})(?=\n|$)/g;
+      const toolMatches = [];
+      const DynamicResponseRenderer = require('../components/DynamicResponseRenderer').default;
+      let toolCardRendered = false;
+      let toolCardNodes: React.ReactNode[] = [];
+      let toolMatch;
+      
+      console.log('[Tool Call Parser] Checking content for tool calls:', {
+        contentLength: content.length,
+        hasToolProcess: content.includes('TOOL_PROCESS:'),
+        hasToolComplete: content.includes('TOOL_COMPLETE:'),
+        contentPreview: content.substring(0, 200)
+      });
+      
+      while ((toolMatch = toolPattern.exec(content)) !== null) {
+        console.log('[Tool Call Parser] Found tool call:', {
+          type: toolMatch[1],
+          jsonText: toolMatch[2].substring(0, 100) + '...'
+        });
+        
+        const jsonText = extractFirstJsonObject(toolMatch[2]) || '{}';
+        try {
+          const dataObj = JSON.parse(jsonText);
+          const type = toolMatch[1] === 'PROCESS' ? 'tool_process' : 'tool_complete';
+          console.log('[Tool Call Parser] Successfully parsed tool call:', {
+            type,
+            dataObj: dataObj
+          });
+          toolCardNodes.push(<DynamicResponseRenderer key={toolCardNodes.length} data={dataObj} type={type} />);
+          toolCardRendered = true;
+        } catch (e) {
+          console.error('[Tool Call Parser] Failed to parse tool JSON:', e, 'JSON text:', jsonText);
+        }
+      }
+      
+      if (toolCardRendered && activeMode === 'cube') {
+        // Only show the cards/stepper, hide the raw tool call text/markdown
+        return <>{toolCardNodes}</>;
+      }
+      // --- Robust fallback: show error card if tool call detected but no card rendered ---
+      if (activeMode === 'cube' && isEnhancedToolMsg && !toolCardRendered) {
+        return (
+          <div className="flex justify-center my-6">
+            <div className="bg-red-900/20 backdrop-blur-lg border border-red-500/30 rounded-2xl px-6 py-4 shadow-2xl max-w-md w-full text-center">
+              <div className="text-red-300 font-semibold mb-2">Tool call failed to render</div>
+              <div className="text-red-200 text-xs">The tool call data could not be displayed. Please try again or contact support.</div>
+            </div>
+          </div>
+        );
+      }
+
+      // We already detected enhanced tool messages earlier, so just check if it's not cube mode
+      if (isEnhancedToolMsg && activeMode !== 'cube') {
+        console.log('[Tool Call Parser] Enhanced tool message detected, skipping default chat handling');
+        // We will parse and render below (skip default chat handling)
+      } else {
+        const isDefaultChat = msg.contentType === 'conversation' || msg.contentType === 'reasoning' || (msg.role === 'assistant' && !msg.contentType);
       if (isDefaultChat) {
         return (
           <ReactMarkdown 
@@ -3892,14 +3975,79 @@ IMPORTANT: Format your entire answer using markdown. Use headings, bullet points
             rehypePlugins={[rehypeRaw, rehypeKatex]} 
             className="prose dark:prose-invert max-w-none default-chat-markdown"
           >
-            {content}
+              {content}
           </ReactMarkdown>
         );
       }
-      // For cube tool messages remove prefix lines and parse JSON
-      if (isCubeTool) {
-        // Remove everything up to and including the Tool Result prefix
-        content = content.replace(/^[\s\S]*\*\*Tool Result:\*\*[\s\n]*/, '').trim();
+      }
+
+      // Check for enhanced tool execution patterns first (allow flexible formatting)
+      const processIndex = content.indexOf('TOOL_PROCESS:');
+      const completeIndex = content.indexOf('TOOL_COMPLETE:');
+
+      console.log('[Tool Call Parser] Checking individual tool patterns:', {
+        processIndex,
+        completeIndex
+      });
+
+      if (processIndex !== -1) {
+        const jsonStart = content.indexOf('{', processIndex);
+        if (jsonStart !== -1) {
+          const jsonString = content.slice(jsonStart).trim();
+          try {
+            const rawJson = extractFirstJsonObject(jsonString) || '{}';
+            const cleaned = rawJson.replace(/```/g, '').trim();
+            const processData = JSON.parse(cleaned);
+            console.log('[Tool Call Parser] Successfully parsed process data:', processData);
+            const DynamicResponseRenderer = require('../components/DynamicResponseRenderer').default;
+            return <DynamicResponseRenderer data={processData} type="tool_process" />;
+          } catch (e) {
+            console.error('[Tool Call Parser] Failed to parse tool process JSON:', e, 'JSON string:', jsonString);
+          }
+        }
+      }
+
+      if (completeIndex !== -1) {
+        const jsonStart = content.indexOf('{', completeIndex);
+        if (jsonStart !== -1) {
+          const jsonString = content.slice(jsonStart).trim();
+          try {
+            const rawJson = extractFirstJsonObject(jsonString) || '{}';
+            const cleaned = rawJson.replace(/```/g, '').trim();
+            const completeData = JSON.parse(cleaned);
+            console.log('[Tool Call Parser] Successfully parsed complete data:', completeData);
+            const DynamicResponseRenderer = require('../components/DynamicResponseRenderer').default;
+            return <DynamicResponseRenderer data={completeData} type="tool_complete" />;
+          } catch (e) {
+            console.error('[Tool Call Parser] Failed to parse tool complete JSON:', e, 'JSON string:', jsonString);
+          }
+        }
+      }
+
+      // Legacy regex support with ** markers
+      const toolProcessMatchLegacy = content.match(/TOOL_PROCESS:\s*({[\s\S]*})/);
+      const toolCompleteMatchLegacy = content.match(/TOOL_COMPLETE:\s*({[\s\S]*})/);
+
+      if (toolProcessMatchLegacy) {
+        try {
+          const rawJson = extractFirstJsonObject(toolProcessMatchLegacy[1]) || toolProcessMatchLegacy[1];
+          const processData = JSON.parse(rawJson);
+          const DynamicResponseRenderer = require('../components/DynamicResponseRenderer').default;
+          return <DynamicResponseRenderer data={processData} type="tool_process" />;
+        } catch (e) {
+          console.error('Failed to parse legacy tool process:', e);
+        }
+      }
+
+      if (toolCompleteMatchLegacy) {
+        try {
+          const rawJson = extractFirstJsonObject(toolCompleteMatchLegacy[1]) || toolCompleteMatchLegacy[1];
+          const completeData = JSON.parse(rawJson);
+          const DynamicResponseRenderer = require('../components/DynamicResponseRenderer').default;
+          return <DynamicResponseRenderer data={completeData} type="tool_complete" />;
+        } catch (e) {
+          console.error('Failed to parse legacy tool complete:', e);
+        }
       }
 
       // Remove code block markers if present
@@ -3927,7 +4075,7 @@ IMPORTANT: Format your entire answer using markdown. Use headings, bullet points
           return <pre className="bg-neutral-900 text-white rounded p-4 overflow-x-auto"><code>{JSON.stringify(parsed, null, 2)}</code></pre>;
         } catch (e) {
           console.error('Failed to parse tool result JSON:', e, content);
-        }
+      }
       }
       return <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex]} className="prose dark:prose-invert max-w-none">{content}</ReactMarkdown>;
     }
@@ -3954,6 +4102,8 @@ IMPORTANT: Format your entire answer using markdown. Use headings, bullet points
         
         if (isNotionAuthenticated) {
           setActiveMode('cube');
+          // Remove the auto-demo that was causing the error
+          // demonstrateNotionToolCalling();
         } else {
           // Show Notion auth modal
           setIsNotionAuthModalOpen(true);
@@ -4118,7 +4268,7 @@ IMPORTANT: Format your entire answer using markdown. Use headings, bullet points
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCFCFC" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
                 <line x1="9" y1="9" x2="15" y2="9"></line>
-                <line x1="9" y1="15" x2="15" y2="15"></line>
+                <line x1="9" y1="15" y2="15"></line>
               </svg>
               <h3 className="text-sm font-normal truncate flex-1 leading-tight" style={{ color: "#FCFCFC", margin: 0, padding: 0 }}>
                 {msg.structuredContent ? msg.structuredContent.title : "Drafting document"}
@@ -4190,28 +4340,6 @@ IMPORTANT: Format your entire answer using markdown. Use headings, bullet points
                 
                 if (showPulsingDot && i === messages.length -1 ) setShowPulsingDot(false);
                 const showTypingIndicator = msg.role === 'assistant' && finalContent.trim().length === 0 && !msg.isProcessed;
-                
-                // Cube Mode Tool Result handling
-                if (msg.content && msg.content.includes('**Tool Result:**')) {
-                  let jsonStr = msg.content
-                    .replace(/^[\s\S]*\*\*Tool Result:\*\*[\s\n]*/, '')
-                    .replace(/```[a-zA-Z]*\n?/, '')
-                    .replace(/```$/, '')
-                    .trim();
-                  try {
-                    const parsed = JSON.parse(jsonStr);
-                    const DynamicResponseRenderer = require('../components/DynamicResponseRenderer').default;
-                    return (
-                      <DynamicResponseRenderer
-                        key={msg.id + '-cube-' + i}
-                        data={parsed}
-                        type={msg.contentType || 'conversation'}
-                      />
-                    );
-                  } catch (e) {
-                    console.error('Cube Tool Result JSON parse failed', e, jsonStr);
-                  }
-                }
                 
                 return (
                   <React.Fragment key={msg.id + '-fragment-' + i}>
@@ -4564,7 +4692,7 @@ IMPORTANT: Format your entire answer using markdown. Use headings, bullet points
 
     const finalContent = makeCitationsClickable(mainMarkdownContent, msg.webSources || []);
 
-    return (
+                return (
       <React.Fragment key={`msg-${i}`}>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -4767,7 +4895,7 @@ IMPORTANT: Format your entire answer using markdown. Use headings, bullet points
                     <button
                       type="button"
                       className={`flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 ${activeButton === 'cube' ? 'border' : 'hover:brightness-150'}`}
-                      style={{ color: activeButton === 'cube' ? '#FCFCFC' : 'rgba(252, 252, 252, 0.6)', borderColor: activeButton === 'cube' ? '#FCFCFC' : 'transparent' }}
+                      style={{ color: activeButton === 'cube' ? '#FCFCFC' : 'rgba(252, 252, 252, 0.6)', borderColor: activeButton === 'cube' ? '#FCFCFC' : 'transparent', display: activeMode === 'cube' ? 'none' : 'flex' }}
                       aria-label="Toggle Cube Mode"
                       onClick={() => handleButtonClick('cube')}
                     >
@@ -4964,7 +5092,7 @@ IMPORTANT: Format your entire answer using markdown. Use headings, bullet points
                     <button
                       type="button"
                       className={`flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 ${activeButton === 'cube' ? 'border' : 'hover:brightness-150'}`}
-                      style={{ color: activeButton === 'cube' ? '#FCFCFC' : 'rgba(252, 252, 252, 0.6)', borderColor: activeButton === 'cube' ? '#FCFCFC' : 'transparent' }}
+                      style={{ color: activeButton === 'cube' ? '#FCFCFC' : 'rgba(252, 252, 252, 0.6)', borderColor: activeButton === 'cube' ? '#FCFCFC' : 'transparent', display: activeMode === 'cube' ? 'none' : 'flex' }}
                       aria-label="Toggle Cube Mode"
                       onClick={() => handleButtonClick('cube')}
                     >
@@ -5037,7 +5165,7 @@ IMPORTANT: Format your entire answer using markdown. Use headings, bullet points
 
           {/* Conversation and other UI below */}
           <div className={`w-full max-w-4xl mx-auto flex flex-col gap-4 items-center justify-center z-10 pt-12 pb-4 ${isArtifactMode ? 'px-4 sm:px-6' : ''}`}>
-            {messages.filter(msg => !(msg.role === 'assistant' && (!msg.content || msg.content.trim() === ''))).map((msg, i) => {
+            {messages.map((msg, i) => {
               console.log('[CUBE MODE DEBUG] activeMode:', activeMode, 'msg:', msg);
               // Assistant responses: artifacts first, then search, then reasoning, then default chat
               if (msg.role === 'assistant') {
@@ -5475,4 +5603,22 @@ function wrapBengali(children: React.ReactNode): React.ReactNode {
     return React.Children.map(children, child => wrapBengali(child));
   }
   return children;
+}
+
+// Helper: extract first balanced JSON object string from content
+function extractFirstJsonObject(text: string): string | null {
+  const firstBrace = text.indexOf('{');
+  if (firstBrace === -1) return null;
+  let depth = 0;
+  for (let i = firstBrace; i < text.length; i++) {
+    const char = text[i];
+    if (char === '{') depth++;
+    else if (char === '}') {
+      depth--;
+      if (depth === 0) {
+        return text.slice(firstBrace, i + 1);
+      }
+    }
+  }
+  return null;
 }
